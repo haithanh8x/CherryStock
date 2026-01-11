@@ -1,0 +1,7 @@
+function CountSymbols(C)
+{
+   count = 0;
+   return IIf(  Close > MA(Close, 10), 0, count + 1 );
+} 
+
+Plot(CountSymbols(C), "Close", colorRed, styleCandle);

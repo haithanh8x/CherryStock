@@ -1,0 +1,253 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} {{OHLCX}} Vol %.0f {{VALUES}}", V ));
+Plot( C, "Close", ParamColor("Color", colorDefault ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+_SECTION_END();
+
+_SECTION_BEGIN("MA");
+P = ParamField("Price field",-1);
+Periods = Param("Periods", 50, 2, 200, 1 );
+Plot( MA( P, Periods ), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style", styleLine | styleNoLabel ) | styleNoRescale ); 
+_SECTION_END();
+
+_SECTION_BEGIN("Mid MA");
+P = ParamField("Price field",-1);
+Periods = Param("Periods", 100, 2, 300, 1 );
+Plot( MA( P, Periods ), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style", styleLine | styleNoLabel ) | styleNoRescale ); 
+_SECTION_END();
+
+_SECTION_BEGIN("Long MA");
+P = ParamField("Price field",-1);
+Periods = Param("Periods", 200, 2, 400, 1 );
+Plot( MA( P, Periods ), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style", styleLine | styleNoLabel ) | styleNoRescale ); 
+_SECTION_END();
+
+_SECTION_BEGIN("BBands");
+P = ParamField("Price field",-1);
+Periods = Param("Periods", 15, 2, 100, 1 );
+Width = Param("Width", 2, 0, 10, 0.05 );
+Color = ParamColor("Color", colorLightGrey );
+Color = ColorBlend( Color,  GetChartBkColor(), 0.5 );
+Style = ParamStyle("Style", styleLine | styleNoLabel ) | styleNoRescale;;
+Plot( bbt = BBandTop( P, Periods, Width ), "BBTop" + _PARAM_VALUES(), Color, Style ); 
+Plot( bbb = BBandBot( P, Periods, Width ), "BBBot" + _PARAM_VALUES(), Color, Style ); 
+PlotOHLC( bbt, bbt, bbb, bbb, "", ColorBlend( Color, GetChartBkColor(), 0.7 ), styleNoLabel | styleCloud | styleNoRescale, Null, Null, Null, -1 );
+_SECTION_END();
+
+_SECTION_BEGIN("Volume");
+Color = ParamColor("Color", ColorRGB( 255, 255, 255 ) );
+Plot( Volume, _DEFAULT_NAME(), ColorBlend( Color, GetChartBkColor(), 0.5  ), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+_SECTION_END();
+
+_SECTION_BEGIN("Price Interpretation");
+movshort = ParamField("Short Time MA", 8 );
+movmed = ParamField("Mid Time MA", 9 );
+movlong = ParamField("Long Time MA", 10 );
+btop = ParamField("BBTop", 11 );
+bbot = ParamField("BBBottom", 12 );
+if( Status("action") == actionCommentary )
+{
+width = btop - bbot;
+lslop = LinRegSlope( C, 30 ) + 100;
+lslo = LLV( lslop, 90 );
+lshi = HHV( lslop, 90 );
+lswidth = lshi - lslo;
+trend = 100*( lslop - lslo )/lswidth;
+
+mawidth = MA( width, 100 );
+relwidth = 100*(width - mawidth)/mawidth;
+
+_N( tname = Name()+"("+FullName()+")" );
+
+printf("Price and moving averages:\n");
+printf( tname + " has closed " + WriteIf( C > movshort, "above" , "below" ) + " its Short time moving average. ");
+
+printf("\nShort time moving average is currently " + WriteIf( movshort > movmed, "above", "below") + " mid-time, AND " + WriteIf( movshort > movlong, "above", "below" ) + " long time moving averages.");
+
+printf("\nThe relationship between price and moving averages is: "+
+WriteIf( C > movshort AND movshort > movmed, "bullish",
+WriteIf( C < movshort AND movshort < movmed, "bearish", "neutral" ) ) + " in short-term, and "+
+WriteIf( movshort > movmed AND movmed > movlong , "bullish",
+WriteIf( movshort < movmed AND movmed < movlong, "bearish", "neutral" ) ) + " in mid-long term. ");
+
+printf("\n\nBollinger Bands:\n");
+printf(tname+ " has closed " + 
+WriteIf( C < bbot, "below the lower band by " +
+WriteVal( 100 *( bbot-C )/ width, 1.1 ) + "%%. " +
+WriteIf( trend < 30, " This combined with the steep downtrend can suggest that the downward trend in prices has a good chance of continuing.  However, a short-term pull-back inside the bands is likely.",
+WriteIf( trend > 30 AND trend < 70, "Although prices have broken the lower band and a downside breakout is possible, the most likely scenario for "+tname+" is to continue within current trading range.", "" ) ), "" ) +
+
+WriteIf( C > btop, "above the upper band by " +
+WriteVal( 100 *( C- btop )/ width, 1.1 ) + "%%. " +
+WriteIf( trend > 70, " This combined with the steep uptrend suggests that the upward trend in prices has a good chance of continuing.  However, a short-term pull-back inside the bands is likely.",
+WriteIf( trend > 30 AND trend < 70, "Although prices have broken the upper band and a upside breakout is possible, the most likely scenario for "+tname+" is to continue within current trading range.", "" ) ), "" ) +
+
+WriteIf( C < btop AND ( ( btop - C ) / width ) < 0.5, 
+"below upper band by " +
+WriteVal( 100 *( btop - C )/ width, 1.1 ) + "%%. ", 
+WriteIf( C < btop AND C > bbot , "above bottom band by " +
+WriteVal( 100 *( C - bbot )/ width, 1.1 ) + "%%. ", "" ) ));
+
+printf("\n"+
+WriteIf( ( trend > 30 AND trend < 70 AND ( C > btop OR C < bbot ) ) AND abs(relwidth) > 40,
+		 "This picture becomes somewhat unclear due to the fact that Bollinger Bands are  currently",
+		 "Bollinger Bands are " )+	  
+WriteVal( abs( relwidth ), 1.1 ) + "%% " +
+WriteIf( relwidth > 0, "wider" , "narrower" ) +
+" than normal.");
+
+printf("\n");
+
+printf(
+WriteIf( abs( relwidth ) < 40, "The current width of the bands (alone) does not suggest anything conclusive about the future volatility or movement of prices.","")+
+WriteIf( relwidth < -40, "The narrow width of the bands suggests low volatility as compared to " + tname + "'s normal range.  Therefore, the probability of volatility increasing with a sharp price move has increased for the near-term. "+
+"The bands have been in this narrow range for " + WriteVal(BarsSince(Cross(-40,relwidth)),1.0) + " bars. The probability of a significant price move increases the longer the bands remain in this narrow range." ,"")+
+WriteIf( relwidth > 40, "The large width of the bands suggest high volatility as compared to " + tname + "'s normal range.  Therefore, the probability of volatility decreasing and prices entering (or remaining in) a trading range has increased for the near-term. "+
+"The bands have been in this wide range for  " + WriteVal(BarsSince(Cross(relwidth,40)),1.0) + " bars.The probability of prices consolidating into a less volatile trading range increases the longer the bands remain in this wide range." ,""));
+
+printf("\n\nThis commentary is not a recommendation to buy or sell. Use at your own risk.");
+}
+_SECTION_END();
+
+_SECTION_BEGIN("Volume At Price");
+PlotVAPOverlay( Param("Lines", 300, 100, 1000, 1 ), Param("Width", 5, 1, 100, 1 ), ParamColor("Color", colorCycle ), ParamToggle("Side", "Left|Right" ) | 4*ParamToggle("Z-order", "On top|Behind", 1 ) );
+ 
+_SECTION_END();
+
+_SECTION_BEGIN("Zigzag");
+/*
+   Zig-Hi-Zag-Lo
+ 
+   To use to plot the true Peak High and Trough Low
+   for study of chart pattern, to create trading system
+ 
+   Modified from http://trader.online.pl/MSZ/e-w-ZigZag_HiLo.html
+ 
+   By TohMz 
+*/
+pr=Param("ZigZag change amount", 5, 0.1,100,0.1);
+ 
+pk=PeakBars(H,pr)==0;
+tr=TroughBars(L,pr)==0;
+ 
+zzHi=Zig(H,pr);
+zzLo=Zig(L,pr);
+Avg=(zzHi+zzLo)/2;
+ 
+x=IIf(pk,zzHi,IIf(tr,zzLo,IIf(Avg>Ref(Avg,-1),H,L)));
+zzHiLo=Zig(x,pr);
+ 
+Plot( zzHiLo, "", ParamColor("Color",colorRed), ParamStyle("Style"));
+ 
+//-- Delete below, to allow attach to any price chart
+_N(Title = StrFormat("{{NAME}}- {{INTERVAL}} {{DATE}} O= %g, H= %g, L= %g, C= %g (%.1f%%) V= " +WriteVal( V, 1.0 ) +"\n{{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+PriceStyle = GetPriceStyle();
+PriceStyleOpt = ParamStyle("Style") | PriceStyle;
+ 
+if (PriceStyle==styleCandle)
+   Plot( C, "", colorBlack,  PriceStyleOpt); 
+else
+   Plot( C, "", IIf( Close >= Ref(C, -1), colorBlue, colorRed ), PriceStyleOpt);
+_SECTION_END();
+
+#include_once <FireAnt.h>
+
+_SECTION_BEGIN("MACD Trend");
+if (Nz(VarGet("runonce_Basic")) == 0) {
+VarSet("runonce_Basic",1);
+CellHeight = Param("Cell Height",20,5,200,1); 
+CellWidth = Param("Cell Width",120,5,200,1); 
+PanelYoffset = Param("Cell Row Offset (px)",15,0,Status("pxheight"),1); 
+PanelXoffset = Param("Cell Column Offset (px)",10,0,Status("pxwidth"),1); 
+FontRatio = Param("Font: CellHeight ratio",2,1,20,0.1);
+Triger =1;
+
+
+Column_Begin( "1");
+Triger = TriggerCell( "TEST MODUS OFF", "TEST MODUS ON", colorRed, colorBrightGreen, colorBlack);
+Column_End( );
+
+TestModus = Nz(StaticVarGet("TestModus"), OFF);
+
+TP = LastValue(C);
+PV = StaticVarGet("PV");
+PV = IIf(IsNull(PV), V, PV);
+
+if (Triger == 0) 
+{
+	if ( GetCursorMouseButtons() & 9 ) 
+	{ 
+		TP = Nz(GetCursorYPosition(),Nz(StaticVarGet("TestPrice"),LastValue(C)));
+
+		StaticVarSet("TestPrice", TP);
+	}
+	else { 
+		TP = Nz(StaticVarGet("TestPrice"),LastValue(C));
+	}
+}
+else
+	TP = LastValue(C); 
+
+if (TestModus==OFF) {
+	TP = LastValue(C);
+	PC = C;
+	PH = H;
+	PL = L;
+	PTypical = Avg;
+}
+else {
+	PC = FA_Price(3);
+	PH = FA_Price(1);
+	PL = FA_Price(2);
+	PTypical = FA_Price(5);
+}
+
+StaticVarSet("TP", TP );
+StaticVarSet("PC", PC );
+StaticVarSet("PL", PL );
+StaticVarSet("PH", PH );
+StaticVarSet("PTypical", PTypical);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+
+
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) Vol " +WriteVal( PV, 1.0 ) +" {{VALUES}}", O, PH, PL, PC, SelectedValue( ROC( PC, 1 )) ));
+
+PriceStyle = GetPriceStyle();
+PriceStyleOpt = ParamStyle("Price Style")|PriceStyle;
+
+
+Type = ParamList("Type", "Simple,Exponential,Double Exponential,Tripple Exponential,Wilders,Weighted,Least Squares,Time Series Forecast");
+
+r1 = Param( "Fast avg", 12, 2, 200, 1 );
+r2 = Param( "Slow avg", 26, 2, 200, 1 );
+r3 = Param( "Signal avg", 9, 2, 200, 1 );
+
+if( Type == "Simple" ) 					Option = 1;
+if( Type == "Exponential" ) 			Option = 2;
+if( Type == "Double Exponential" ) 	Option = 3;
+if( Type == "Tripple Exponential" ) 	Option = 4;
+if( Type == "Wilders" ) 				Option = 5;
+if( Type == "Weighted" ) 				Option = 6;
+if( Type == "Least Squares" ) 			Option = 7;
+if( Type == "Time Series Forecast" ) 	Option = 8;
+
+m = FA_MACD(r1,r2);
+s = FA_Signal(m,r3, Option);
+
+trendup = m > 0 AND m > s;
+trenddown = m < 0 AND m < s;
+
+upColor = IIf(trendup , colorGreen, colorWhite);
+
+trendcolor = IIf(trenddown, colorRed, upColor );
+
+
+shape = trendup * shapeSmallUpTriangle + trenddown * shapeSmallDownTriangle;
+
+if (PriceStyle==styleCandle)
+	Plot( PC, "Close", IIf( trendup, colorGreen, IIf(trenddown, colorRed ,colorWhite)), styleNoTitle | ParamStyle("Style") | PriceStyleOpt ); 
+else
+	Plot( PC, "Close", IIf( trendup, colorGreen, IIf(trenddown, colorRed ,colorWhite)), styleLine);
+}
+_SECTION_END();

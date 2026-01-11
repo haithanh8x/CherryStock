@@ -1,0 +1,42 @@
+_SECTION_BEGIN("Proprietary Trading");
+if (Nz(VarGet("runonce_PropTrading")) == 0) {
+VarSet("runonce_PropTrading",1);
+	TD = Name() +  "_TD";
+	
+	Choice = ParamList("Method", "Volume|Value", 0);
+
+	if (Choice == "Volume") {
+		propTradingSellV = Nz(Foreign(TD,"O",1),0);
+		propTradingBuyV = Nz(Foreign(TD,"C",1),0);
+		propTradingSellV = IIf (propTradingSellV==propTradingBuyV, IIf (Nz(Foreign(TD,"V",1),0) == 0, 0, propTradingSellV), propTradingSellV);
+		sellText = "Proprietary Trading Sell Volume:";
+		buyText = "Proprietary Trading Buy Volume:";
+		netText = "Volume: ";
+	}
+	else {
+		propTradingSellV = Nz(Foreign(TD,"V",0),0);
+		propTradingBuyV = Nz(Foreign(TD,"I",0),0);
+		sellText = "Proprietary Trading Sell Value:";
+		buyText = "Proprietary Trading Buy Value:";
+		netText = "Value: ";
+	}
+	
+	netPropTradingV = propTradingBuyV - propTradingSellV;
+	totalPropTradingV = propTradingBuyV + propTradingSellV + abs(netPropTradingV);
+	netText = WriteIf(netPropTradingV>=0, "Net Buy ", "Net Sell ") + netText;
+
+	propTradingBuyColor = ParamColor("Proprietary Trading Buy Color", colorGreen );
+	propTradingSellColor = ParamColor("Proprietary Trading Sell Color", colorRed );
+	netPropTradingBuyColor = ParamColor("Net Proprietary Trading Buy Color", colorBlue );
+	netPropTradingSellColor = ParamColor("Net Proprietary Trading Sell Color", colorYellow);
+	
+	netPropTradingColor = IIf(netPropTradingV > 0, netPropTradingBuyColor, IIf(netPropTradingV <0, netPropTradingSellColor, colorWhite));
+	
+	PlotOHLC(propTradingBuyV,0, propTradingBuyV, 0,  "Proprietary Trading Buy" , IIf(netPropTradingV > 0, propTradingBuyColor,propTradingBuyColor), styleCandle);
+	PlotOHLC(propTradingBuyV+abs(netPropTradingV),0, propTradingBuyV+abs(netPropTradingV), 0,  "" , IIf(netPropTradingV > 0, netPropTradingColor, netPropTradingColor), styleCandle);
+	PlotOHLC(totalPropTradingV,0,totalPropTradingV,0,"Proprietary Trading Sell", IIf(netPropTradingV > 0, propTradingSellColor, propTradingSellColor), styleCandle);
+
+	Title = Name() + " - " + Date()+ " - " + sellText+WriteVal(propTradingSellV,1.0) + "    "
+	+ buyText+WriteVal(propTradingBuyV,1.0) + "    " + netText+WriteVal(abs(netPropTradingV),1.0);
+}
+_SECTION_END();

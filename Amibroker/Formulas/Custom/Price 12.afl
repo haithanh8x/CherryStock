@@ -1,0 +1,92 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+Plot( C, "Close", ParamColor("Color", colorDefault ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+_SECTION_END();
+
+_SECTION_BEGIN("Rashedbgd");
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+//_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+
+P = ParamField("Price field",-1);
+
+Length = 150;
+
+Daysback = Param("Period for Liner Regression Line",Length,1,240,1);
+shift = Param("Look back period",0,0,240,1);
+
+x = Cum(1);
+lastx = LastValue( x ) - shift;
+aa = LastValue( Ref(LinRegIntercept( p, Daysback), -shift) );
+bb = LastValue( Ref(LinRegSlope( p, Daysback ), -shift) );
+y = Aa + bb * ( x - (Lastx - DaysBack +1 ) );
+
+
+LRColor = ParamColor("LR Color", colorCycle ); 
+LRStyle = ParamStyle("LR Style");
+
+LRLine =  IIf( x > (lastx - Daysback) AND BarIndex() < Lastx, y, Null );
+
+LRStyle = ParamStyle("LR Style");
+Angle = Param("Angle", 0.05, 0, 1.5, 0.01);// A slope higher than 0.05 radians will turn green, less than -0.05 will turn red and anything in between will be white.
+
+LRLine = IIf( x > (lastx - Daysback) AND BarIndex() < Lastx, y, Null );
+
+Pi = 3.14159265 * atan(1); // Pi
+SlopeAngle = atan(bb)*(180/Pi);
+
+LineUp = SlopeAngle > Angle;
+LineDn = SlopeAngle < - Angle;
+
+if(LineUp)
+{
+Plot(LRLine, "Lin. Reg. Line Up", IIf(LineUp, colorBrightGreen, colorWhite), LRStyle);
+}
+else
+{
+Plot(LRLine, "Lin. Reg. Line Down", IIf(LineDn, colorDarkRed, colorWhite), LRStyle);
+} 
+
+SDP = Param("Standard Deviation", 1.5, 0, 6, 0.1);
+SD = SDP/2;
+
+width = LastValue( Ref(SD*StDev(p, Daysback),-shift) ); //Set width of inside chanels here.
+SDU = IIf( x > (lastx - Daysback) AND BarIndex() < Lastx, y+width , Null ) ;
+SDL = IIf( x > (lastx - Daysback) AND BarIndex() < Lastx, y-width , Null ) ;
+
+SDColor = ParamColor("SD Color", colorCycle );
+SDStyle = ParamStyle("SD Style");
+
+Plot( SDU , "Upper Lin Reg 1", colorWhite,SDStyle ); //Inside Regression Lines
+Plot( SDL , "Lower Lin Reg 1", colorWhite,SDStyle ); //Inside Regression Lines
+
+
+SDP2 = Param("2d Standard Deviation", 2.0, 0, 6, 0.1);
+SD2 = SDP2/2;
+
+width2 = LastValue( Ref(SD2*StDev(p, Daysback),-shift) ); //Set width of outside chanels here. 
+SDU2 = IIf( x > (lastx - Daysback) AND BarIndex() < Lastx, y+width2 , Null ) ;
+SDL2 = IIf( x > (lastx - Daysback) AND BarIndex() < Lastx, y-width2 , Null ) ;
+
+SDColor2 = ParamColor("2 SD Color", colorCycle );
+SDStyle2 = ParamStyle("2 SD Style");
+
+Plot( SDU2 , "Upper Lin Reg 2", colorWhite,SDStyle2 ); 
+Plot( SDL2 , "Lower Lin Reg 2", colorWhite,SDStyle2 ); 
+
+Trend = IIf(LRLine > Ref(LRLine,-1),colorGreen,colorRed);
+
+Plot( LRLine , "LinReg", Trend, LRSTYLE );
+
+addcolumn( Volume, "Volume", 1);
+addcolumn( Close, "Close price", 1.2);
+addcolumn( LineUp, "LineUp", 1);
+addcolumn( SDU2, "Upper Lin Reg 1", 1.2);
+addcolumn( SDU, "Upper Lin Reg 2", 1.2);
+addcolumn( LRLine, "Mid Line", 1.2);
+addcolumn( SDL, "Lower Lin Reg 1", 1.2);
+addcolumn( SDL2, "Lower Lin Reg 2", 1.2);
+Filter = 1 AND V >=10000 AND LineUp;
+//addcolumn(((Close-Ref(Close,3))*-100)/Close, "3D", 1.2);
+_SECTION_END();

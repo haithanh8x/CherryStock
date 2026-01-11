@@ -1,0 +1,49 @@
+_SECTION_BEGIN("Cointegration");
+SetChartOptions(0,chartShowArrows | chartShowDates);
+MyObj=CreateObject("PyCoint");  // link to python com server
+
+Title = "";
+
+symbol1 = ParamStr("Symbol1", "SHB");    //Enter Symbol1 can be control from External Parameters
+symbol2 = ParamStr("Symbol2", "SHS");//Enter Symbol1 can be control from External Parameters
+Color1 =  ParamColor("Color1",colorGreen);
+Color2 =  ParamColor("Color2",coloryellow);
+
+//Get the Foreign Price values
+
+SetForeign(symbol1);
+symC1 = Close;
+RestorePriceArrays( True );
+
+SetForeign(symbol2);
+symC2 = Close;
+RestorePriceArrays( True );
+
+// COM object interface cannot deal with null value, set to zero to be sure
+
+symC1 = Nz(symC1);
+symC2 = Nz(symC2);
+
+ // use Cointegration method in com server to calculate smoothed value
+
+coint = MyObj.COINT(symC1,symC2);
+
+//Plot Correlation and CoIntegration in a Dashboard
+
+GfxSetBkMode( 0 );
+GfxSelectFont( "Tahoma", 13, 100 );
+GfxSetTextColor( colorWhite );
+
+
+GfxSelectPen( colorGreen, 2 ); 
+GfxSelectSolidBrush( colorgreen ); 
+GfxRectangle( 10, 10, 200, 100 );
+ 
+GfxTextOut( "Cointegration : " + NumToStr(coint,1.2,separator=false),13,13); 
+GfxTextOut( "Correlation : " + NumToStr(Correlation(symC1,SymC2,22)),13,43);
+
+Plot(symC1,"Symbol1",Color1,styleLine|styleownscale);
+Plot(symC2,"Symbol2",Color2,styleLine|styleownscale);
+
+
+_SECTION_END();

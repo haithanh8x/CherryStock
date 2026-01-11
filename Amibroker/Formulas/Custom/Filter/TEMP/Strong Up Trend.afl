@@ -1,0 +1,12 @@
+P1 = Param("Conversion Period", 9, 2, 200, 1, 0);
+CL = (HHV(H,P1)+LLV(L,P1))/2;
+P2 = Param("Base Period", 26, 2, 200, 1, 0);
+BL = (HHV(H,P2)+LLV(L,P2))/2;
+TL = (CL - BL)/CL;
+Filter = abs(TL)<0.01&&Ref(abs(TL),-1)<0.01&&Ref(abs(TL),-2)<0.01&&Ref(abs(TL),-3)<0.01&&Ref(abs(TL),-4)<0.01&&CL>Ref(CL,-1)
+&&Ref(CL,-1)>Ref(CL,-2)&&Ref(CL,-2)>Ref(CL,-3)&&BL>Ref(BL,-1)&&Ref(BL,-1)>Ref(BL,-2)&&Ref(BL,-2)>Ref(BL,-3);
+AddColumn(Close,"Close",1.4);
+AddColumn(Volume,"Volume",1.0);
+AddColumn(MA( Volume, 15 ),"Average Volume",1.0);
+AddColumn(RSI(14),"rsi(14)",1.1);
+AddColumn(StochD(5,3,3),"Stoch(5,3,3)",1.1);

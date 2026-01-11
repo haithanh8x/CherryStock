@@ -1,0 +1,16 @@
+a = EMA (Close, 20);
+b = EMA (Close, 50);
+b2 = MA (Close, 100);
+d = MA (Close, 200);
+e = StochK (15, 3);
+ 
+Filter = a > b AND b > b2 AND b2 > d AND Close < a AND e < 20 ;
+ 
+ 
+AddColumn(Close, "Close", 1.2);
+AddColumn(a, "Ema 20", 1.2);
+AddColumn(b, "EMA 50", 1.2);
+AddColumn(b2, "EMA 100", 1.2);
+AddColumn(d, "EMA 200", 1.2);
+AddColumn(e, "StockK", 1.2);
+AddColumn(Volume, "Volume", 1.2);

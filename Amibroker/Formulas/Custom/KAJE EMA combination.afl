@@ -1,0 +1,42 @@
+// Plot Price
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+_SECTION_END();
+ 
+// EMA 3 dan EMA 9
+_SECTION_BEGIN( "EMA Short" );
+P_EMAShort = ParamField( "Price field", -1 );
+Plot( EMA_Short = EMA( P_EMAShort, 3), "Short EMA", ParamColor( "Color", colorRed ), ParamStyle( "Style") );
+_SECTION_END();
+ 
+_SECTION_BEGIN( "EMA Long" );
+P_EMALong = ParamField( "Price field", -1 );
+Plot( EMA_Long = EMA( P_EMALong, 9 ), "Long EMA", ParamColor( "Color", colorBlue ), ParamStyle( "Style")  );
+_SECTION_END();
+ 
+_SECTION_BEGIN( "Arrow" );
+Sinyalbuy= Cross( EMA_Short, EMA_Long );
+Sinyalsell = Cross( EMA_Long, EMA_Short );
+ 
+// Plot Garis Break
+GarisHighest = Ref(HHV(C,5),-1);
+GarisLowest = Ref(LLV(C,5),-1);
+ 
+// Syarat Likuid
+H_Rata2 = (O+H+L+C)/4 ;
+Value = H_Rata2 * Volume;
+Likuid = MA(Value,20) > 3500000000 ;
+ 
+// Syarat Buy - Sell
+Buy = EMA_Short > EMA_Long AND C > GarisHighest AND Likuid;
+Sell = EMA_Short < EMA_Long AND C < GarisLowest;
+ 
+// Menghilangkan kelebihan Sinyal
+Buy  = ExRem (Buy,Sell);
+Sell = ExRem (Sell,Buy);
+ 
+// Buat Sinyal Buy - Sell
+PlotShapes(IIf(Buy,shapeSmallUpTriangle,Null), colorBlue, 0, L, -15);
+PlotShapes(IIf(Sell,shapeSmallDownTriangle,Null), colorRed, 0, H, -15);

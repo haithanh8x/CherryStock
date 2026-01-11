@@ -1,0 +1,16 @@
+// function definitions
+function futureHHV( array, periods )
+{
+   return Ref( HHV( array, periods ), periods );
+}
+function futureLLV( array, periods )
+{
+   return Ref( LLV( array, periods ), periods );
+}
+
+// sample use
+Plot( Close, "Close", colorDefault, styleBar );
+Plot( HHV( H, 20 ), "HHV", colorGreen, styleDashed );
+Plot( futureHHV( H, 20 ), "Future HHV", colorGreen, styleThick );
+Plot( LLV( L, 20 ), "LLV", colorRed, styleDashed );
+Plot( futureLLV( L, 20 ), "Future LLV", colorRed, styleThick );

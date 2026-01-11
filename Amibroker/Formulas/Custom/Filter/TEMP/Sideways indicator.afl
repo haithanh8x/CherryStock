@@ -1,0 +1,9 @@
+_SECTION_BEGIN("Sideway Filter"); 
+ 
+Filter=((HHV(C,30)-LLV(C,30))/LLV(C,20))<0.05 AND V >= 10000;
+
+//Filter=((HHV(C,10)-LLV(C,10))/LLV(C,10))<0.10;
+AddColumn(C,"close",1.2);
+AddColumn(V,"Vol",1.0);
+ 
+_SECTION_END();

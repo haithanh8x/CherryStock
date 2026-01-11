@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<AmiBroker-Batch CompactMode="0">
+<Step>
+<Action>LoadProject</Action>
+<Param>G:\\My Drive\\Working\\Stock\\Amibroker Backup\\Batch\\ALL_Shares.apx</Param>
+</Step>
+<Step>
+<Action>Explore</Action>
+<Param/>
+</Step>
+<Step>
+<Action>Export</Action>
+<Param>C:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\All_Shares.csv</Param>
+</Step>
+</AmiBroker-Batch>

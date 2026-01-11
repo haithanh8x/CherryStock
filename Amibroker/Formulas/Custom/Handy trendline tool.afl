@@ -1,0 +1,53 @@
+// Trendline tool v1.0 - Jose Silva (2017)
+// CTRL+R --> slide trendline start/end trendline points in parameters box
+// Like all trendlines, this uses hindsight and is dynamic.
+// * Do not use to generate trading signals *
+
+SetBarsRequired(sbrAll,sbrAll);		// Turn Off QuickAFL
+
+// Trendline parameters
+BarStart = Param("Start bar Nr", -252, -2520, 0, 1);
+BarEnd = Param("End bar Nr", -21, -2520, 0, 1);
+xtend = Param("Trendline extension:   [0]None   [1]Right   [2]Left   [3]Both", 0, 0, 3, 1);
+pStart = Param("Start price:   [1]Open   [2]High   [3]Low   [4]Close   [5]Close-weighted avg", 4, 1, 5, 1);
+pEnd = Param("End price:   [1]Open   [2]High   [3]Low   [4]Close   [5]Close-weighted avg", 4, 1, 5, 1);
+
+// Start/End signals for trendline
+lastBar = LastValue(BarIndex());
+BarStart = Max(Round(BarStart),-lastBar);
+BarStartSig = BarIndex()==Max(lastBar+BarStart,0);
+BarEnd = Max(Round(BarEnd),-lastBar);
+BarEndSig = BarIndex()==Max(lastBar+BarEnd,0);
+
+// Start/End data arrays for trendline
+PriceStart =
+ IIf(pStart==1,Open,
+ IIf(pStart==2,High,
+ IIf(pStart==3,Low,
+ IIf(pStart==4,Close,
+ (H+L+C*2)/4))));
+PriceEnd =
+ IIf(pEnd==1,Open,
+ IIf(pEnd==2,High,
+ IIf(pEnd==3,Low,
+ IIf(pEnd==4,Close,
+ (H+L+C*2)/4))));
+
+// LineArray() x coordinates are zero-based bars, y coordinates are $
+x0 = LastValue(ValueWhen(BarStartSig,BarIndex(),1));
+y0 = LastValue(ValueWhen(BarStartSig,PriceStart,1));
+x1 = LastValue(ValueWhen(BarEndSig,BarIndex(),1));
+y1 = LastValue(ValueWhen(BarEndSig,PriceEnd,1));
+TrendLine = LineArray(x0, y0, x1, y1, xtend);
+
+// Price channels
+upChannel = TrendLine+LastValue(Highest(H-TrendLine));
+dwChannel = TrendLine-LastValue(Highest(TrendLine-L));
+
+// Display
+dynColor = IIf(y0>y1,colorRed,colorBrightGreen);
+dynColorChannel = IIf(y0>y1,colorDarkRed,colorGreen);
+Plot(C, "C", colorWhite, styleCandle);
+Plot(TrendLine, "Trend line", dynColor);
+Plot(upChannel, "Upper channel", dynColorChannel);
+Plot(dwChannel, "Lower channel", dynColorChannel);

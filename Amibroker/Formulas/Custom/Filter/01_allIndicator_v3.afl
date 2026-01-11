@@ -1,0 +1,51 @@
+addcolumn(Close, "Close", 1.2);
+addcolumn(Volume, "Volume", 1);
+
+addcolumn(RSI(14), "RSI_14", 1.2);
+addcolumn(MA(Volume,14)*100/Ref(Volume,-14), "MA_VOL_14 %", 1.2);
+
+addcolumn(0, "Candles", 1, colorWhite, IIf(Close == High, colorGreen, IIf(Close == Low, colorRed, colorLightGrey)));
+
+_HCL_Pct = (Close-LLV(Low, 5))*100/(hhv(High, 5)-LLV(Low, 5));
+addcolumn(_HCL_Pct, "W1_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey)))); 
+
+_HCL_Pct = (Close-LLV(Low, 20))*100/(hhv(High, 20)-LLV(Low, 20));
+addcolumn(_HCL_Pct, "M1_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+_HCL_Pct = (Close-LLV(Low, 60))*100/(hhv(High, 60)-LLV(Low, 60));
+addcolumn(_HCL_Pct, "M3_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+_HCL_Pct = (Close-LLV(Low, 120))*100/(hhv(High, 120)-LLV(Low, 120));
+addcolumn(_HCL_Pct, "M6_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+_HCL_Pct = (Close-LLV(Low, 240))*100/(hhv(High, 240)-LLV(Low, 240));
+addcolumn(_HCL_Pct, "Y1_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+_HCL_Pct = (Close-LLV(Low, 720))*100/(hhv(High, 720)-LLV(Low, 720));
+addcolumn(_HCL_Pct, "Y3_HCL%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+_HCL_Pct = (Close-LLV(Low, 1200))*100/(hhv(High, 1200)-LLV(Low, 1200));
+addcolumn(_HCL_Pct, "Y5_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+_HCL_Pct = (Close-LLV(Low, 2400))*100/(hhv(High, 2400)-LLV(Low, 2400));
+addcolumn(_HCL_Pct, "Y10_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+_HCL_Pct = (Close-LLV(Low, 9600))*100/(hhv(High, 9600)-LLV(Low, 9600));
+addcolumn(_HCL_Pct, "ALL_HCL_%", 1.2, colorWhite, IIf(_HCL_Pct > 99.99, colorGrey40, IIf(_HCL_Pct < 30, colorLightBlue, IIf(_HCL_Pct > 70, colorGreen, colorLightGrey))));
+
+
+
+
+
+
+Daysback = Param( "Days Back", 80, 30, 252, 1 );
+bb = LastValue( LinRegSlope(C, Daysback ));
+pi = 4 * atan(1);
+slopeangle = atan( bb ) * ( 180 / pi );
+AddColumn(slopeangle,"In degrees", colorDefault, colorBlue);
+AddColumn(StdErr( 100 * Close, Daysback ),"Std.Err RS Line(%)", colorDefault, colorBlue);
+
+addcolumn(Close/GetFnData( "EPS" ),"P/E", 1.2);
+
+Filter = 1 AND MA(Volume,14) >= 10000 AND Volume>=500000;
+SetSortColumns(-7, -8, -9, -10, -11, -12, -13, -14, -15);

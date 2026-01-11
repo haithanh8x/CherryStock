@@ -1,0 +1,6 @@
+AddColumn(Open, "Open");
+AddColumn(Close, "Close");
+
+//AddTextColumn(MarketID(1),"Market");
+
+Filter = 1 AND Open>0 AND Close>0;

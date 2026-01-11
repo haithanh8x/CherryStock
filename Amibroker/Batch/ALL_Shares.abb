@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<AmiBroker-Batch CompactMode="0">
+<Step>
+<Action>LoadProject</Action>
+<Param>C:\\Users\\Administrator\\OneDrive\\Apps\\Amibroker\\Batch\\ALL_Shares.apx</Param>
+<Param2/>
+</Step>
+<Step>
+<Action>Explore</Action>
+<Param/>
+<Param2/>
+</Step>
+<Step>
+<Action>Export</Action>
+<Param>C:\\Users\\Administrator\\OneDrive - ollyo\\Datafile\\All_Shares.csv</Param>
+<Param2/>
+</Step>
+<Step>
+<Action>LoadProject</Action>
+<Param>C:\\Users\\Administrator\\OneDrive\\Apps\\Amibroker\\Batch\\ALL_Shares_TimeSeries.apx</Param>
+<Param2/>
+</Step>
+<Step>
+<Action>Explore</Action>
+<Param/>
+<Param2/>
+</Step>
+<Step>
+<Action>Export</Action>
+<Param>C:\\Users\\Administrator\\OneDrive - ollyo\\Datafile\\ALL_Shares_TimeSeries.csv</Param>
+<Param2/>
+</Step>
+<Step>
+<Action>LoadProject</Action>
+<Param>C:\\Users\\Administrator\\OneDrive\\Apps\\Amibroker\\Batch\\ThongKe.apx</Param>
+<Param2/>
+</Step>
+<Step>
+<Action>Explore</Action>
+<Param/>
+<Param2/>
+</Step>
+<Step>
+<Action>Export</Action>
+<Param>C:\\Users\\Administrator\\OneDrive - ollyo\\Datafile\\ThongKe.csv</Param>
+<Param2/>
+</Step>
+<Step>
+<Action>LoadProject</Action>
+<Param>C:\\Users\\Administrator\\OneDrive\\Apps\\Amibroker\\Batch\\Ticker_Attr.apx</Param>
+<Param2/>
+</Step>
+<Step>
+<Action>Explore</Action>
+<Param/>
+<Param2/>
+</Step>
+<Step>
+<Action>Export</Action>
+<Param>C:\\Users\\Administrator\\OneDrive - ollyo\\Datafile\\Ticker_Attr.csv</Param>
+<Param2/>
+</Step>
+</AmiBroker-Batch>

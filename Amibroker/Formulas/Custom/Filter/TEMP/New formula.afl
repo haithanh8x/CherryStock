@@ -1,0 +1,17 @@
+ // read the list of symbols from Watchlist 0 
+ symlist = CategoryGetSymbols ( categoryWatchlist , 2 ); 
+ 
+ // display only last bar from the Analysis range 
+ Filter = Status ( "lastbarinrange" ); 
+ 
+ // iterate through symbols 
+ for ( i = 0 ; ( sym = StrExtract ( symlist , i ) ) != "" ; i ++ ) 
+ { 
+ // calculate correlation over 500 bars 
+ Corr = Correlation ( C , Foreign ( sym , "C" ), 252 ); 
+ 
+ // set color dynamically based on correlation values 
+    // and display the output in exploration column 
+ Clr = 32 + SelectedValue ( Corr ) * 32 ; 
+ AddColumn ( Corr , sym , 1.2 , ColorHSB ( 128 + Clr , 255 , 255 ), ColorHSB ( Clr , 255 , 255 ) ); 
+ } 

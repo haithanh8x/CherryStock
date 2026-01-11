@@ -1,0 +1,11 @@
+#include <T3_Include.afl>;
+Filter = 1 ;
+
+addcolumn(C, "Close", 1.2);
+addcolumn((C-Ref(Close,-1))/Ref(Close,-1), "Close%", 1.4);
+addcolumn(V, "Vol", 1);
+addcolumn((V/Ref(V,-1)), "Vol%", 1.4);
+addcolumn((C+H+L)/3*V/1000000, "Vol Value", 1.1);
+addcolumn((C-Ref(Close,-1)), "CloseDiff", 1.2);
+AddColumn(O, "Open");
+AddColumn(OpenInt, "OpenInt");

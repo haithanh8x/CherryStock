@@ -1,0 +1,64 @@
+
+_SECTION_BEGIN("NewFilter");
+function fnc_slopeangle(Daysback)
+{
+x = Cum( 1 ); // the X axis, abscissa
+ 
+LastX = LastValue( X );
+ 
+C1 = Close;
+ 
+aa = LastValue( LinRegIntercept( C1, Daysback ) );
+ 
+bb = LastValue( LinRegSlope( C1, Daysback ) );
+ 
+yy = Aa + bb * ( x - ( Lastx - DaysBack ) ); // the algebraic equation for a straight line
+ 
+//yy = IIf( x >= ( lastx - Daysback ), yy, -1e10 ); // roll the plot forward and show only the 6 months
+ 
+Plot( yy, "LinRegression Line", colorDarkRed, styleThick );
+
+UpperSEBand = YY + 2 * StdErr( C, Daysback );
+LowerSEBand = YY - 2 * StdErr( C, Daysback );
+ 
+Plot( UpperSEBand, "Upper 2 Sigma", colorBlue, styleLine );
+Plot( LowerSEband, "Lower 2 Sigma", colorBlue, styleLine );
+Plot( Close, "Close", colorBlue, styleLine );
+ 
+// calc angel from bb
+pi = 4 * atan( 1 ) ; //Pi
+slopeangle = atan( bb ) * ( 180 / pi );
+ 
+Title = FullName() + " " + Date() + "\n" + "Slope of Regression Line(in degrees) = " +  WriteVal( slopeangle, 1.2 ) +
+        "\n" + "Standard Err of of RS Line(%) = " + WriteVal( StdErr( 100 * Close, Daysback ), 1.2 );
+ return slopeangle;
+}
+
+_SECTION_END();
+
+Daysback_20 = Param( "DysBack", 20, 20, 1000, 1 ); 
+Daysback_60 = Param( "DysBack", 60, 20, 1000, 1 ); 
+Daysback_120 = Param( "DysBack", 120, 20, 1000, 1 ); 
+Daysback_180 = Param( "DysBack", 180, 20, 1000, 1 ); 
+Daysback_240 = Param( "DysBack", 240, 20, 1000, 1 ); 
+Daysback_480 = Param( "DysBack", 480, 20, 1000, 1 ); 
+Daysback_720 = Param( "DysBack", 720, 20, 1000, 1 ); 
+        
+addcolumn(Close, "Close", 1.2);
+addcolumn(Volume, "Volume", 1);
+addcolumn(fnc_slopeangle(2), "2 Day", 1.2);
+addcolumn(fnc_slopeangle(3), "3 Day", 1.2);
+addcolumn(fnc_slopeangle(4), "4 Day", 1.2);
+addcolumn(fnc_slopeangle(5), "5 Day", 1.2);
+addcolumn(fnc_slopeangle(6), "6 Day", 1.2);
+addcolumn(fnc_slopeangle(7), "7 Day", 1.2);
+addcolumn(fnc_slopeangle(20), "Monthly", 1.2);
+addcolumn(fnc_slopeangle(60), "Quarterly", 1.2);
+addcolumn(fnc_slopeangle(120), "Half Year", 1.2);
+addcolumn(fnc_slopeangle(180), "3 Quarter", 1.2);
+addcolumn(fnc_slopeangle(240), "Yearly", 1.2);
+addcolumn(fnc_slopeangle(480), "2 Year", 1.2);
+addcolumn(fnc_slopeangle(720), "3 Year", 1.2);
+addcolumn(fnc_slopeangle(960), "4 Year", 1.2);
+addcolumn(fnc_slopeangle(1200), "5 Year", 1.2);
+Filter = 1;

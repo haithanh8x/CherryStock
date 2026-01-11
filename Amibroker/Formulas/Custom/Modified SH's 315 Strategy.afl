@@ -1,0 +1,73 @@
+_SECTION_BEGIN("LANDIS Color Modified");
+x = MA(C,3);
+y = MA(H,20);
+Z = MA(L,20);
+ 
+Plot(x,"LANDIS", IIf(x > Ref(x,-1), colorGreen,colorRed), styleThick);
+Plot(Y,"3-Week", IIf(y > Ref(y,-1), colorGreen,colorRed), styleThick);
+Plot(Z,"3-Week", IIf(Z > Ref(Z,-1), colorGreen,colorRed), styleThick);
+ 
+Cond1= Graph0<Graph1 AND Graph0 > Ref (Graph0,-1);
+Cond2= Graph0>Graph1 AND Graph0 < Ref (Graph0,-1);
+Cond3= Graph0>Graph2 AND Graph0 < Ref (Graph0,-1);
+ 
+colore= IIf(Cond1,colorBrightGreen,IIf(Cond2,colorRed,0));
+//colore= IIf(Cond3,colorYellow,IIf(Cond2,colorRed,0));
+ 
+PlotShapes(shapeHollowSmallCircle*Cond1,Colore,0,Graph0,-6);
+PlotShapes(shapeHollowSmallCircle*Cond2,Colore,0,Graph0,6);
+PlotShapes(shapeHollowSmallCircle*Cond3,Colore,0,Graph0,6);
+ 
+ 
+ 
+Buy= Cross (x,Y);
+Short= Cross (Y,x);
+Cover= Cross (x,Z);
+Sell= Cross (Z,x);
+ 
+ 
+Buy=ExRem(Buy,Short); Sell=ExRem(Sell,Cover); 
+// Plotting shapes;
+shape = Buy * shapeUpArrow + Short * shapeDownArrow;
+shape = Sell * shapeUpArrow + Cover * shapeDownArrow;
+PlotShapes(shapeUpArrow*Buy,colorWhite);
+PlotShapes(shapeDownArrow*Cover,colorYellow);
+PlotShapes(shapeUpArrow*Short,colorBlack);
+PlotShapes(shapeDownArrow*Sell,colorGreen);
+ 
+ 
+if (SelectedValue(Buy)==1) Say("Market Going Up");
+if (SelectedValue(Sell)==1) Say("Market Going down");
+ 
+ 
+ 
+//PlotOHLC( x, x, y, y, "", IIf( x > Y,  colorGreen, colorBlack),styleNoLabel|styleCloud );
+PlotOHLC( Z, Z, Y, Y, "", IIf( Z > Y,  colorRed, colorBlue),styleNoLabel|styleCloud );
+PlotOHLC( x, x, Y, Y, "", IIf( x > Y,  colorGreen, colorRed),styleNoLabel|styleCloud );
+ 
+PlotGrid(40, colorLightGrey); 
+PlotGrid(80, colorLightGrey);
+GraphXSpace=5;
+_SECTION_END();
+ 
+ 
+_SECTION_BEGIN("Magfied Market Price");
+ 
+//Magfied Market Price
+FS=Param("Font Size",30,11,100,1);
+GfxSelectFont("Times New Roman", FS, 700, True ); 
+GfxSetBkMode( colorWhite );  
+GfxSetTextColor( ParamColor("Color",colorGreen) ); 
+Hor=Param("Horizontal Position",800,1,1200,1);
+Ver=Param("Vertical Position",12,1,830,1); 
+GfxTextOut(""+C, Hor , Ver );
+YC=TimeFrameGetPrice("C",inDaily,-1);
+DD=Prec(C-YC,2);
+xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 15, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorYellow) ); 
+GfxTextOut(""+DD+"  ("+xx+"%)", Hor , Ver+45 );
+  
+  
+_SECTION_END();

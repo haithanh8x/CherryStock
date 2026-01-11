@@ -1,0 +1,426 @@
+#include <T3_Include.afl>;
+
+_SECTION_BEGIN("i");
+n1 = Param("Ишимоку: период 1",9,1,200,1); 
+n2 = Param("Ишимоку: период 2",26,1,400,1); 
+n3 = Param("Ишимоку: период 3",52,1,600,1); 
+ 
+TenkanSen   =(HHV(H,n1)+LLV(L,n1))/2;            // Tenkan-sen (Тенкан-сен) – это среднее значение цены за первый промежуток времени (равна (high+low)/2, где high и low – максимум и минимум за период). 
+KijunSen    =(HHV(H,n2)+LLV(L,n2))/2;            // Kijun-sen (Киджун-сен) – это среднее значение цены за второй промежуток. 
+ChinkouSpan =Ref(C,-n2);                         // Chinkou Span (Чикоу спен) - цена закрытия текущего бара, сдвинутая назад на величину второго временного интервала. 
+Cks         = Close;                             // Графический Chinkou Span, сдвиг назад засчет отрисовки. 
+SenkouSpanA =Ref((KijunSen+TenkanSen)/2,-n2);    // Senkou Span A (Сенкоу спен А) / Up Kumo - середина расстояния между Tenkan-sen и Kijun-sen, сдвинутое вперед на величину второго временного интервала. 
+SpA         =(KijunSen+TenkanSen)/2;             // Графический Senkou Span A , сдвиг вперед засчет отрисовки. 
+SenkouSpanB =Ref((HHV(H,n3)+LLV(L,n3))/2,-n2);   // Senkou Span B (Сенкоу спен В) / Down Kumo - среднее значение цены за третий временной интервал, сдвинутое вперед на величину второго временного интервала. 
+SpB         =(HHV(H,n3)+LLV(L,n3))/2;            // Графический Senkou Span B, сдвиг вперед засчет отрисовки. 
+DL = Ref( C, 25 );
+ 
+ 
+Cond1 =  Ref(Close > Max(SenkouSpanA,SenkouSpanB),-1);  //цена выше облака  -- бычье настроение 
+Cond2 =  Ref(Close < Min(SenkouSpanA,SenkouSpanB),-1);  //цена ниже облака  -- медвежье настроение 
+Cond3 =  Ref(Cross(TenkanSen,KijunSen),-1);  //пересечение Тенкан и Киджун -- сигнал на покупку 
+Cond4 =  Ref(Cross(KijunSen,TenkanSen),-1);  //пересечение Тенкан и Киджун -- сигнал на продажу 
+Cond5 =  Ref(Cross(Close,ChinkouSpan ),-1);  //пересечение Чикоу и цены 
+Cond6 =  Ref(Cross(ChinkouSpan ,Close),-1);  //пересечение Чикоу и цены 
+Cond7 =  Ref(Cross (Close , Max(SenkouSpanA,SenkouSpanB)),-1);  //цена выходит вверх из облака  -- сигнал на покупку 
+Cond8 =  Ref(Cross ( Min(SenkouSpanA,SenkouSpanB), Close),-1);  //цена выходит вниз  из облака  -- сигнал на продажу 
+Cond9 = Close > TenkanSen AND TenkanSen > KijunSen AND KijunSen > Max(SenkouSpanA,SenkouSpanB); // сигнал трех линий вверх 
+Cond10= Close < TenkanSen AND TenkanSen < KijunSen AND KijunSen < Min(SenkouSpanA,SenkouSpanB); // сигнал трех линий вниз 
+RemCond9=ExRem(Cond9,NOT Cond9);                  
+RemCond10=ExRem(Cond10,NOT Cond10); 
+ 
+ColSenk =IIf (Cond1,colorGreen, IIf(Cond2,colorRed,colorLightGrey)); // задает цвет, если цена выше/ниже/внутри облака. 
+Flat  =  TenkanSen == Ref(TenkanSen,-1) OR (NOT(Cond1) AND NOT(Cond2)) ; 
+ 
+for( i = 0; i < BarCount; i++ ) //раскрашивает среднюю линию индикатора по взаиморасположению и направления движения TenkanSen, цены и облака. 
+{ 
+   if (Flat[i]) 
+      ColTenk[i] = colorLightGrey; 
+   else
+   { 
+if (Cond1[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+if (Cond1[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+   } 
+} 
+
+above = IIf(KijunSen>SenkouSpanA AND TenkanSen>SenkouSpanB,1,0);
+within = IIf(KijunSen>SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+below = IIf(TenkanSen<SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+Buy = Cross(TenkanSen,KijunSen) AND (DL>Close);
+Sell = Cross(KijunSen,TenkanSen) AND (DL<KijunSen);
+StrongBuy = Buy AND above;
+MediumBuy = Buy AND within;
+WeakBuy = Buy AND below;
+StrongSell = Sell AND below;
+MediumSell = Sell AND within;
+WeakSell = Sell AND above;
+_SECTION_END();
+
+_SECTION_BEGIN("NewFilter");
+/* Init **************************************************************************/
+HaClose =EMA((O+H+L+C)/4,3);  // Woodie 
+HaOpen = AMA( Ref( HaClose, -1 ), 0.5 );  
+HaHigh = Max( H, Max( HaClose, HaOpen ) ); 
+HaLow = Min( L, Min( HaClose, HaOpen ) ); 
+Temp = Max(High, HaOpen);
+Temp = Min(Low,HaOpen);
+
+////////////////////////////////////////////
+W52_High=WriteVal(HHV(H,260),1.2);
+W52_Low=WriteVal(LLV(L,260),1.2);
+
+Cg = Foreign("00DSEGEN", "C");
+Cgo= Ref(Cg,-1);
+
+//Longterm Bullish or Bearish
+Bull = C > WMA(C,200);
+Bear= C <WMA(C,200);
+
+//Midterm Bullish or Bearish
+mBull = C >WMA(C,50);
+mBear= C <WMA(C,50);
+
+//Shortterm Bullish or Bearish
+sBull = C >WMA(C,15);
+sBear= C <WMA(C,15);
+////////////////////////////////////////////
+
+function fnctxt(_tbuy, _tsell, _tbuy1, _tsell1)
+{
+ return WriteIf(_tbuy,		"BuyWarning",
+		WriteIf(_tsell,		"SellWarning",
+		WriteIf(_tbuy1,		"Bullish",
+		WriteIf(_tsell1,	"Bearish","Neutral"))));
+}
+
+function fnccolo( _txtbuy)
+{
+ return IIf(_txtbuy ==	"BuyWarning", colorGreen, 
+		IIf(_txtbuy ==	"SellWarning", colorRed,
+		IIf(_txtbuy ==	"Bullish", colorBlue,
+		IIf(_txtbuy ==	"Bearish", colorRed, colorGrey50))));
+}
+function ZeroLagTEMA( array, period )
+{
+ TMA1 = TEMA( array, period );
+ TMA2 = TEMA( TMA1, period );
+ Diff = TMA1 - TMA2;
+ return TMA1 + Diff ;
+}
+procedure prcOutPut(_tbuy, _tsell, _tbuy1, _tsell1, _colname) 
+{ 
+	_txtBuy = fnctxt(_tbuy, _tsell, _tbuy1, _tsell1);
+	AddTextColumn(_txtBuy, _colname, 1.2, colorWhite, fnccolo(_txtBuy));
+}
+
+/*trend-mrtq13 *************************************************************/
+_SECTION_BEGIN("trend-mrtq13");
+
+/* TermTrend **********************************************************************/
+txt_STermTrend = WriteIf(sBull, "Up", WriteIf(sBear, "Down",  "Neutral")); 
+txtColo_STermTrend =    IIf(txt_STermTrend == "Up", colorGreen, 
+						IIf(txt_STermTrend == "Down", colorRed, colorGrey50));
+AddTextColumn(txt_STermTrend, "S.Term", 1.2, colorWhite, txtColo_STermTrend);
+txt_MTermTrend = WriteIf(mBull, "Up", WriteIf(mBear, "Down",  "Neutral")); 
+txtColo_MTermTrend =    IIf(txt_MTermTrend == "Up", colorGreen, 
+						IIf(txt_MTermTrend == "Down", colorRed, colorGrey50));
+AddTextColumn(txt_MTermTrend, "M.Term", 1.2, colorWhite, txtColo_MTermTrend);
+txt_LTermTrend = WriteIf(Bull, "Up", WriteIf(Bear, "Down",  "Neutral")); 
+txtColo_LTermTrend =    IIf(txt_LTermTrend == "Up", colorGreen, 
+						IIf(txt_LTermTrend == "Down", colorRed, colorGrey50));
+AddTextColumn(txt_LTermTrend, "L.Term", 1.2, colorWhite, txtColo_LTermTrend);
+
+/* Weekly **********************************************************************/
+Prd1=Param("Weekly_Period1",3,1,200,1);
+Prd2=Param("Weekly_Period2",5,1,200,1);
+TimeFrameSet (inWeekly);                  
+TM   = T3  ( Close , Prd1 ) ;           
+TM2  = T3 ( Close , Prd2 ) ;       
+UTM = IIf(Close>TM AND Close<TM2,8,
+IIf(Close>TM AND Close>TM2,5,
+IIf(Close<TM AND Close>TM2,13,
+IIf(Close<TM AND Close<TM2,4,2))));  
+
+//up=Close>TM AND Close<TM2;
+wup=Close>TM AND Close>TM2;
+wflat=Close<TM AND Close>TM2;
+wdown=Close<TM AND Close<TM2;  
+TimeFrameRestore();
+
+txtWeekly = WriteIf(wup, "Up", WriteIf(wdown, "Down",  WriteIf(wflat,"Flat"," ")));
+txtColoWeekly = IIf(txtWeekly == "Up", colorGreen, 
+				IIf(txtWeekly == "Down", colorRed, 
+				IIf(txtWeekly == "Flat", colorGrey50, colorWhite)));
+AddTextColumn(txtWeekly, "Weekly", 1.2, colorWhite, txtColoWeekly);
+
+/* Monthly **********************************************************************/
+Prd11=Param("Monthly_Period1",3,1,200,1);
+Prd21=Param("Monthly_Period2",5,1,200,1);
+TimeFrameSet (inMonthly);                  
+mTM   = T3  ( Close , Prd11 ) ;           
+mTM2  = T3 ( Close , Prd21 ) ;       
+mUTM = IIf(Close>mTM AND Close<mTM2,8,
+IIf(Close>mTM AND Close>mTM2,5,
+IIf(Close<mTM AND Close>mTM2,13,
+IIf(Close<mTM AND Close<mTM2,4,2))));  
+
+mwup=Close>mTM AND Close>mTM2;
+mwflat=Close<mTM AND Close>mTM2;
+wdown=Close<mTM AND Close<mTM2;  
+TimeFrameRestore();
+
+txtMonthly = WriteIf(mwup, "Up", WriteIf(wdown, "Down",  WriteIf(mwflat,"Flat"," ")));
+txtColoMonthly = IIf(txtMonthly == "Up", colorGreen, 
+				IIf(txtMonthly == "Down", colorRed, 
+				IIf(txtMonthly == "Flat", colorGrey50, colorWhite)));
+AddTextColumn(txtMonthly, "Monthly", 1.2, colorWhite, txtColoMonthly);
+
+_SECTION_END();
+
+/* Pivot Box ***********************************************************************/
+_SECTION_BEGIN("Pivot Box");
+Hi=Param("High_Period",7,1,50,1);
+Lo=Param("Low_Period",7,1,50,1);
+A1=ExRemSpan(Ref(High,-2)==HHV(High,Hi),3);
+A2=ExRemSpan(Ref(Low,-2)==LLV(Low,Lo),3);
+A3=Cross(A1,0.9);
+A4=Cross(A2,0.9);
+TOP=Ref(haHigh,-BarsSince(A3));
+YY1=TOP;
+bot=Ref(haLow,-BarsSince(A4));
+XX1=bot;
+
+// 33 bar high low
+HIVg=Ref(HHV(High,33),1);
+LIVg=Ref(LLV(Low,33),1);
+Hchg=(C-HIVg)/HIVg*100;
+Lchg=(C-LIVg)/LIVg*100;
+Echg=(HIVg-C)/C*100;
+_SECTION_END();
+
+/* Ibuy **************************************************************************/
+_Ibuy =  Cross(RSI(14), EMA(RSI(14),9));
+_Isell = Cross(EMA(RSI(14),9), RSI(14));
+_Ibuy = ExRem(_Ibuy, _ISell);
+_Isell = ExRem(_ISell, _Ibuy);
+_BlRSI = RSI(14) > EMA(RSI(14),9);
+_BrRSI = RSI(14) < EMA(RSI(14),9);
+
+prcOutPut(_Ibuy, _Isell, _BlRSI, _BrRSI,"Ibuy");
+
+/* PriceSmoothing -T3 ************************************************************/
+_TBuy = Cross (T3(C,3), T3(C,5));
+_TSell =  Cross (T3(C,5), T3(C,3));
+_TBuy = ExRem(_TBuy, _TSell);
+_TSell = ExRem(_TSell, _TBuy);
+_T33 = T3(C,3) > T3(C,5);
+_T333 = T3(C,3) < T3(C,5);
+
+prcOutPut(_TBuy, _TSell, _T33, _T333,"T3-Buy");
+
+/* Signal(ZLW) ********************************************************************/
+_R = ((HHV(H,14) - C) /(HHV (H,14) -LLV (L,14))) *-100;
+_Period= 10;
+_EMA1= EMA(_R,_Period);
+_EMA2= EMA(_EMA1,5);
+_Difference= _EMA1 - _EMA2;
+_ZeroLagEMA= _EMA1 + _Difference;
+_PR=100-abs(_ZeroLagEMA);
+_MoveAvg=MA(_PR,5);
+_ZBuy = Cross(_PR,_moveAvg) AND _PR<30;
+_ZSell = Cross(_moveAvg,_PR) AND _PR>70;
+_ZBuy1= _PR>= _MoveAvg AND _PR>= Ref(_PR,-1) ;
+_ZSell1=(_PR < _MoveAvg) OR _PR>= _MoveAvg AND _PR< Ref(_PR,-1) ;
+
+prcOutPut(_ZBuy, _ZSell, _ZBuy1, _ZSell1,"ZLW");
+
+/* Signal(Mabiuts-Mr.Karthik) ******************************************************/
+_mabBuy=EMA(C,13)>EMA(EMA(C,13),9) AND Cross (C,Peak(C,5,1));
+_mabSell=Cross (EMA(EMA(C,13),9),EMA(C,13));
+_mabBuy1= EMA(C,13)>EMA(EMA(C,13),9) AND C>Peak(C,2,1);
+_mabSell1 =EMA(C,13)>EMA(EMA(C,13),9) AND C<Peak(C,2,1);
+
+prcOutPut(_mabBuy, _mabSell, _mabBuy1, _mabSell1,"MAB");
+
+/* Signal(TMA) Haiken-Ashi ********************************************************/
+haClose = ( haClose + haOpen + haHigh + haLow )/4; 
+period = Param("Avg. TEMA period", 55, 1, 100 );
+ZLHa = ZeroLagTEMA( haClose, period );
+ZLTyp = ZeroLagTEMA( Avg, period );
+_TMBuy = Cross( ZLTyp, ZLHa );
+_TMSell = Cross( ZLHa, ZLTyp );
+_TMBuy1 = ZLTyp> ZLHa ;
+_TMSell1 = ZLHa> ZLTyp ;
+
+prcOutPut(_TMBuy, _TMSell, _TMBuy1, _TMSell1,"Haiken");
+
+/* Signal(T3-RSI) Tillson's Part (RSI Smoothing) ************************************/
+TillsonBuy = Cross (t3(RSI(9),3), t3(RSI(9),5));
+TillsonSell =  Cross (t3(RSI(9),5), t3(RSI(9),3));
+TB = t3(RSI(9),3)> t3(RSI(9),5);
+TS = t3(RSI(9),3)< t3(RSI(9),5);
+
+prcOutPut(TillsonBuy, TillsonSell, TB, TS,"T3-RSI");
+
+/* Signal(ADX) JSB_Pic_DMX_3) ************************************/
+/*
+SetBarsRequired(100000, 100000);
+JSB_InitLib();
+range=Param( "Length ", 9, 0, 500);
+aup = JSB_JDMX(C,range) > 0;
+adown = JSB_JDMX(C,range) < 0;
+achoppy = JSB_JDMX(C,range) < JSB_JDMXplus(C,range) AND JSB_JDMX(C,range) < JSB_JDMXminus(C,range);
+adxBuy =  Cross(JSB_JDMXplus(C,range), JSB_JDMXminus(C,range));
+adxSell = Cross(JSB_JDMXminus(C,range), JSB_JDMXplus(C,range));
+adxBuy = ExRem(adxBuy, adxSell);
+adxSell = ExRem(adxSell, adxBuy);
+adxbuy1 = JSB_JDMXplus(C,range) > JSB_JDMXminus(C,range);
+adxsell1 = JSB_JDMXminus(C,range)> JSB_JDMXplus(C,range);
+prcOutPut(adxBuy, adxSell, adxbuy1, adxsell1,"T3-RSI");
+*/
+
+/* Signal(MACD) MACD Signal Crosses) ***********************************************/
+MB= Cross (MACD(), Signal());
+MS = Cross( Signal(), MACD());
+MB = ExRem(MB, MS);
+MS = ExRem(MS, MB);
+MB1= MACD() > Signal();
+MS1= MACD() < Signal();
+prcOutPut(MB, MS, MB1, MS1,"MACD");
+
+/* Signal(Stoch) Stochastics Part **************************************************/
+StochKval = StochK(14,3);
+StochDval = StochD(14,3,3);
+StochBuy = Cross(StochKval, StochDval);
+StochSell = Cross (StochDval, StochKval);
+StBuy=StochKval>StochDval;
+StSell=StochKval<StochDval;
+prcOutPut(StochBuy, StochSell, StBuy, StSell,"Stoch");
+
+/* Signal(P5/15) Breakout Setting *************************************************/
+Buyperiods=Param("Breakout periods",5,1,100,1,1);
+BuyBreakout= C>Ref(HHV(H,Buyperiods),-1);
+Buyperiods2=Param("2 Breakout periods",17,1,100,1,1);
+BuyBreakout2= Cross( C, Ref( HHV(H,Buyperiods2), -1 ) );
+txtBuyBreakout = 
+		WriteIf(Buybreakout, "BreakOut1",
+		WriteIf(Buybreakout2>Buybreakout, "BreakOut2","Neutral"));
+txtColoBuyBreakout = IIf(txtBuyBreakout ==	"BreakOut1", colorGreen,
+					 IIf(txtBuyBreakout ==	"BreakOut2", colorGreen, colorGrey50));
+AddTextColumn(txtBuyBreakout, "BreakP5/15", 1.2, colorWhite, txtColoBuyBreakout);
+
+
+_SECTION_BEGIN("Breakout Signal");
+ 
+_bBuy= C>Ref(HHV(High,5),-1) ;
+_bSell= C<Ref(LLV(Low,5),-1);
+
+/* exrem is one method to remove surplus strade signals. It removes excessive signals of arrow */
+_bBuy1 = ExRem(_bBuy, _bSell);
+_bSell1 = ExRem(_bSell, _bBuy);
+
+prcOutPut(_bBuy1, _bSell1, _bBuy, _bSell,"BreakoutSignal");
+ 
+ _SECTION_END();
+
+/* Signal(Breakout) Breakout Setting ***********************************************/
+txtBuyBreakout = 
+		WriteIf(C>YY1, "BreakOut",
+		WriteIf(C<XX1, "BreakDown","Neutral"));
+txtColoBuyBreakout = IIf(txtBuyBreakout ==	"BreakOut", colorGreen,
+					 IIf(txtBuyBreakout ==	"BreakDown", colorRed, colorGrey50));
+AddTextColumn(txtBuyBreakout, "Breakout", 1.2, colorWhite, txtColoBuyBreakout);
+
+addcolumn( MA(Volume,26), "MA_Volume", 1);
+addcolumn( Median(Volume,26), "Median_Volume", 1);
+addcolumn( Volume, "Volume", 1); 
+addcolumn( Volume/Median(Volume,26), "Vol_vs_Med", 1.2); 
+addcolumn( MA(Volume,26)/Median(Volume,26), "Avg_vs_Med", 1.2); 
+addcolumn( Close, "Close price", 1.2);
+
+function fncolortxt(_c)
+{
+ return IIf(_c < 0, colorRed,
+			IIf(_c > 0, colorGreen, colorGrey50));
+}
+
+_Close_1D = ((Close-Ref(Close,-1))*100/Ref(Close,-1));
+addcolumn(_Close_1D, "P-1D", 1.2, colorWhite, fncolortxt(_Close_1D));
+
+_Close_3D = (Close-Ref(Close,-3))*100/Ref(Close,-4);
+addcolumn(_Close_3D, "P-3D", 1.2, colorWhite, fncolortxt(_Close_3D));
+
+_Close_1W = (Close-Ref(Close,-5))*100/Ref(Close,-5);
+addcolumn(_Close_1W, "P-1W", 1.2, colorWhite, fncolortxt(_Close_1W));
+
+_Close_1M = (Close-Ref(Close,-15))*100/Ref(Close,-15);
+addcolumn(_Close_1M, "P-1M", 1.2, colorWhite, fncolortxt(_Close_1M));
+
+_Close_3M = (Close-Ref(Close,-60))*100/Ref(Close,-60);
+addcolumn(_Close_3M, "P-3M", 1.2, colorWhite, fncolortxt(_Close_3M));
+
+_Close_6M = (Close-Ref(Close,-120))*100/Ref(Close,-120);
+addcolumn(_Close_6M, "P-6M", 1.2, colorWhite, fncolortxt(_Close_6M));
+
+_Close_1Y = (Close-Ref(Close,-240))*100/Ref(Close,-240);
+addcolumn(_Close_1Y, "P-1Y", 1.2, colorWhite, fncolortxt(_Close_1Y));
+
+AddTextColumn(Name(), "Tick", 1.2);
+
+_hhv_20 = hhv(High, 20);
+_div = IIF( Close >= _hhv_20, (Close-_hhv_20)*100/_hhv_20, (Close-_hhv_20)*100/_hhv_20);
+addcolumn(_div, "HHV_20", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_20 = LLV(Low, 20);
+_div = IIF( Close >= _llv_20, (Close-_llv_20)*100/_llv_20, (Close-_llv_20)*100/_llv_20);
+addcolumn(_div, "LLV_20", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+_hhv_50 = hhv(High, 50);
+_div = IIF( Close >= _hhv_50, (Close-_hhv_50)*100/_hhv_50, (Close-_hhv_50)*100/_hhv_50);
+addcolumn(_div, "HHV_50", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_50 = LLV(Low, 50);
+_div = IIF( Close >= _llv_50, (Close-_llv_50)*100/_llv_50, (Close-_llv_50)*100/_llv_50);
+addcolumn(_div, "LLV_50", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+
+_hhv_100 = hhv(High, 100);
+_div = IIF( Close >= _hhv_100, (Close-_hhv_100)*100/_hhv_100, (Close-_hhv_100)*100/_hhv_100);
+addcolumn(_div, "HHV_100", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_100 = LLV(Low, 100);
+_div = IIF( Close >= _llv_100, (Close-_llv_100)*100/_llv_100, (Close-_llv_100)*100/_llv_100);
+addcolumn(_div, "LLV_100", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+_hhv_200 = hhv(High, 200);
+_div = IIF( Close >= _hhv_200, (Close-_hhv_200)*100/_hhv_200, (Close-_hhv_200)*100/_hhv_200);
+addcolumn(_div, "HHV_200", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_200 = LLV(Low, 200);
+_div = IIF( Close >= _llv_200, (Close-_llv_200)*100/_llv_200, (Close-_llv_200)*100/_llv_200);
+addcolumn(_div, "LLV_200", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+addcolumn(C - SenkouSpanA, "Distance Span A", 1.2);
+addcolumn(RSI(14), "RSI_14", 1.2);
+
+Daysback = Param( "Days Back", 52, 30, 252, 1 );
+bb = LastValue( LinRegSlope(C, Daysback ));
+pi = 4 * atan(1);
+slopeangle = atan( bb ) * ( 180 / pi );
+AddColumn(slopeangle,"In degrees", colorDefault, colorBlue);
+AddColumn(StdErr( 100 * Close, Daysback ),"Std.Err RS Line(%)", colorDefault, colorBlue);
+//AddTextColumn(FullName(),"Full Name");
+
+_SECTION_END();
+
+
+ForceIdx = EMA(((Close - Ref(Close, -1)) * V), 20);
+//Filter = RSI(14) <=50;
+Filter = 1  and close >= 1.8   AND MA(V,26) >= 20000 //AND RSI(14) <=50 AND ForceIdx > 0 AND MA(V,26) >= 50000 and Volume/Median(Volume,26) >= 1 
+; //AND Close >= 2.5;
+//AND _bBuy1;
+//AND Close==High;
+
+SetSortColumns(-5, -4, -3, -8, -18); 

@@ -1,0 +1,461 @@
+_SECTION_BEGIN("System-Sygnaly");
+///////////////////////////////////
+ 
+Title="{{NAME}} : {{INTERVAL}}";
+ 
+ 
+_SECTION_BEGIN("Flower_HA_Normal Candle");
+ 
+Show_color = ParamToggle("Display CandleColor", "No|Yes", 0);
+r1 =5; 
+r2 =10; 
+r3 =5; 
+ 
+Prd1=4; 
+Prd2=7; 
+green = HHV(LLV(L,Prd1)+ATR(Prd1),Prd2);
+red = LLV(HHV(H,Prd1)-ATR(Prd1),Prd2);
+ 
+HaClose =EMA((O+H+L+C)/4,3); 
+ 
+HaOpen = AMA( Ref( HaClose, -1 ), 0.5 ); 
+HaHigh = Max( H, Max( HaClose, HaOpen ) ); 
+HaLow = Min( L, Min( HaClose, HaOpen ) ); 
+ 
+Temp = Max(High, HaOpen);
+Temp = Min(Low,HaOpen);
+ 
+//////////
+m1=MACD(r1,r2);
+s1=Signal(r1,r2,r3);
+mycolor=IIf(m1<0 AND m1>s1, ColorRGB(230,230,0),IIf(m1>0 AND m1>s1,colorLime,IIf(m1>0 AND m1<s1,colorOrange,colorDarkRed)));
+if(Show_color)
+ 
+{
+ColorHighliter = mycolor;
+SetBarFillColor( ColorHighliter );
+}
+ 
+barColor=IIf(C>Green ,colorLime,IIf(C < RED,colorRed,colorLightOrange));
+barColor2=IIf(Close > Open, colorGreen, colorRed);
+ 
+if( ParamToggle("Plot Normal Candle", "No,Yes", 1 ) )
+PlotOHLC( HaOpen, HaHigh, HaLow, HaClose, " " , barcolor, styleCandle | styleThick );
+else
+PlotOHLC( Open, High, Low, Close, " " , barcolor2, styleCandle | styleThick );
+ 
+_SECTION_END();
+ 
+_SECTION_BEGIN("EMA 8");
+ 
+P = ParamField("Price field",-1);
+Periods = Param("Periods", 8,  10 );
+ 
+WarunkiTrendu =  C>EMA( P, Periods );
+ 
+Plot( EMA( P, Periods ), "EMA",kolorZmienny = IIf(WarunkiTrendu, colorLime,colorRed),styleNoTitle|ParamStyle("Style", styleThick,maskAll));
+ 
+_SECTION_END();
+ 
+_SECTION_BEGIN("EMA 21");
+ 
+P = ParamField("Price field",-1);
+Periods = Param("Periods", 21,  10 );
+ 
+WarunkiTrendu =  C>EMA( P, Periods );
+ 
+Plot( EMA( P, Periods ), "EMA",kolorZmienny = IIf(WarunkiTrendu, colorLime,colorRed),styleNoTitle|ParamStyle("Style", styleLine,maskAll));
+ 
+_SECTION_END();
+ 
+_SECTION_BEGIN("DL");
+ 
+P = ParamField("Field");
+Type = ParamList("Type", "DL");
+ 
+Displacement = Param("Displacement", -21, -26, 52 );
+DL = C;
+ 
+Plot(ml= DL,"DL", ParamColor( "Color", colorPink),ParamStyle("Style", styleLine,maskAll), 0, 0, Displacement );
+ 
+_SECTION_END();
+ 
+ 
+_SECTION_BEGIN("Cena");
+ 
+FS=Param("Font Size",24,11,100,1);
+ 
+GfxSelectFont("Times New Roman", FS, 700, True ); 
+ 
+GfxSetBkMode( colorWhite );  
+ 
+GfxSetTextColor( ParamColor("Color",colorGrey50) ); 
+ 
+Hor=Param("Horizontal Position",730,1,1200,1);
+ 
+Ver=Param("Vertical Position",24,1,28,1); 
+ 
+GfxTextOut(""+C, Hor , Ver );
+ 
+GfxTextOut( Name(), Status("pxwidth")/3, Status("pxheight")/30 );
+ 
+_SECTION_END();
+ 
+P = ParamField("Price field",-1);
+ 
+_SECTION_BEGIN("Linia Pozioma 1 ");
+ 
+PriceLevel = ParamField("PriceField1", field = 3 ); 
+ 
+Daysback = Param("Bar Back",1000,1,1000,1); 
+FirstBar = BarCount - DaysBack; 
+YY = IIf(BarIndex() >= Firstbar,EndValue(PriceLevel),Null); 
+ 
+sl=YY; 
+ 
+_SECTION_BEGIN("Linia Pozioma 2 ");
+ 
+PriceLevel = ParamField("PriceField1", field = 4 ); 
+Daysback = Param("EMA Back",1000,1,1000,1); 
+ 
+YY = IIf(BarIndex() >= Firstbar,EndValue(PriceLevel),Null); 
+ 
+ml=P;
+ 
+ml=YY; 
+ 
+_SECTION_END();
+ 
+ 
+ 
+ 
+    {
+        SK=sl;
+        SD=ml;
+    }
+  
+ 
+    {
+        SK=ml;
+        SD=sl;
+    }
+     
+    
+Buy  = Cross(  SK, SD);
+Sell = Cross( SD,  SK); 
+ 
+ 
+ 
+ 
+Color = IIf( sl > ml, ParamColor("s2 Color", colorPaleGreen ) , ParamColor( "k2 Color", colorPink ) );
+ 
+ 
+PlotOHLC  ( sl, sl, ml, ml, "", Color, styleCloud | styleNoLabel, Null, Null);
+ 
+_SECTION_END();
+ 
+_SECTION_BEGIN("Ribbon-MACD,PDI,MDI");
+ 
+uptrend=PDI()>MDI()AND Signal()<MACD();
+downtrend=MDI()>PDI()AND Signal()>MACD();
+Plot( 0.3, "ribbon",
+IIf( uptrend, ParamColor( "uptrend", colorGreen ), IIf( downtrend, ParamColor( "downtrend", colorRed ),IIf(Signal()<MACD(),ParamColor( " Color1", colorPaleGreen ),ParamColor( " Color2", colorLightOrange ) ))), /* choose color */
+styleOwnScale|styleArea|styleNoLabel, -0.5,40 );
+ 
+_SECTION_END();
+ 
+ 
+ 
+_SECTION_BEGIN("Ribbon DL Ichimoku");
+ 
+prds = Param( "Standard Line Periods", 26, 5, 30, 1 );
+turn = Param( "Turning Line Periods", 9, 3, 10, 1 );
+span = Param( "Spans Periods", 52, 10, 120, 1 );
+ 
+TL = ( HHV( H, turn ) + LLV( L, turn ) ) / 2;
+SL = ( HHV( H, prds ) + LLV( L, prds ) ) / 2;
+DL = C;
+Span1 = ( SL + TL ) / 2;
+Span2 = ( HHV( H, span ) + LLV( L, span ) ) / 2;
+ 
+WarunkiTrendu =   C>SL AND TL>=SL ; 
+ 
+kolorZmienny = IIf(WarunkiTrendu, ParamColor("Ichimoku Color",colorAqua), ParamColor("Ichimoku Color1",colorRed));
+ 
+ 
+ 
+ 
+NR_P1 = Param("ICHIMOKU Location", -25, -1000, 1000, 0.1);
+NR_P2 = Param("ICHIMOKU Height", 999.998, -0.002, 1000, 0.1);
+ 
+Plot(7, "ICHIMOKU", kolorZmienny, styleOwnScale|styleArea|styleNoLabel, NR_P1,
+NR_P2); // ICHIMOKU Trend
+ 
+_SECTION_END();
+ 
+ 
+_SECTION_BEGIN("Ribbon ADX");
+ 
+range = Param("Periods", 14, 2, 200, 1 );
+ 
+ s=PDI(range);
+ k=MDI(range);
+ 
+ 
+ 
+WarunkiTrendu =   s>k ; 
+ 
+kolorZmienny = IIf(WarunkiTrendu, ParamColor("ADX Color",colorTurquoise), ParamColor("ADX Color1",colorRed));
+ 
+ 
+ 
+ 
+NR_P1 = Param("ADX Location", -5, -1000, 1000, 0.1);
+NR_P2 = Param("ADX Height", 999.998, -0.002, 1000, 0.1);
+ 
+Plot(3, "ADX", kolorZmienny, styleOwnScale|styleArea|styleNoLabel, NR_P1,
+NR_P2); // ADX Trend
+ 
+_SECTION_END();
+ 
+_SECTION_BEGIN("GraphXSpace");
+ 
+space = Param("Space on Chart", 20,  - 15, 50, 1);
+GraphXSpace = space;
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+GraphXSpace = 10 ;
+ 
+_SECTION_BEGIN("ATR-Area");
+ 
+ 
+Factor=Param("Factor",3,1,10,0.1);
+ 
+Pd=Param("ATR Periods",20,1,100,1);
+ 
+ 
+Up=(H+L)/2+(Factor*ATR(Pd));
+ 
+Dn=(H+L)/2-(Factor*ATR(Pd));
+ 
+iATR=ATR(Pd);
+ 
+TrendUp=TrendDown=Null;
+ 
+trend[0]=1;
+ 
+changeOfTrend=0;
+ 
+flag=flagh=0;
+ 
+ 
+ 
+for (i = 1; i <BarCount-1; i++) {
+ 
+      TrendUp[i] = Null;
+ 
+      TrendDown[i] = Null;
+ 
+      
+ 
+      trend[i]=1;
+ 
+    
+ 
+       
+ 
+      if (Close[i]>Up[i-1]) {
+ 
+         trend[i]=1;
+ 
+         if (trend[i-1] == -1) changeOfTrend = 1;
+ 
+          
+ 
+      }
+ 
+      else if (Close[i]<Dn[i-1]) {
+ 
+         trend[i]=-1;
+ 
+         if (trend[i-1] == 1) changeOfTrend = 1;
+ 
+      }
+ 
+      else if (trend[i-1]==1) {
+ 
+         trend[i]=1;
+ 
+         changeOfTrend = 0;       
+ 
+      }
+ 
+      else if (trend[i-1]==-1) {
+ 
+         trend[i]=-1;
+ 
+         changeOfTrend = 0;
+ 
+      }
+ 
+ 
+ 
+      if (trend[i]<0 && trend[i-1]>0) {
+ 
+         flag=1;
+ 
+      }
+ 
+      else {
+ 
+         flag=0;
+ 
+      }
+ 
+       
+ 
+      if (trend[i]>0 && trend[i-1]<0) {
+ 
+         flagh=1;
+ 
+      }
+ 
+      else {
+ 
+         flagh=0;
+ 
+      }
+ 
+       
+ 
+      if (trend[i]>0 && Dn[i]<Dn[i-1]){
+ 
+         Dn[i]=Dn[i-1];
+ 
+        }
+ 
+       
+ 
+      if (trend[i]<0 && Up[i]>Up[i-1])
+ 
+        { Up[i]=Up[i-1];
+ 
+        }
+ 
+       
+ 
+      if (flag==1)
+ 
+       {  Up[i]=(H[i]+L[i])/2+(Factor*iATR[i]);;
+ 
+        } 
+ 
+      if (flagh==1)
+ 
+        { Dn[i]=(H[i]+L[i])/2-(Factor*iATR[i]);;
+ 
+         }
+ 
+      if (trend[i]==1) {
+ 
+         TrendUp[i]=Dn[i];
+ 
+         if (changeOfTrend == 1) {
+ 
+            TrendUp[i-1] = TrendDown[i-1];
+ 
+            changeOfTrend = 0;
+ 
+         }
+ 
+      }
+ 
+      else if (trend[i]==-1) {
+ 
+         TrendDown[i]=Up[i];
+ 
+         if (changeOfTrend == 1) {
+ 
+            TrendDown[i-1] = TrendUp[i-1];
+ 
+            changeOfTrend = 0;
+ 
+         }
+ 
+      }
+ 
+   } 
+ 
+ 
+ 
+Plot(l=TrendUp,"Up",ParamColor("Trend up", colorLightBlue),ParamStyle("BreakoutLine",styleLine|styleHidden|styleDots,maskAll));
+ 
+Plot(s=TrendDown,"Down",ParamColor("Trend down", colorRed),ParamStyle("BreakoutLine",styleLine|styleHidden|styleDots,maskAll));
+ 
+l=TrendUp;
+s=TrendDown;
+ 
+Buy = trend==1;
+ 
+Sell=trend==-1;
+ 
+ 
+ 
+ 
+//if (SelectedValue(Buy)==1) Say("A Te Er Wybicie w Góre");
+//if (SelectedValue(Sell)==1) Say("A Te Er Wybicie w Dól");
+ 
+ 
+ 
+ 
+Buy=ExRem(Buy,Sell);
+ 
+Sell=ExRem(Sell,Buy);
+ 
+ 
+ 
+ 
+ 
+ 
+Short=Sell;
+ 
+Cover=Buy;
+ 
+ 
+ 
+ 
+ 
+BuyPrice=ValueWhen(Buy,C);
+ 
+SellPrice=ValueWhen(Sell,C);
+ 
+ShortPrice=ValueWhen(Short,C);
+ 
+CoverPrice=ValueWhen(Cover,C);
+ 
+ 
+ 
+ k=C;
+ 
+WarunkiTrendu = k>s;
+ 
+ 
+DownTrendBegin = s > k; 
+UpTrendBegin = l > k; 
+ 
+DownTrend = Flip( DownTrendBegin, UpTrendBegin ); 
+DownTrend = Flip( DownTrendBegin, UpTrendBegin );
+ 
+ 
+ 
+ 
+Plot( DownTrend, "", ParamColor( " DownColor", ColorRGB(251,251,247)), styleArea | styleOwnScale | styleNoLabel, 0, 1, 0, -2 );
+ 
+ 
+_SECTION_END();

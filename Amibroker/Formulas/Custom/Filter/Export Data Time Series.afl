@@ -1,0 +1,16 @@
+#include <T3_Include.afl>;
+_startDate = DateTimeAdd( Now( 5 ), -60, inMonthly );
+Filter = DateTime() >= _startDate;
+
+_indi_MA =  IIf( Close < MA(Close, 200), 400
+			, IIf( Close >= MA(Close, 200) AND Close >= MA(Close, 20), 20
+			, IIf( Close >= MA(Close, 200) AND Close >= MA(Close, 50) AND Close < MA(Close, 20), 50
+			, IIf( Close >= MA(Close, 200) AND Close >= MA(Close, 100) AND Close < MA(Close, 50), 100
+			, IIf( Close >= MA(Close, 200) AND Close < MA(Close, 100), 200
+			, IIf( Close >= MA(Close, 20), 20, 0))))));
+
+// Add columns for exploration
+AddColumn(Close, "Close");
+AddColumn(_indi_MA, "MA", 1.0);
+
+//IIf( Close >= MA(Close, 200) AND Close < MA(Close, 100), -200, "")

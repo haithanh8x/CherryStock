@@ -1,0 +1,61 @@
+Length = Param("Length",20,1,100,1);
+ 
+Change = Close - Ref(Close, -1);
+PlusChange = IIf(Change > 0, Change, 0);
+MinusChange = IIf(Change < 0, -Change, 0);
+ 
+EnableScript("jscript");
+<%
+PlusChange=VBArray(AFL("PlusChange")).toArray();
+MinusChange=VBArray(AFL("MinusChange")).toArray();
+ 
+/*Make two new arrays*/
+var PlusCF=new Array ();
+var MinusCF=new Array();
+ 
+/*fill array "PlusCF"*/
+for (i=0; i<PlusChange.length; i++ )
+{
+   if ( PlusChange[i]==0 ) { PlusCF[i]=0; }
+    else { PlusCF[i]=PlusChange[i]+PlusCF[i-1]; }
+}
+ 
+/*Fill array "MinusCF*/
+for (i=0; i<MinusChange.length; i++ )
+{
+   if ( MinusChange[i]==0 ) { MinusCF[i]=0; }
+    else { MinusCF[i]=MinusChange[i]+MinusCF[i-1]; }
+}
+ 
+/*Convert to AFL variables*/
+AFL("PlusCF")=PlusCF;
+AFL("MinusCF")=MinusCF;
+%>
+ 
+PlusTCF = Sum(PlusChange-MinusCF,Length);
+MinusTCF = Sum(MinusChange-PlusCF,Length);
+ 
+Plot(PlusTCF, "+TFC("+Length+")", colorGreen);
+Plot(MinusTCF, "-TFC("+Length+")", colorRed);
+PlotGrid(0, colorLightGrey);
+ 
+Buy=PlusTCF>0;
+Sell=MinusTCF>0;
+Short=Sell;
+Cover=Buy;
+ 
+/*This is optional*/
+ApplyStop(2,1,Optimize("Stop Loss",12,1,15,1),1);
+ 
+Buy=ExRem(Buy,Sell);
+Sell=ExRem(Sell,Buy);
+Cover=ExRem(Cover,Short);
+Short=ExRem(Short,Cover);
+ 
+"Positive values of either the +TCF and the -TCF indicate the presence of a strong trend. ";
+"";
+"Positive values of +TCF indicator a strong uptrend, while positive values of -TCF indicate a strong downtrend.";
+"";
+"+TCF+ & -TCF cannot both be positive at the same time, since both an uptrend & a downtrend cannot occur simultaneously.  Both can be negative.  if both are negative, this signifies consolidation, OR the absence of a trend.";
+"";
+"It recommended to enter long positions when the +TCF value is positive, & enter Short positions when the -TCF- value is positive.";

@@ -1,0 +1,144 @@
+_SECTION_BEGIN("i");
+
+//SetChartBkGradientFill(colorGrey50,colorGrey50);
+
+/* ICHIMOKU CHART */
+n1 = Param("Èøèìîêó: ïåðèîä 1",9,1,200,1); 
+n2 = Param("Èøèìîêó: ïåðèîä 2",26,1,400,1); 
+n3 = Param("Èøèìîêó: ïåðèîä 3",33,1,600,1); 
+n4 = Param("Èøèìîêó: ïåðèîä 4",42,1,600,1); 
+n5 = Param("Èøèìîêó: ïåðèîä 5",65,1,600,1); 
+n6 = Param("Èøèìîêó: ïåðèîä 6",76,1,600,1); 
+n7 = Param("Èøèìîêó: ïåðèîä 7",129,1,600,1); 
+n8 = Param("Èøèìîêó: ïåðèîä 8",172,1,600,1); 
+n9 = Param("Èøèìîêó: ïåðèîä 9",200,1,600,1); 
+n10 = Param("Èøèìîêó: ïåðèîä 10",257,1,600,1);
+ 
+TenkanSen   =(HHV(H,n1)+LLV(L,n1))/2;            // Tenkan-sen (Òåíêàí-ñåí) – ýòî ñðåäíåå çíà÷åíèå öåíû çà ïåðâûé ïðîìåæóòîê âðåìåíè (ðàâíà (high+low)/2, ãäå high è low – ìàêñèìóì è ìèíèìóì çà ïåðèîä). 
+KijunSen    =(HHV(H,n2)+LLV(L,n2))/2;            // Kijun-sen (Êèäæóí-ñåí) – ýòî ñðåäíåå çíà÷åíèå öåíû çà âòîðîé ïðîìåæóòîê. 
+ChinkouSpan =Ref(C,-n2);                          // Chinkou Span (×èêîó ñïåí) - öåíà çàêðûòèÿ òåêóùåãî áàðà, ñäâèíóòàÿ íàçàä íà âåëè÷èíó âòîðîãî âðåìåííîãî èíòåðâàëà. 
+Cks         = Close;                             // Ãðàôè÷åñêèé Chinkou Span, ñäâèã íàçàä çàñ÷åò îòðèñîâêè. 
+SenkouSpanA =Ref((KijunSen+TenkanSen)/2,-n2);    // Senkou Span A (Ñåíêîó ñïåí À) / Up Kumo - ñåðåäèíà ðàññòîÿíèÿ ìåæäó Tenkan-sen è Kijun-sen, ñäâèíóòîå âïåðåä íà âåëè÷èíó âòîðîãî âðåìåííîãî èíòåðâàëà. 
+SpA         =(KijunSen+TenkanSen)/2;             // Ãðàôè÷åñêèé Senkou Span A , ñäâèã âïåðåä çàñ÷åò îòðèñîâêè. 
+SenkouSpanB =Ref((HHV(H,n3)+LLV(L,n3))/2,-n2);   // Senkou Span B (Ñåíêîó ñïåí Â) / Down Kumo - ñðåäíåå çíà÷åíèå öåíû çà òðåòèé âðåìåííîé èíòåðâàë, ñäâèíóòîå âïåðåä íà âåëè÷èíó âòîðîãî âðåìåííîãî èíòåðâàëà. 
+SpB         =(HHV(H,n3)+LLV(L,n3))/2;            // Ãðàôè÷åñêèé Senkou Span B, ñäâèã âïåðåä çàñ÷åò îòðèñîâêè. 
+DL = Ref( C, 25 );
+ 
+ 
+Cond1 =  Ref(Close > Max(SenkouSpanA,SenkouSpanB),-1);  //öåíà âûøå îáëàêà  -- áû÷üå íàñòðîåíèå 
+Cond2 =  Ref(Close < Min(SenkouSpanA,SenkouSpanB),-1);  //öåíà íèæå îáëàêà  -- ìåäâåæüå íàñòðîåíèå 
+Cond3 =  Ref(Cross(TenkanSen,KijunSen),-1);  //ïåðåñå÷åíèå Òåíêàí è Êèäæóí -- ñèãíàë íà ïîêóïêó 
+Cond4 =  Ref(Cross(KijunSen,TenkanSen),-1);  //ïåðåñå÷åíèå Òåíêàí è Êèäæóí -- ñèãíàë íà ïðîäàæó 
+Cond5 =  Ref(Cross(Close,ChinkouSpan ),-1);  //ïåðåñå÷åíèå ×èêîó è öåíû 
+Cond6 =  Ref(Cross(ChinkouSpan ,Close),-1);  //ïåðåñå÷åíèå ×èêîó è öåíû 
+Cond7 =  Ref(Cross (Close , Max(SenkouSpanA,SenkouSpanB)),-1);  //öåíà âûõîäèò ââåðõ èç îáëàêà  -- ñèãíàë íà ïîêóïêó 
+Cond8 =  Ref(Cross ( Min(SenkouSpanA,SenkouSpanB), Close),-1);  //öåíà âûõîäèò âíèç  èç îáëàêà  -- ñèãíàë íà ïðîäàæó 
+Cond9 = Close > TenkanSen AND TenkanSen > KijunSen AND KijunSen > Max(SenkouSpanA,SenkouSpanB); // ñèãíàë òðåõ ëèíèé ââåðõ 
+Cond10= Close < TenkanSen AND TenkanSen < KijunSen AND KijunSen < Min(SenkouSpanA,SenkouSpanB); // ñèãíàë òðåõ ëèíèé âíèç 
+RemCond9=ExRem(Cond9,NOT Cond9);                  
+RemCond10=ExRem(Cond10,NOT Cond10); 
+ 
+ColSenk =IIf (Cond1,colorGreen, IIf(Cond2,colorRed,colorLightGrey)); // çàäàåò öâåò, åñëè öåíà âûøå/íèæå/âíóòðè îáëàêà. 
+Flat  =  TenkanSen == Ref(TenkanSen,-1) OR (NOT(Cond1) AND NOT(Cond2)) ; 
+ 
+for( i = 0; i < BarCount; i++ ) //ðàñêðàøèâàåò ñðåäíþþ ëèíèþ èíäèêàòîðà ïî âçàèìîðàñïîëîæåíèþ è íàïðàâëåíèÿ äâèæåíèÿ TenkanSen, öåíû è îáëàêà. 
+{ 
+   if (Flat[i]) 
+      ColTenk[i] = colorLightGrey; 
+   else
+   { 
+if (Cond1[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+if (Cond1[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+   } 
+} 
+ 
+ 
+//AlertIf( Cond3 OR Cond4, "SOUND c:/WINDOWS/Media/notify.wav", "ïåðåñå÷åíèå Òåíêàí è Êèäæóí",0,1+2+4+8); 
+//AlertIf( Cond5 OR Cond6, "SOUND c:/WINDOWS/Media/notify.wav", "ïåðåñå÷åíèå ×èêîó è öåíû",0,1+2+4+8); 
+//AlertIf( Cond7 OR Cond8, "SOUND c:/WINDOWS/Media/notify.wav", "öåíà âûõîäèò  èç îáëàêà",0,1+2+4+8); 
+//AlertIf( RemCond9 OR RemCond10, "SOUND c:/WINDOWS/Media/notify.wav", "ñèãíàë òðåõ ëèíèé",0,1+2+4+8); 
+ 
+//PlotShapes(IIf(Cond7, shapeSmallUpTriangle ,shapeNone),colorGreen,0,H,10);              
+//PlotShapes(IIf(Cond8, shapeSmallDownTriangle ,shapeNone),colorRed,0,L,10); 
+//PlotShapes(IIf(Cond3, shapeHollowSmallUpTriangle,shapeNone),colorGreen,0,H,12);              
+//PlotShapes(IIf(Cond4, shapeHollowSmallDownTriangle ,shapeNone),colorRed,0,L,12); 
+//PlotShapes(IIf(Cond5, shapeSmallCircle ,shapeNone),colorGreen,0,H,4);              
+//PlotShapes(IIf(Cond6, shapeSmallCircle + shapePositionAbove ,shapeNone),colorRed,0,L,4); 
+//PlotShapes(IIf(RemCond9 , shapeHollowSquare ,shapeNone),colorGreen,0,H,18);              
+//PlotShapes(IIf(RemCond10, shapeHollowSquare + shapePositionAbove ,shapeNone),colorRed,0,L,18); 
+ 
+//Plot (C,"Close",colorBlack,styleThick); 
+Plot (C,"Bars",colorGreen, styleCandle); 
+Plot (TenkanSen,"Tenkan-sen",colorRed, styleThick); 
+Plot (KijunSen, "Kijun-sen", colorBlue, styleThick);  
+Plot (MA(C,20), "MA 20", colorGrey50, styleThick);
+Plot (MA(C,50), "MA 50", colorGrey50, styleThick);
+Plot (MA(C,100), "MA 100", colorGrey50, styleThick);
+Plot (MA(C,200), "MA 200", colorGrey50, styleThick);
+
+Plot (Cks,"Chinkou Span",colorLime, style = styleThick,0,0,-n2); 
+Plot (SpA,"SenkouSpanA",colorOrange,styleDashed,0,0,n2); 
+Plot (SpB,"SenkouSpanB",colorBlack,styleThick,0,0,n2); 
+PlotOHLC (SpA,SpA,SpB,SpB,"Cloud",IIf (SpA > SpB,colorGreen,colorLavender),styleCloud, 10, 10, n2 ); 
+above = IIf(KijunSen>SenkouSpanA AND TenkanSen>SenkouSpanB,1,0);
+within = IIf(KijunSen>SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+below = IIf(TenkanSen<SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+Buy = Cross(TenkanSen,KijunSen) AND (DL>Close);
+Sell = Cross(KijunSen,TenkanSen) AND (DL<KijunSen);
+StrongBuy = Buy AND above;
+MediumBuy = Buy AND within;
+WeakBuy = Buy AND below;
+StrongSell = Sell AND below;
+MediumSell = Sell AND within;
+WeakSell = Sell AND above;
+ 
+IIf( (StrongBuy),PlotShapes(shapeUpTriangle*StrongBuy,colorGreen),0);
+IIf( (MediumBuy),PlotShapes(shapeUpArrow*MediumBuy,colorGreen),0);
+IIf( (WeakBuy),PlotShapes(shapeHollowUpArrow*WeakBuy,colorIndigo),0);
+IIf( (StrongSell),PlotShapes(shapeDownTriangle*StrongSell,colorRed),0);
+IIf( (MediumSell),PlotShapes(shapeDownArrow*MediumSell,colorRed),0);
+IIf( (WeakSell),PlotShapes(shapeHollowDownArrow*WeakSell,colorBrown),0);
+ 
+ 
+// Ãîðèçîíòàëüíàÿ öâåòíàÿ èíäèêàòîðíàÿ ïîëîñà (ïðèìåð). 
+ 
+ 
+Plot( 1, "Ribbon", ColTenk, styleOwnScale|styleArea|styleNoLabel, -2, 200 );   // èíäèöèðóåò ôëýò íà TenkanSen. 
+Plot( 4, "Ribbon", ColSenk, styleOwnScale|styleArea|styleNoLabel, -1, 200 );   // èíäèöèðóåò ïîëîæåíèå öåíû îòíîñèòåëüíî îáëàêà
+_SECTION_END();
+
+_SECTION_BEGIN("Volume At Price");
+PlotVAPOverlay(Param("Lines", 1000, 100, 1000, 10), Param("Width", 15, 1, 100, 1), ParamColor("Color", colorBlue), ParamToggle("Side", "Left|Right", 1) | 4 *ParamToggle("Z-order", "On top|Behind", 1));
+_SECTION_END();
+
+_SECTION_BEGIN("Elliot wave");
+	onElliot = ParamToggle("Plot Elliot","Off|On",1);
+	
+	pr = Param("Elliot Wave minimum % move", 2, 1, 100);
+	// Beginner Elliot Wave stuff
+	EWpk = PeakBars(H, pr, 1) == 0;
+	EWtr = TroughBars(L, pr, 1) == 0;
+	 
+	// Intermediate Elliot Wave stuff
+	zz = Zig(C, pr);
+	zzHi = Zig(H, pr);
+	zzLo = Zig(L, pr);
+	Avg = (zzHi+zzLo)/2;
+	 
+	// Advanced Elliot Wave stuff
+	RetroSuccessSecret = IIf(EWpk, zzHi, IIf(EWtr, zzLo, IIf(Avg > Ref(Avg,-1), H, L)));
+	EW = Zig(RetroSuccessSecret, pr);
+	 
+	// Plot on price chart
+	/*Plot(C, "Close", colorBlack, styleCandle);*/
+	if(onElliot==1)
+	{
+		Plot(EW, "EW", colorWhite, styleLine);
+	}
+_SECTION_END();

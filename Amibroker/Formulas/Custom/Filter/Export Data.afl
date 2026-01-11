@@ -1,0 +1,62 @@
+#include <T3_Include.afl>;
+Filter = 1 ; //AND MA(V,5) >= 10000
+
+// Signal RSI // MACD // MA // Volume
+_rsi = RSI(14);
+_macd = MACD(12, 26);
+_macd_signal = Signal(12, 26, 9);
+_ma_50 = MA(Close, 50);
+_ma_vol_20 = MA(Volume, 20);
+_buy_rsimacdmavol = (Close > _ma_50) AND Cross(_macd, _macd_signal) AND (_rsi > 40) AND (Volume > _ma_vol_20);
+_sell_rsimacdmavol = (Close < _ma_50) AND Cross(_macd_signal, _macd) AND (_rsi <60) AND (Volume > _ma_vol_20);
+
+TimeFrameSet( inWeekly );
+_weekly_rsi = RSI(14);
+_weekly_rsi_LinReg = LinRegSlope(_weekly_rsi, 5);
+TimeFrameRestore();
+
+TimeFrameSet( inMonthly );
+_monthly_rsi = RSI(14);
+_monthly_rsi_LinReg = LinRegSlope(_monthly_rsi, 5);
+TimeFrameRestore();
+
+// add Columns
+addcolumn(MA(V,5), "Volume MA5", 1);
+addcolumn(IIf( LinRegSlope(_rsi, 14)>=0, 1, -1 )*_rsi, "RSI_14", 1.2);
+addcolumn(IIf( _weekly_rsi_LinReg>=0, 1, -1 )*_weekly_rsi, "RSI_14_W", 1.2);
+addcolumn(IIf( _monthly_rsi_LinReg>=0, 1, -1 )*_monthly_rsi, "RSI_14_M", 1.2);
+addcolumn(Close, "CLose", 1.2, colorDefault);
+addcolumn(Ref(Close,-1), "Previous Close ", 1.2, colorDefault);
+addcolumn(llv(Low, 5), "1W Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-5), "1W Close", 1.2, colorDefault);
+addcolumn(hhv(High, 5), "1W High", 1.2, colorDefault);
+addcolumn(llv(Low, 20), "1M Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-20), "1M Close", 1.2, colorDefault);
+addcolumn(hhv(High, 20), "1M High", 1.2, colorDefault);
+addcolumn(llv(Low, 60), "3M Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-60), "3M Close", 1.2, colorDefault);
+addcolumn(hhv(High, 60), "3M High", 1.2, colorDefault);
+addcolumn(llv(Low, 120), "6M Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-120), "6M Close", 1.2, colorDefault);
+addcolumn(hhv(High, 120), "6M High", 1.2, colorDefault);
+addcolumn(llv(Low, 240), "1Y Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-240), "1Y Close", 1.2, colorDefault);
+addcolumn(hhv(High, 240), "1Y High", 1.2, colorDefault);
+addcolumn(llv(Low, 1200), "5Y Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-1200), "5Y Close", 1.2, colorDefault);
+addcolumn(hhv(High, 1200), "5Y High", 1.2, colorDefault);
+AddTextColumn(MACD_Signal(), "MACD", 1.2, colorDefault);
+addcolumn(SlopeAngle(20), "LineSlope 20", 1.2, colorDefault);
+addcolumn(SlopeAngle(50), "LineSlope 50", 1.2, colorDefault);
+addcolumn(SlopeAngle(150), "LineSlope 150", 1.2, colorDefault);
+addcolumn(SlopeAngle(250), "LineSlope 250", 1.2, colorDefault);
+addcolumn(SlopeAngle(1250), "LineSlope 1250", 1.2, colorDefault);
+#include <VPA.afl>;
+#include <CandlestickPattern.afl>;
+addcolumn(IIf(_buy_rsimacdmavol,1,IIf(_sell_rsimacdmavol,-1,Null)), "BuySell_RSI", 1);
+addcolumn(V, "Vol", 1);
+
+
+TimeFrameSet( inWeekly );
+weekly_ma = MA( Close, 14 );
+TimeFrameRestore();

@@ -1,0 +1,10 @@
+
+
+Ibuy =  Cross(RSI(14), EMA(RSI(14),9));
+Isell = Cross(EMA(RSI(14),9), RSI(14));
+Ibuy = ExRem(Ibuy, ISell);
+Isell = ExRem(ISell, Ibuy);
+BlRSI = RSI(14) > EMA(RSI(14),9);
+BrRSI = RSI(14) < EMA(RSI(14),9);
+
+Filter=Ibuy;

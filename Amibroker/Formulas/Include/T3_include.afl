@@ -1,0 +1,144 @@
+function T3(price,periods) //AMA-based
+{
+s=Param("Hot ?",0.618,0,100,0.001,0);
+periods = 2/(periods+1);
+e1=AMA(price,periods);
+e2=AMA(e1,Periods);
+e3=AMA(e2,Periods);
+e4=AMA(e3,Periods);
+e5=AMA(e4,Periods);
+e6=AMA(e5,Periods);
+c1=-s*s*s;
+c2=3*s*s+3*s*s*s;
+c3=-6*s*s-3*s-3*s*s*s;
+c4=1+3*s+s*s*s+3*s*s;
+Ti3=c1*e6+c2*e5+c3*e4+c4*e3;
+return ti3;
+}
+
+function MACD_Signal()
+{
+	r1 = Param( "Fast avg", 12, 2, 200, 1 );
+	r2 = Param( "Slow avg", 26, 2, 200, 1 );
+	r3 = Param( "Signal avg", 9, 2, 200, 1 );
+	r4 = Param( "Wk slow", 17, 2, 200, 1 );
+	r5 = Param( "Wk fast", 8, 2, 200, 1 );
+	m1=MACD(r1,r2);
+	s1=Signal(r1,r2,r3);
+	GraphXSpace =20;
+
+	mycolor=IIf(m1<0 AND m1>s1, 51,IIf(m1>0 AND m1>s1,colorLime,IIf(m1>0 AND m1<s1,colorOrange,colorRed)));
+	histcolor = IIf((m1-s1)-Ref((m1-s1),-1)> 0, colorLime, colorRed ); 
+
+	TimeFrameSet( inDaily );// weekly 
+	m1w=MACD(r4,r5);
+	s1w=Signal(r4,r5,r3);
+	kp=m1w-s1w;
+	kph=Ref(kp,-1);
+	TimeFrameRestore(); 
+
+	kw=TimeFrameExpand( kp, inDaily ); // expand for display 
+	khw=TimeFrameExpand( kph, inDaily ); // expand for display 
+	mw=TimeFrameExpand( m1w, inDaily ); // expand for display 
+	sw=TimeFrameExpand( s1w, inDaily ); // expand for display 
+
+	hcolor=IIf(mw<0 AND mw>sw, 51,IIf(mw>0 AND mw>sw,colorLime,IIf(mw>0 AND mw<sw,colorOrange,colorRed)));
+	gcolor=IIf(kw>khw,IIf(kw>0,colorDarkYellow,colorYellow),IIf(kw>0,colorSkyblue,colorBlue));
+
+	//Zero crossover up
+
+	j1=Cross(m1,0);
+
+	// crossover above zero
+
+	j2=Cross(m1,s1) AND m1>0;
+
+	//Zero crossover down
+
+	j3=Cross(s1,m1) AND m1>0;
+
+	// crossover below zero
+
+	j4=Cross(0,m1);
+
+	// Histogram peak and troughs
+	pt=m1-s1;
+	Tp = Ref(pT,-1) == HHV(pT,3);
+	Vl = Ref(pT,-1)==LLV(pT,3);
+
+	//Zeroline reject bearish
+	zd=BarsSince(j1);
+	zlrd1=(zd<6 )AND j4;
+
+	//hooks bearish
+	Hu=BarsSince(j2);
+	Hu1=(Hu<6)AND j3;
+
+	//Zeroline reject Bullish
+	zu=BarsSince(j4);
+	zlru=zu<6 AND j1;
+
+	//Hook Bullish
+	Hd=BarsSince(j3);
+	Hd1=Hd<6 AND j2;
+
+	//ADX related calculations
+	plus=EMA(PDI(14),3)>Ref(EMA(PDI(14),3),-5);
+	ap=EMA(ADX(14),3)>Ref(EMA(ADX(14),3),-5);
+	Minus=EMA(MDI(14),3)>Ref(EMA(MDI(14),3),-5);
+
+	//Power Dips - Bullish
+	PDIp=ADX(14)>MDI(14) AND PDI(14)>MDI(14) AND ap AND Vl AND m1>s1 AND plus ;
+
+	//power buys
+	pr2=ADX(14)>20 AND PDI(14)>20 AND ADX(14)>MDI(14) AND PDI(14)>MDI(14) AND plus AND j2;
+
+	//Power Dips - Bearish
+	PDIm=ADX(14)>PDI(14) AND MDI(14)>PDI(14) AND ap AND Tp AND m1<s1 AND Minus ;
+
+	//Power shorts
+	sr2=ADX(14)>20 AND MDI(14)>20 AND ADX(14)>PDI(14) AND MDI(14)>PDI(14) AND Minus AND j4;
+
+	//powerbuy2
+	pr2a=ADX(14)>20 AND PDI(14)>20 AND ADX(14)>MDI(14) AND PDI(14)>MDI(14) AND  plus AND j1;
+
+	_result = WriteIf (j1, "Crossed above zero","")+
+	WriteIf (j2, " Bullish crossover above zero","")+
+	WriteIf (j4, " Crossed below Zero","")+
+	WriteIf (j3, " Bearish crossover above zero","")+
+	WriteIf (PDIP, "  Bullish Power Dip","")+
+	WriteIf (pr2, " & Power Buy","")+
+	WriteIf (sr2, " & Power Short","")+
+	WriteIf (PDIm, " Bearish Power Dip","")+
+	WriteIf (Hd1, " & Bullish Hook","")+
+	WriteIf (Hu1, " & Bearish Hook","")+
+	WriteIf (zlrd1, " & Bearish zeroline Reject","")+
+	WriteIf (zlru, " & Bullish Zeroline Reject","");
+	return _result;
+}
+
+
+P = ParamField("Price field");
+periods = Param( "Periods", 3, 1, 100, 1 );
+
+function SlopeAngle(_Daysback)
+{
+	C1 = Close; 
+	bb = LastValue( LinRegSlope( C1, _Daysback));
+
+	// calc angel from bb
+	pi = 4 * atan(1) ; //Pi
+	return atan(bb)*(180/pi); 
+}
+
+function Signal_RSI()
+{
+	_rsi = RSI(14);
+	_macd = MACD(12, 26);
+	_macd_signal = Signal(12, 26, 9);
+	_ma_50 = MA(Close, 50);
+	_ma_vol_20 = MA(Volume, 20);
+	_buy_rsimacdmavol = (Close > _ma_50) AND Cross(_macd, _macd_signal) AND (_rsi > 40) AND (Volume > _ma_vol_20);
+	_sell_rsimacdmavol = (Close < _ma_50) AND Cross(_macd_signal, _macd) AND (_rsi <60) AND (Volume > _ma_vol_20);
+	return IIf(_buy_rsimacdmavol,1,IIf(_sell_rsimacdmavol,-1,Null));
+}

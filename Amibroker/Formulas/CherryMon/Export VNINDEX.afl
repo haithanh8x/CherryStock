@@ -1,0 +1,7 @@
+Filter = Name() == "VNINDEX";
+TimeFrameSet(inWeekly);
+AddColumn(Low, "Low");
+AddColumn(High, "Low");
+AddColumn(Close, "Close");
+AddColumn(Ref(Close,-1), "Close_Prev");
+AddColumn(Volume, "Volume");

@@ -1,0 +1,64 @@
+#include <T3_Include.afl>;
+
+Filter = 1 AND MA(V,5) >= 50000;
+
+function fncolortxt(_c)
+{
+ return IIf(_c < 0, colorRed,
+			IIf(_c > 0, colorGreen, colorGrey50));
+}
+
+addcolumn(MA(V,5), "Volume MA5", 1);
+addcolumn(RSI(14), "RSI_14", 1.2);
+
+_Close_1D = ((Close-Ref(Close,-1))*100/Ref(Close,-1));
+addcolumn(_Close_1D, "P-1D", 1.2, colorWhite);
+
+_Close_3D = (Close-Ref(Close,-3))*100/Ref(Close,-3);
+addcolumn(_Close_3D, "P-3D", 1.2, colorWhite, fncolortxt(_Close_3D));
+
+_Close_1W = (Close-Ref(Close,-5))*100/Ref(Close,-5);
+addcolumn(_Close_1W, "P-1W", 1.2, colorWhite, fncolortxt(_Close_1W));
+
+_Close_1M = (Close-Ref(Close,-20))*100/Ref(Close,-20);
+addcolumn(_Close_1M, "P-1M", 1.2, colorWhite, fncolortxt(_Close_1M));
+
+_Close_3M = (Close-Ref(Close,-60))*100/Ref(Close,-60);
+addcolumn(_Close_3M, "P-3M", 1.2, colorWhite, fncolortxt(_Close_3M));
+
+_Close_6M = (Close-Ref(Close,-120))*100/Ref(Close,-120);
+addcolumn(_Close_6M, "P-6M", 1.2, colorWhite, fncolortxt(_Close_6M));
+
+_Close_1Y = (Close-Ref(Close,-240))*100/Ref(Close,-240);
+addcolumn(_Close_1Y, "P-1Y", 1.2, colorWhite, fncolortxt(_Close_1Y));
+
+//AddTextColumn(Name(), "Tick", 1.2);
+
+_hhv_20 = hhv(High, 20);
+_div = IIF( Close >= _hhv_20, (Close-_hhv_20)*100/_hhv_20, (Close-_hhv_20)*100/_hhv_20);
+addcolumn(_div, "HHV_20", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));
+_llv_20 = LLV(Low, 20);
+_div = IIF( Close >= _llv_20, (Close-_llv_20)*100/_llv_20, (Close-_llv_20)*100/_llv_20);
+addcolumn(_div, "LLV_20", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));
+
+_hhv_50 = hhv(High, 50);
+_div = IIF( Close >= _hhv_50, (Close-_hhv_50)*100/_hhv_50, (Close-_hhv_50)*100/_hhv_50);
+addcolumn(_div, "HHV_50", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));
+_llv_50 = LLV(Low, 50);
+_div = IIF( Close >= _llv_50, (Close-_llv_50)*100/_llv_50, (Close-_llv_50)*100/_llv_50);
+addcolumn(_div, "LLV_50", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));
+
+
+_hhv_100 = hhv(High, 100);
+_div = IIF( Close >= _hhv_100, (Close-_hhv_100)*100/_hhv_100, (Close-_hhv_100)*100/_hhv_100);
+addcolumn(_div, "HHV_100", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));
+_llv_100 = LLV(Low, 100);
+_div = IIF( Close >= _llv_100, (Close-_llv_100)*100/_llv_100, (Close-_llv_100)*100/_llv_100);
+addcolumn(_div, "LLV_100", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));
+
+_hhv_200 = hhv(High, 200);
+_div = IIF( Close >= _hhv_200, (Close-_hhv_200)*100/_hhv_200, (Close-_hhv_200)*100/_hhv_200);
+addcolumn(_div, "HHV_200", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));
+_llv_200 = LLV(Low, 200);
+_div = IIF( Close >= _llv_200, (Close-_llv_200)*100/_llv_200, (Close-_llv_200)*100/_llv_200);
+addcolumn(_div, "LLV_200", 1.2, colorWhite, IIf(_div < 0, colorRed, fncolortxt(_div)));

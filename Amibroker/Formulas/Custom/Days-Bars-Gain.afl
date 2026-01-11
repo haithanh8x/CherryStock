@@ -1,0 +1,35 @@
+/*
+This will show you the "Days", "Bar count", and "Gain/Loss%" within your selected range.
+Append this code at the end Of your afl.
+ 
+How to use/activate. Example:
+1.Double-click any bar from last Month (this will set the begining of a range)
+   *Vertical line and horizontal line will appear.
+   *New info will appear on your chart, left-side.
+2.Single-click OR Double-click any bar from this Month (this will set the end of a range). 
+    
+How to deactivate:
+1.Double-click anywhere on your chart (the vertical line will disappear).
+   *if your double-click created another line then double-click again.
+ 
+Regards,
+Bol Linger
+FB: Stock Exploit Pilipinas
+*/
+ 
+_SECTION_BEGIN("DayBarCounter");
+if (BeginValue(BarIndex()) != 0 ) 
+{
+Lvl = ParamField("PriceField", field = 3 ); 
+FirstBar = BeginValue(BarIndex());
+Linya  = IIf(BarIndex() >= FIRstbar, EndValue(Lvl),Null); 
+Range = BarIndex()-BeginValue(BarIndex());
+Title += EncodeColor(colorLightGrey)+StrFormat("\n\nBars.....%g ", range)
++"\nDays...."+ WriteVal( DaysSince1900() - BeginValue( DaysSince1900()),1)
++ WriteIf(DaysSince1900() - BeginValue( DaysSince1900())>30,
+     "  (" + WriteVal( (DaysSince1900() - BeginValue( DaysSince1900()))/30,1.2) 
++ WriteIf(  ((DaysSince1900() - BeginValue(DaysSince1900()))/30)>=2,"months)","month)"),"")
++"\nG/L......." +WriteVal((C - BeginValue(C))/BeginValue(C)*100,1.2 ) + "% ";
+Plot(Linya,"",colorBrightGreen,ParamStyle("LineStyle",styleLine|styleDashed|styleNoTitle|styleNoLabel|styleThick,maskAll)); 
+}
+_SECTION_END();

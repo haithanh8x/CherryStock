@@ -1,0 +1,83 @@
+
+
+
+_SECTION_BEGIN("Breakout Signal");
+function fnctxt(_tbuy, _tsell, _tbuy1, _tsell1)
+{
+ return WriteIf(_tbuy,		"BuyWarning",
+		WriteIf(_tsell,		"SellWarning",
+		WriteIf(_tbuy1,		"Bullish",
+		WriteIf(_tsell1,	"Bearish","Neutral"))));
+}
+
+function fnccolo( _txtbuy)
+{
+ return IIf(_txtbuy ==	"BuyWarning", colorGreen, 
+		IIf(_txtbuy ==	"SellWarning", colorRed,
+		IIf(_txtbuy ==	"Bullish", colorBlue,
+		IIf(_txtbuy ==	"Bearish", colorRed, colorGrey50))));
+}
+
+procedure prcOutPut(_tbuy, _tsell, _tbuy1, _tsell1, _colname) 
+{ 
+	_txtBuy = fnctxt(_tbuy, _tsell, _tbuy1, _tsell1);
+	AddTextColumn(_txtBuy, _colname, 1.2, colorWhite, fnccolo(_txtBuy));
+}
+
+_bBuy= C>Ref(HHV(High,5),-1) ;
+_bSell= C<Ref(LLV(Low,5),-1);
+
+/* exrem is one method to remove surplus strade signals. It removes excessive signals of arrow */
+_bBuy1 = ExRem(_bBuy, _bSell);
+_bSell1 = ExRem(_bSell, _bBuy);
+
+//AddTextColumn(WriteIf(_bBuy1,"BuyWarning", WriteIf(_bSell1, "SellWarning", ""), ""), "BreakoutSignal", 1.2);
+//prcOutPut(_bBuy1, _bSell1, _bBuy, _bSell,"BreakoutSignal");
+
+AddTextColumn( IndustryID(1), "Industry",1.2, colorDefault, colorDefault, 200);
+
+_C_1 = Ref(Close,-1);
+_div = IIF( Close >= _C_1, (Close-_C_1)*100/_C_1, (Close-_C_1)*100/_C_1);
+addcolumn(_div, "C_1", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+_hhv_20 = hhv(High, 20);
+_div = IIF( Close >= _hhv_20, (Close-_hhv_20)*100/_hhv_20, (Close-_hhv_20)*100/_hhv_20);
+addcolumn(_div, "HHV_20", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_20 = LLV(High, 20);
+_div = IIF( Close >= _llv_20, (Close-_llv_20)*100/_llv_20, (Close-_llv_20)*100/_llv_20);
+addcolumn(_div, "LLV_20", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+_hhv_50 = hhv(High, 50);
+_div = IIF( Close >= _hhv_50, (Close-_hhv_50)*100/_hhv_50, (Close-_hhv_50)*100/_hhv_50);
+addcolumn(_div, "HHV_50", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_50 = LLV(High, 50);
+_div = IIF( Close >= _llv_50, (Close-_llv_50)*100/_llv_50, (Close-_llv_50)*100/_llv_50);
+addcolumn(_div, "LLV_50", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+
+_hhv_100 = hhv(High, 100);
+_div = IIF( Close >= _hhv_100, (Close-_hhv_100)*100/_hhv_100, (Close-_hhv_100)*100/_hhv_100);
+addcolumn(_div, "HHV_100", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_100 = LLV(High, 100);
+_div = IIF( Close >= _llv_100, (Close-_llv_100)*100/_llv_100, (Close-_llv_100)*100/_llv_100);
+addcolumn(_div, "LLV_100", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+_hhv_200 = hhv(High, 200);
+_div = IIF( Close >= _hhv_200, (Close-_hhv_200)*100/_hhv_200, (Close-_hhv_200)*100/_hhv_200);
+addcolumn(_div, "HHV_200", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_llv_200 = LLV(High, 200);
+_div = IIF( Close >= _llv_200, (Close-_llv_200)*100/_llv_200, (Close-_llv_200)*100/_llv_200);
+addcolumn(_div, "LLV_200", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+_div = C - MA(C,20);
+addcolumn(_div, "MA_20", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_div = C - MA(C,50);
+addcolumn(_div, "MA_50", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_div = C - MA(C,100);
+addcolumn(_div, "MA_100", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+_div = C - MA(C,200);
+addcolumn(_div, "MA_200", 1.2, colorWhite, IIf(_div < 0, colorRed, IIf(_div > 0, colorGreen, colorGrey50)));
+
+Filter = MA(V,5) >= 10000 AND Close >= 2.5; //AND _bBuy1;
+SetSortColumns(3,5);
+_SECTION_END();

@@ -1,0 +1,6 @@
+AddTextColumn(FullName(),"Full Name");
+AddTextColumn(MarketID(1),"Market");
+AddTextColumn(GroupID(1),"Group");
+AddTextColumn(IndustryID(1),"Industry");
+AddTextColumn(IcbID(1),"ICB");
+Filter = 1;

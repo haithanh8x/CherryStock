@@ -1,0 +1,190 @@
+/*
+ * Downloaded From www.WiseStockTrader.com
+ * Please do not remove this comment when pasting code on another site. Thank you.
+*/
+
+/*
+You can differnt charts using the parameter windows
+*/
+
+_N( Title = StrFormat( "{{NAME}} - {{INTERVAL}} {{DATE}} {{OHLCX}} Vol %.0f {{VALUES}}", V ) );
+
+Plot( C, "Close", colorGrey40, styleThick, 0, 0, 1 );
+
+abc = Param( "Length", 14, 7, 21, 7 );
+
+//Keltner Band Code
+MidLine = MA( Close, 20 );	//Middle Line//Could use EMA
+ATRPeriod = 10; 		//ATR Period//Could use 5
+KFactor = 2;			//Multiplier
+KVal = ATR( ATRPeriod ) * KFactor;
+KTop = MidLine + KVal;	//Upper Band
+KBottom = MidLine - KVal;	//Lower Ban
+
+NRx = ParamList( "Plot I", "ADX|AMA|AMA2|BB|BBBot|BBTop|CCI|Chaikin|DEMA|MA|EMA|KC|MACD|MDI|MFI|NVI|OBV|OscP|OscV|PDI|PVI|RMI|RWI|Signal|StochD|StochK|TEMA|Trix|TSF|Ultimate|Wilders|WMA" );
+
+
+if( NRx == "ADX" )
+{
+    Plot( ADX( abc ), "ADX", colorRed,  styleLine | styleOwnScale | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "AMA" )
+{
+    Plot( AMA( C, 2 ), "AMA", colorRed, styleLine | styleOwnScale | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "AMA2" )
+{
+    Plot( AMA2( C, 2, 1 - 2 ), "AMA2", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "BB" )
+{
+    Plot( BBandTop( C, abc, 2 ), "BBTop", colorBlue,  styleLine | styleOwnScale, Null, Null, 1 );
+    Plot( BBandBot( C, abc, 2 ), "BBBot", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+
+if( NRx == "BBBot" )
+{
+    Plot( BBandBot( C, abc, 2 ), "BBBot", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "BBTop" )
+{
+
+    Plot( BBandTop( C, abc, 2 ), "BBTop", colorBlue,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "CCI" )
+{
+    Plot( CCI( abc ), "CCI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "Chaikin" )
+{
+    Plot( Chaikin( 9, 14 ), "Chaikin", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "DEMA" )
+{
+    Plot( DEMA( Close, abc ), "DEMA", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "EMA" )
+{
+    Plot( EMA( C, abc ), "EMA", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "KC" )
+{
+    Plot( MidLine + ATR( abc ) * KFactor, "KTop", colorBlue,  styleLine | styleOwnScale, Null, Null, 1 );
+    Plot( MidLine + ATR( abc ) - KFactor, "KBot", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "MA" )
+{
+    Plot( MA( C, abc ), "MA", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "MACD" )
+{
+    Plot( MACD( 12, 26 ), "MACD", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "MDI" )
+{
+    Plot( MDI( abc ), "MDI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "MFI" )
+{
+    Plot( MFI( abc ), "MFI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "NVI" )
+{
+    Plot( NVI(), "NVI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "OBV" )
+{
+    Plot( OBV(), "OBV", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "OscP" )
+{
+    Plot( OscP( 9, 18 ), "OscP", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "OscV" )
+{
+    Plot( OscV( 9, 18 ), "OscV", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+
+if( NRx == "PDI" )
+{
+    Plot( PDI( abc ), "PDI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "PVI" )
+{
+    Plot( PVI(), "PVI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "RMI" )
+{
+    Plot( RMI( 14, 5 ), "RMI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "RWI" )
+{
+    Plot( RWI( 9, 14 ), "RWI", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "Signal" )
+{
+    Plot( Signal( 12, 26, 9 ), "Signal", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "StochD" )
+{
+    Plot( StochD( 14, 3, 3 ), "StochD", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "StochK" )
+{
+    Plot( StochK( 14, 3 ), "StochK", colorBlue,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "TEMA" )
+{
+    Plot( TEMA( Close, abc ), "TEMA", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "Trix" )
+{
+    Plot( Trix( abc ), "TRIX", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "TSF" )
+{
+    Plot( TSF( C, abc ), "TSF", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "Ultimate" )
+{
+    Plot( Ultimate( 7, 14, 28 ), "Ultimate", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "Wilders" )
+{
+    Plot( Wilders( C, abc ), "Wilders", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}
+
+if( NRx == "WMA" )
+{
+    Plot( WMA( C, abc ), "WMA", colorRed,  styleLine | styleOwnScale, Null, Null, 1 );
+}

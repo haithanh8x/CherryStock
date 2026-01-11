@@ -1,0 +1,24 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+Plot( C, "Close", ParamColor("Color", colorDefault ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+_SECTION_END();
+
+_SECTION_BEGIN("Weighted Index");
+// function definitions
+function futureHHV( array, periods )
+{
+   return Ref( HHV( array, periods ), periods );
+}
+function futureLLV( array, periods )
+{
+   return Ref( LLV( array, periods ), periods );
+}
+
+// sample use
+Plot( Close, "Close", colorDefault, styleBar );
+Plot( HHV( H, 50 ), "HHV", colorGreen, styleDashed );
+Plot( futureHHV( H, 50 ), "Future HHV", colorGreen, styleThick );
+Plot( LLV( L, 50 ), "LLV", colorRed, styleDashed );
+Plot( futureLLV( L, 50 ), "Future LLV", colorRed, styleThick );
+_SECTION_END();

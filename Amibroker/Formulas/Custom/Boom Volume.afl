@@ -1,0 +1,73 @@
+// Boom Volume //
+// ATURAN MAIN
+//      Volume Naik, Harga Naik     = Buy|Positive|Bullish
+//      Volume Naik, Harga Turun    = Sell and Cutloss|Negative|Bearish
+//      Volume Turun, Harga Turun   = Buy on Weakness|Positive|Bullish
+//      Volume Turun, Harga Naik    = Sell on Strong|Negative|Bearish
+ 
+_SECTION_BEGIN("Boom Volume");
+ 
+BV = IIf( (H==L), 0, V*(C-L)/(H-L) );
+SV = IIf( (H==L), 0, V*(H-C)/(H-L) );
+BVp = 100*BV/(BV+SV) ;
+SVp = 100*SV/(BV+SV) ;
+ 
+PlotOHLC(SV,SV,0,0,"SellVolume",colorRed,styleCandle|styleNoTitle|styleNoLabel );
+PlotOHLC(SV,BV+SV,SV,BV+SV,"BuyVolume",colorgreen,styleCandle|styleNoTitle|styleNoLabel );
+ 
+Va = MA(V,30);
+ 
+BarColor = IIf( Volume > Ref( Volume, -1 ), Naik = ParamColor( "Volume Naik", colorGreen ), Turun = ParamColor( "Volume Turun", colorRed ) );
+ 
+AvgVol = MA( Volume, 20 );
+Op = 0;
+Cl = Volume;
+Hi = Volume;
+Lo = 0;
+ 
+PlotOHLC( AvgVol, AvgVol, AvgVol, AvgVol, "Avg.Vol", ParamColor( "Avg.ACCUM Color", colorViolet ), styleGradient );
+SetBarFillColor( IIf( Volume > Ref( Volume, -1), Naik, Turun ) );
+PlotOHLC( Op, Hi, Lo, Cl, _DEFAULT_NAME(), BarColor, styleCandle );
+ 
+PlotOHLC( Va, Va, 0, 0, "", ColorBlend( colorWhite , GetChartBkColor(), 0.4 ), styleNoLabel | styleCloud | styleNoRescale, Null, Null, Null, -1 );
+Plot(Va,"Average Volume",colorRose,styleNoLine|styleNoLabel );
+ 
+VI = V/Va;
+ 
+Title = EncodeColor(colorBrightGreen)+"Buy Volume = "+EncodeColor(colorBlack)+WriteVal(BV,5.0)+"   "+EncodeColor(colorRed)+"Sell Volume = "+EncodeColor(colorBlack)+WriteVal(SV,5.0)+"   "+EncodeColor(colorBlue)+"Net Volume = "+EncodeColor(colorBlack)+WriteVal(BV-SV,5.0)+"   "+EncodeColor(colorGreen)+"Volume = "+EncodeColor(colorBlack)+WriteVal(V,5.0)+"   "+EncodeColor(colorViolet)+"Average Volume = "+EncodeColor(colorBlack)+WriteVal(AvgVol)+"   "+EncodeColor(colorOrange)+"Volume Index = "+EncodeColor(colorBlack)+WriteVal(VI,1.2)+"   "+
+EncodeColor(colorSeaGreen)+"Buy Volume = "+EncodeColor(colorBlack)+WriteVal(100*BV/(BV+SV),2.0)+"%"+"   "+EncodeColor(colorDarkRed)+"Sell Volume = "+EncodeColor(colorBlack)+WriteVal(100*SV/(BV+SV),2.0)+"%";
+ 
+_SECTION_END();
+ 
+//Boom Volume Explore//
+ 
+Positive = BV>SV ;
+Negative = BV<SV ;
+ 
+Good    = (Positive AND Volume > AvgVol AND MACD()>Signal()) ;
+Warning = (Negative AND Volume > AvgVol AND MACD()<Signal());
+ 
+Buy     = Ref(Good, -2) ;
+Sell    = Ref(Warning, 2) ;
+ 
+Filter = Good OR Warning ;
+ 
+AddTextColumn (WriteIf(Good, "Good", "Warning"), "Alert") ;
+Ranking = PercentRank (Volume, 20) ;
+WarnaText = colorBlack ;
+WarnaBackGround = ColorHSB(Ranking * 64/100, 255, 255);
+AddColumn (Ranking, "Ranking Volume", 1.2, WarnaText, WarnaBackGround, -1, Ranking) ;
+ 
+Filter = 1 ;
+ 
+AddColumn (Ref(C,-1), "Close H-1", 1.0) ;
+AddColumn (C, "Close", 1.0) ;
+AddColumn (BVp, "Buy Volume %", 1.0) ;
+AddColumn (SVp, "Sell Volume %", 1.0) ;
+AddColumn (V, "Today Volume", 1.0) ;
+AddColumn (AvgVol, "Average Volume", 1.0) ;
+AddColumn (Ref(V,-1), "Volume H-1", 1.0) ;
+AddColumn (Ref(V,-2), "Volume H-2", 1.0) ;
+AddColumn (Ref(V,-3), "Volume H-3", 1.0) ;
+ 
+SetSortColumns (2, 3, -4) ;

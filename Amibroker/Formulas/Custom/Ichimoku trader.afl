@@ -1,0 +1,593 @@
+_SECTION_BEGIN("Ichimoku Trading System - Written by Duy Nguyen ");
+  
+SetChartOptions(0,chartShowArrows|chartShowDates);
+ 
+ 
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle |
+ParamStyle("Style") | GetPriceStyle() ); 
+ 
+t1= 9;t2=26;t3=52;
+ 
+SL = ( HHV( H, 17 ) + LLV( L, 17) )/2;
+TL = ( HHV( H, 9 ) + LLV( L, 9 ) )/2;
+KS = ( HHV( H, 65 ) + LLV( L, 65) )/2;
+ 
+ 
+Lagging = Ref( C, -26 );
+ 
+Span1 = (( SL + TL )/2);
+Span2 = (HHV( H, 26) + LLV(L, 26))/2;
+  
+aboveKumo=IIf((C>=Ref(Span1,-t2) AND C>=Ref(Span2,-t2)),1,0);
+withinKumo=IIf((C>=Ref(Span2,-t2) AND C<=Ref(Span1,-t2)),1,0) OR IIf((C>=Ref(Span1,-t2) AND C<=Ref(Span2,-t2)),1,0);
+belowKumo=IIf((C<=Ref(Span1,-t2) AND C<=Ref(Span2,-t2)),1,0);
+ 
+//Above Sen Cloud
+aboveSenCloud = IIf ( (C > Ref(TL,-t2) AND  C > Ref(SL,-t2)),1,0);
+withinSenCloud = IIf ((C >=Ref(TL,-t2) AND C<=Ref(SL,-t2)),1,0) OR IIf((C>=Ref(SL,-t2) AND C<=Ref(TL,-t2)),1,0);
+belowSenCloud = IIf ((C <=Ref(TL,-t2) AND C<=Ref(SL,-t2)),1,0)  ;
+ 
+ 
+//       price26 above Lagging, lag26 above C, Lag26 is rising
+dlUp =   (Ref(C,-(t2+1)) > C ) AND  Ref(C,-t2) < C AND C > Ref(C,-1);
+dlDown = (Ref(C,-(t2+1)) < C ) AND  Ref(C,-t2) > C AND C < Ref(C,-1);
+ 
+// Tenkan Sen (RED) / Kijun Sen (BLUE)Cross
+// The Tenkan Sen / Kijun Sen Cross signal occurs when the Tenkan Sen (Turning line - RED) crosses the Kijun Sen (Standard line - BLUE).
+//A bullish signal occurs when the (Tenkan Sen) crosses from below to above the (Kijun Sen)
+BuyStrongTKCross = Cross(TL,SL) AND aboveKumo AND C > TL;
+ 
+//                              Kijun Sen Cross
+//The Kijun Sen Cross signal occurs when the PRICE crosses the Kijun Sen (Standard line - BLUE)
+//A bullish signal occurs when the price crosses from below to above the Kijun Sen (Blue)
+BuyStrongPriceCross = Cross(C,SL)AND (C > TL) AND (TL > SL) AND aboveKumo;
+ 
+// A bearish signal occurs when the PRICE crosses from above to below the Kijun Sen
+SellWeakPriceCross = Cross(SL,C) AND aboveKumo;
+SellNeutralPriceCross = Cross(SL,C) AND withinKumo;
+SellStrongPriceCross = Cross(SL,C) AND belowKumo;
+ 
+//                          Kumo Breakout
+//The Kumo Breakout signal occurs when the price leaves or crosses the Kumo (Cloud).
+BuyKumoBreakout = ((aboveKumo AND Ref(withinKumo,-1)) OR (aboveKumo AND Ref(belowKumo ,-1))) AND C > SL;
+SellKumoBreakout = belowKumo AND Ref(withinKumo,-1)   OR (belowKumo AND Ref(aboveKumo ,-1));
+ 
+BuySenBreakout = ((aboveSenCloud AND Ref(withinSenCloud ,-1)) OR (aboveSenCloud AND Ref(belowSenCloud ,-1)));
+ 
+ 
+ 
+//                          Senkou Span Cross
+//The Senkou Span Cross Signal occurs when the Senkou Span A (1st leading line) crosses the Senkou Span B (2nd leading line).
+//As the Senkou Spans are projected forward, the Cross that triggers this Signal will be 26 days ahead of the price AND, hence, 
+//the actual Date that the Signal occurs. The strength of the Signal is determined by the relationship of the price on the 
+//Date of the Signal (NOT the trigger) to the Kumo (Cloud).
+//
+//A bullish signal occurs when the Senkou Span A crosses from below to above the Senkou Span B
+BuyStongSenkouSpanCross = aboveKumo AND Cross(span1,span2);
+ 
+//                          Chikou Span Cross
+//The Chikou Span Cross Signal occurs when the Chikou Span (Lagging line) rises above OR falls below the price.
+//Note that the Chikou Span must be rising when it crosses to above the price for a bull Signal AND falling
+//when it crosses to below for a bear Signal; just crossing the price alone is NOT sufficient to trigger the Signal.
+//As the Chikou Span is the closing price shifted into the past, the Cross that triggers this Signal will be 26 
+//days behind the price AND, hence, the actual Date that the Signal occurs.  The strength of the Signal is 
+//determined by the relationship of the price on the Date of the Signal (NOT the trigger) to the Kumo (Cloud).
+ 
+//A bullish signal occurs when the Chikou Span rises from below to above the price
+BuyStrongChikouSpanCross = aboveKumo AND dlUp AND C > TL;
+ 
+ 
+ 
+TinHieu1 = BuyKumoBreakout;
+TinHieu2 = BuyStrongTKCross ;
+TinHieu3 = BuyStrongPriceCross ;
+TinHieu4 = BuyStongSenkouSpanCross ;
+TinHieu5 = BuyStrongChikouSpanCross  ;
+  
+VuotMay = BuySenBreakout AND C>TL AND C>sl ;
+VuotMaySenKumo = BuySenBreakout AND BuyKumoBreakout ; 
+HopBich = (Ref(TL,-1) == Ref(SL,-1)) AND ( (TL==SL) AND (SL>=KS) )  AND (TL > Ref(TL,-1)) AND (C>TL)   ;
+ 
+ 
+dist = 2.5*ATR(10); 
+dist1 = 1.5*ATR(10); 
+ 
+for( i = 0; i < BarCount; i++ ) 
+{ 
+if ( VuotMay[i] ) 
+    PlotText( "VM", i , L[ i ]-dist[i], colorBlack, colorBrightGreen ) ;
+if (VuotMaySenKumo[i] AND VuotMay[i]  AND (span1[i] > span2[i]) AND (TL[i]>SL[i]))
+    PlotText( "Bom", i , L[ i ] - dist1[i], colorRed, colorYellow ); 
+} 
+ 
+ 
+ 
+ 
+//PlotShapes( IIf( TinHieu1 , shapeUpArrow + shapeDigit1 , shapeNone ), colorBlue, 0, L, Offset =20 );
+//PlotShapes( IIf( TinHieu1 , shapeUpArrow , shapeNone ), colorBlue, 0, L, Offset =-35 );
+ 
+PlotShapes( IIf( VuotMay AND (Span1>Span2) , shapeUpArrow , shapeNone ), colorGreen, 0, L, Offset =-25 );
+PlotShapes( IIf( HopBich , shapeUpArrow + shapeStar, shapeNone ), colorBlue, 0, L, Offset = 60 );
+ 
+PlotShapes( IIf( VuotMaySenKumo AND VuotMay AND Span1 > Span2 , shapeUpArrow + shapeCircle, shapeNone ), colorBrightGreen, 0, L, Offset =40 );
+ 
+ 
+ 
+PlotShapes( IIf( TinHieu2 , shapeUpArrow + shapeDigit2 , shapeNone ), colorBlue, 0, L, Offset =20 );
+PlotShapes( IIf( TinHieu2 , shapeUpArrow , shapeNone ), colorBlue, 0, L, Offset =-35 );
+ 
+//PlotShapes( IIf( TinHieu3 , shapeUpArrow + shapeDigit3 , shapeNone ), colorBlue, 0, L, Offset =5 );
+//PlotShapes( IIf( TinHieu3 , shapeUpArrow , shapeNone ), colorBlue, 0, L, Offset =-35 );
+ 
+//PlotShapes( IIf( TinHieu4 , shapeUpArrow + shapeDigit4 , shapeNone ), colorBlue, 0, L, Offset =50 );
+//PlotShapes( IIf( TinHieu2 , shapeUpArrow , shapeNone ), colorBlue, 0, L, Offset =-35 );
+ 
+PlotShapes( IIf( TinHieu5 , shapeUpArrow + shapeDigit5 , shapeNone ), colorBlue, 0, L, Offset =20 );
+PlotShapes( IIf( TinHieu5 , shapeUpArrow , shapeNone ), colorBlue, 0, L, Offset =-35 );
+ 
+// CandleStick Pattern Recognition (first part) 
+ 
+// The bullish kicker candlestick pattern is a two-day reversal pattern that is often used to alert investors of impending market strength. - See more at: http://backtestwizard.com/amibroker-afl-bullish-kicker-candlestick-pattern/#sthash.WyxEewJL.dpuf
+BullishKicker = Ref(O,-1) > Ref(C,-1) AND O >= Ref(H,-1) AND C > O AND L > Ref(H,-1) ;
+ 
+VolAvg = MA( V, 14 );
+VolumeIdx = V / VolAvg;
+AvgRange = Sum( abs(O-C),15 )/15;
+ 
+/* Candle Codes */
+White = IIf((C>O) AND ((C-O)>=0.8*(H-L)),1,0) AND (C-O)>AvgRange;
+Black = IIf((C<O) AND ((O-C)>=0.8*(H-L)),1,0) AND (O-C)>AvgRange;
+Doji  = IIf(abs(O-C)<=0.1*(H-L),1,0);
+ 
+/* Dark Cloud Cover [Bear] */
+DCC = IIf(Ref(White, -1) AND Black AND C<=Ref(((H+L)/2),-1) AND O>Ref(C,-1), 1,0);
+ 
+/* Piercing Line [Bull] */
+PL = IIf(Ref(Black, -1) AND White AND C>=Ref(((H+L)/2),-1) AND O<Ref(C,-1), 1,0);
+ 
+/* Evening Doji Star [Bear] */
+EDS = IIf(Ref(White, -2) AND Ref(Doji, -1) AND Black AND C<=Ref(((H+L)/2),-2), 1,0);
+ 
+/* Morning Doji Star [Bull] */
+MDS = IIf(Ref(Black, -2) AND Ref(Doji, -1) AND White AND C>=Ref(((H+L)/2),-2), 1,0);
+ 
+/* Hammer [Bull] */
+HAM = IIf( (H-L > 1.5*AvgRange) AND (C > (H+L)/2)  AND (O > C) AND (VolumeIdx > 2), 1, 0);
+ 
+/* Bearish Engulfing */
+BRE = IIf(Black AND Ref(White, -1) AND (C < Ref(O, -1))  AND (O > Ref(C, -1)),1,0);
+ 
+/* Bullish Engulfing */
+BLE = IIf(White AND Ref(Black, -1) AND (C > Ref(O,-1))  AND (O < Ref(C,-1)),1,0);
+ 
+//Showing Candle Stick Pattern Signal on chart
+ 
+PlotShapes( IIf( BullishKicker , shapeUpTriangle, shapeNone ), colorBlue, 0, L, Offset = -40 );
+PlotShapes( IIf( DCC, shapeDownTriangle, shapeNone ), colorRed, 0, L, Offset = -60 );
+ 
+//r=CdDoji( threshold = 0.05 );
+//s=CdHammer( rangefactor= 1.1 );
+//t=CdBearishEngulfing( bodyfactor = 0.4, rangefactor = 0.5);
+//PlotShapes(r*shapeSmallCircle,colorRed,Layer=0,yposition=H,Offset=12); 
+//PlotShapes(s*shapeCircle,colorYellow,Layer=0,yposition=H,Offset=12); 
+//PlotShapes(t*shapeHollowSmallCircle,colorLime,Layer=0,yposition=H,Offset=12); 
+//u=CdBullishEngulfing( bodyfactor = 0.4, rangefactor = 0.5);
+//PlotShapes(u*shapeHollowCircle,colorBlue,Layer=0,yposition=H,Offset=15); 
+ 
+//for(i=0;i<BarCount-1;i++) 
+//{
+//  if(r[i]==True)PlotText("Doji", i, H[i], colorRed, bkcolor = colorDefault); 
+//  if(s[i]==True)PlotText("Hammer", i, H[i], colorYellow, bkcolor = colorDefault); 
+//  if(t[i]==True)PlotText("BearishEngulf", i, H[i], colorLime, bkcolor = colorDefault); 
+//  if(u[i]==True)PlotText("BullishEngulf", i, H[i], colorBlue, bkcolor = colorDefault); 
+//}
+ 
+ 
+// Candlestick Pattern Exploration
+ 
+ 
+WhiteBody = C > O;
+BigWhite = (Close - Open)/Open > 0.015 AND (Close - Open) * 2 > High - Low;
+BlackBody = C < O;
+BigBlack = (Open - Close)/Open > 0.015 AND (Open - Close) * 2 > High - Low;
+Big = abs((Close - Open)/Open) > 0.014;
+LongUpperShadow = H - Max(O,C) > (H - L)*0.67;
+LongLowerShadow = Min(O,C) - L > (H - L)*0.67;
+rng = abs((C-O)/O);
+lowerShadow = Min(O,C) - L;
+uppershadow = H - Max(O,C);
+body = abs(O-C);
+rngx = abs(H - L);
+rngy = H-L;
+shaven = lowerShadow < rngy*0.1;
+ShavenBottom = L == Min(O,C);
+ShavenHead = H == Max(O,C);
+prevSize = abs(Ref(O,-1)-Ref(C,-1));
+currentSize = abs(O-C);
+fwh = Ref(H,-4);
+fwl = Ref(L,-4); 
+isPrevLargeWhite = Ref(big,-1) AND Ref(whitebody,-1);
+SmallRealBody = rng < 0.003 AND rng >0;   
+Diff = abs((prevSize - currentSize) / currentSize);
+DownTrend = (H < Ref(H,-1) AND L < Ref(L,-1));
+UpTrend = (H > Ref(H,-1) AND L > Ref(L,-1));
+isPrevUpTrend = Ref(uptrend,-1);
+RealBodyGapUp = Min(O,C) > Max(Ref(O,-1),Ref(C,-1));
+RealBodyGapDown = Max(O,C) < Min(Ref(O,-1),Ref(C,-1));
+FallingWindow = Ref(downtrend,-1) AND GapDown();
+RisingWindow = Ref(uptrend,-1) AND GapUp();
+isfalling = bigblack AND fallingwindow;
+isrising = bigwhite AND risingwindow;
+rwh = Ref(H,-4);
+rwl = Ref(L,-4);
+isFallingBlack = Ref(fallingwindow,-1) AND Ref(blackbody,-1);
+horw = Ref(H,-2); 
+windowOpen = C < horw;
+opensInside = O < Ref(O,-1) AND O > Ref(C,-1);
+similarSize = diff <= 0.25;
+GapUpFromWhite = realBodyGapUp AND isPrevLargeWhite AND isPrevUptrend;
+isPrevLargeBlack = Ref(big,-1) AND Ref(blackbody,-1);
+isPrevDownTrend = Ref(downtrend,-1);
+GapDownFromBlack = realBodyGapDown AND isPrevLargeBlack AND isPrevDowntrend;
+isRisingWhite = Ref(risingwindow,-1) AND Ref(whitebody,-1);
+lorw = Ref(L,-2);
+windowOpenx = C > lorw;
+Doji = C == O AND V > 0;
+LongLeggedDoji = doji AND (H - L)/L > 0.01;
+StarUp = smallRealBody AND gapUpFromWhite;
+DojiStarUp = doji AND gapUpFromWhite;
+DojiStarDown = doji AND gapDownFromBlack;
+StarDown = smallRealBody AND gapDownFromBlack;
+isPrevDownTrendx = Ref(downtrend,-3);
+firstDoji = Ref(doji,-2); 
+secDojiLower = Ref(doji,-1) AND Ref(realBodyGapDown,-1);
+isPrevUpTrendx = Ref(uptrend,-3);
+secDojiHigher = Ref(doji,-1) AND Ref(realBodyGapUp,-1);
+BeltHold = shavenbottom AND shavenhead AND big;
+Engulfing = Max(O,C) > Ref(Max(O,C),-1) AND Min(O,C) < Ref(Min(O,C),-1);
+UmbrellaLine = uppershadow < rngx*0.1 AND lowershadow > body*2; 
+//====================================================================================================
+ 
+//----------------------------------------
+// Bearish
+//----------------------------------------
+ 
+// Kicker
+KBR = Ref(O,-1) < Ref(C,-1) AND O <= Ref(O,-1) AND C <= O;
+ 
+//Evening Doji Star
+EveningDojiStar = Ref(dojiStarUp,-1) AND blackbody AND big AND C < Ref((O + C)/2,-2);
+/*
+A large white candlestick followed by a doji that gaps up from the
+previous candles real body. This is followed by a third candlestick that is black and has a
+close lower than the half way point of the first candlesticks real body. Must be preceeded by an uptrend.
+*/
+ 
+// Evening Star
+EveningStar = Ref(starUp,-1) AND blackbody AND big AND C < Ref((O + C)/2,-2);
+/*
+A large white candlestick followed by a small real body of either colour that gaps up from the
+previous candles real body. This is followed by a third candlestick that is black and has a
+close lower than the half way point of the first candlesticks real body. Must be preceeded by an uptrend.
+*/
+ 
+// Grave Stone Doji
+GraveStoneDoji = longleggeddoji AND L == C AND Ref(uptrend,-1);
+/*
+A doji with no lower shadow and an extremenly long upper shadow. Must be preceeded by an uptrend.
+*/
+ 
+//Bear 3 Formation
+Bear3Formation = bigblack AND C < Ref(C,-4) AND
+Ref(H,-1) <= fwh AND Ref(L,-1) >= fwl AND
+Ref(H,-2) <= fwh AND Ref(L,-2) >= fwl AND
+Ref(H,-3) <= fwh AND Ref(L,-3) >= fwl AND
+Ref(isfalling, -4);
+/*A strong black candle in a falling window, followed by three
+ candles that fall within the high/low range of the strong black candle, followed
+ by another strong black candle that closes below the close of the first black candle. 
+ This is a bearish confirmation.*/
+ 
+//Bearish Abandoned Baby
+BearishAbandonedBaby = EveningDojiStar AND Ref(GapUp(),-1) AND GapDown();
+/*
+An evening doji star where there is a gap between the lower shadow of the doji and
+the upper shadows of the prior and next candle.
+*/
+ 
+//Bearish Belt Hold
+BearishBeltHold = belthold AND blackbody AND Ref(uptrend,-1);
+/*
+A large black candle with a shaven head and bottom preceeded by an uptrend.
+*/
+ 
+//Bearish Counter Attack
+BearishCounterAttack = Ref(big AND whitebody,-1) AND O > Ref(H,-1) AND C == Ref(C,-1) AND big AND blackbody AND Ref(uptrend,-1);
+/*
+A large white candle followed by a black candle which opens sharply higher but closes
+at the prior black candles close. Must be preceeded by an uptrend.
+*/
+ 
+// Bearish Harami Cross
+BearishHaramiCross = doji AND Ref(C,-1) > O AND Ref(O,-1) < O AND Ref(big AND whitebody,-1) AND Ref(uptrend,-1);
+/*
+A doji preceded by and contained within the real body of a big white 
+candlestick in an uptrend
+*/
+ 
+// Bearish Harami
+BearishHarami = Ref(big AND whitebody,-1) AND smallRealBody AND Min(O,C) > Ref(O,-1) AND Max(O,C) < Ref(C,-1) AND Ref(uptrend,-1);
+/*
+A small candlestick preceded by and whose real body is contained 
+within, the real body of a big white candlestick in an uptrend
+*/
+ 
+// Bearish Separating Line
+BearishSeparatingLine = Ref(whitebody AND big,-1) AND blackbody AND big AND O == Ref(O,-1) AND Ref(downtrend,-1); 
+/*
+A white candlestick followed by a black candlestick with the same opening price. Continues
+ the previous downtrend.
+*/
+ 
+// Dark Cloud Cover
+DarkCloudCover = Ref(bigwhite,-1) AND blackbody AND O > Ref(H,-1) AND C <= Ref((O+C)/2,-1) AND C > Ref(O,-1) AND Ref(uptrend,-1);
+/*
+A strong white candle in an uptrend followed by a black candle that opens above the high of the 
+white candle and closes at least 50 percent into the white candles real body. Note that if the black candle completely
+engulfs the white candles real body then this is not Dark Cloud Cover but a Bearish Engulfing Pattern.
+*/
+ 
+ 
+// Engulfing Bear
+EngulfingBear = Ref(whitebody,-1) AND blackbody AND engulfing AND Ref(uptrend,-1);
+/*
+This bar is black and its real body engulfs the previous bars white real body. Must be preceeded by
+an uptrend.
+*/
+ 
+//Hamging Man
+HangingMan = umbrellaline AND uptrend AND Ref(uptrend,-1);
+/*
+The same as a hammer except must be preceeded by an uptrend.
+*/
+ 
+//Shooting Star
+ShootingStar = smallRealBody AND shaven AND realBodyGapUp AND longuppershadow AND Ref(uptrend,-1);
+/*
+A small body that closes near the bottom of its range and 
+has a long upper shadow. There must be a real body gap up from the previous sessions candle. This
+pattern occurs only after an uptrend.
+*/
+ 
+//Three Black Crows
+ThreeBlackCrows = (big AND blackbody) AND Ref(big AND blackbody, -1) AND Ref(big AND blackbody, -2) AND O < Ref(O,-1) AND Ref(O,-1) < Ref(O,-2) AND Ref(uptrend,-4);
+/*
+The last three candlesticks are large and black. Each opens within or lower than the 
+ previous candles real body.Must be preceeded by an uptrend.
+*/
+ 
+// Tri-Star Bottom
+TriStarBottom = firstDoji AND secDojiLower AND doji AND realBodyGapUp AND isPrevDownTrendx;
+/*
+A doji followed by a lower doji which is followed by another doji that is higher than the
+second doji. Must be preceeded by a downtrend.
+*/
+ 
+//Tweezer Tops
+TweezerTops = H == Ref(H,-1) AND Ref(big AND whitebody,-1) AND Ref(uptrend,-2);
+/* A large candle followed by a candle with the same high. Must be preceeded by an uptrend. */
+ 
+// Upside Gap Two Crows
+UpsideGapTwoCrows = Ref(big AND whitebody,-2) AND Ref(realBodyGapUp,-1) AND Ref(smallRealBody,-1) AND Ref(blackbody,-1) AND engulfing AND blackbody AND C > Ref((O+C)/2,-2) AND Ref(uptrend,-2);
+/* A strong white candle followed by a small black candle which gaps above the previous 
+candles real body, followed by a black candle which engulfs the previous black candle. Preceeded by an uptrend. */
+ 
+//----------------------------------------
+// Bullish
+//----------------------------------------
+ 
+// Kicker
+KBL = Ref(O,-1) > Ref(C,-1) AND O >= Ref(O,-1) AND C > O; 
+ 
+// Morning Star
+MorningStar = Ref(starDown,-1) AND whitebody AND big AND C > Ref((O + C)/2,-2);
+/*
+A large black candlestick followed by a small real body of either colour,
+ that gaps below the previous black candles real body, with a third white candlestick, that has a close 
+ higher than the half way point of the first black candlestick. Must be preceeded by a downtrend.
+*/
+ 
+// Morning Doji Star
+MorningDojiStar = Ref(dojiStarDown,-1) AND whitebody AND big AND C > Ref((O + C)/2,-2);
+/*
+A large black candlestick followed by a doji that gaps below its real body, with a third
+ white candlestick, that has a close at least half of the way up the black candlestick. Must be preceeded by a
+ downtrend.
+*/
+ 
+// Bull 3 Formation
+Bull3Formation = bigwhite AND C > Ref(C,-4) AND
+Ref(H,-1) <= rwh AND Ref(L,-1) >= rwl AND
+Ref(H,-2) <= rwh AND Ref(L,-2) >= rwl AND
+Ref(H,-3) <= rwh AND Ref(L,-3) >= rwl AND
+Ref(isrising, -4);
+/*
+A strong white candle in a rising window, followed by three 
+ candles that fall within the high/low range of the strong white candle, followed
+ by another strong white candle that closes above the close of the first white candle. 
+ This is confirmation of the Bullish trend."
+*/
+ 
+// Bullish Abandoned Baby
+BullishAbandonedBaby = morningdojistar AND Ref(GapDown(),-1) AND GapUp();
+/*
+A morning doji star where there is a gap between the lower shadow of the doji and
+the prior and next candle.
+*/
+// Bullish Belt Hold
+BullishBeltHold = belthold AND whitebody AND Ref(downtrend,-1);
+/*
+A large white candle with no upper or lower shadow preceeded by a downtrend.
+*/
+ 
+// Bullish Counter Attack
+BullishCounterAttack = Ref(big AND blackbody,-1) AND O < Ref(H,-1) AND C == Ref(C,-1) AND big AND whitebody AND Ref(downtrend,-1);
+/*
+A large black candle followed by a white candle which opens sharply lower but closes at the 
+prior white candles close. Must be preceeded by a downtrend
+*/
+ 
+// Bullish Harami Cross
+BullishHaramiCross = doji AND Ref(O,-1) > O AND Ref(C,-1) < O AND Ref(big AND blackbody,-1) AND Ref(downtrend,-1);
+/*
+A doji preceded by and contained within the real body of a big 
+black candlestick in a downtrend.
+*/
+ 
+// Bullish Harami
+BullishHarami = Ref(big AND blackbody,-1) AND smallRealBody AND Min(O,C) > Ref(C,-1) AND Max(O,C) < Ref(O,-1) AND Ref(downtrend,-1);
+/*
+A small candlestick, preceded by, and whose body is contained within a big black 
+candlestick in a downtrend
+*/
+ 
+// Bullish Separating Line
+BullishSeparatingLine = Ref(blackbody AND big,-1) AND whitebody AND big AND O == Ref(O,-1) AND Ref(uptrend,-1);
+/*
+A black candlestick followed by a white candlestick with the same opening price. Continues
+ the previous uptrend.
+*/
+ 
+//Dragonfly Doji
+DragonflyDoji = longleggeddoji AND H==C AND Ref(downtrend,-1);
+/*A doji with no upper shadow AND a long lower shadow preceeded by a downtrend.*/
+ 
+// Engulfing Bull
+EngulfingBull = Ref(blackbody,-1) AND whitebody AND engulfing AND Ref(downtrend,-1);
+/*
+This bar is white and its real body engulfs the previous bars black real body. Must be
+preceeded by a downtrend.
+*/
+ 
+// Hammer
+Hammer = umbrellaline AND Ref(downtrend,-1);
+/*
+The upper shadow is less than ten percent of the range
+ and the lower shadow is more than two times the size of the body. Must be preceeded by a downtrend.
+*/
+ 
+//Inverted Hammer
+InvertedHammer = smallRealBody AND shaven AND realBodyGapDown AND longuppershadow AND Ref(downtrend,-1);
+/*
+An upside down Hammer that appears after a downtrend
+*/
+ 
+//Piercing Line
+PiercingLine = Ref(bigblack,-1) AND whitebody AND O < Ref(L,-1) AND C >= Ref((O+C)/2,-1) AND C < Ref(O,-1) AND Ref(downtrend,-1);
+/*
+A stong black candle followed by a white candle that opens below the low of
+the prior black candle but closes more than halfway into the black candles real body. Preceeded by a downtrend. Note that if the
+white candle engulfs the prior black candles real body then this is a Bullish Engulfing Pattern not a Piercing Pattern
+*/
+ 
+// SeperatingLines
+SeperatingLines = O == Ref(O,-1) AND (blackbody AND Ref(whitebody,-1) OR whitebody AND Ref(blackbody,-1));
+/*
+a black candlestick is followed by a white candlestick, or a white with a black,and they have the same opening prices.
+*/
+ 
+//Three White Soldiers
+ThreeWhiteSoldiers = (whitebody AND big) AND Ref(whitebody AND big,-1) AND Ref(whitebody AND big,-2) AND O > Ref(O,-1) AND Ref(O,-1) > Ref(O,-2);
+/*
+The last three candlesticks are large and white. Each opens within or higher than the 
+ previous candles real body.
+*/
+ 
+// Tri-Star Top
+TriStarTop = firstDoji AND secDojiHigher AND doji AND realBodyGapDown AND isPrevUpTrendx;
+/*
+A doji followed by a higher doji which is followed by another doji that is lower than the
+second doji. Must be preceeded by an uptrend.
+*/
+ 
+// Tweezer Bottoms
+TweezerBottoms = L == Ref(L,-1) AND Ref(big AND blackbody,-1) AND Ref(downtrend,-2);
+/* A large candle followed by a candle with the same Low. Must be preceeded by a downtrend. */
+ 
+ 
+//----------------------------------------
+// Continuation
+//----------------------------------------
+ 
+// Downward Gapping Tasuki
+DownwardGappingTasuki = isFallingBlack AND whitebody AND opensInside AND C > Ref(O,-1) AND windowOpen AND similarSize;
+/* A black candle that gaps down followed by a similarly sized white candle that opens Inside the black candles real body AND closes above it. */
+ 
+//Upward Gapping Tasuki
+UpwardGappingTasuki = isRisingWhite AND blackbody AND opensInside AND C < Ref(O,-1) AND  windowOpenx AND similarSize;
+/* A white candle that gaps up followed by a similarly sized black candle that opens Inside the white candles real body AND closes below it; */
+ 
+//Inverted Black Hammer
+InvertedBlackHammer = blackbody AND InvertedHammer;
+ 
+revert1 = InvertedHammer ;
+PlotShapes(revert1*shapeHollowCircle,colorRed,Layer=0,yposition=H,Offset=15); 
+ 
+ 
+ 
+//*********************************************************************************
+//  PLOTS
+//*********************************************************************************
+ 
+ 
+Plot(TL ,"Tenken ",colorRed,styleThick); 
+Plot(SL,"Kijun",colorBlue,styleThick); // standard, base, or kijun-sen line Plot(TL,"TL",colorRed,styleThick); // turning, conversion, or tenkan-sen line
+Plot(KS,"Dao Gam",colorOrange,styleThick);
+Plot(C,"",colorDarkGreen,styleThick|styleThick,Null,Null,-t2); // delayed,lagging, OR chikou span
+ 
+Plot(Span1,"",colorBrown,1,0,0,t2); // senkou span A, kumo, or white clouds
+Plot(Span2,"",colorLightOrange,1,0,0,t2); // senkou span B, kumo, or white clouds
+PlotOHLC(Span1,Span2,Span1,Span2,"",IIf(Span1>Span2,colorLime,colorLightOrange),styleCloud|4096,0,0,t2);
+// span out 26 days
+ 
+//Draw Kumo Sen
+PlotOHLC( TL, SL, TL, SL, "", IIf(TL>SL,colorSkyblue, colorLightYellow),styleCloud );
+ 
+// Ve Ribbon
+XacDinhXuHuong = (TL >= SL) AND (C>=KS);
+Color = IIf(XacDinhXuHuong, colorGreen, colorRed ); 
+Plot( 1, "", Color, styleArea | styleOwnScale | styleNoLabel, -0.1, 50 ); 
+ 
+ 
+ 
+Filter = (VuotMay OR HopBich OR VuotMaySenKumo) AND V > 150000;
+ 
+AddColumn(Close, "Close");
+AddColumn(TL, "Tenken");
+AddColumn(SL, "Kijun");
+AddColumn(KS, "KS");
+AddColumn(V, "Volume");
+ 
+ 
+ 
+//In Header
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g,Close %g (%.1f%%) Vol =" +WriteVal( V, 1.0 ) +"\n{{VALUES}}", O, H, L, C, 
+SelectedValue( ROC( C, 1 )))  + EncodeColor(colorGreen) + ", Span A = " + span1 + ", Span B = " + span2 + ", % Change Tenken/Kijun =" + ROC(TL,1) + "\n" + "-------------------------------------------------------------------" + EncodeColor(colorBlue)+
+    WriteIf(TinHieu1, "\n" + "MUA #1" + EncodeColor(colorRed) + " - Gia vuot Kumo Span tai " +C+ "", "") + EncodeColor(colorBlue) +
+    WriteIf(TinHieu2, "\n" + "MUA #2" + EncodeColor(colorRed) + " - Tenken cat len Kijun tai " +C+ "", "") + EncodeColor(colorBlue) +
+    WriteIf(TinHieu3, "\n" + "MUA #3" + EncodeColor(colorRed) + " - Gia cat qua Tenken va Kijun tai " +C+ "", "") + EncodeColor(colorBlue) +
+    WriteIf(TinHieu4, "\n" + "MUA #4" + EncodeColor(colorRed) + " - Senkou span crosses at " +C+ "", "") + EncodeColor(colorBlue) +
+    WriteIf(VuotMay, "\n" + "TIN HIEU MUA" + EncodeColor(colorRed) + " - Vuot May Sen!", "") + EncodeColor(colorBlue) +
+    WriteIf(HopBich, "\n" + "CHU Y" + EncodeColor(colorRed) + " - Xuat hien hop bich tai " +TL+ "", "") + EncodeColor(colorBlue) +
+ 
+    WriteIf(TinHieu5, "\n" + "Buying signal #5" + EncodeColor(colorRed) + " - Price crosses chikou span " +C+ "", "") + EncodeColor(colorBlue) + "\n"  
+     
+);
+ 
+ 
+ 
+//TinHieu1 = BuyKumoBreakout;
+//TinHieu2 = BuyStrongTKCross ;
+//TinHieu3 = BuyStrongPriceCross ;
+//TinHieu4 = BuyStongSenkouSpanCross ;
+//TinHieu5 = BuyStrongChikouSpanCross  ;

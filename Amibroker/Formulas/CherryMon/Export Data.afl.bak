@@ -1,0 +1,34 @@
+#include <T3_Include.afl>;
+Filter = 1 ;
+_rsi = RSI(14);
+_vol_running = 20000;
+
+TimeFrameSet( inWeekly );
+_weekly_rsi = RSI(14);
+_weekly_rsi_LinReg = LinRegSlope(_weekly_rsi, 5);
+_weekly_ma_vol_20 = MA(Volume, 20);
+TimeFrameRestore();
+
+TimeFrameSet( inMonthly );
+_monthly_rsi = RSI(14);
+_monthly_rsi_LinReg = LinRegSlope(_monthly_rsi, 5);
+TimeFrameRestore();
+
+// add Columns
+addcolumn(MA(V,5), "Volume MA5", 1);
+addcolumn(IIf( LinRegSlope(_rsi, 14)>=0, 1, -1 )*_rsi, "RSI_14", 1.2);
+addcolumn(IIf( _weekly_rsi_LinReg>=0, 1, -1 )*_weekly_rsi, "RSI_14_W", 1.2);
+addcolumn(IIf( _monthly_rsi_LinReg>=0, 1, -1 )*_monthly_rsi, "RSI_14_M", 1.2);
+addcolumn(Close, "CLose", 1.2, colorDefault);
+
+
+addcolumn(Signal_RSI(), "BuySell_RSI", 1);
+addcolumn(V, "Vol", 1);
+addcolumn(_weekly_ma_vol_20, "Volume Weekly MA20", 1);
+
+// Volumn Condition
+_vol_condition = (Volume >= _vol_running) AND (Ref(Volume,-1) >= _vol_running) 
+	AND (Ref(Volume,-2) >= _vol_running) AND (Ref(Volume,-3) >= _vol_running) AND (Ref(Volume,-4) >= _vol_running);
+addcolumn(_vol_condition, "Vol_Condition", 1);
+
+

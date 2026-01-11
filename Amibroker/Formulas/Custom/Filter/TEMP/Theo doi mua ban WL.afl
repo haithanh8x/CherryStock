@@ -1,0 +1,99 @@
+
+
+/*dung37mc update V1*/
+
+//Dot bien khoi luong
+dbkl= ((V - MA(V,5))/MA(V,5))*100;
+//bolliger
+DB_Col = IIf(dbkl > 50, colorGreen, colorLightGrey);
+
+/*
+Hi = BBandTop( C, 21, 2); //Bollinger trên
+Lo = BBandBot( C, 21, 2); //bollinger duoi
+DB = Hi - Lo;
+TB = MA(db,15); // trung binh bollinger TB 15 ngay
+//DK loc
+DK1 = C >= Ref(C,-1);
+//DK2 = C >= Ref(C,-2);
+DK3 = C >= MA(C,5); //Gia > binh quan gia tuan
+DK4 = C > 0.8;//Gia > 0.8
+//DK5 = V >= 1.15*MA(V,5)OR V>=1.15*MA(V,15) OR V>=1.2*MA(V,26) OR V>=1.2*MA(V,45);// No volume 1.15 - 1.2 lan.
+DK6 = V >= 25000 AND Ref(V,-1)>25000; //Volume > 25k
+DK7 = C*V < 500000000;
+DK8 = MA(V,5) >= 25000; 
+DK9 = (HHV(Ref(C,-1),5)- LLV(Ref(C,-1),5))/LLV(Ref(C,-1),5) <= 0.1; // gia tuan dao dong 10%
+dksong = (HHV(High,360)-LLV(Low,360))/LLV(Low,360)*100 >= 30; //song 1 nam tren 30%
+dkbb = db < 0.85 * Tb; //bolliger thu hep bang 0.8 trung binh 15 ngay
+*/
+
+DK = V > 10000 AND Ref(V,-1)>10000;
+//
+HM=HHV(H,26); //gia cao thang
+LM=LLV(L,26); //gia thap thang
+//Tin hieu mua
+DKB1 = C >= MA (C, 5); //gia lon hon TB 5 ngay
+DKB2 = MACD (7,14)>= Signal (7,14,3);//macd cat len
+DKB3 = (C-Ref (C,-1))/Ref (C,-1)>=0;//ty le tang gia >=0
+DKB4 = HHV (Ref (C, -1), 5) <= 1.05*LLV (Ref (C, -1), 5); // giao dong gia trong 5%.
+DKB5 = MFI (14) >= Ref (MFI (14), -1);
+DKB6 = RSI(14)>30 AND RSI(14)<68;
+CMA8   = Cross(C,MA(C,8));
+CMA12  = Cross(C,MA(C,12));
+CMA21  = Cross(C,MA(C,21));
+Cma36  = Cross(C,MA(C,36));
+CMA50  = Cross(C,MA(C,50));
+Cma100 = Cross(C,MA(C,100));
+CMA200 = Cross(C,MA(C,200));
+//Vuot MA
+CMA = cma8 OR CMa12 OR Cma21 OR Cma36 OR Cma50 OR Cma100 OR Cma200 ;
+//Buy
+DKB = (DKB1 AND DKB2 AND DKB3 AND DKB4 AND DKB5 AND DKB6) OR Cma;
+// DK sell gia thap hon gia thap nhat 5 ngay truoc hoac gia thap hon MA21
+Sellperiods=Param("Exit Breakout",5,1,100,1,1);
+dkS= C<Ref(LLV(Low,Sellperiods),-1) OR Cross(MA(C,21),C);
+//
+Buy_ST = WriteIf(DKB, " <Buy> ",WriteIf(DKs, " <Sell> ", ""));
+Buy_Col = IIf(DKB, colorGreen,IIf(DKS, colorRed, colorWhite));
+//
+Sell= dkS;
+Buy = DKB OR Cma;
+SellPrice=ValueWhen(Sell,C,1);
+BuyPrice=ValueWhen(Buy,C,1);
+Long=Flip(Buy,Sell);
+Shrt=Flip(Sell,Buy );
+/* RESULTS */
+Filter = DK;
+//Vuot MA
+VMA8  = Cross(C,MA(C,8));
+VMA12 = Cross(C, MA(C,12));
+VMA21 = Cross(C, MA(C,21));
+VMA36 = Cross(C, MA(C,36));
+VMA50 = Cross(C, MA(C,50));
+VMA100 = Cross(C, MA(C,100));
+VMA200 = Cross(C, MA(C,200));
+VMA = vma8 OR Vma12 OR Vma21 OR Vma36 OR Vma50 OR Vma100 OR Vma200;
+VMA_ST = WriteIf(VMA200,"Vuot MA 200",WriteIf(VMA100,"Vuot MA 100",WriteIf(VMA50,"Vuot MA 50",
+WriteIf(VMA36,"Vuot MA 36",WriteIf(VMA21,"Vuot MA 21",WriteIf(VMA12,"Vuot MA 12",WriteIf(VMA8,"Vuot MA 8"," <> ")))))));
+VMA_col = IIf(VMA, colorGreen, colorLightGrey);
+// Text
+AddColumn( Volume, "Volume",1.0 );
+AddColumn( Close, "Close" );
+AddColumn( Hm,"PR HM");
+AddColumn( Lm,"PR LM");
+AddColumn(((C - Ref(C,-1))/Ref(C,-1))*100 ,"% Tang ");
+AddColumn(dbkl,"% DB KL",1.0, colorWhite, db_col);
+AddTextColumn(Buy_ST, "Tin hieu", 1, colorWhite, Buy_col);
+AddTextColumn(VMA_ST, "Tin hieu MA ",1, colorWhite, VMA_col);
+
+/*AddTextColumn(bb_status, "BBand", 1, colorWhite, bb_Col);
+AddTextColumn(SubScore1_status, "P/MMA ",1, colorWhite, SubScore1_Col);
+AddTextColumn(SubScore2_status, "P/LMA ",1, colorWhite, SubScore2_Col);
+AddTextColumn(SubScore3_status, "MMA/LMA",1, colorWhite, SubScore3_Col);
+AddTextColumn(SubScore6_status, "MACD ",1, colorWhite, SubScore6_Col);
+AddTextColumn(Subscore7_status, "MACD/Sig.",1, colorWhite, SubScore7_Col);
+AddTextColumn(SubScore8_status, "AROON",1, colorWhite, SubScore8_Col);
+AddTextColumn(SubScore10_status, " %K ",1, colorWhite, SubScore10_Col);
+AddTextColumn(r_status," RSI ",1, colorWhite, r_Col);
+AddTextColumn(MFI_status, " MFI ", 1, colorWhite, MFI_Col);
+AddColumn(Score, "Score ",1.0, colorWhite, Score_Col);
+AddSummaryRows(16, 1.2,3);*/

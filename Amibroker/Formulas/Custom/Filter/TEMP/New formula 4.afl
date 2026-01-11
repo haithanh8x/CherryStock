@@ -1,0 +1,30 @@
+Plot( Close, "Close", colorBlack );
+
+// switch to higher timeframe
+TimeFrameSet( inWeekly );
+
+smooth = 0.2;
+myAMA = Close;
+
+// search for start (non-null) bar
+for( start = 0; start < BarCount; start++ )
+{
+   if( NOT IsNull( Close[ start ] ) ) break;
+}
+
+// looping code
+for ( i = start + 1; i < BarCount; i++ )
+{
+    // this part will execute only after the first non-null bar has been identified
+    myAMA[ i ] = Close[ i ] * smooth + myAMA[ i - 1 ] * ( 1 - smooth );
+}
+
+// regular AMA function for comparison
+weeklyAMA = AMA( Close, 0.2 );
+
+//restore original time-frame
+TimeFrameRestore();
+
+// plot expanded values retrieved from Weekly frame
+Plot( TimeFrameExpand( myAMA, inWeekly ), "weekly AMA loop", colorRed );
+Plot( TimeFrameExpand( weeklyAMA, inWeekly ), "weekly AMA", colorBlue, styleDots );

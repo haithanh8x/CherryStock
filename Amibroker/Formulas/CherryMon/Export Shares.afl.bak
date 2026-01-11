@@ -1,0 +1,65 @@
+Filter = Status("lastbarinrange");
+//Filter = 1;
+
+AddColumn(Open, "Open");
+AddColumn(Close, "Close");
+AddTextColumn(GetFnData( "FullName"),"Full Name");
+AddTextColumn(MarketID(1),"Market");
+AddColumn(Close*GetFnData( "SharesOut"),"Capital", 1.0);
+AddTextColumn(SectorID(1),"Sector");
+AddTextColumn(IcbID(0),"ICB ID");
+AddTextColumn(IcbID(1),"ICB");
+AddTextColumn(StrReplace(IcbID(1), ",", "" ),"ICB replaced");
+AddTextColumn(IndustryID(1),"Industry");
+AddColumn(GetFnData( "SharesFloat"),"Shares Float", 1.0);
+AddColumn(GetFnData( "SharesOut"),"Shares Outstanding", 1.0);
+AddColumn(GetFnData( "EPS"),"EPS");
+AddColumn(Close/GetFnData( "EPS"),"PE",1.1);
+AddColumn(GetFnData( "BookValuePerShare"),"Book Value");
+
+/*
+GetFnData( ''field'' )
+RETURNS	NUMBER or STRING
+FUNCTION	GetFnData allows accessing fundamental data from Information window (Window->Symbol Information) "field" parameter can be one of the following:
+"EPS"
+"EPSEstCurrentYear"
+"EPSEstNextYear"
+"EPSEstNextQuarter"
+"PEGRatio"
+"SharesFloat"
+"SharesOut"
+"DividendPayDate"
+"ExDividendDate"
+"BookValuePerShare"
+"DividendPerShare"
+"ProfitMargin"
+"OperatingMargin"
+"OneYearTargetPrice"
+"ReturnOnAssets"
+"ReturnOnEquity"
+"QtrlyRevenueGrowth"
+"GrossProfitPerShare"
+"SalesPerShare"
+"EBITDAPerShare"
+"QtrlyEarningsGrowth"
+"InsiderHoldPercent"
+"InstitutionHoldPercent"
+"SharesShort"
+"SharesShortPrevMonth"
+"ForwardDividendPerShare"
+"ForwardEPS"
+"OperatingCashFlow"
+"LeveredFreeCashFlow"
+"Beta"
+"LastSplitRatio"
+"LastSplitDate"
+"Alias" (returns symbol alias - string) - 5.50 and above
+"Address" (returns symbol address - string) - 5.50 and above
+"Country" (returns symbol country - string) - 5.60 and above
+"DelistingDate" returns symbol delisting date (as datetime) - 5.70 and above
+"PointValue" - returns symbols point value
+"FullName" - returns full name of the symbol
+"Currency" - returns currency field - 5.70 and above
+"WebID" - returns web ID field - 5.70 and above
+*/
+

@@ -1,0 +1,34 @@
+MinVol = Param("Min Volume", 1000000, 10000, 10000000);
+
+Filter = V > MinVol; 
+
+nr = CategoryFind( "gia co phieu", categoryGroup  );
+symlist = CategoryGetSymbols( categoryGroup , nr);
+SymCount = StrCount(symlist,",") + 1;
+
+rank = 0;
+
+CurrentPoints = FA_Points();
+for ( i = 0; ( sym = StrExtract( symlist, i ) ) != ""; i++ ) 
+{ 
+	SetForeign( sym );  
+	 
+	ForreignPoints = FA_Points();
+	rank = FA_Rank(CurrentPoints, ForreignPoints, rank);
+ 
+	RestorePriceArrays(); 
+	
+} 
+	 
+RS = FA_RS(rank, SymCount);
+
+AddColumn(RS, "RS", 1.2);
+AddColumn(V, "Volume", 1.0);
+rank100 = PercentRank( RS, 100 );
+Color1 = ColorHSB( rank100 * 64/100, 255, 255 );
+AddColumn( rank100, "100-day percent rank", 1.2, colorDefault, Color1, -1, rank100 );
+rank20 = PercentRank( RS, 20 );
+Color2 = ColorHSB( rank20 * 64/100, 255, 255 );
+AddColumn( rank20, "20-day percent rank", 1.2, colorDefault, Color2, -1, rank20 );
+
+SetSortColumns ( -3);

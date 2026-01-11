@@ -1,0 +1,526 @@
+
+// Downloaded From https://www.WiseStockTrader.com
+_SECTION_BEGIN("SuperTrend");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkColor(ParamColor("bkcolor",ColorRGB(0,0, 0)));
+GfxSetBkMode(0);
+GfxSetOverlayMode(1);
+Clr=IIf(C>O,colorGreen,colorRed);
+Plot( C, "Close", Clr, styleNoTitle | ParamStyle("Style") | GetPriceStyle() );
+SetTradeDelays(1,1,1,1);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+Factor=Param("Factor",2,1,10,0.1);
+Pd=Param("ATR Periods",11,1,100,1);
+Up=(H+L)/2+(Factor*ATR(Pd));
+Dn=(H+L)/2-(Factor*ATR(Pd));
+iATR=ATR(Pd);
+TrendUp=TrendDown=Null;
+trend[0]=1;
+changeOfTrend=0;
+flag=flagh=0;
+
+for (i = 1; i <BarCount-1; i++) {
+TrendUp[i] = Null;
+TrendDown[i] = Null;
+
+trend[i]=1;
+if (Close[i]>Up[i-1]) {
+trend[i]=1;
+if (trend[i-1] == -1) changeOfTrend = 1;
+
+}
+else if (Close[i]<Dn[i-1]) {
+trend[i]=-1;
+if (trend[i-1] == 1) changeOfTrend = 1;
+}
+else if (trend[i-1]==1) {
+trend[i]=1;
+changeOfTrend = 0;
+}
+else if (trend[i-1]==-1) {
+trend[i]=-1;
+changeOfTrend = 0;
+}
+
+if (trend[i]<0 && trend[i-1]>0) {
+flag=1;
+}
+else {
+flag=0;
+}
+
+if (trend[i]>0 && trend[i-1]<0) {
+flagh=1;
+}
+else {
+flagh=0;
+}
+
+if (trend[i]>0 && Dn[i]<Dn[i-1]){
+Dn[i]=Dn[i-1];
+}
+
+if (trend[i]<0 && Up[i]>Up[i-1])
+{ Up[i]=Up[i-1];
+}
+
+if (flag==1)
+{ Up[i]=(H[i]+L[i])/2+(Factor*iATR[i]);;
+}
+if (flagh==1)
+{ Dn[i]=(H[i]+L[i])/2-(Factor*iATR[i]);;
+}
+if (trend[i]==1) {
+TrendUp[i]=Dn[i];
+if (changeOfTrend == 1) {
+TrendUp[i-1] = TrendDown[i-1];
+changeOfTrend = 0;
+}
+}
+else if (trend[i]==-1) {
+TrendDown[i]=Up[i];
+if (changeOfTrend == 1) {
+TrendDown[i-1] = TrendUp[i-1];
+changeOfTrend = 0;
+}
+}
+}
+
+Buy = trend==1;
+Sell=trend==-1;
+
+Buy=ExRem(Buy,Sell);
+Sell=ExRem(Sell,Buy);
+Short=Sell;
+Cover=Buy;
+
+BuyPrice=ValueWhen(Buy,C);
+SellPrice=ValueWhen(Sell,C);
+ShortPrice=ValueWhen(Short,C);
+CoverPrice=ValueWhen(Cover,C);
+
+Title = EncodeColor(colorWhite)+ "Trending Signal " + " - " + Name() + " - " + EncodeColor(colorRed)+ Interval(2) + EncodeColor(colorWhite) +
+" - " + Date() +" - "+"\n" +EncodeColor(colorRed) +"Op-"+O+" "+"Hi-"+H+" "+"Lo-"+L+" "+
+"Cl-"+C+" "+ "Vol= "+ WriteVal(V)+"\n"+
+EncodeColor(colorLime)+
+WriteIf (Buy , " GO LONG / Reverse Signal at "+C+" ","")+
+WriteIf (Sell , " EXIT LONG / Reverse Signal at "+C+" ","")+"\n"+EncodeColor(colorYellow)+
+WriteIf(Sell , "Total Profit/Loss for the Last Trade Rs."+(C-BuyPrice)+"","")+
+WriteIf(Buy , "Total Profit/Loss for the Last trade Rs."+(SellPrice-C)+"","");
+
+
+TrendSL=IIf(trend==1,TrendUp,TrendDown);
+
+for(i=BarCount-1;i>1;i--)
+{
+if(Buy[i] == 1)
+{
+entry = C[i];
+sig = "BUY";
+sl = TrendSL[i];
+tar1 = entry + (entry * .0050);
+tar2 = entry + (entry * .0092);
+tar3 = entry + (entry * .0179);
+
+bars = i;
+i = 0;
+}
+if(Sell[i] == 1)
+{
+sig = "SELL";
+entry = C[i];
+sl = TrendSL[i];
+tar1 = entry - (entry * .0050);
+tar2 = entry - (entry * .0112);
+tar3 = entry - (entry * .0212);
+
+
+bars = i;
+i = 0;
+}
+}
+Offset = 20;
+Clr = IIf(sig == "BUY", colorLime, colorRed);
+ssl = IIf(bars == BarCount-1, TrendSL[BarCount-1], Ref(TrendSL, -1));
+sl = ssl[BarCount-1];
+
+
+messageboard = ParamToggle("Message Board","Show|Hide",1);
+if (messageboard == 1 )
+{
+GfxSelectFont( "Tahoma", 13, 100 );
+GfxSetBkMode( 1 );
+GfxSetTextColor( colorWhite );
+
+if ( sig =="BUY")
+{
+GfxSelectSolidBrush( colorBlue ); // this is the box background color
+}
+else
+{
+GfxSelectSolidBrush( colorRed ); // this is the box background color
+}
+pxHeight = Status( "pxchartheight" ) ;
+xx = Status( "pxchartwidth");
+Left = 1100;
+width = 310;
+x = 5;
+x2 = 290;
+
+y = pxHeight;
+
+GfxSelectPen( colorGreen, 1); // broader color
+GfxRoundRect( x, y - 98, x2, y , 7, 7 ) ;
+GfxTextOut( ( "Trend Calls"),13,y-100);
+GfxTextOut( (" "),27,y-100);
+GfxTextOut( ("Last " + sig + " Signal came " + (BarCount-bars-1) * Interval()/60 + " mins ago"), 13, y-80) ; // The text format location
+GfxTextOut( ("" + WriteIf(sig =="BUY",sig + " @ ",sig + " @") + " : " + entry + " | Price : " + C), 13, y-60);
+GfxTextOut( ("Trailing SL : " + Ref(TrendSL,-1) + " (" + WriteVal(IIf(sig == "SELL",entry-sl,sl-entry), 2.2) + ")"), 13, y-40);
+GfxTextOut( ("Current P/L : " + WriteVal(IIf(sig == "BUY",(C-entry),(entry-C)),2.2)), 13, y-22);;
+}
+
+function GetSecondNum()
+{
+Time = Now( 4 );
+Seconds = int( Time % 100 );
+Minutes = int( Time / 100 % 100 );
+Hours = int( Time / 10000 % 100 );
+SecondNum = int( Hours * 60 * 60 + Minutes * 60 + Seconds );
+return SecondNum;
+}
+RequestTimedRefresh( 1 );
+TimeFrame = Interval();
+SecNumber = GetSecondNum();
+Newperiod = SecNumber % TimeFrame == 0;
+SecsLeft = SecNumber - int( SecNumber / TimeFrame ) * TimeFrame;
+SecsToGo = TimeFrame - SecsLeft;
+
+x=Param("xposn",50,0,1000,1);
+y=Param("yposn",380,0,1000,1);
+
+GfxSelectSolidBrush( ColorRGB( 230, 230, 230 ) );
+GfxSelectPen( ColorRGB( 230, 230, 230 ), 2 );
+if ( NewPeriod )
+{
+GfxSelectSolidBrush( colorYellow );
+GfxSelectPen( colorYellow, 2 );
+}
+//GfxRoundRect( x+45, y+40, x-3, y-2, 0, 0 );
+//GfxSetBkMode(1);
+GfxSelectFont( "Arial", 14, 700, False );
+GfxSetTextColor( colorRed );
+//GfxTextOut( "Time Left :"+SecsToGo+"", x, y );
+
+//Generating Signals
+PlotShapes(IIf(Buy, shapeUpArrow, shapeNone),colorBlue, 0,L, Offset=-20);
+PlotShapes(IIf(Short, shapeDownArrow, shapeNone),colorRed, 0,H, Offset=-20);
+
+_SECTION_END();
+
+
+_SECTION_BEGIN("AlertsMsg");
+AlertIf( Buy, "", "Buy @ " + C ,1, 1+2+4+8 ,1);
+AlertIf( Sell, "", "Sell @ " + C ,2, 1+2+4+8 ,1);
+_SECTION_END();
+_SECTION_BEGIN("Oz trail");
+// E.M.Pottasch, Jan 2014
+
+PersistentPath="C:\\Program Files\\AmiBroker64\\PersistentVariables\\";  // **** You need to create a directory to store the persistent variable ****
+
+selectDate=ParamDate("Start date","08/01/2011",0);
+per1=Param("Length ATR",20,1,150,1); // ATR length
+fac1=Param("Chandelier Factor",2,1,10,0.1); // chandelier factor
+tog1=ParamToggle("Trail value","Close|High&Low",1);
+tog2=ParamToggle("Trail method","Chandelier|VSTOP",0);
+trg1=ParamTrigger("Remove All Persistent Variables", "Click Here"); 
+
+//persistant variables by Herman van Bergen
+function PersistentVarSet( VarName, Number )
+{
+VarName=VarName+Name()+GetChartID();
+global PersistentPath;
+String = NumToStr(Number);
+fh = fopen( PersistentPath+VarName+".pva","w" );
+if( fh )
+{
+fputs( String, fh );
+fclose( fh );
+}
+return fh;
+}
+function PersistentVarGet( VarName )
+{
+VarName=VarName+Name()+GetChartID();
+global PersistentPath;
+fh = fopen( PersistentPath+VarName+".pva","r" );
+if( fh )
+{
+String = fgets( fh );
+fclose( fh );
+Number = StrToNum(String);
+}
+else Number = Null;
+return Number;
+}
+function PersistentVarRemove( VarName )
+{
+VarName=VarName+Name()+GetChartID();
+global PersistentPath;
+Fn=PersistentPath + VarName + ".pva";
+fh=fdelete( Fn ) ;
+return fh;
+}
+function PersistentVarRemoveAll( VarName )
+{
+global PersistentPath;
+Fn=PersistentPath + VarName + "*.*";
+fh=fdelete( Fn ) ;
+return fh;
+}
+if(trg1)
+{
+	PersistentVarRemoveAll( "ss" );
+	//PersistentVarRemove( "ss" );
+}
+
+sdate=StaticVarGet("sdate");
+sdatep=PersistentVarGet("ss");
+"selectDate: " + WriteVal(selectdate);
+"sdatep: " + WriteVal(sdatep); 
+"sdate: " + WriteVal(sdate);
+
+if(IsEmpty(sdatep) AND IsEmpty(sdate))
+{
+	StaticVarSet("sdate",selectdate);
+	PersistentVarSet("ss",selectDate);
+}
+else if(!IsEmpty(sdatep) AND IsEmpty(sdate))
+{
+	StaticVarSet("sdate",selectdate);
+}
+else if(IsEmpty(sdatep) AND !IsEmpty(sdate))
+{
+	PersistentVarSet("ss",selectDate);
+}
+else if(sdate!=selectDate AND !IsEmpty(sdatep) AND !IsEmpty(sdate))
+{
+	StaticVarSet("sdate",selectdate);
+	PersistentVarSet("ss",selectDate);
+}
+
+///////////// Chandelier code by E.M.Pottasch, adapted from Chuck Lebeau's code
+function vstop_func(trBull,trBear,hl,per)
+{
+	trailArray=0;
+	if(hl)
+	{
+		hh=H;
+		ll=L;
+	}
+	else
+	{
+		hh=C;
+		ll=C;	
+	}
+	for(i=per+1;i<BarCount;i++)
+	{
+		prev=trailArray[i-1];
+ 
+		if (C[i]>=prev AND C[i-1]>=prev)//long continuation
+		{
+			trailArray[i]=Max(prev,hh[i]-trBull[i]);
+		}
+		else if (C[i]<=prev AND C[i-1]<=prev)//short continuation
+		{
+			trailArray[i]=Min(prev,ll[i]+trBear[i]);
+		} 
+		else if (C[i]>prev AND C[i-1]<=prev)//long trigger 
+		{
+			trailArray[i]=hh[i]-trBull[i];
+		}
+		else if (C[i]<prev AND C[i-1]>=prev)//short trigger
+		{
+			trailArray[i]=ll[i]+trBear[i];	
+		}
+	}
+	return trailArray;
+}
+///////////// end Chandelier code by E.M.Pottasch, adapted from Chuck Lebeau's code
+///////////// Chandelier code by Geoff Mulhall
+function aChandelierCl(AtrARRAY, AtrMult) {
+// Skip empty values
+i = 0;
+do {result[i] = Null;
+	i++;
+	} 
+while( i < BarCount AND (IsNull(O[i]) OR IsNull(H[i]) OR IsNull(L[i]) OR
+IsNull(C[i]) ) ); 
+First = i;
+
+if (i < BarCount - 1) {
+	HHC[First]    = C[First];
+	LLC[First]    = C[First];
+
+	if (C[First + 1] > HHC[First]) {
+		HHC[First + 1] = C[First + 1];
+		LLC[First + 1] = LLC[First];
+		result[First] = C[First] - AtrMult * AtrARRAY[First];
+		iTrade = "LT";
+	}
+	else {
+		if (C[First + 1] < LLC[First]) {
+			HHC[First = 1] = HHC[First];
+			LLC[First + 1] = LLC[First + 1];
+			result[First] = C[First] + AtrMult * AtrARRAY[First];
+			iTrade = "ST";
+		}
+		else {
+			HHC[First + 1] = C[First + 1];
+			LLC[First + 1] = C[First + 1];
+			result[First] = C[First] - AtrMult * AtrARRAY[First];
+			iTrade = "LT";
+		}
+	}
+
+	for( i = First; i < BarCount; i++ ) {
+		if (iTrade == "LT") {
+			if (C[i] >= result[i-1]) {        // Long Trade is continuing
+				if (C[i] > C[i-1]) {
+					HHC[i] = C[i];
+				}
+				else { 
+					HHC[i] = HHC[i-1];
+				}
+				result[i] = HHC[i] - AtrMult * AtrARRAY[i];
+				if (result[i] < result[i-1]) {
+					result[i] = result[i-1];
+				}
+			}
+			else {                            // Long trade Exit triggered
+				iTrade = "ST";
+				LLC[i] = C[i];
+				result[i] = C[i] + AtrMult * AtrARRAY[i];
+			}
+		}
+		else {                               // Short trade
+			if (C[i] <= result[i-1]) {
+				if (C[i] <= C[i-1]) {        // Short Trade is continuing
+					LLC[i] = C[i];
+				}
+				else {
+					LLC[i] = LLC[i-1];
+				}
+				result[i] = LLC[i] + AtrMult * AtrARRAY[i];
+				if (result[i] > result[i-1]) {
+					result[i] = result[i-1];
+				}
+			}
+			else {                           //Short Trade Exit is triggered
+				iTrade = "LT";
+				HHC[i]  = C[i];
+				result[i] = C[i] - AtrMult * AtrARRAY[i];
+			}
+		}
+	}
+}
+return result;
+}
+function aChandelierHL(AtrARRAY, AtrMult) {
+// Skip empty values
+i = 0;
+do {result[i] = Null;
+	i++;
+	} 
+while( i < BarCount AND (IsNull(O[i]) OR IsNull(H[i]) OR IsNull(L[i]) OR
+IsNull(C[i]) ) ); 
+First = i;
+
+if (i < BarCount - 1) {
+	HHC[First]    = H[First];
+	LLC[First]    = L[First];
+
+	if (H[First + 1] > HHC[First]) {
+		HHC[First + 1] = H[First + 1];
+		LLC[First + 1] = LLC[First];
+		result[First] = H[First] - AtrMult * AtrARRAY[First];
+		iTrade = "LT";
+	}
+	else {
+		if (L[First + 1] < LLC[First]) {
+			HHC[First = 1] = HHC[First];
+			LLC[First + 1] = LLC[First + 1];
+			result[First] = L[First] + AtrMult * AtrARRAY[First];
+			iTrade = "ST";
+		}
+		else {
+			HHC[First + 1] = C[First + 1];
+			LLC[First + 1] = C[First + 1];
+			result[First] = H[First] - AtrMult * AtrARRAY[First];
+			iTrade = "LT";
+		}
+	}
+
+	for( i = First; i < BarCount; i++ ) {
+		if (iTrade == "LT") {
+			if (C[i] >= result[i-1]) {        // Long Trade is continuing
+				if (H[i] > H[i-1]) {
+					HHC[i] = H[i];
+				}
+				else { 
+					HHC[i] = HHC[i-1];
+				}
+				result[i] = HHC[i] - AtrMult * AtrARRAY[i];
+				if (result[i] < result[i-1]) {
+					result[i] = result[i-1];
+				}
+			}
+			else {                            // Long trade Exit triggered
+				iTrade = "ST";
+				LLC[i] = L[i];
+				result[i] = L[i] + AtrMult * AtrARRAY[i];
+			}
+		}
+		else {                               // Short trade
+			if (C[i] <= result[i-1]) {
+				if (L[i] <= L[i-1]) {        // Short Trade is continuing
+					LLC[i] = L[i];
+				}
+				else {
+					LLC[i] = LLC[i-1];
+				}
+				result[i] = LLC[i] + AtrMult * AtrARRAY[i];
+				if (result[i] > result[i-1]) {
+					result[i] = result[i-1];
+				}
+			}
+			else {                           //Short Trade Exit is triggered
+				iTrade = "LT";
+				HHC[i]  = H[i];
+				result[i] = H[i] - AtrMult * AtrARRAY[i];
+			}
+		}
+	}
+}
+return result;
+}
+///////////// end Chandelier code by Geoff Mulhall
+
+if(!tog2)
+{
+	if(tog1) trailArray=aChandelierHL(ATR(per1),fac1);
+	else trailArray=aChandelierCl(ATR(per1),fac1);
+}
+else
+{
+	trBull=fac1*ATR(per1);
+	trBear=fac1*ATR(per1);
+	trailArray=vstop_func(trBull,trBear,tog1,per1);trailarray=IIf(trailarray==0,Null,trailarray);
+}
+
+tt=IIf(DateNum()>=sdatep,1,0);
+trailArray=IIf(tt,trailArray,Null);
+
+Plot(IIf(trailArray>C,trailArray,Null),"\ntrailShort",ParamColor("ColorTrailShort",ColorRGB(255,0,0)),styleStaircase);
+Plot(IIf(trailArray<C,trailArray,Null),"\ntrailLong",ParamColor("ColorTrailLong",ColorRGB(0,255,0)),styleStaircase);
+Plot(TSF(Low,100),"",colorWhite,styleThick);
+_SECTION_END();

@@ -1,0 +1,550 @@
+_SECTION_BEGIN("BACKGROUD LTRS");
+SetChartOptions(1,chartShowArrows|chartShowDates);
+GfxSetOverlayMode(0);
+GfxSetTextAlign( 6 );// center alignment
+GfxSetTextColor( ParamColor("Text Color", ColorHSB( 98, 119, 112 ) ));
+GfxSetBkMode(0); // transparent
+GfxSelectFont("Verdana", Status("pxheight")/20 );
+GfxTextOut( Name(), Status("pxwidth")/2, Status("pxheight")/14 );
+GfxSelectFont("Arial", Status("pxheight")/27 );
+_SECTION_END();
+
+PlotOHLC(O,H,L,C,"Price",IIf(C>O,colorGreen,colorRed),styleCandle);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+
+
+_SECTION_BEGIN( "MPLite" );
+// - there was a plot limit call introduced after 5.41.0 beta
+//   i.e. "•Warning 502: Calling Plot()/PlotOHLC over 500 times is displayed in indicator in runtime to prevent abuse"
+// - uses GFX for major calls of plot only if AB version newer than 5.40 - this only delays reaching the plot limit
+// - see also the toggle parameter "use_original_version"
+
+//PlotOHLC( O, H, L, C, "Price", IIf( C > O, colorGreen, colorRed ), styleCandle );
+function Lastthursday()
+{
+    Daysinmonth = IIf( Month() == 1 OR Month() == 3 OR Month() == 5 OR Month() == 7 OR Month() == 8 OR Month() == 10 OR Month() == 12, 31, 30 );
+    Daysinmonthfeb = IIf( Year() % 4 == 0 AND Year() % 100 != 0, 29, 28 );
+    Daysinmonthfinal = IIf( Month() == 2, Daysinmonthfeb, Daysinmonth );
+    returnvalue = IIf( Daysinmonthfinal - Day() < 7 AND DayOfWeek() == 4, 1, IIf( Daysinmonthfinal - Day() < 8 AND DayOfWeek() == 3 AND Ref( DayOfWeek(), 1 ) != 4 AND Day() != Daysinmonthfinal , 1, 0 ) );
+    return returnvalue;
+}
+
+procedure PlotlinewithGFXinit()
+{
+    global AB_Miny, AB_Maxy, AB_lvb, AB_fvb;
+    global AB_pxchartleft, AB_pxchartwidth, AB_pxchartbottom, AB_pxchartheight;
+    global AB_TotalBars, AB_penwidth;
+
+    RequestTimedRefresh(1);
+    GfxSetOverlayMode( 0 );
+    AB_penwidth = 2;
+
+    AB_Miny = Status( "axisminy" );
+    AB_Maxy = Status( "axismaxy" );
+    AB_lvb = Status( "lastvisiblebar" );
+    AB_fvb = Status( "firstvisiblebar" );
+
+    AB_pxchartleft = Status( "pxchartleft" );
+    AB_pxchartwidth = Status( "pxchartwidth" );
+    AB_pxchartbottom = Status( "pxchartbottom" );
+    AB_pxchartheight = Status( "pxchartheight" );
+
+    AB_TotalBars = AB_Lvb - AB_fvb;
+}
+
+procedure Plot_horizon_line_with_GFX( ix0, ix1, iy, icolor )
+{
+    global AB_Miny, AB_Maxy, AB_lvb, AB_fvb;
+    global AB_pxchartleft, AB_pxchartwidth, AB_pxchartbottom, AB_pxchartheight;
+    global AB_TotalBars, AB_penwidth;
+
+    local ix0, ix1, iy, icolor;
+    local x_px, y_px, y_scale;
+
+    GfxSelectPen( icolor, AB_penwidth, 0 );
+    x_px = AB_pxchartleft + ( ix0 - AB_fvb ) * AB_pxchartwidth / ( AB_TotalBars + 1 );
+
+    y_scale = AB_pxchartheight / ( AB_maxy - AB_miny );
+    y_px = AB_pxchartbottom - floor( 0.5 + ( iy  - AB_Miny ) * y_scale );
+    GfxMoveTo( x_px, y_px );
+
+    x_px = AB_pxchartleft + ( ix1 - AB_fvb ) * AB_pxchartwidth / ( AB_TotalBars + 1 );
+    GfxLineTo( x_px, y_px );
+}
+
+
+FirstVisibleBar = Status( "FirstVisibleBar" );
+Lastvisiblebar = Status( "LastVisibleBar" );
+
+totalVisible = Lastvisiblebar - FirstVisibleBar;
+//if(totalVisible<1500){
+use_original_version = ParamToggle("MP version", "GFX code(only if AB > 5.40)|original code", 0);
+//Den = Param("Density", 1, 0.1, 10, 0.1);
+percent = Param( "Value Area", 70, 1, 100, 1 );
+Type = ParamList( "Type", "Price Profile|Volume Profile" );
+Period = ParamList( "Base", "Hourly|Daily|Weekly|Monthly|Lastthursday|Yearly", 1 );
+x_scale = Param( "Horizontal_scale", 2, 0, 10, 0.1 );
+EnMP2 = ParamStyle( "Style", styleLine | styleNoLabel, maskAll );
+styleLines = styleDots;
+EnIB = ParamToggle( "Show Initial Balance",  "No|Yes", 0 );
+IBBars = Param( "Initial Balance Bars", 2, 1, 10, 1 );
+ViewYvalues = ParamToggle( "Show Yesterdays Values", "No|Yes", 1 );
+ViewVlines = ParamToggle( "Show Vertical Base Lines", "No|Yes", 1 );
+Viewvalues = ParamToggle( "Show Values", "No|Yes", 0 );
+ViewVpoc = ParamToggle( "Show Virgin POC", "No|Yes", 1 );
+ViewTPO = ParamToggle( "Show TPO Count", "No|Yes", 0 );
+
+Color_Above_VA = ParamColor( "Color_Above_VA",  colorGrey40 );
+Color_VA = ParamColor( "Color_VA", colorBlueGrey );
+Color_Below_VA = ParamColor( "Color_Below_VA", colorGrey40 );
+Color_POC_line = ParamColor( "Color_POC_Line", colorYellow );
+
+color_YVAH = ParamColor( "YVAH", colorWhite );
+color_YVAL = ParamColor( "YVAL", colorWhite );
+color_YPOC = ParamColor( "YPOC", colorYellow );
+
+IBColor = ParamColor( "IB Color", colorWhite );
+IBstyle = ParamStyle( "IB style", styleLine, maskAll );
+Color_Virgin_POC = ParamColor( "Virgin Poc Color", colorYellow );
+Color_Base_Line = ParamColor( "Base Line Color", colorDarkGrey );
+
+if ( Period == "Hourly" )
+{
+    BarsInDay = BarsSince( Hour() != Ref( Hour(), -1 ) );
+    Bot = TimeFrameGetPrice( "L", inHourly, 0 );
+    Top = TimeFrameGetPrice( "H", inHourly, 0 );
+    Vol = TimeFrameGetPrice( "V", inHourly, 0 );
+}
+
+if ( Period == "Daily" )
+{
+    //OR Interval()==3600
+    BarsInDay = BarsSince( Day() != Ref( Day(), -1 ) ) ;
+    Bot = TimeFrameGetPrice( "L", inDaily, 0 );
+    Top = TimeFrameGetPrice( "H", inDaily, 0 );
+    Vol = TimeFrameGetPrice( "V", inDaily, 0 );
+}
+
+if ( Period == "Weekly" OR Interval() == 24 * 3600 )
+{
+    BarsInDay = BarsSince( DayOfWeek() < Ref( DayOfWeek(), -1 ) );
+    bot1 = ValueWhen( BarsInDay == 0, L, 1 );
+    Bot2 = ValueWhen( Ref( BarsInDay, 1 ) == 1 OR BarIndex() > BarCount - 2 , LLV( L, BarsInDay ), 0 );
+    bot = Min( bot1, bot2 );
+    top1 = ValueWhen( BarsInDay == 0, H, 1 );
+    Top2 = ValueWhen( Ref( BarsInDay, 1 ) == 1 OR BarIndex() > BarCount - 2, HHV( H, BarsInDay ), 0 );
+    top = Max( top1, top2 );
+    Vol = TimeFrameGetPrice( "V", inWeekly, 0 );
+}
+
+if ( Period == "Monthly"  )
+{
+    BarsInDay = BarsSince( Month() != Ref( Month(), -1 ) );
+    Bot = TimeFrameGetPrice( "L", inMonthly, 0 );
+    Top = TimeFrameGetPrice( "H", inMonthly, 0 );
+    Vol = TimeFrameGetPrice( "V", inMonthly, 0 );
+}
+
+if ( Period == "Lastthursday"  )
+{
+    BarsInDay = BarsSince( Lastthursday() == 0 AND Ref( Lastthursday(), -1 ) == 1 );
+    bot1 = ValueWhen( BarsInDay == 0, L, 1 );
+    Bot2 = ValueWhen( Ref( BarsInDay, 1 ) == 1 OR BarIndex() > BarCount - 2 , LLV( L, BarsInDay ), 0 );
+    bot = Min( bot1, bot2 );
+    top1 = ValueWhen( BarsInDay == 0, H, 1 );
+    Top2 = ValueWhen( Ref( BarsInDay, 1 ) == 1 OR BarIndex() > BarCount - 2, HHV( H, BarsInDay ), 0 );
+    top = Max( top1, top2 );
+    Vol = ValueWhen( Ref( BarsInDay, 1 ) == 1 OR BarIndex() > BarCount - 2 , Sum( V, BarsInDay ), 0 );
+
+}
+
+if ( Period == "Yearly"  )
+{
+    BarsInDay = BarsSince( Year() != Ref( Year(), -1 ) );
+    Bot = TimeFrameGetPrice( "L", inYearly, 0 );
+    Top = TimeFrameGetPrice( "H", inYearly, 0 );
+    Vol = TimeFrameGetPrice( "V", inYearly, 0 );
+}
+
+CurTop = HHV( H, BarsInDay + 1 );
+
+Curbot = LLV( L, BarsInDay + 1 );
+
+Range =  Top - Bot;
+coverage = LastValue( Ref( ATR( 10 ), -1 ) );
+
+den = ( coverage / 10 );
+//den=1;
+
+multiplier = IIf( round( totalVisible ) / 300 < 1, 1, round( totalVisible ) / 300 );
+
+if ( ViewVlines == 1 )
+{
+
+    Plot( BarsInDay == 0, "", Color_Base_Line, styleHistogram | styleOwnScale | styleLine | styleNoLabel );
+}
+
+relTodayRange = 0;
+
+x = 0;
+basey = 0;
+basex = 0;
+newday = 0;
+total = 0;
+shiftup = 0;
+shiftdn = 0;
+Line = Null;
+Voloumeunit = 0;
+
+PlotlinewithGFXinit();
+for (  i = IIf( FirstVisibleBar - 100 > 1, FirstVisibleBar - 100, FirstVisibleBar ); i < Lastvisiblebar AND i < BarCount - 1 ; i++  )
+{
+    if ( BarsInDay[i] == 0 )
+    {
+        t = BarsInDay[i-1];
+
+
+        if ( EnIB == 1 )
+        {
+            IBH = HHV( H, IBBars );
+            IBL = LLV( L, IBBars );
+            Line1 = LineArray( basex, IBH[basex+IBBars-1], i, IBH[basex+IBBars-1] );
+            Plot( Line1, "", IBColor, IBstyle );
+            Line2 = LineArray( basex, IBL[basex+IBBars-1], i, IBL[basex+IBBars-1] );
+            Plot( Line2, "", IBcolor, IBstyle );
+        }
+
+        //////////////////////////////////
+        poc = 0;
+        pocj = 0;
+        midrange = int( relTodayRange / 2 ) + 1;
+
+        for ( j = 1; j <= relTodayRange + 1 ; j++ )
+        {
+            if ( poc < x[j] )
+            {
+                poc = x[j];
+                pocj = j;
+            }
+            else
+                if ( poc == x[j] )
+                {
+                    if ( abs( midrange - j ) < abs( midrange - pocj ) )
+                    {
+                        poc = x[j];
+                        pocj = j;
+                    }
+                }
+
+        }
+
+        for ( n = 1; n <= relTodayRange; n++ )
+        {
+            total[n] = x[n] + total[n-1];
+        }
+
+        Value_area = ( total[relTodayRange] * percent ) / 100;
+
+        for ( a = 1; a <= relTodayRange; a++ )
+        {
+            if ( pocj - a > 0 AND pocj + a < relTodayRange )
+            {
+                if ( poc + total[pocj+a] - total[pocj] + ( total[pocj] - poc ) - total[pocj-( a+1 )] >= Value_area )
+                {
+                    shiftup = a;
+                    shiftdn = a;
+                    break;
+                }
+            }
+            else
+                if ( pocj - a < 1 )
+                {
+                    if ( poc + total[pocj+a] - total[pocj] + ( total[pocj] - poc ) >= Value_area )
+                    {
+                        shiftup = a;
+                        shiftdn = pocj;
+                        break;
+                    }
+                }
+                else
+                    if ( pocj + a > relTodayRange )
+                    {
+                        if ( poc + total[relTodayRange] - total[pocj] + ( total[pocj] - poc ) - total[pocj-( a+1 )] >= Value_area )
+                        {
+                            shiftup = floor( relTodayRange ) - pocj;
+                            shiftdn = a + 1;
+                            break;
+                        }
+                    }
+        }
+
+
+        if ( ViewVpoc == 1 )
+        {
+            Virginpoc = basey + pocj * den;
+            newi = Null;
+
+            for ( j = i; j <= ( BarCount - 1 ) ; j++ )
+                if ( L[j] < Virginpoc AND H[j] > Virginpoc )
+                {
+                    newi = j;
+                    break;
+                }
+                else
+                {
+                    newi = BarCount;
+                }
+
+            Plot( LineArray( basex[i], basey + pocj*den, newi, basey + pocj*den ), "", Color_Virgin_POC, styleLine | styleNoRescale );
+        }
+
+        Vah = LineArray( baseX[i], baseY + ( pocj + shiftup ) * den, i, baseY + ( pocj + shiftup ) * den );
+        Val = LineArray( baseX[i], baseY + ( pocj - shiftdn ) * den, i, baseY + ( pocj - shiftdn ) * den );
+        pocline = LineArray( basex, basey + pocj * den, basex[i] + poc, basey + pocj * den );
+
+
+        Vahn = LineArray( i, baseY + ( pocj + shiftup ) * den, i + t, baseY + ( pocj + shiftup ) * den );
+        pocn = LineArray( i, baseY + ( pocj ) * den, i + t, baseY + ( pocj ) * den );
+        Valn = LineArray( i, baseY + ( pocj - shiftdn ) * den, i + t, baseY + ( pocj - shiftdn ) * den );
+
+        if ( Version() > 5.4 && !use_original_version )
+        {
+            // pocline
+            Plot_horizon_line_with_GFX( baseX, basex[i] + poc, basey + pocj * den, Color_POC_Line );
+        }
+        else 
+        {
+            Plot( pocline, "", Color_POC_Line, styleLine | styleNoRescale | styleNoLabel );
+        }
+
+        if ( ViewYvalues == 1 )
+        {
+            Plot( Vahn, "", color_YVAH, styleDashed | styleNoRescale );
+            Plot( Valn, "", color_YVAL, styleDashed | styleNoRescale );
+            Plot( pocn, "", color_YPOC, styleDashed | styleNoRescale );
+        }
+
+
+        if ( ViewTPO == 1 )
+        {
+            nnn = HHV( H, BarsInDay );
+            PlotText( "" + ( total[relTodayRange] - total[pocj] ), basex[i], nnn[i], colorLightGrey );
+            PlotText( "" + ( total[pocj-1] ), basex[i], basey - den, colorLightGrey );
+        }
+
+        if ( Viewvalues == 1 )
+        {
+            PlotText( "" + ( ( basey + pocj*den ) ), baseX[i], basey + pocj*den, colorWhite, colorDarkGrey );
+            PlotText( "" + ( ( baseY + ( pocj + shiftup )*den ) ), baseX[i], baseY + ( pocj + shiftup )*den, colorWhite, colorDarkGrey );
+            PlotText( "" + ( ( baseY + ( pocj - shiftdn )*den ) ), baseX[i], baseY + ( pocj - shiftdn )*den, colorWhite, colorDarkGrey );
+        }
+
+
+        if ( Version() > 5.4 && !use_original_version )
+        {
+            for ( p = 0; p <= relTodayRange + 1; p = p + multiplier )
+            {
+		         Plot_horizon_line_with_GFX( baseX, baseX + x[p], baseY + p * Den, IIf( p > ( pocj + shiftup ), Color_Above_VA, IIf( p <= ( pocj + shiftup ) AND p >= ( pocj - shiftdn ), Color_VA, Color_Below_VA )));
+            }
+        }
+        else
+        {
+            for ( p = 0; p <= relTodayRange + 1; p = p + multiplier )
+            {
+                if ( P > 0 )
+                {
+                    line = LineArray( baseX, baseY + ( p ) * Den, baseX + x[p], baseY + ( p ) * Den );
+                }
+                Plot( line, "", IIf( p > ( pocj + shiftup ), Color_Above_VA, IIf( p <= ( pocj + shiftup )AND p >= ( pocj - shiftdn ), Color_VA, Color_Below_VA ) ) , EnMP2 );
+            }
+        }
+
+///////////////////
+        basex = 0;
+        x = 0;
+        Basex = i;
+        baseY = Bot[i];
+        relTodayRange = Range[i] / Den;
+        Voloumeunit = Vol[i] / LastValue( BarsInDay );
+
+    }
+
+    for ( j = 0; j <= relTodayRange ; j++ )
+    {
+        if ( L[i] <= Bot[i] + j*Den AND H[i] >= Bot[i] + j*Den  )
+        {
+
+            if ( Type == "Price Profile" )
+            {
+                x[j] = ( x[j] ) + x_scale;
+            }
+            else
+                if ( Type == "Volume Profile" )
+                {
+                    x[j] = x[j] + round( V[i] / Voloumeunit ) + 1;
+                }
+
+        }
+    }
+}
+
+
+if ( EnIB == 1 )
+{
+    IBH = HHV( H, IBBars );
+    IBL = LLV( L, IBBars );
+    Line1 = LineArray( basex, IBH[basex+IBBars-1], i, IBH[basex+IBBars-1] );
+    Plot( Line1, "", IBColor, IBstyle );
+    Line2 = LineArray( basex, IBL[basex+IBBars-1], i, IBL[basex+IBBars-1] );
+    Plot( Line2, "", IBColor, IBstyle );
+}
+
+//////////////////////////////////
+poc = 0;
+pocj = 0;
+midrange = int( relTodayRange / 2 ) + 1;
+
+for ( j = 1; j <= relTodayRange + 1 ; j++ )
+{
+    if ( poc < x[j] )
+    {
+        poc = x[j];
+        pocj = j;
+    }
+    else
+        if ( poc == x[j] )
+        {
+            if ( abs( midrange - j ) < abs( midrange - pocj ) )
+            {
+                poc = x[j];
+                pocj = j;
+            }
+        }
+
+}
+
+for ( n = 1; n <= relTodayRange; n++ )
+{
+    total[n] = x[n] + total[n-1];
+}
+
+Value_area = ( total[relTodayRange] * percent ) / 100;
+
+
+for ( a = 1; a <= relTodayRange; a++ )
+{
+    if ( pocj - a > 0 AND pocj + a < relTodayRange )
+    {
+        if ( poc + total[pocj+a] - total[pocj] + ( total[pocj] - poc ) - total[pocj-( a+1 )] >= Value_area )
+        {
+            shiftup = a;
+            shiftdn = a;
+            break;
+        }
+    }
+    else
+        if ( pocj - a < 1 )
+        {
+            if ( poc + total[pocj+a] - total[pocj] + ( total[pocj] - poc ) >= Value_area )
+            {
+                shiftup = a;
+                shiftdn = pocj;
+                break;
+            }
+        }
+        else
+            if ( pocj + a > relTodayRange )
+            {
+                if ( poc + total[relTodayRange] - total[pocj] + ( total[pocj] - poc ) - total[pocj-( a+1 )] >= Value_area )
+                {
+                    shiftup = floor( relTodayRange ) - pocj;
+                    shiftdn = a + 1;
+                    break;
+                }
+            }
+}
+
+Vah = LineArray( baseX[i], baseY + ( pocj + shiftup ) * den, i, baseY + ( pocj + shiftup ) * den );
+Val = LineArray( baseX[i], baseY + ( pocj - shiftdn ) * den, i, baseY + ( pocj - shiftdn ) * den );
+pocline = LineArray( basex, basey + pocj * den, basex[i] + poc, basey + pocj * den );
+
+if ( ViewTPO == 1 )
+{
+    PlotText( "" + ( total[relTodayRange] - total[pocj] ), basex[i], top[i], colorLightGrey );
+    PlotText( "" + ( total[pocj-1] + x_scale ), basex[i], basey - den, colorLightGrey );
+}
+
+if ( Viewvalues == 1 )
+{
+    PlotText( "" + ( ( basey + pocj*den ) ), baseX[i], basey + pocj*den, colorWhite, colorDarkGrey );
+    PlotText( "" + ( ( baseY + ( pocj + shiftup )*den ) ), baseX[i], baseY + ( pocj + shiftup )*den, colorWhite, colorDarkGrey );
+    PlotText( "" + ( ( baseY + ( pocj - shiftdn )*den ) ), baseX[i], baseY + ( pocj - shiftdn )*den, colorWhite, colorDarkGrey );
+}
+
+
+
+if ( Version() > 5.4 && !use_original_version )
+{
+    for ( p = 0; p <= relTodayRange + 1; p = p + multiplier )
+    {
+		Plot_horizon_line_with_GFX( baseX, baseX + x[p], baseY + p * Den, IIf( p > ( pocj + shiftup ), Color_Above_VA, IIf( p <= ( pocj + shiftup ) AND p >= ( pocj - shiftdn ), Color_VA, Color_Below_VA )));
+    }
+    // pocline
+    Plot_horizon_line_with_GFX( baseX, basex[i] + poc, basey + pocj * den, Color_POC_Line );
+}
+else
+{
+    for ( p = 0; p <= relTodayRange + 1; p = p + multiplier )
+    {
+        line = LineArray( baseX, baseY + p * Den, baseX + x[p], baseY + p * Den );
+        Plot( line, "", IIf( p > ( pocj + shiftup ), Color_Above_VA, IIf( p <= ( pocj + shiftup )AND p >= ( pocj - shiftdn ), Color_VA, Color_Below_VA ) ), EnMP2 );
+    }
+
+    Plot( pocline, "", Color_POC_Line, styleLine | styleNoRescale | styleNoLabel );
+}
+_SECTION_END();
+
+_SECTION_BEGIN("Gradient Backfill");
+SetChartBkGradientFill( ParamColor("Bg Top", ColorRGB( 255,255,255 )),
+
+ParamColor("BgBottom", ColorRGB( 255,255,255 )),ParamColor("titleblock",ColorRGB( 255,255,255 ))); 
+_SECTION_END();
+
+_SECTION_BEGIN("Volume At Price");
+PlotVAPOverlay( Param("Lines", 500, 100, 1000, 1 ), Param("Width", 12, 1, 100, 1 ), ParamColor("Color", colorGrey40 ), ParamToggle("Side", "Left|Right" ) | 4*ParamToggle("Z-order", "On top|Behind", 0 ) );
+ 
+_SECTION_END();
+
+_SECTION_BEGIN("VWAP");
+/*
+The VWAP for a stock is calculated by adding the value traded for every transaction in that stock ("price" x "number of  shares traded") and dividing the total shares traded. A VWAP is computed from the Open of the market to the market Close, AND is calculated by Volume weighting all transactions during this time period
+*/
+
+if(Period=="Daily" )
+{//OR Interval()==3600
+Bars_so_far_today = 1 + BarsSince( Day() != Ref(Day(), -1));
+StartBar = ValueWhen(TimeNum() == 090000, BarIndex());
+TodayVolume = Sum(V,Bars_so_far_today);
+IIf (BarIndex() >= StartBar, VWAP = Sum (C * V, Bars_so_far_today  ) / TodayVolume,0);
+}
+
+if(Period=="Weekly" OR Interval()==24 * 3600 )
+{ 
+Bars_so_far_today = 1 + BarsSince(DayOfWeek() < Ref( DayOfWeek(), -1 ));
+StartBar = ValueWhen(TimeNum() == 090000, BarIndex());
+Vol = TimeFrameGetPrice("V", inWeekly, 0);
+TodayVolume = Sum(Vol,Bars_so_far_today);
+IIf (BarIndex() >= StartBar, VWAP = Sum (C * Vol, Bars_so_far_today  ) / TodayVolume,0);
+}
+
+if(Period=="Monthly"  )
+{
+Bars_so_far_today = 1 + BarsSince(Month() != Ref(Month(), -1));
+Vol = TimeFrameGetPrice("V", inMonthly, 0);
+StartBar = ValueWhen(TimeNum() == 090000, BarIndex());
+TodayVolume = Sum(Vol,Bars_so_far_today);
+IIf (BarIndex() >= StartBar, VWAP = Sum (C * Vol, Bars_so_far_today  ) / TodayVolume,0);
+}
+
+Plot (VWAP, "Vwap",colorYellow);
+_SECTION_END();

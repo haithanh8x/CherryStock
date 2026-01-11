@@ -1,0 +1,14 @@
+_SECTION_BEGIN("Force Index");
+periods = Param("Periods", 2, 1, 100, 1);
+FI = EMA(((Close - Ref(Close, -1)) * V), periods);
+FI_kol = IIf(fi < 0, colorRed, colorBrightGreen);
+Plot(Close, "Close", colorRed, 2);
+Plot(FI, "Force Index", FI_kol, styleLine|styleThick);
+Plot(0,"", colorViolet, styleLine | styleThick | styleNoLabel);
+Title = Name() +
+EncodeColor(colorBlack) + " - Force Index - " + WriteVal(periods, 1) + " days," +
+EncodeColor(colorRed) + " Close " +
+EncodeColor(colorRed) + " = " + WriteVal(Close) + ", " +
+EncodeColor(colorBlue) + "Force Index = " +
+EncodeColor(colorBlue) + WriteVal(FI, 1.2);
+_SECTION_END();

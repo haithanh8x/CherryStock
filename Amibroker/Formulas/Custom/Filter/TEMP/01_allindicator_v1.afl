@@ -1,0 +1,204 @@
+#include <T3_Include.afl>;
+
+_SECTION_BEGIN("NewFilter");
+/* Init **************************************************************************/
+_charB = "B";
+_charS = "S";
+
+
+HaClose =EMA((O+H+L+C)/4,3);  // Woodie 
+HaOpen = AMA( Ref( HaClose, -1 ), 0.5 );  
+HaHigh = Max( H, Max( HaClose, HaOpen ) ); 
+HaLow = Min( L, Min( HaClose, HaOpen ) ); 
+Temp = Max(High, HaOpen);
+Temp = Min(Low,HaOpen);
+/* Init **************************************************************************/
+
+/* Ibuy **************************************************************************/
+_IBuy =  Cross(RSI(14), EMA(RSI(14),9));
+_ISell = Cross(EMA(RSI(14),9), RSI(14));
+_IBuy = ExRem(_IBuy, _ISell);
+_ISell = ExRem(_ISell, _IBuy);
+_IBull = RSI(14) > EMA(RSI(14),9);
+_IBear = RSI(14) < EMA(RSI(14),9);
+/* Ibuy **************************************************************************/
+
+/* Signal(T3-RSI) Tillson's Part (RSI Smoothing) *********************************/
+_TillsonBuy = Cross (t3(RSI(9),3), t3(RSI(9),5));
+_TillsonSell =  Cross (t3(RSI(9),5), t3(RSI(9),3));
+_TillsonBull = t3(RSI(9),3)> t3(RSI(9),5);
+_TillsonBear = t3(RSI(9),3)< t3(RSI(9),5);
+/* Signal(T3-RSI) Tillson's Part (RSI Smoothing) *********************************/
+
+/* PriceSmoothing - T3 ***********************************************************/
+_TBuy = Cross (T3(C,3), T3(C,5));
+_TSell =  Cross (T3(C,5), T3(C,3));
+_TBuy = ExRem(_TBuy, _TSell);
+_TSell = ExRem(_TSell, _TBuy);
+_TBull = T3(C,3) > T3(C,5);
+_TBear = T3(C,3) < T3(C,5);
+/* PriceSmoothing - T3 ***********************************************************/
+
+
+/* Signal(ZLW) *******************************************************************/
+_R = ((HHV(H,10) - C) /(HHV (H,14) -LLV (L,14))) *-100;
+_Period= 10;
+_EMA1= EMA(_R,_Period);
+_EMA2= EMA(_EMA1,5);
+_Difference= _EMA1 - _EMA2;
+_ZeroLagEMA= _EMA1 + _Difference;
+_PR=100-abs(_ZeroLagEMA);
+_MoveAvg=MA(_PR,5);
+_ZBuy = Cross(_PR,_moveAvg) AND _PR<30;
+_ZSell = Cross(_moveAvg,_PR) AND _PR>70;
+_ZBull= _PR>= _MoveAvg AND _PR>= Ref(_PR,-1) ;
+_ZBear=(_PR < _MoveAvg) OR _PR>= _MoveAvg AND _PR< Ref(_PR,-1) ;
+/* Signal(ZLW) *******************************************************************/
+
+/* Signal(Mabiuts-Mr.Karthik) ******************************************************/
+_maH = 13;
+_maL = 9;
+_mabBuy=EMA(C,_maH)>EMA(EMA(C,_maH),_maL) AND Cross (C,Peak(C,5,1));
+_mabSell=Cross (EMA(EMA(C,_maH),_maL),EMA(C,_maH));
+_mabBull= EMA(C,_maH)>EMA(EMA(C,_maH),_maL) AND C>Peak(C,2,1);
+_mabBear =EMA(C,_maH)>EMA(EMA(C,_maH),_maL) AND C<Peak(C,2,1);
+/* Signal(Mabiuts-Mr.Karthik) ******************************************************/
+
+/* Signal(TMA) Haiken-Ashi ********************************************************/
+function ZeroLagTEMA( array, period )
+{
+ TMA1 = TEMA( array, period );
+ TMA2 = TEMA( TMA1, period );
+ Diff = TMA1 - TMA2;
+ return TMA1 + Diff ;
+}
+haClose = ( haClose + haOpen + haHigh + haLow )/4; 
+period = Param("Avg. TEMA period", 55, 1, 100 );
+ZLHa = ZeroLagTEMA( haClose, period );
+ZLTyp = ZeroLagTEMA( Avg, period );
+_TMBuy = Cross( ZLTyp, ZLHa );
+_TMSell = Cross( ZLHa, ZLTyp );
+_TMBuy1 = ZLTyp> ZLHa ;
+_TMSell1 = ZLHa> ZLTyp ;
+/* Signal(TMA) Haiken-Ashi ********************************************************/
+
+/* Signal(ADX) JSB_Pic_DMX_3) ***************************************************
+SetBarsRequired(100000, 100000);
+JSB_InitLib();
+range=Param( "Length ", 9, 0, 500);
+aup = JSB_JDMX(C,range) > 0;
+adown = JSB_JDMX(C,range) < 0;
+achoppy = JSB_JDMX(C,range) < JSB_JDMXplus(C,range) AND JSB_JDMX(C,range) < JSB_JDMXminus(C,range);
+adxBuy =  Cross(JSB_JDMXplus(C,range), JSB_JDMXminus(C,range));
+adxSell = Cross(JSB_JDMXminus(C,range), JSB_JDMXplus(C,range));
+adxBuy = ExRem(adxBuy, adxSell);
+adxSell = ExRem(adxSell, adxBuy);
+adxBull = JSB_JDMXplus(C,range) > JSB_JDMXminus(C,range);
+adxBear = JSB_JDMXminus(C,range)> JSB_JDMXplus(C,range);
+Signal(ADX) JSB_Pic_DMX_3) ****************************************************/
+
+/* Signal(MACD) MACD Signal Crosses) ***********************************************/
+MB= Cross (MACD(), Signal());
+MS = Cross( Signal(), MACD());
+_MBuy = ExRem(MB, MS);
+_MSell = ExRem(MS, MB);
+_MBull= MACD() > Signal();
+_MBear= MACD() < Signal();
+/* Signal(MACD) MACD Signal Crosses) ***********************************************/
+
+/* Signal(Stoch) Stochastics Part **************************************************/
+StochKval = StochK(10,5);
+StochDval = StochD(10,5,5);
+StBuy = Cross(StochK(10,5), StochD(10,5,5));
+StSell = Cross (StochD(10,5,5), StochK(10,5));
+StBull=StochK(10,5)>StochD(10,5,5);
+StBear=StochK(10,5)<StochD(10,5,5);
+/* Signal(Stoch) Stochastics Part **************************************************/
+_SECTION_END();
+
+_SECTION_BEGIN("ICHIMOKU");
+
+n1 = Param("Ишимоку: период 1",9,1,200,1); 
+n2 = Param("Ишимоку: период 2",26,1,400,1); 
+n3 = Param("Ишимоку: период 3",52,1,600,1); 
+ 
+TenkanSen   =(HHV(H,n1)+LLV(L,n1))/2;            // Tenkan-sen (Тенкан-сен) – это среднее значение цены за первый промежуток времени (равна (high+low)/2, где high и low – максимум и минимум за период). 
+KijunSen    =(HHV(H,n2)+LLV(L,n2))/2;            // Kijun-sen (Киджун-сен) – это среднее значение цены за второй промежуток. 
+ChinkouSpan =Ref(C,-n2);                         // Chinkou Span (Чикоу спен) - цена закрытия текущего бара, сдвинутая назад на величину второго временного интервала. 
+Cks         = Close;                             // Графический Chinkou Span, сдвиг назад засчет отрисовки. 
+SenkouSpanA =Ref((KijunSen+TenkanSen)/2,-n2);    // Senkou Span A (Сенкоу спен А) / Up Kumo - середина расстояния между Tenkan-sen и Kijun-sen, сдвинутое вперед на величину второго временного интервала. 
+SpA         =(KijunSen+TenkanSen)/2;             // Графический Senkou Span A , сдвиг вперед засчет отрисовки. 
+SenkouSpanB =Ref((HHV(H,n3)+LLV(L,n3))/2,-n2);   // Senkou Span B (Сенкоу спен В) / Down Kumo - среднее значение цены за третий временной интервал, сдвинутое вперед на величину второго временного интервала. 
+SpB         =(HHV(H,n3)+LLV(L,n3))/2;            // Графический Senkou Span B, сдвиг вперед засчет отрисовки. 
+DL = Ref( C, 25 );
+ 
+ 
+Cond1 =  Ref(Close > Max(SenkouSpanA,SenkouSpanB),-1);  //цена выше облака  -- бычье настроение 
+Cond2 =  Ref(Close < Min(SenkouSpanA,SenkouSpanB),-1);  //цена ниже облака  -- медвежье настроение 
+Cond3 =  Ref(Cross(TenkanSen,KijunSen),-1);  //пересечение Тенкан и Киджун -- сигнал на покупку 
+Cond4 =  Ref(Cross(KijunSen,TenkanSen),-1);  //пересечение Тенкан и Киджун -- сигнал на продажу 
+Cond5 =  Ref(Cross(Close,ChinkouSpan ),-1);  //пересечение Чикоу и цены 
+Cond6 =  Ref(Cross(ChinkouSpan ,Close),-1);  //пересечение Чикоу и цены 
+Cond7 =  Ref(Cross (Close , Max(SenkouSpanA,SenkouSpanB)),-1);  //цена выходит вверх из облака  -- сигнал на покупку 
+Cond8 =  Ref(Cross ( Min(SenkouSpanA,SenkouSpanB), Close),-1);  //цена выходит вниз  из облака  -- сигнал на продажу 
+Cond9 = Close > TenkanSen AND TenkanSen > KijunSen AND KijunSen > Max(SenkouSpanA,SenkouSpanB); // сигнал трех линий вверх 
+Cond10= Close < TenkanSen AND TenkanSen < KijunSen AND KijunSen < Min(SenkouSpanA,SenkouSpanB); // сигнал трех линий вниз 
+RemCond9=ExRem(Cond9,NOT Cond9);                  
+RemCond10=ExRem(Cond10,NOT Cond10); 
+ 
+ColSenk =IIf (Cond1,colorGreen, IIf(Cond2,colorRed,colorLightGrey)); // задает цвет, если цена выше/ниже/внутри облака. 
+Flat  =  TenkanSen == Ref(TenkanSen,-1) OR (NOT(Cond1) AND NOT(Cond2)) ; 
+ 
+for( i = 0; i < BarCount; i++ ) //раскрашивает среднюю линию индикатора по взаиморасположению и направления движения TenkanSen, цены и облака. 
+{ 
+   if (Flat[i]) 
+      ColTenk[i] = colorLightGrey; 
+   else
+   { 
+if (Cond1[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+if (Cond1[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+   } 
+} 
+
+above = IIf(KijunSen>SenkouSpanA AND TenkanSen>SenkouSpanB,1,0);
+within = IIf(KijunSen>SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+below = IIf(TenkanSen<SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+Buy = Cross(TenkanSen,KijunSen) AND (DL>Close);
+Sell = Cross(KijunSen,TenkanSen) AND (DL<KijunSen);
+
+_iStrongBuy = Buy AND above;
+_iMediumBuy = Buy AND within;
+_iWeakBuy = Buy AND below;
+_iStrongSell = Sell AND below;
+_iMediumSell = Sell AND within;
+_iWeakSell = Sell AND above;
+_SECTION_END();
+
+addcolumn( Volume, "Volume", 1);
+addcolumn( Close, "Close price", 1.2);
+AddColumn( IIf(_iStrongBuy,Asc(_charB), IIf(_iStrongSell,Asc(_charS), Asc(" "))), "1", formatChar, colorDefault, IIf(_iStrongBuy,colorGreen, IIf(_iStrongSell,colorRed, colorDefault)),30);
+AddColumn( IIf(_iMediumBuy,Asc(_charB), IIf(_iMediumSell,Asc(_charS), Asc(" "))), "2", formatChar, colorDefault, IIf(_iMediumBuy,colorGreen, IIf(_iMediumSell,colorRed, colorDefault)),30);
+AddColumn( IIf(_iWeakBuy,Asc(_charB), IIf(_iWeakSell,Asc(_charS), Asc(" "))), "3", formatChar, colorDefault, IIf(_iWeakBuy,colorGreen, IIf(_iWeakSell,colorRed, colorDefault)),30);
+AddColumn( IIf(_IBuy,Asc(_charB), IIf(_ISell,Asc(_charS), Asc(" "))), "4", formatChar, colorDefault, IIf(_IBuy,colorGreen, IIf(_ISell,colorRed, colorDefault)),30);
+AddColumn( IIf(_TillsonBuy,Asc(_charB), IIf(_TillsonSell,Asc(_charS), Asc(" "))), "5", formatChar, colorDefault, IIf(_TillsonBuy,colorGreen, IIf(_TillsonSell,colorRed, colorDefault)),30);
+AddColumn( IIf(_TBuy,Asc(_charB), IIf(_TSell,Asc(_charS), Asc(" "))), "6", formatChar, colorDefault, IIf(_TBuy,colorGreen, IIf(_TSell,colorRed, colorDefault)),30);
+AddColumn( IIf(_ZBuy,Asc(_charB), IIf(_ZSell,Asc(_charS), Asc(" "))), "7", formatChar, colorDefault, IIf(_ZBuy,colorGreen, IIf(_ZSell,colorRed, colorDefault)),30);
+AddColumn( IIf(_mabBuy,Asc(_charB), IIf(_mabSell,Asc(_charS), Asc(" "))), "8", formatChar, colorDefault, IIf(_mabBuy,colorGreen, IIf(_mabSell,colorRed, colorDefault)),30);
+AddColumn( IIf(_TMBuy,Asc(_charB), IIf(_TMSell,Asc(_charS), Asc(" "))), "9", formatChar, colorDefault, IIf(_TMBuy,colorGreen, IIf(_TMSell,colorRed, colorDefault)),30);
+/*AddColumn( IIf(adxBuy,Asc(_charB), IIf(adxSell,Asc(_charS), Asc(" "))), "10", formatChar, colorDefault, IIf(adxBuy,colorGreen, IIf(adxSell,colorRed, colorDefault)));*/
+AddColumn( IIf(_MBuy,Asc(_charB), IIf(_MSell,Asc(_charS), Asc(" "))), "11", formatChar, colorDefault, IIf(_MBuy,colorGreen, IIf(_MSell,colorRed, colorDefault)),30);
+AddColumn( IIf(StBuy,Asc(_charB), IIf(StSell,Asc(_charS), Asc(" "))), "12", formatChar, colorDefault, IIf(StBuy,colorGreen, IIf(StSell,colorRed, colorDefault)),30);
+
+addcolumn(((Close-Ref(Close,3))*-100)/Close, "3D", 1.2);
+addcolumn(((Close-Ref(Close,5))*-100)/Close, "1W", 1.2);
+addcolumn(((Close-Ref(Close,10))*-100)/Close, "2W", 1.2);
+addcolumn(((Close-Ref(Close,20))*-100)/Close, "3W", 1.2);
+addcolumn(((Close-Ref(Close,25))*-100)/Close, "1M", 1.2);
+
+Filter = 1 AND V >=10000;

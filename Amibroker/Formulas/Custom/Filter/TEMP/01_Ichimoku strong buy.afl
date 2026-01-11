@@ -1,0 +1,112 @@
+_SECTION_BEGIN("i");
+
+n1 = Param("Ишимоку: период 1",9,1,200,1); 
+n2 = Param("Ишимоку: период 2",26,1,400,1); 
+n3 = Param("Ишимоку: период 3",52,1,600,1); 
+ 
+TenkanSen   =(HHV(H,n1)+LLV(L,n1))/2;            // Tenkan-sen (Тенкан-сен) – это среднее значение цены за первый промежуток времени (равна (high+low)/2, где high и low – максимум и минимум за период). 
+KijunSen    =(HHV(H,n2)+LLV(L,n2))/2;            // Kijun-sen (Киджун-сен) – это среднее значение цены за второй промежуток. 
+ChinkouSpan =Ref(C,-n2);                         // Chinkou Span (Чикоу спен) - цена закрытия текущего бара, сдвинутая назад на величину второго временного интервала. 
+Cks         = Close;                             // Графический Chinkou Span, сдвиг назад засчет отрисовки. 
+SenkouSpanA =Ref((KijunSen+TenkanSen)/2,-n2);    // Senkou Span A (Сенкоу спен А) / Up Kumo - середина расстояния между Tenkan-sen и Kijun-sen, сдвинутое вперед на величину второго временного интервала. 
+SpA         =(KijunSen+TenkanSen)/2;             // Графический Senkou Span A , сдвиг вперед засчет отрисовки. 
+SenkouSpanB =Ref((HHV(H,n3)+LLV(L,n3))/2,-n2);   // Senkou Span B (Сенкоу спен В) / Down Kumo - среднее значение цены за третий временной интервал, сдвинутое вперед на величину второго временного интервала. 
+SpB         =(HHV(H,n3)+LLV(L,n3))/2;            // Графический Senkou Span B, сдвиг вперед засчет отрисовки. 
+DL = Ref( C, 25 );
+ 
+ 
+Cond1 =  Ref(Close > Max(SenkouSpanA,SenkouSpanB),-1);  //цена выше облака  -- бычье настроение 
+Cond2 =  Ref(Close < Min(SenkouSpanA,SenkouSpanB),-1);  //цена ниже облака  -- медвежье настроение 
+Cond3 =  Ref(Cross(TenkanSen,KijunSen),-1);  //пересечение Тенкан и Киджун -- сигнал на покупку 
+Cond4 =  Ref(Cross(KijunSen,TenkanSen),-1);  //пересечение Тенкан и Киджун -- сигнал на продажу 
+Cond5 =  Ref(Cross(Close,ChinkouSpan ),-1);  //пересечение Чикоу и цены 
+Cond6 =  Ref(Cross(ChinkouSpan ,Close),-1);  //пересечение Чикоу и цены 
+Cond7 =  Ref(Cross (Close , Max(SenkouSpanA,SenkouSpanB)),-1);  //цена выходит вверх из облака  -- сигнал на покупку 
+Cond8 =  Ref(Cross ( Min(SenkouSpanA,SenkouSpanB), Close),-1);  //цена выходит вниз  из облака  -- сигнал на продажу 
+Cond9 = Close > TenkanSen AND TenkanSen > KijunSen AND KijunSen > Max(SenkouSpanA,SenkouSpanB); // сигнал трех линий вверх 
+Cond10= Close < TenkanSen AND TenkanSen < KijunSen AND KijunSen < Min(SenkouSpanA,SenkouSpanB); // сигнал трех линий вниз 
+RemCond9=ExRem(Cond9,NOT Cond9);                  
+RemCond10=ExRem(Cond10,NOT Cond10); 
+ 
+ColSenk =IIf (Cond1,colorGreen, IIf(Cond2,colorRed,colorLightGrey)); // задает цвет, если цена выше/ниже/внутри облака. 
+Flat  =  TenkanSen == Ref(TenkanSen,-1) OR (NOT(Cond1) AND NOT(Cond2)) ; 
+ 
+for( i = 0; i < BarCount; i++ ) //раскрашивает среднюю линию индикатора по взаиморасположению и направления движения TenkanSen, цены и облака. 
+{ 
+   if (Flat[i]) 
+      ColTenk[i] = colorLightGrey; 
+   else
+   { 
+if (Cond1[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+if (Cond1[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] < TenkanSen[i-1]) 
+     ColTenk[i] = colorRed; 
+if (Cond2[i] AND TenkanSen[i] > TenkanSen[i-1]) 
+     ColTenk[i] = colorGreen; 
+   } 
+} 
+
+above = IIf(KijunSen>SenkouSpanA AND TenkanSen>SenkouSpanB,1,0);
+within = IIf(KijunSen>SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+below = IIf(TenkanSen<SenkouSpanA AND TenkanSen<SenkouSpanB,1,0);
+Buy = Cross(TenkanSen,KijunSen) AND (DL>Close);
+Sell = Cross(KijunSen,TenkanSen) AND (DL<KijunSen);
+StrongBuy = Buy AND above;
+MediumBuy = Buy AND within;
+WeakBuy = Buy AND below;
+StrongSell = Sell AND below;
+MediumSell = Sell AND within;
+WeakSell = Sell AND above;
+ 
+//Volume weighted moving average
+P = ParamField("Price field",-1);
+Periods = Param("Periods", 15, 2, 1000, 1, 10 );
+Vwma = Sum((Volume*P),periods)/Sum (Volume,periods);
+Plot(Vwma,_DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style") );
+
+addcolumn( Close, "Close price", 1.2);
+addcolumn( (Ref(Close,5*1)-Close)*100/Ref(Close,5*1), "1W", 1.2);
+addcolumn( (Ref(Close,5*2)-Close)*100/Ref(Close,5*2), "2W", 1.2);
+addcolumn( (Ref(Close,5*3)-Close)*100/Ref(Close,5*3), "3W", 1.2);
+addcolumn( (Ref(Close,5*4)-Close)*100/Ref(Close,5*4), "4W", 1.2);
+addcolumn( (Ref(Close,5*5)-Close)*100/Ref(Close,5*5), "5W", 1.2);
+addcolumn( (Ref(Close,5*6)-Close)*100/Ref(Close,5*6), "6W", 1.2);
+addcolumn( (Ref(Close,5*7)-Close)*100/Ref(Close,5*7), "7W", 1.2);
+addcolumn( (Ref(Close,5*8)-Close)*100/Ref(Close,5*8), "8W", 1.2);
+addcolumn( (Ref(Close,5*9)-Close)*100/Ref(Close,5*9), "9W", 1.2);
+addcolumn( (Ref(Close,5*10)-Close)*100/Ref(Close,5*10), "10W", 1.2);
+addcolumn( (Ref(Close,5*11)-Close)*100/Ref(Close,5*11), "11W", 1.2);
+addcolumn( (Ref(Close,5*12)-Close)*100/Ref(Close,5*12), "12W", 1.2);
+addcolumn( (Ref(Close,5*13)-Close)*100/Ref(Close,5*13), "13W", 1.2);
+addcolumn( (Ref(Close,5*14)-Close)*100/Ref(Close,5*14), "14W", 1.2);
+addcolumn( (Ref(Close,5*15)-Close)*100/Ref(Close,5*15), "15W", 1.2);
+addcolumn( (Ref(Close,5*16)-Close)*100/Ref(Close,5*16), "16W", 1.2);
+addcolumn( (Ref(Close,5*17)-Close)*100/Ref(Close,5*17), "17W", 1.2);
+addcolumn( (Ref(Close,5*18)-Close)*100/Ref(Close,5*18), "18W", 1.2);
+addcolumn( (Ref(Close,5*19)-Close)*100/Ref(Close,5*19), "19W", 1.2);
+addcolumn( (Ref(Close,5*20)-Close)*100/Ref(Close,5*20), "20W", 1.2);
+addcolumn( (Ref(Close,5*21)-Close)*100/Ref(Close,5*21), "21W", 1.2);
+addcolumn( (Ref(Close,5*22)-Close)*100/Ref(Close,5*22), "22W", 1.2);
+addcolumn( (Ref(Close,5*23)-Close)*100/Ref(Close,5*23), "23W", 1.2);
+addcolumn( (Ref(Close,5*24)-Close)*100/Ref(Close,5*24), "24W", 1.2);
+addcolumn( (Ref(Close,5*25)-Close)*100/Ref(Close,5*25), "25W", 1.2);
+addcolumn( (Ref(Close,5*26)-Close)*100/Ref(Close,5*26), "26W", 1.2);
+addcolumn( (Ref(Close,5*27)-Close)*100/Ref(Close,5*27), "27W", 1.2);
+addcolumn( (Ref(Close,5*28)-Close)*100/Ref(Close,5*28), "28W", 1.2);
+addcolumn( (Ref(Close,5*29)-Close)*100/Ref(Close,5*29), "29W", 1.2);
+addcolumn( (Ref(Close,5*30)-Close)*100/Ref(Close,5*30), "30W", 1.2);
+addcolumn( (Ref(Close,5*31)-Close)*100/Ref(Close,5*31), "31W", 1.2);
+addcolumn( (Ref(Close,5*32)-Close)*100/Ref(Close,5*32), "32W", 1.2);
+addcolumn( (Ref(Close,5*33)-Close)*100/Ref(Close,5*33), "33W", 1.2);
+addcolumn( (Ref(Close,5*34)-Close)*100/Ref(Close,5*34), "34W", 1.2);
+addcolumn( (Ref(Close,5*35)-Close)*100/Ref(Close,5*35), "35W", 1.2);
+addcolumn( (Ref(Close,5*36)-Close)*100/Ref(Close,5*36), "36W", 1.2);
+addcolumn( (Ref(Close,5*37)-Close)*100/Ref(Close,5*37), "37W", 1.2);
+addcolumn( (Ref(Close,5*38)-Close)*100/Ref(Close,5*38), "38W", 1.2);
+addcolumn( (Ref(Close,5*39)-Close)*100/Ref(Close,5*39), "39W", 1.2);
+addcolumn( (Ref(Close,5*40)-Close)*100/Ref(Close,5*40), "40W", 1.2);
+
+Filter = StrongBuy AND EMA(V,100)>=10000;
+_SECTION_END();

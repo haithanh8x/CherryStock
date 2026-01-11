@@ -1,0 +1,498 @@
+_SECTION_BEGIN("Background_Setting");
+SetChartBkGradientFill( ParamColor("BgTop", colorBlack),
+ParamColor("BgBottom", colorBlack),ParamColor("titleblock",colorGrey50));
+_SECTION_END();
+ 
+_SECTION_BEGIN("Rashedbgd");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+Plot(Close,"Price",colorWhite, styleCandle);
+Plot(EMA(Close,7),"7EMA",colorGreen,style=styleThick);
+Plot(EMA(Close,34),"34EMA",colorRed,style=styleThick);
+Buy=Cross(EMA(Close,7),EMA(Close,34));
+Sell=Cross(EMA(Close,34),EMA(Close,7));
+Short=Sell;
+Cover=Buy;
+shape = Buy * shapeSmallUpTriangle + Sell * shapeSmallDownTriangle;
+PlotShapes( shape, IIf( Buy, colorGreen, colorRed ), 0, IIf( Buy, Low, High ) );
+_SECTION_END();
+ 
+ 
+_SECTION_BEGIN("VolnRibbon");
+no=Param( "Swing", 10, 1, 55 );
+res=HHV(H,no);
+sup=LLV(L,no);
+avd=IIf(C>Ref(res,-1),1,IIf(C<Ref(sup,-1),-1,0));
+avn=ValueWhen(avd!=0,avd,1);
+tsl=IIf(avn==1,sup,res);
+ 
+Plot( 2, "Ribbon",IIf(C>tsl,colorGreen,colorRed),styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
+VCol = ParamColor("Vol. Color", colorLime );
+VH = Param("Volume Height", 5,1,15,1 );
+SetBarFillColor( IIf( V > Ref(V,-1), colorGreen, colorRed) ); 
+PlotOHLC(0,V,0,V,"Volume",VCol,styleCandle|styleOwnScale,VH );
+ 
+_SECTION_END();
+ 
+ 
+_SECTION_BEGIN("Rashedbgd");
+ 
+T=Max(Ref(H,-1),Ref(H,-2));
+M=Max(Ref(H,-2),Ref(H,-3));
+S=Max(T,M);
+p=Min(Ref(L,-1),Ref(L,-2));
+k=Min(Ref(L,-2),Ref(L,-3));
+r=Min(p,k);
+ 
+ 
+t1=DayOfWeek();
+n2=WriteIf(t1==1,"SUNDAY",WriteIf(t1==2,"MONDAY",WriteIf(t1==3,"TUESDAY",WriteIf(t1==4,"WEDNESDAY",WriteIf(t1==5,"THURSDAY","-")))));
+Plot( C, "Close",  IIf (t1==2 , colorRed,IIf(t1==5,colorBlue,colorWhite)), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+BarColor = IIf (t1==2 , colorRed,colorWhite);
+ 
+ 
+H1=(Ref(H,-1));
+H2=(Ref(H,-2));
+H3=(Ref(H,-3)); 
+l1=(Ref(L,-1));
+l2=(Ref(L,-2));
+l3=(Ref(L,-3));
+ 
+J=C>(s+2.5);//UPTO200
+j1=C<(r-2.5);
+A=C>(S+3.75);//300   
+a1=C<(r-3.75);
+B=C>(S+5);//400      
+b1=C<(r-5);
+D=C>(S+6.25);//500 
+d1=C<(r-6.25);
+E=C>(S+7.5);//600 
+e1=C<(r-7.5);
+F=C>(S+8.75);//700  
+f1=C<(r-8.75);
+G=C>(S+10);//800  
+g1=C<(r-10);
+I=C>(S+11.25);//  900   
+i1=C<(r-11.25);
+N=C>(S+12.5);//1000   
+n1=C<(r-12.5);
+A2=C>(s+22);//1001 to 3000  
+a3=C<(r-22);
+B2=C>(S+37.5);//ABOVE3000(S+37.5); 
+b3=C<(r-37.5);
+ 
+  
+ 
+//------------------------
+ 
+a4=s-1.75;//buystoploss upto 300
+b4=s-3.25;//stoploss upto 700
+C4=s-5.25;//stoploss upto 1300
+d4=s-10;// stoploss above 1300
+//----------------------
+ 
+ 
+ 
+a11=r+1.75;//sellstoploss upto300
+b11=r+3.25;//700
+C11=r+5.25;//1300
+d11=r+10;//above1300
+//-------------------------
+j5=(s+2.5); //buy  upto200
+a5=(S+3.75);//upto300
+b5=(S+5);//400
+d5=(S+6.25);//500
+e5= (S+7.5);//600
+f5=(S+8.75);//700
+g5=(S+10);//800
+i5=(S+11.25);//900
+n5=(S+12.5);//1000
+a55=(s+22);//1000t03000
+b55=(S+37.5);//above 3000
+//__________________________________
+j6=(r-2.5);//sell upto 200
+a6=(r-3.75);//300
+b6=(r-5);//400
+d6=(r-6.25);//500
+e6=(r-7.5);//600
+f6=(r-8.75);//700
+g6=(r-10);//800
+i6=(r-11.25);//900
+n6=(r-12.5);//1000
+a66=(r-22);//1001 to 3000
+b66=(r-37.5);//above 3000
+//_______________________________________________________
+ 
+ 
+ Buy=IIf((C<200 AND C>1 AND C>s AND C<s+3.5)OR(C>201 AND C<300  AND C>s AND C<s+5)OR (C>301 AND C<400  AND C>s AND C>s+7) OR (C>401 AND C<500 AND C>s AND C<8)OR
+(C>501 AND C<600 AND C>s AND C<8.5) OR  (C>601 AND C<700  AND C>s AND C<9.5)OR(C>701 AND C<800 AND C>s AND C<s+10.5)OR(C>801 AND C<900 AND C>s AND C<s+12) OR
+(C>901 AND C<1000 AND C>s AND C<s+14) OR (C>1001 AND C<3000 AND C>s AND C<s+28)  OR (C>3001 AND C>s AND C<s+45 ),1,0) ;//instant
+ 
+ 
+Sell=IIf((C<200 AND C>1 AND C<r AND C>r-3.5) OR (C>201 AND C<300 AND C<r AND C>r-5)OR (C>301 AND C<400 AND C<r AND C>r-7) OR (C>3001 AND C>s AND C<s+45 )OR
+(C>501 AND C<600 AND C<r AND C>r-8.5)OR  (C>601 AND C<700 AND C<r AND C>r-9.5)OR(C>701 AND C<800 AND C<r AND C>r-10.5)OR(C>801 AND C<900 AND C<r AND C>r-12) OR
+(C>901 AND C<1000 AND C<r AND C>r-14)OR(C>1001 AND C<3000 AND C<r AND C>r-28) OR (C<3001 AND C>20000 AND C<r AND C>r-45),1,0);//instant
+ 
+ 
+ 
+//1st tgt=b-sl/2nd  1.5*1st/3rd  2.25*1st //sell tgt 
+j12=(2*j5)-a4;//upto200
+a12=(2*a5)-a4;//300
+b12=(2*b5)-b4;//400
+d12=(2*d5)-b4;//500
+e12=(2*e5)-b4;//600
+f12=(2*f5)-b4;//700
+g12=(2*g5)-c4;//800
+i12=(2*i5)-C4;//900
+n12=(2*n5)-C4;//1000
+a121=(2*a55)-C4;//1100to1300 
+a122=(2*a55)-d4;//1300 to 3000
+b121=(2*b55)-d4;//above 3000
+//2ND TGT 
+j123=1.5*(j5-a4)+j5;//upto200
+a123=1.5*(a5-a4)+a5;//300
+b123=1.5*(b5-b4)+b5;//400
+d123=1.5*(d5-b4)+d5;//500
+e123=1.5*(e5-b4)+e5;//600
+f123=1.5*(f5-b4)+f5;//700
+g123=1.5*(g5-c4)+g5;//800
+i123=1.5*(i5-C4)+i5;//900
+n123=1.5*(n5-C4)+n5;//1000
+a1211=1.5*(a55-C4)+a55;//1100to1300 
+a1221=1.5*(a55-d4)+a55;//1300 to 3000
+b1211=1.5*(b55-d4)+b55;//above 3000
+ 
+//3RD
+j124=2.25*(j5-a4)+j5;//upto200
+a124=2.25*(a5-a4)+a5;//300
+b124=2.25*(b5-b4)+b5;//400
+d124=2.25*(d5-b4)+d5;//500
+e124=2.25*(e5-b4)+e5;//600
+f124=2.25*(f5-b4)+f5;//700
+g124=2.25*(g5-c4)+g5;//800
+i124=2.25*(i5-C4)+i5;//900
+n124=2.25*(n5-C4)+n5;//1000
+a1212=2.25*(a55-C4)+a55;//1000to1300 
+a1222=2.25*(a55-d4)+a55;//1300 to 3000
+b1212=2.25*(b55-d4)+b55;//above 3000
+ 
+//___________________________________________________________________________
+ 
+//Selling 1st tgt
+j7=2*j6-a11;//200
+a7=2*a6-a11;//300
+b7=2*b6-b11;//400
+d7=2*d6-b11;//500
+e7=2*e6-b11;//600
+f7=2*f6-b11;//700
+g7=2*g6-C11;//800
+i7=2*i6-C11;//900
+n7=2*n6-C11;//1000
+a77=2*a66-c11;//1000 t0 1300
+a771=2*a66-d11;//1300 t03000
+b77=2*b66-d11;//above 3000
+ 
+ 
+//2nd tgt  1.5*1st
+ 
+j27=1.5*(j6-a11)+j6;//200
+a27=1.5*(a6-a11)+a6;//300
+b27=1.5*(b6-b11)+b6;//400
+d27=1.5*(d6-b11)+d6;//500
+e27=1.5*(e6-b11)+e6;//600
+f27=1.5*(f6-b11)+f6;//700
+g27=1.5*(g6-C11)+g6;//800
+i27=1.5*(i6-C11)+i6;//900
+n27=1.5*(n6-C11)+n6;//1000
+a277=1.5*(a66-c11)+a66;//1000 t0 1300
+a2771=1.5*(a66-d11)+a66;//1300 t03000
+b277=1.5*(b66-d11)+b66;//above 3000
+ 
+//3rd tgt 2.25*1st
+ 
+j37=2.25*(j6-a11)+j6;//200
+a37=2.25*(a6-a11)+a6;//300
+b37=2.25*(b6-b11)+b6;//400
+d37=2.25*(d6-b11)+d6;//500
+e37=2.25*(e6-b11)+e6;//600
+f37=2.25*(f6-b11)+f6;//700
+g37=2.25*(g6-C11)+g6;//800
+i37=2.25*(i6-C11)+i6;//900
+n37=2.25*(n6-C11)+n6;//1000
+a377=2.25*(a66-c11)+a66;//1000 t0 1300
+a3771=2.25*(a66-d11)+a66;//1300 t03000
+b377=2.25*(b66-d11)+b66;//above 3000
+ 
+ 
+Title="\n DATE  "+/*Date() +*/  WriteVal( DateTime(), formatDateTime )+ 
+ 
+EncodeColor(colorWhite)     + "   0pen= "+O +
+EncodeColor(colorWhite)     + "   ,High= "+H+
+EncodeColor(colorWhite)     + "   ,Low= "+L+
+EncodeColor(colorWhite)     + "   ,Close= "+C      +"\n"+
+EncodeColor(colorRed)   +"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"+"\n"+
+ 
+EncodeColor( colorWhite )  + "    High1  = "+H1+
+EncodeColor( colorWhite )  + "    High2= "+H2+
+EncodeColor(colorWhite)     + "   High3= "+H3+
+EncodeColor(colorBlue)     + "    =HIGHESTHIGH "+S+"\n"+"\n"+
+ 
+ 
+EncodeColor(colorBlue)     + "    BUYABOVE    =    "+WriteVal(IIf(C<200 AND C>1 ,j5,IIf(C>201 AND C<300,a5,IIf(C>301 AND C<400 ,b5,IIf(C>401 AND C<500,d5,IIf(C>501 AND C<600,e5,
+IIf(C>601 AND C<700,f5,IIf(C>701 AND C<800,g5,IIf(C>801 AND C<900,i5,IIf(C>901 AND C<1000,n5,IIf(C>1001 AND C<3000,a55,IIf(C>3001,b55,0))))))))))),1.2)+
+ 
+ 
+EncodeColor(colorRed)     + "   ---------BUYINGSTOPLOSS  = "+WriteVal(IIf(C>1 AND C<300,a4,IIf(C<700 AND C>300,b4,IIf(C>700 AND C<1300,C4,IIf(C>1300,d4,0)))),1.2)+"\n"+
+"\n"+
+ 
+EncodeColor(colorRed)     + "    1st Tgt =    "+WriteVal(IIf(C<200 AND C>1 ,j12,IIf(C>201 AND C<300,a12,IIf(C>301 AND C<400 ,b12,IIf(C>401 AND C<500,d12,IIf(C>501 AND C<600,e12,
+IIf(C>601 AND C<700,f12,IIf(C>701 AND C<800,g12,IIf(C>801 AND C<900,i12,IIf(C>901 AND C<1000,n12,IIf(C>1001 AND C<1300,a121,IIf(C>1300 AND C<3000,A121,IIf(C>3000,B121,0)))))))))))),1.2)+
+ 
+EncodeColor(colorYellow)     + "    2nd Tgt  =    "+WriteVal(IIf(C<200 AND C>1 ,j123,IIf(C>201 AND C<300,a123,IIf(C>301 AND C<400 ,b123,IIf(C>401 AND C<500,d123,IIf(C>501 AND C<600,e123,
+IIf(C>601 AND C<700,f123,IIf(C>701 AND C<800,g123,IIf(C>801 AND C<900,i123,IIf(C>901 AND C<1000,n123,IIf(C>1001 AND C<1300,a1211,IIf(C>1300 AND C<3000,A1211,IIf(C>3000,B1211,0)))))))))))),1.2)+
+ 
+EncodeColor(colorBlue)     + "    3rd Tgt  =    "+WriteVal(IIf(C<200 AND C>1 ,j124,IIf(C>201 AND C<300,a124,IIf(C>301 AND C<400 ,b124,IIf(C>401 AND C<500,d124,IIf(C>501 AND C<600,e124,
+IIf(C>601 AND C<700,f124,IIf(C>701 AND C<800,g124,IIf(C>801 AND C<900,i124,IIf(C>901 AND C<1000,n124,IIf(C>1001 AND C<1300,a1212,IIf(C>1300 AND C<3000,A1212,IIf(C>3000,B1212,0)))))))))))),1.2)+
+ 
+"\n"+
+EncodeColor(colorYellow)   +"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"+"\n"+
+ 
+EncodeColor(colorWhite)    + " Low1= "+L1+
+EncodeColor(colorWhite)    + " Llow2= "+L2 +
+EncodeColor(colorWhite)    + " Low3= "+L3
++EncodeColor(colorRed)      + "  =LOWESTLOW "+r+"\n"+"\n"+
+ 
+EncodeColor(colorRed)  +"  SellBelow  =   "+WriteVal(IIf(C<200 AND C>1 ,J6,IIf(C>201 AND C<300,A6,IIf(C>301 AND C<400,b6,IIf(C>401 AND C<500,d6,IIf(C>501 AND C<600,e6,
+IIf(C>601 AND C<700,f6,IIf(C>701 AND C<800,g6,IIf(C>801 AND C<900,i6,IIf(C>901 AND C<1000,n6,IIf(C>1001 AND C<3000,a66,IIf(C>3001,b66,0))))))))))),1.2)+
+EncodeColor(colorBlue)     + "  ----SELLINGSTOPLOSS  = "+WriteVal(IIf(C>1 AND C<300,a11,IIf(C<700 AND C>300,b11,IIf(C>700 AND C<1300,C11,IIf(C>1300,d11,0)))),1.2)+"\n"+
+"\n"+
+ 
+EncodeColor(colorRed)     + "  1st Tgt  =  "+WriteVal(IIf(C<200 AND C>1 ,j7,IIf(C>201 AND C<300,a7,IIf(C>301 AND C<400 ,b7,IIf(C>401 AND C<500,d7,IIf(C>501 AND C<600,e7,
+IIf(C>601 AND C<700,f7,IIf(C>701 AND C<800,g7,IIf(C>801 AND C<900,i7,IIf(C>901 AND C<1000,n7,IIf(C>1001 AND C<1300,a77,IIf(C>1300 AND C<3000,A771,IIf(C>3000,B77,0)))))))))))),1.2)+
+ 
+EncodeColor(colorYellow)     + "    2nd Tgt  =  "+WriteVal(IIf(C<200 AND C>1 ,j27,IIf(C>201 AND C<300,a27,IIf(C>301 AND C<400 ,b27,IIf(C>401 AND C<500,d27,IIf(C>501 AND C<600,e27,
+IIf(C>601 AND C<700,f27,IIf(C>701 AND C<800,g27,IIf(C>801 AND C<900,i27,IIf(C>901 AND C<1000,n27,IIf(C>1001 AND C<1300,a277,IIf(C>1300 AND C<3000,A2771,IIf(C>3000,B277,0)))))))))))),1.2)+
+ 
+EncodeColor(colorBlue)     + "    3rd Tgt =  "+WriteVal(IIf(C<200 AND C>1 ,j37,IIf(C>201 AND C<300,a37,IIf(C>301 AND C<400 ,b37,IIf(C>401 AND C<500,d37,IIf(C>501 AND C<600,e37,
+IIf(C>601 AND C<700,f37,IIf(C>701 AND C<800,g37,IIf(C>801 AND C<900,i37,IIf(C>901 AND C<1000,n37,IIf(C>1001 AND C<1300,a377,IIf(C>1300 AND C<3000,A3771,IIf(C>3000,B377,0)))))))))))),1.2);
+ 
+_SECTION_END();
+ 
+_SECTION_BEGIN("StockManiacs Trendline - www.stockmaniacs.net");
+/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    THIS SECTION DRAWS TD TREND LINES */
+  
+percent  = 0.01 * 1; /* Adjust this percent as necessary,  */
+firstpointL = 4;
+firstpointH = 4;
+  
+y0=LastValue(Trough(L,percent,firstpointL));
+y1=LastValue(Trough(Ref(L,-1),percent,1));
+  
+for( i = 1; i < BarCount AND y0 >= y1; i++ )
+{
+          
+        firstpointL++; 
+        y0=LastValue(Trough(L,percent,firstpointL));        
+}
+  
+x0=BarCount - 1 - LastValue(TroughBars(L,percent,firstpointL));
+x1=BarCount - 1 - LastValue(TroughBars(Ref(L,-1),percent,1));
+LineL = LineArray( x0, y0, x1, y1, 1 );
+/*
+Plot(C, "C", colorBlack, styleCandle);
+*/
+Plot( LineL, " Support Trend line", colorGreen,4 +8 );
+  
+  
+yt0=LastValue(Peak(H,percent,firstpointH));
+yt1=LastValue(Peak(Ref(H,-1),percent,1));
+  
+for(i = 1; i < BarCount AND yt0 <= yt1; i++ )
+{
+          
+        firstpointH++;     
+        yt0=LastValue(Peak(H,percent,firstpointH));
+}
+xt0=BarCount - 1 - LastValue(PeakBars(H,percent,firstpointH));
+xt1=BarCount - 1 - LastValue(PeakBars(Ref(H,-1),percent,1));
+LineH = LineArray( xt0, yt0, xt1, yt1, 1 );
+  
+Plot( LineH, "Resistance Trend line", colorRed,4 + 8 );
+  
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+_SECTION_END();
+ 
+_SECTION_BEGIN("Magfied Market Price");
+  
+//Magfied Market Price
+FS=Param("Font Size",30,11,100,1);
+GfxSelectFont("Times New Roman", FS, 700, True ); 
+GfxSetBkMode( colorWhite );  
+GfxSetTextColor( ParamColor("Color",colorYellow) ); 
+Hor=Param("Horizontal Position",800,1,1200,1);
+Ver=Param("Vertical Position",12,1,830,1); 
+GfxTextOut(Date() +"="+C, Hor , Ver );
+YC=TimeFrameGetPrice("C",inDaily,-1);
+DD=Prec(C-YC,2);
+xx=Prec((DD/YC)*100,2);
+GfxSelectFont("Times New Roman", 11, 700, True ); 
+GfxSetBkMode( colorBlack );  
+GfxSetTextColor(ParamColor("Color",colorYellow) ); 
+GfxTextOut(""+DD+"  ("+xx+"%)", Hor , Ver+45 );
+GfxSetTextAlign( 6 );// center alignment 
+GfxSetTextColor( colorWhite ); 
+GfxSetBkMode(0); // transparent 
+GfxTextOut( Name(), Status("pxwidth")/2, Status("pxheight")/15 );
+GfxTextOut( "Chart By Rashedbgd", Status("pxwidth")/2, Status("pxheight")/10 );
+GfxSelectFont("Tahoma", Status("pxheight")/40 );
+ 
+ 
+ _SECTION_END();
+ 
+ 
+ 
+_SECTION_BEGIN("Advanced Trend Lines");
+function GetXSupport(Lo, Percentage, Back)
+{
+return ((BarCount - 1) - LastValue(TroughBars(Lo, Percentage,Back)));
+}
+function GetYSupport(Lo, Percentage, Back)
+{
+return (LastValue(Trough(Lo, Percentage, back)));
+}
+ 
+function GetXResistance(Hi, Percentage, Back)
+{
+return ((BarCount - 1) -LastValue(PeakBars(Hi, Percentage, Back)));
+}
+function GetYResistance(Hi, Percentage, Back)
+{
+return (LastValue(Peak(Hi, Percentage, Back)));
+}
+function TD_Supply(P)
+{
+return ( P > Ref(P, 1) AND P > Ref(P, -1) AND P > Ref(C, -2));
+}
+function TD_Demand(P)
+{
+return ( P < Ref(P, 1) AND P < Ref(P, -1) AND P < Ref(C, -2));
+}
+////////////////////////////////////////////////////////////////////////
+//Parameters
+Percentage = Param("Percentage", 0.44, 0.01, 100. ,0.01);
+DrawAllLines = ParamToggle("Draw All Lines?", "No|Yes");
+Lines = Param("Lines?", 1, 1, BarCount-2);
+DrawR = ParamList("Resistance Points", "Off|High to High|High to Low", 1);
+DrawS = ParamList("Support Points", "Off|Low to Low|Low to High", 1);
+ShowTDP = ParamToggle("Show TD Pionts", "No|Yes", 0);
+AllOrDownR = ParamToggle("Resistance Direction", "All|Down");
+AllOrUpS = ParamToggle("Support Direction", "All|Up");
+ShowSR = ParamToggle("Show Vert S/R","No|Yes", 0);
+SRPer = Param("S/R Percentage", 3, 1);
+SRBack = Param("S/R Back", 5, 1);
+str = "";
+Res = Sup = 0;
+Con = 1;
+////////////////////////////////////////////////////////////////////////
+Main = C;
+Con = ConS = ConR = 1;
+if(DrawS=="Low to Low")
+{
+Support1 = L;
+Support2 = L;
+}
+else
+{
+Support1 = L;
+Support2 = H;
+}
+if(DrawR=="High to High")
+{
+Resistance1 = H;
+Resistance2 = H;
+}
+else
+{
+Resistance1 = H;
+Resistance2 = L;
+}
+////////////////////////////////////////////////////////////////////////
+//Plotting Area
+Plot(Main, "", IIf(C>O,colorBrightGreen, colorPink), styleCandle);
+if(DrawAllLines)
+for(i = 2; i<=Lines+1; i++)
+{
+if(DrawS!="Off")
+{
+x0 = GetXSupport(Support1, Percentage, i);
+x1 = GetXSupport(Support2, Percentage, i-1);
+y0 = GetYSupport(Support1, Percentage, i);
+y1 = GetYSupport(Support2, Percentage, i-1);
+x = LineArray(x0, y0, x1, y1, 1);
+if(AllOrUpS) ConS = StrToNum(NumToStr(y0 < y1));
+if(Con AND ConS)
+Plot(x, "", IIf(LastValue(C) < LastValue(x), colorBlue,colorCustom12), styleLine|styleThick);
+}
+if(DrawR!="Off")
+{
+x0 = GetXResistance(Resistance1, Percentage, i);
+x1 = GetXResistance(Resistance2, Percentage, i-1);
+y0 = GetYResistance(Resistance1, Percentage, i);
+y1 = GetYResistance(Resistance2, Percentage, i-1);
+x = LineArray(x0, y0, x1, y1, 1);
+if(AllOrDownR) ConR = y0 > y1;
+if(Con AND ConR)
+Plot(x, "", IIf(LastValue(C) < LastValue(x), colorBlue,colorCustom12), styleLine|styleThick);
+}
+}
+else
+{
+if(DrawS!="Off")
+{
+x0 = GetXSupport(Support1, Percentage, Lines+1);
+x1 = GetXSupport(Support2, Percentage, Lines);
+y0 = GetYSupport(Support1, Percentage, Lines+1);
+y1 = GetYSupport(Support2, Percentage, Lines);
+x = LineArray(x0, y0, x1, y1, 1 );
+Sup = LastValue(LinRegSlope(x, Lines+1));
+if(AllOrUpS) ConS = y0 < y1;
+if(Con AND ConS)
+Plot(x, "", IIf(LastValue(C) < LastValue(x), colorBlue,colorCustom12), styleLine|styleThick);
+}
+if(DrawR!="Off")
+{
+x0 = GetXResistance(Resistance1, Percentage, Lines+1);
+x1 = GetXResistance(Resistance2, Percentage, Lines);
+y0 = GetYResistance(Resistance1, Percentage, Lines+1);
+y1 = GetYResistance(Resistance2, Percentage, Lines);
+x = LineArray(x0, y0, x1, y1, 1 );
+Res = LastValue(LinRegSlope(x, Lines+1));
+if(AllOrDownR) ConR = y0 > y1;
+if(Con AND ConR)
+Plot(x, "", IIf(LastValue(C) < LastValue(x), colorBlue,colorCustom12), styleLine|styleThick);
+}
+str = "\nR Slope=("+Res+"), S Slope=("+Sup+")";
+}
+ 
+if(ShowTDP)
+{
+PlotShapes(TD_Supply(H)*shapeSmallCircle, colorRed, 0, H, H*.001);
+PlotShapes(TD_Demand(L)*shapeSmallCircle, colorGreen, 0, L, -L*.001);
+}
+if(ShowSR)
+{
+for(i=1; i<=SRBack; i++)
+{
+x0 = GetXSupport(L, SRPer, i);
+x1 = BarCount-1;
+y0 = GetYSupport(L, SRPer, i);
+x = LineArray(x0, y0, x1, y0, 0);
+Plot(x, "", IIf(LastValue(C) > x, colorDarkGreen, colorDarkRed), styleLine|styleDashed|styleThick);
+x0 = GetXResistance(H, SRPer, i);
+y0 = GetYResistance(H, SRPer, i);
+x = LineArray(x0, y0, x1, y0, 0);
+Plot(x, "", IIf(LastValue(C) > x, colorDarkGreen, colorDarkRed), styleLine|styleDashed|styleThick);
+ 
+}
+}
+_SECTION_END();

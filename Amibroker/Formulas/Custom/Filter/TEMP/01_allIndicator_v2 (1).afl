@@ -1,0 +1,199 @@
+#include <T3_Include.afl>;
+
+_SECTION_BEGIN("NewFilter");
+/* Init **************************************************************************/
+HaClose =EMA((O+H+L+C)/4,3);  // Woodie 
+HaOpen = AMA( Ref( HaClose, -1 ), 0.5 );  
+HaHigh = Max( H, Max( HaClose, HaOpen ) ); 
+HaLow = Min( L, Min( HaClose, HaOpen ) ); 
+Temp = Max(High, HaOpen);
+Temp = Min(Low,HaOpen);
+
+function fnctxt(_tbuy, _tsell, _tbuy1, _tsell1)
+{
+ return WriteIf(_tbuy,		"BuyWarning",
+		WriteIf(_tsell,		"SellWarning",
+		WriteIf(_tbuy1,		"Bullish",
+		WriteIf(_tsell1,	"Bearish","Neutral"))));
+}
+
+function fnccolo( _txtbuy)
+{
+ return IIf(_txtbuy ==	"BuyWarning", colorGreen, 
+		IIf(_txtbuy ==	"SellWarning", colorRed,
+		IIf(_txtbuy ==	"Bullish", colorBlue,
+		IIf(_txtbuy ==	"Bearish", colorRed, colorGrey50))));
+}
+function ZeroLagTEMA( array, period )
+{
+ TMA1 = TEMA( array, period );
+ TMA2 = TEMA( TMA1, period );
+ Diff = TMA1 - TMA2;
+ return TMA1 + Diff ;
+}
+procedure prcOutPut(_tbuy, _tsell, _tbuy1, _tsell1, _colname) 
+{ 
+	_txtBuy = fnctxt(_tbuy, _tsell, _tbuy1, _tsell1);
+	AddTextColumn(_txtBuy, _colname, 1.2, colorWhite, fnccolo(_txtBuy));
+}
+
+/* Pivot Box ***********************************************************************/
+_SECTION_BEGIN("Pivot Box");
+Hi=Param("High_Period",7,1,50,1);
+Lo=Param("Low_Period",7,1,50,1);
+A1=ExRemSpan(Ref(High,-2)==HHV(High,Hi),3);
+A2=ExRemSpan(Ref(Low,-2)==LLV(Low,Lo),3);
+A3=Cross(A1,0.9);
+A4=Cross(A2,0.9);
+TOP=Ref(haHigh,-BarsSince(A3));
+YY1=TOP;
+bot=Ref(haLow,-BarsSince(A4));
+XX1=bot;
+
+// 33 bar high low
+HIVg=Ref(HHV(High,33),1);
+LIVg=Ref(LLV(Low,33),1);
+Hchg=(C-HIVg)/HIVg*100;
+Lchg=(C-LIVg)/LIVg*100;
+Echg=(HIVg-C)/C*100;
+_SECTION_END();
+
+/* Ibuy **************************************************************************/
+_Ibuy =  Cross(RSI(14), EMA(RSI(14),9));
+_Isell = Cross(EMA(RSI(14),9), RSI(14));
+_Ibuy = ExRem(_Ibuy, _ISell);
+_Isell = ExRem(_ISell, _Ibuy);
+_BlRSI = RSI(14) > EMA(RSI(14),9);
+_BrRSI = RSI(14) < EMA(RSI(14),9);
+
+prcOutPut(_Ibuy, _Isell, _BlRSI, _BrRSI,"Ibuy");
+
+/* PriceSmoothing -T3 ************************************************************/
+_TBuy = Cross (T3(C,3), T3(C,5));
+_TSell =  Cross (T3(C,5), T3(C,3));
+_TBuy = ExRem(_TBuy, _TSell);
+_TSell = ExRem(_TSell, _TBuy);
+_T33 = T3(C,3) > T3(C,5);
+_T333 = T3(C,3) < T3(C,5);
+
+prcOutPut(_TBuy, _TSell, _T33, _T333,"T3-Buy");
+
+/* Signal(ZLW) ********************************************************************/
+_R = ((HHV(H,14) - C) /(HHV (H,14) -LLV (L,14))) *-100;
+_Period= 10;
+_EMA1= EMA(_R,_Period);
+_EMA2= EMA(_EMA1,5);
+_Difference= _EMA1 - _EMA2;
+_ZeroLagEMA= _EMA1 + _Difference;
+_PR=100-abs(_ZeroLagEMA);
+_MoveAvg=MA(_PR,5);
+_ZBuy = Cross(_PR,_moveAvg) AND _PR<30;
+_ZSell = Cross(_moveAvg,_PR) AND _PR>70;
+_ZBuy1= _PR>= _MoveAvg AND _PR>= Ref(_PR,-1) ;
+_ZSell1=(_PR < _MoveAvg) OR _PR>= _MoveAvg AND _PR< Ref(_PR,-1) ;
+
+prcOutPut(_ZBuy, _ZSell, _ZBuy1, _ZSell1,"ZLW");
+
+/* Signal(Mabiuts-Mr.Karthik) ******************************************************/
+_mabBuy=EMA(C,13)>EMA(EMA(C,13),9) AND Cross (C,Peak(C,5,1));
+_mabSell=Cross (EMA(EMA(C,13),9),EMA(C,13));
+_mabBuy1= EMA(C,13)>EMA(EMA(C,13),9) AND C>Peak(C,2,1);
+_mabSell1 =EMA(C,13)>EMA(EMA(C,13),9) AND C<Peak(C,2,1);
+
+prcOutPut(_mabBuy, _mabSell, _mabBuy1, _mabSell1,"MAB");
+
+/* Signal(TMA) Haiken-Ashi ********************************************************/
+haClose = ( haClose + haOpen + haHigh + haLow )/4; 
+period = Param("Avg. TEMA period", 55, 1, 100 );
+ZLHa = ZeroLagTEMA( haClose, period );
+ZLTyp = ZeroLagTEMA( Avg, period );
+_TMBuy = Cross( ZLTyp, ZLHa );
+_TMSell = Cross( ZLHa, ZLTyp );
+_TMBuy1 = ZLTyp> ZLHa ;
+_TMSell1 = ZLHa> ZLTyp ;
+
+prcOutPut(_TMBuy, _TMSell, _TMBuy1, _TMSell1,"Haiken");
+
+/* Signal(T3-RSI) Tillson's Part (RSI Smoothing) ************************************/
+TillsonBuy = Cross (t3(RSI(9),3), t3(RSI(9),5));
+TillsonSell =  Cross (t3(RSI(9),5), t3(RSI(9),3));
+TB = t3(RSI(9),3)> t3(RSI(9),5);
+TS = t3(RSI(9),3)< t3(RSI(9),5);
+
+prcOutPut(TillsonBuy, TillsonSell, TB, TS,"T3-RSI");
+
+/* Signal(ADX) JSB_Pic_DMX_3) ************************************/
+/*
+SetBarsRequired(100000, 100000);
+JSB_InitLib();
+range=Param( "Length ", 9, 0, 500);
+aup = JSB_JDMX(C,range) > 0;
+adown = JSB_JDMX(C,range) < 0;
+achoppy = JSB_JDMX(C,range) < JSB_JDMXplus(C,range) AND JSB_JDMX(C,range) < JSB_JDMXminus(C,range);
+adxBuy =  Cross(JSB_JDMXplus(C,range), JSB_JDMXminus(C,range));
+adxSell = Cross(JSB_JDMXminus(C,range), JSB_JDMXplus(C,range));
+adxBuy = ExRem(adxBuy, adxSell);
+adxSell = ExRem(adxSell, adxBuy);
+adxbuy1 = JSB_JDMXplus(C,range) > JSB_JDMXminus(C,range);
+adxsell1 = JSB_JDMXminus(C,range)> JSB_JDMXplus(C,range);
+prcOutPut(adxBuy, adxSell, adxbuy1, adxsell1,"T3-RSI");
+*/
+
+/* Signal(MACD) MACD Signal Crosses) ***********************************************/
+MB= Cross (MACD(), Signal());
+MS = Cross( Signal(), MACD());
+MB = ExRem(MB, MS);
+MS = ExRem(MS, MB);
+MB1= MACD() > Signal();
+MS1= MACD() < Signal();
+prcOutPut(MB, MS, MB1, MS1,"MACD");
+
+/* Signal(Stoch) Stochastics Part **************************************************/
+StochKval = StochK(10,5);
+StochDval = StochD(10,5,5);
+StochBuy = Cross(StochK(10,5), StochD(10,5,5));
+StochSell = Cross (StochD(10,5,5), StochK(10,5));
+StBuy=StochK(10,5)>StochD(10,5,5);
+StSell=StochK(10,5)<StochD(10,5,5);
+prcOutPut(StochBuy, StochSell, StBuy, StSell,"Stoch");
+
+/* Signal(P5/15) Breakout Setting *************************************************/
+Buyperiods=Param("Breakout periods",5,1,100,1,1);
+BuyBreakout= C>Ref(HHV(H,Buyperiods),-1);
+Buyperiods2=Param("2 Breakout periods",17,1,100,1,1);
+BuyBreakout2= Cross( C, Ref( HHV(H,Buyperiods2), -1 ) );
+txtBuyBreakout = 
+		WriteIf(Buybreakout, "BreakOut1",
+		WriteIf(Buybreakout2>Buybreakout, "BreakOut2","Neutral"));
+txtColoBuyBreakout = IIf(txtBuyBreakout ==	"BreakOut1", colorGreen,
+					 IIf(txtBuyBreakout ==	"BreakOut2", colorGreen, colorGrey50));
+AddTextColumn(txtBuyBreakout, "BreakP5/15", 1.2, colorWhite, txtColoBuyBreakout);
+
+/* Signal(Breakout) Breakout Setting ***********************************************/
+txtBuyBreakout = 
+		WriteIf(C>YY1, "BreakOut",
+		WriteIf(C<XX1, "BreakDown","Neutral"));
+txtColoBuyBreakout = IIf(txtBuyBreakout ==	"BreakOut", colorGreen,
+					 IIf(txtBuyBreakout ==	"BreakDown", colorRed, colorGrey50));
+AddTextColumn(txtBuyBreakout, "Breakout", 1.2, colorWhite, txtColoBuyBreakout);
+
+
+addcolumn( Volume, "Volume", 1);
+addcolumn( Close, "Close price", 1.2);
+addcolumn( (Close-Ref(Close,-1))*100/Ref(Close,-1), "P-1D", 1.2);
+addcolumn( (Close-Ref(Close,-5))*100/Ref(Close,-5), "P-1W", 1.2);
+addcolumn( (Close-Ref(Close,-22))*100/Ref(Close,-22), "P-1M", 1.2);
+addcolumn( (Close-Ref(Close,-66))*100/Ref(Close,-66), "P-3M", 1.2);
+addcolumn( (Close-Ref(Close,-180))*100/Ref(Close,-180), "P-6M", 1.2);
+addcolumn( (Close-Ref(Close,-364))*100/Ref(Close,-364), "P-1Y", 1.2);
+addcolumn( (Close-Ref(Close,-1))*100/Ref(Close,-1), "1D   ", 1.2);
+addcolumn( (Close-Ref(Close,-2))*100/Ref(Close,-2), "2D   ", 1.2);
+addcolumn( (Close-Ref(Close,-3))*100/Ref(Close,-3), "3D   ", 1.2);
+addcolumn( (Close-Ref(Close,-4))*100/Ref(Close,-4), "4D   ", 1.2);
+addcolumn( (Close-Ref(Close,-5))*100/Ref(Close,-5), "5D   ", 1.2);
+addcolumn( (Close-Ref(Close,-6))*100/Ref(Close,-6), "6D   ", 1.2);
+//SetSortColumns(2);
+
+Filter = V>=1000;
+Filter = Close>=2.5;
+_SECTION_END();

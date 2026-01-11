@@ -1,0 +1,152 @@
+
+
+Score = 0;
+
+
+/*dung37mc update V1*/
+/////////////////DUNG37MC////////////////////
+Period = 14;
+LLVBarsSince = LLVBars(L, Period) + 1;
+HHVBarsSince = HHVBars(H, Period) + 1;
+
+AroonDn = 100 * (Period - LLVBarsSince) / (Period - 1);
+AroonUp = 100 * (Period - HHVBarsSince) / (Period - 1);
+
+
+/* SubScore1 - Price vs. Medium MA */
+SubScore1 = IIf (Close > MA(Close, 14), 1, -1);
+SubScore1_Status = WriteIf(SubScore1 > 0," <T> "," <G> ");
+SubScore1_Col = IIf(SubScore1 > 0, colorGreen, colorRed);
+
+/* SubScore2 - Price vs. Long MA */
+SubScore2 = IIf (Close > MA(Close, 45), 1, -1);
+SubScore2_Status = WriteIf(SubScore2 > 0," <T> "," <G> ");
+SubScore2_Col = IIf(SubScore2 > 0, colorGreen, colorRed);
+
+/* SubScore3 - Medium MA vs Long MA */
+SubScore3 = IIf (MA(Close, 14) > MA(Close, 45), 1, -1);
+SubScore3_Status = WriteIf(SubScore3 > 0," <T> "," <G> ");
+SubScore3_Col = IIf(SubScore3 > 0, colorGreen, colorRed);
+
+/* SubScore4 - RSI Qua mua or Qua ban */
+SubScore4 = IIf (RSIa(Close,14) < 30, 1, 0);
+SubScore4a = IIf (RSIa(Close,14) > 70, -1, 0);
+
+r=RSI(14) < 70 AND Ref (RSI(14),-1) > 70 AND Ref (RSI(14),-2) > 70;
+r2= RSI(14) > 70 AND Ref (RSI(14),-1) < 70 AND Ref (RSI(14),-2) < 70;
+r_status= WriteIf(r, " <G> ", WriteIf(r2, " <T> ", " <N> "));
+r_Col=IIf(r, colorGreen, IIf(r2, colorRed, colorLightGrey));
+
+//Bollinger Bands
+bb= C > BBandTop( C, 21, 2) AND Ref (C,-1) < Ref(BBandTop( C, 21, 2),-1);
+bb1= C < BBandBot( C, 21, 2) AND Ref (C,-1) > Ref(BBandBot( C, 21, 2),-1);
+bb_status= WriteIf(BB, " <HT> ", WriteIf(r2, " <LB> ", " <N> "));
+bb_Col=IIf(bb, colorGreen, IIf(bb1, colorRed, colorLightGrey));
+
+
+/* SubScore6 - MACD crosses above 0 */
+SubScore6 = IIf (MACD(12, 26) > 0, 1, -1);
+SubScore6_Status = WriteIf(SubScore6 > 0," <T> "," <G> ");
+SubScore6_Col = IIf(SubScore6 > 0, colorGreen, colorRed);
+
+/* SubScore7 - MACD crosses above Signal */
+SubScore7 = IIf (Cross ( MACD( 12, 26), Signal( 12, 26, 9 )) OR MACD(12,26) > Signal(12,26,9), 1, -1);
+SubScore7_Status = WriteIf(SubScore7 > 0," <T> "," <G> ");
+SubScore7_Col = IIf(SubScore7 > 0, colorGreen, colorRed);
+
+/* SubScore8 - AROON Score */
+SubScore8 = IIf (AroonUp > 70 AND AroonDn < 30, 1, -1 );
+SubScore8_Status = WriteIf(SubScore8 > 0," <T> "," <G> ");
+SubScore8_Col = IIf(SubScore8 > 0, colorGreen, colorRed);
+
+/* SubScore9 - MFI Qua mua or Qua ban */
+SubScore9 = IIf (MFI(7) < 20, 1, 0);
+SubScore9a = IIf (MFI(7) > 80, -1, 0);
+m = MFI(7) < 20;
+m2 = MFI(7) > 80;
+MFI_status = WriteIf(m, " <G> ", WriteIf(m2, " <T> ", " <N> "));
+MFI_col = IIf(m, colorRed, IIf(m2, colorGreen, colorLightGrey));
+
+/* SubScore10 - Stochastic */
+Subscore10 = IIf (StochK(14,3) > StochD(14,3,3), 1, -1);
+SubScore10_Status = WriteIf(SubScore10 > 0," <T> "," <G> ");
+SubScore10_Col = IIf(SubScore10 > 0, colorGreen, colorRed);
+
+
+/* TOTAL SCORE */
+Score = SubScore1 + SubScore2 + SubScore3 + SubScore4 + SubScore4a + SubScore6 + SubScore7 + SubScore8 + SubScore9 + SubScore9a + SubScore10;
+Score_Col=IIf(Score > 0, bkcolor = colorGreen, bkcolor = colorRed);
+//Dot bien khoi luong
+dbkl= ((V - MA(V,5))/MA(V,5))*100;
+//bolliger
+DB_Col = IIf(dbkl > 50, colorGreen, colorLightGrey);
+Hi = BBandTop( C, 21, 2); //Bollinger trên
+Lo = BBandBot( C, 21, 2); //bollinger duoi
+DB = Hi - Lo;
+TB = MA(db,15); // trung binh bollinger TB 15 ngay
+dkbb1 = (db - tb)*100/tb; //bolliger thu hep 
+bb_Col1=IIf(dkbb1 < -15, colorGreen, colorLightGrey);
+//DK loc
+DK1 = C >= Ref(C,-1);
+//DK2 = C >= Ref(C,-2);
+DK3 = C >= MA(C,5); //Gia > binh quan gia tuan
+DK4 = C > 0.8;//Gia > 0.8
+//DK5 = V >= 1.15*MA(V,5)OR V>=1.15*MA(V,15) OR V>=1.2*MA(V,26) OR V>=1.2*MA(V,45);// No volume 1.15 - 1.2 lan.
+DK6 = V >= 25000 AND Ref(V,-1)>25000; //Volume > 25k
+DK7 = C*V < 500000000;
+DK8 = MA(V,5) >= 25000; 
+DK9 = (HHV(Ref(C,-1),5)- LLV(Ref(C,-1),5))/LLV(Ref(C,-1),5) <= 0.1; // gia tuan dao dong 10%
+dksong = (HHV(High,360)-LLV(Low,360))/LLV(Low,360)*100 >= 30; //song 1 nam tren 30%
+dkbb = db < 0.90 * Tb; //bolliger thu hep bang 0.90 trung binh 15 ngay
+DK = DK1 AND DK3 AND DK4 AND DK6 AND DK7 AND DK8 AND dk9 AND dksong AND dkbb; //dk tron cp
+//
+HM=HHV(H,26); //gia cao thang
+LM=LLV(L,26); //gia thap thang
+//Tin hieu mua
+DK11 = C >= MA (C, 15);
+DK12 = MACD (7,14)>= Signal (7,14,3);//macd cat len
+DK13 = (C-Ref (C,-1))/Ref (C,-1)>=0;//ty le tang gia >=0
+DK14 = HHV (Ref (C, -1), 5) <= 1.05*LLV (Ref (C, -1), 5); // giao dong gia trong 5%.
+DK15 = MFI (14) >= Ref (MFI (14), -1);
+DK16 = RSI(14)>30 AND RSI(14)<68;
+CMA8   = Cross(C,MA(C,8));
+CMA12  = Cross(C,MA(C,12));
+CMA21  = Cross(C,MA(C,21));
+Cma36  = Cross(C,MA(C,36));
+CMA50  = Cross(C,MA(C,50));
+Cma100 = Cross(C,MA(C,100));
+CMA200 = Cross(C,MA(C,200));
+CMA = cma8 OR CMa12 OR Cma21 OR Cma36 OR Cma50 OR Cma100 OR Cma200 ;
+VMA_ST = WriteIf(CMA200,"Vuot MA 200",WriteIf(CMA100,"Vuot MA 100",WriteIf(CMA50,"Vuot MA 50",
+WriteIf(CMA36,"Vuot MA 36",WriteIf(CMA21,"Vuot MA 21",WriteIf(CMA12,"Vuot MA 12",WriteIf(CMA8,"Vuot MA 8"," <> ")))))));
+VMA_col = IIf(CMA, colorGreen, colorLightGrey);
+//
+DKB = (DK11 AND DK12 AND DK13 AND DK14 AND DK15 AND DK16) OR CMA;
+Buy_ST = WriteIf(DKB, " <Buy> ", "");
+Buy_Col = IIf(DKB, colorGreen, colorLightGrey);
+Buy = DKB;
+/* RESULTS */
+Filter = DK;
+
+AddColumn( Volume, "Volume",1.0 );
+AddColumn( Close, "Close" );
+AddColumn( Hm,"PR HM");
+AddColumn( Lm,"PR LM");
+AddColumn(((C - Ref(C,-1))/Ref(C,-1))*100 ,"% Tang ");
+//AddColumn(((V - MA(V,5))/MA(V,5))*100 ,"% DB KL");
+AddColumn(dbkl,"% DB KL",1.0, colorWhite, db_col);
+AddTextColumn(Buy_ST, "Tin hieu", 1, colorWhite, Buy_col);
+AddTextColumn(VMA_ST, "Tin hieu MA ",1, colorWhite, VMA_col);
+AddColumn(dkbb1, "BBand", 1.0, colorWhite, bb_Col1);
+//AddTextColumn(bb_status, "BBand", 1, colorWhite, bb_Col);
+AddTextColumn(SubScore1_status, "P/MMA ",1, colorWhite, SubScore1_Col);
+AddTextColumn(SubScore2_status, "P/LMA ",1, colorWhite, SubScore2_Col);
+AddTextColumn(SubScore3_status, "MMA/LMA",1, colorWhite, SubScore3_Col);
+AddTextColumn(SubScore6_status, "MACD ",1, colorWhite, SubScore6_Col);
+AddTextColumn(Subscore7_status, "MACD/Sig.",1, colorWhite, SubScore7_Col);
+AddTextColumn(SubScore8_status, "AROON",1, colorWhite, SubScore8_Col);
+AddTextColumn(SubScore10_status, " %K ",1, colorWhite, SubScore10_Col);
+AddTextColumn(r_status," RSI ",1, colorWhite, r_Col);
+AddTextColumn(MFI_status, " MFI ", 1, colorWhite, MFI_Col);
+AddColumn(Score, "Score ",1.0, colorWhite, Score_Col);
+AddSummaryRows(16, 1.2,3);

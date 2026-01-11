@@ -1,0 +1,12 @@
+_SECTION_BEGIN("Breakout Signal");
+_bBuy= C>Ref(HHV(High,5),-1) ;
+_bSell= C<Ref(LLV(Low,5),-1);
+
+/* exrem is one method to remove surplus strade signals. It removes excessive signals of arrow */
+_bBuy1 = ExRem(_bBuy, _bSell);
+_bSell1 = ExRem(_bSell, _bBuy);
+
+Filter _bBuy1;
+
+AddTextColumn(WriteIf(_bBuy1,"BuyWarning", WriteIf(_bSell1, "SellWarning"), ""), "BreakoutSignal");
+_SECTION_END();

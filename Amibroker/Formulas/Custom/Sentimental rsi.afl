@@ -1,0 +1,21 @@
+/*
+Just like any other indicator it has whipsaws but responsive and smooth compared to the traditional RSI where the noise factor reduces and helps you to focus on mean reversion trades.
+
+The Color Transition from Red to Yellow indicates possible mean reversion from negative to positive trend
+
+The Color Transition from Green to Blue indicates possible mean reversion from positive to negative trend
+
+The Color Transition from Yellow to Green indicates possible positive trend continuation.
+
+The Color Transition from Green to Blue indicates possible negative trend continuation.
+
+Indicator suits to understand the underlying sentiment on the higher timeframes like 4h, Daily. Helps you to understand the underlying trend setup during your pre-trade analysis.
+*/
+source = (H+L+C)/3;
+length = Param("Period",7,1,100,1);
+hullma = wma(2*wma(source, length/2)-wma(source, length), round(sqrt(length)));
+Hrsi = RSIa(hullma,length);
+bcolor = iif( hrsi-50 > 0, 
+        iif( hrsi > nz(Ref(hrsi,-1)), colorlime, colorblue),
+        iif( hrsi < nz(Ref(hrsi,-1)), colorred, coloryellow));
+plot(hrsi-50,"Smoothed RSI", bcolor, styleHistogram,Null, Null,0,0,4 );

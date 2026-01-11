@@ -1,0 +1,7 @@
+AddTextColumn(FullName(), "Full Name");
+AddColumn(Open, "Open");
+AddColumn(Close, "Close");
+
+//AddTextColumn(MarketID(1),"Market");
+
+Filter = 1;

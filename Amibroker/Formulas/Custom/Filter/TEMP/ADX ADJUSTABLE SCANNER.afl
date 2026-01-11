@@ -1,0 +1,33 @@
+/* 
+FILTER IS 14 PERIOD ADX ABOVE 40
+UPTREND   = 1 MEANS YOUR UPTREND CONDITION
+DOWNTREND = 1 MEANS YOUR DOWNTREND CONDITION
+IF BOTH ARE ZEROS MEANS ONLY 14 PERIOD ADX ABOVE 40 IS SATISFIED
+HERE PR = PERIOD OF ADX SO IF YOU WANT TO CHANG YOU CAN CHANGE THE PR VALUE
+AV IS ADX VALUE.SO YOU CAN CHANE AV FOR ADJUSTING ADX VALUE
+*/
+  
+AV =40;
+PR = 7;
+A = PDI(PR) < 20 ;
+B = MDI(PR) < 20 ;
+E = ADX(PR) > AV;
+P = PDI(PR) ;
+Q = MDI(PR);
+ 
+HL = P > Q; 
+LH = Q > P;
+F = ADX(PR);
+X = E AND HL AND B ;
+Y = (E == 1)AND  (LH ==1)  AND (A ==1) ;
+ 
+//Filter = (X== 1) OR (Y == 1);
+Filter = E == 1;
+ 
+//AddColumn(HI,"H",1,colorDefault );
+//AddColumn(LW,"L",1,colorDefault);
+AddColumn(F,"14PERIOD",1.2,colorWhite,colorBlue);
+AddColumn(X,"UPTREND",1.2,colorWhite,colorDarkGreen);
+AddColumn(Y,"DOWNTREND",1.2,colorWhite,colorRed);
+AddColumn(P,"POSITIVE",1.2,colorWhite,colorGreen);
+AddColumn(Q,"NEGATIVE",1.2,colorWhite,colorRed);

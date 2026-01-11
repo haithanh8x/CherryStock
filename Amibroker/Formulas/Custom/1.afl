@@ -1,0 +1,46 @@
+// version that plots multiple trendlines both above and below the prices
+x = Cum(1);
+
+Miny = Status("axisminy"); 
+Maxy = Status("axismaxy"); 
+
+
+for(frack = 0.4; frack > 0.0005; frack = frack/1.3) {
+
+    perchg = frack*LastValue( Highest( ROC( Low, 50 ) ));
+
+    startvalue = LastValue( Trough( Low, perchg, 1 ) );
+    endvalue1 = LastValue( Trough( Low, perchg, 2 ) );
+
+    startbar = LastValue( ValueWhen( Low == startvalue, x, 1 ) );
+    endbar = LastValue( ValueWhen( Low == endvalue1, x, 1 ) );
+
+    if(EndValue1 < startvalue AND startbar != endbar AND EndValue1 < maxy AND Endvalue1 > Miny) {
+        Aa = (endvalue1-startvalue)/(endbar-startbar);
+        b = startvalue;
+
+        trendline = Aa * ( x  - startbar ) + b; 
+
+        Plot( IIf( x >= endbar, trendline, Null ), "Trendline", colorRed );
+    }
+}
+
+for(frack = 0.4; frack > 0.0005; frack = frack/1.3) {
+
+    perchg = frack*LastValue( Highest( ROC( High, 50 ) ));
+
+    startvalue = LastValue( Peak( High, perchg, 1 ) );
+    endvalue1 = LastValue( Peak( High, perchg, 2 ) );
+
+    startbar = LastValue( ValueWhen( High == startvalue, x, 1 ) );
+    endbar = LastValue( ValueWhen( High == endvalue1, x, 1 ) );
+
+    if(EndValue1 > startvalue AND startbar != endbar AND EndValue1 < maxy AND Endvalue1 > Miny) {
+        Aa = (endvalue1-startvalue)/(endbar-startbar);
+        b = startvalue;
+
+        trendline = Aa * ( x  - startbar ) + b; 
+
+        Plot( IIf( x >= endbar, trendline, Null ), "Trendline", colorGreen );
+    }
+}
