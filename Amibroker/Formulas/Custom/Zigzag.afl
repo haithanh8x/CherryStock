@@ -31,3 +31,7 @@ if (PriceStyle==styleCandle)
    Plot( C, "", colorBlack,  PriceStyleOpt); 
 else
    Plot( C, "", IIf( Close >= Ref(C, -1), colorBlue, colorRed ), PriceStyleOpt);
+   
+AddColumn(C, "Price");
+AddColumn(pk, "Peak", 1.0);
+AddColumn(tr, "Trough", 1.0);

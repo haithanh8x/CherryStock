@@ -1,6 +1,12 @@
 #include <T3_Include.afl>;
-_startDate = DateTimeAdd( Now( 5 ), -13, inMonthly );
-Filter = DateTime() >= _startDate;
+_startDate = DateTimeAdd( Now( 5 ), -130, inMonthly );
+_vol_running = 20000;
+// Volumn Condition
+_vol_condition = (Volume >= _vol_running) AND (Ref(Volume,-1) >= _vol_running) 
+	AND (Ref(Volume,-2) >= _vol_running) AND (Ref(Volume,-3) >= _vol_running) AND (Ref(Volume,-4) >= _vol_running);
+
+Filter = DateTime() >= _startDate AND _vol_condition = 1;
+
 
 _indi_MA =  IIf( Close >= MA(Close, 20), 20
 			, IIf( Close >= MA(Close, 50) AND Close < MA(Close, 20), 50
@@ -12,5 +18,6 @@ _indi_MA_200 = IIf( Close < MA(Close, 200), 0,1);
 AddColumn(Close, "Close");
 AddColumn(_indi_MA, "MA", 1.0);
 AddColumn(_indi_MA_200, "MA 200", 1.0);
+AddColumn((Close-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);
 
 //IIf( Close >= MA(Close, 200) AND Close < MA(Close, 100), -200, "")

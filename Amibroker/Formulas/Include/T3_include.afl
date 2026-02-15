@@ -142,3 +142,4 @@ function Signal_RSI()
 	_sell_rsimacdmavol = (Close < _ma_50) AND Cross(_macd_signal, _macd) AND (_rsi <60) AND (Volume > _ma_vol_20);
 	return IIf(_buy_rsimacdmavol,1,IIf(_sell_rsimacdmavol,-1,Null));
 }
+

@@ -1,0 +1,10 @@
+// Define the period for correlation
+period = Param("Correlation Period", 20, 1, 200);
+
+// Calculate correlation between Close and BarIndex
+// Note: BarIndex() in AFL starts from 0 just like in Pinescript
+corrResult = Correlation(Close, BarIndex(), period);
+
+// Plot the result
+Plot(corrResult, "Correlation(Close, BarIndex)", colorRed, styleLine);
+Plot(0, "", colorBlue, styleLine); // Zero line for reference

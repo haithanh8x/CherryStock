@@ -1,0 +1,80 @@
+_SECTION_BEGIN("TSI");
+// Define the period for correlation
+period = Param("Correlation Period", 20, 1, 200);
+
+// Calculate correlation between Close and BarIndex
+// Note: BarIndex() in AFL starts from 0 just like in Pinescript
+corrResult = Correlation(Close, BarIndex(), period);
+
+// Plot the result
+Plot(corrResult, "Correlation(Close, BarIndex)", colorRed, styleLine);
+Plot(0, "", colorBlue, styleLine); // Zero line for reference
+_SECTION_END();
+
+_SECTION_BEGIN("Two Poles");
+//---------------------------------------------//
+// Two Poles Oscillator (AFL version)
+// Converted from ProRealTime / TradingView
+// Original author: Iván González (BigBeluga)
+//---------------------------------------------//
+
+// ===== INPUTS =====
+length = 20;      // filter length
+prd    = 25;      // moving average period
+dispLevels = 1;   // display levels (not mandatory in AFL)
+
+// ===== SOURCE CALCULATION =====
+sma1  = MA(C, prd);
+smaN1 = ( (C - sma1) - MA(C - sma1, prd) ) / StDev(C - sma1, prd);
+
+// (area not used further in original code, kept for completeness)
+area = MA(H - L, 100);
+
+// ===== TWO-POLE SMOOTHER =====
+alpha = 2 / (length + 1);
+
+// recursive smoothing
+smooth1 = smaN1;
+smooth2 = smaN1;
+
+if ( BarIndex() > Max(prd * 2, length) )
+{
+    smooth1 := (1 - alpha) * Ref(smooth1, -1) + alpha * smaN1;
+    smooth2 := (1 - alpha) * Ref(smooth2, -1) + alpha * smooth1;
+}
+
+// ===== OUTPUT =====
+twoP  = smooth2;
+twoPP = Ref(twoP, -4);
+
+// ===== COLOR LOGIC =====
+upColor   = colorRGB(85, 255, 218);
+downColor = colorRGB(140, 91, 255);
+
+lineColor = IIf(twoP > twoPP, upColor, downColor);
+
+// ===== SIGNALS =====
+BuySignal  = Cross(twoP, twoPP) AND twoP < 0;
+SellSignal = Cross(twoPP, twoP) AND twoP > 0;
+
+// ===== PLOT OSCILLATOR =====
+Plot(twoP, "Two Poles", lineColor, styleLine | styleThick);
+
+// ===== LEVELS =====
+if (dispLevels)
+{
+    Plot( 1,   "1",   colorGrey40, styleNoLine | styleDots );
+    Plot( 0.5, "0.5", colorGrey40, styleNoLine | styleDots );
+    Plot( 0,   "0",   colorBlack,  styleDots );
+    Plot(-0.5, "-0.5",colorGrey40, styleNoLine | styleDots );
+    Plot(-1,   "-1",  colorGrey40, styleNoLine | styleDots );
+}
+
+// ===== VISUAL SIGNALS =====
+PlotShapes(IIf(BuySignal,  shapeCircle, shapeNone), upColor,   0, twoP, 0);
+PlotShapes(IIf(SellSignal, shapeCircle, shapeNone), downColor, 0, twoP, 0);
+
+// ===== OPTIONAL: TRADING SIGNALS =====
+Buy  = BuySignal;
+Sell = SellSignal;
+_SECTION_END();

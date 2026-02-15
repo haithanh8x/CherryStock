@@ -1,11 +1,14 @@
 #include <T3_Include.afl>;
-Filter = 1 ;
+_startDate = DateTimeAdd( Now( 5 ), -3, inMonthly );
+Filter = DateTime() >= _startDate;
 
-addcolumn(C, "Close", 1.2);
-addcolumn((C-Ref(Close,-1))/Ref(Close,-1), "Close%", 1.4);
-addcolumn(V, "Vol", 1);
-addcolumn((V/Ref(V,-1)), "Vol%", 1.4);
-addcolumn((C+H+L)/3*V/1000000, "Vol Value", 1.1);
-addcolumn((C-Ref(Close,-1)), "CloseDiff", 1.2);
-AddColumn(O, "Open");
+// Add columns for exploration
+AddColumn(Open, "Open");
+AddColumn(Close, "Close");
+AddColumn(Volume, "Volume");
 AddColumn(OpenInt, "OpenInt");
+addcolumn((C-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);
+addcolumn((C-Ref(Low,-5))/Ref(Low,-5), "1W%", 1.4);
+addcolumn((C-Ref(Low,-20))/Ref(Low,-20), "1M%", 1.4);
+addcolumn(V/IIF(MA(V,20)==0,1,MA(V,20)), "VolMA", 1.2);
+AddTextColumn(DateTimeFormat("%H:%M", Now( 5 ) ), "Now");

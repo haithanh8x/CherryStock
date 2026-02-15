@@ -2,14 +2,14 @@
 <AmiBroker-Analysis CompactMode="0">
 <General>
 <FormatVersion>1</FormatVersion>
-<Symbol>VNINDEX</Symbol>
-<FormulaPath>C:\\Users\\ADMIN\\OneDrive\\Apps\\Amibroker\\Formulas\\CherryMon\\Export Intraday.afl</FormulaPath>
-<FormulaContent>#include &lt;T3_Include.afl&gt;;\r\nFilter = 1 ;\r\n\r\naddcolumn(C, "Close", 1.2);\r\naddcolumn((C-Ref(Close,-1))/Ref(Close,-1), "Close%", 1.4);\r\naddcolumn(V, "Vol", 1);\r\naddcolumn((V/Ref(V,-1)), "Vol%", 1.4);\r\naddcolumn((C+H+L)/3*V/1000000, "Vol Value", 1.1);\r\naddcolumn((C-Ref(Close,-1)), "CloseDiff", 1.2);\r\nAddColumn(O, "Open");\r\nAddColumn(OpenInt, "OpenInt");\r\n</FormulaContent>
+<Symbol>AAA_NN</Symbol>
+<FormulaPath>C:\\Github\\CherryStock\\Amibroker\\Formulas\\CherryMon\\Export Intraday.afl</FormulaPath>
+<FormulaContent>#include &lt;T3_Include.afl&gt;;\r\n_startDate = DateTimeAdd( Now( 5 ), -3, inMonthly );\r\nFilter = DateTime() &gt;= _startDate;\r\n\r\n// Add columns for exploration\r\nAddColumn(Open, "Open");\r\nAddColumn(Close, "Close");\r\nAddColumn(Volume, "Volume");\r\nAddColumn(OpenInt, "OpenInt");\r\naddcolumn((C-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);\r\naddcolumn((C-Ref(Low,-5))/Ref(Low,-5), "1W%", 1.4);\r\naddcolumn((C-Ref(Low,-20))/Ref(Low,-20), "1M%", 1.4);\r\naddcolumn(V/IIF(MA(V,20)==0,1,MA(V,20)), "VolMA", 1.2);\r\nAddTextColumn(DateTimeFormat("%H:%M", Now( 5 ) ), "Now");\r\n</FormulaContent>
 <ApplyTo>2</ApplyTo>
 <RangeType>2</RangeType>
 <RangeAmount>1</RangeAmount>
-<FromDate>2025-12-10 00:00:00</FromDate>
-<ToDate>2025-12-10</ToDate>
+<FromDate>2026-01-14 00:00:00</FromDate>
+<ToDate>2026-01-14</ToDate>
 <SyncOnSelect>0</SyncOnSelect>
 <RunEvery>0</RunEvery>
 <RunEveryInterval>5min</RunEveryInterval>
@@ -27,7 +27,7 @@
 <Type3>3</Type3>
 <Category3>-1</Category3>
 <Type4>4</Type4>
-<Category4>2</Category4>
+<Category4>1</Category4>
 <Type5>5</Type5>
 <Category5>-1</Category5>
 <Type6>6</Type6>
@@ -91,8 +91,8 @@
 <AllowShrinkingPosition>0</AllowShrinkingPosition>
 <RangeType>2</RangeType>
 <RangeLength>0</RangeLength>
-<RangeFromDate>2025-12-10 00:00:00</RangeFromDate>
-<RangeToDate>2025-12-10</RangeToDate>
+<RangeFromDate>2026-01-14 00:00:00</RangeFromDate>
+<RangeToDate>2026-01-14</RangeToDate>
 <ApplyTo>2</ApplyTo>
 <FilterQty>2</FilterQty>
 <IncludeFilter>
@@ -109,7 +109,7 @@
 <Type3>3</Type3>
 <Category3>-1</Category3>
 <Type4>4</Type4>
-<Category4>2</Category4>
+<Category4>1</Category4>
 <Type5>5</Type5>
 <Category5>-1</Category5>
 <Type6>6</Type6>
@@ -152,7 +152,7 @@
 <WaitForBackfill>0</WaitForBackfill>
 <MaxRanked>4</MaxRanked>
 <MaxTraded>4</MaxTraded>
-<MaxTracked>100</MaxTracked>
+<MaxTracked>0</MaxTracked>
 <PortfolioReportMode>0</PortfolioReportMode>
 <MinShares>0.1</MinShares>
 <SharpeRiskFreeReturn>5</SharpeRiskFreeReturn>
@@ -189,7 +189,7 @@
 <MaxLongPos>0</MaxLongPos>
 <MaxShortPos>0</MaxShortPos>
 <SeparateLongShortRank>0</SeparateLongShortRank>
-<TotalSymbolQty>1203</TotalSymbolQty>
+<TotalSymbolQty>251</TotalSymbolQty>
 <EnableUserReportCharts>1</EnableUserReportCharts>
 <ChartWidth>500</ChartWidth>
 <ChartHeight>300</ChartHeight>

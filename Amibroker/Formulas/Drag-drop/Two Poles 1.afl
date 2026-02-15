@@ -1,0 +1,58 @@
+_SECTION_BEGIN("Two Pole Oscillator - BigBeluga");
+
+UpColor = colorRGB(85,255,218);
+DnColor = colorRGB(140,91,255);
+
+// ================= INPUT =================
+Length = Param("Filter Length", 15, 1, 100, 1);
+ShowLevels = ParamToggle("Show Levels", "Off|On", 1);
+
+// ================= BASE CALC =================
+sma1   = MA(Close, 25);
+diff   = Close - sma1;
+sma_n1 = (diff - MA(diff, 25)) / StDev(diff, 25);
+
+area = MA(High - Low, 100);
+
+// ================= TWO POLE FILTER =================
+alpha = 2 / (Length + 1);
+
+// First pole
+smooth1 = EMA(sma_n1, Length);
+
+// Second pole
+two_p = EMA(smooth1, Length);
+
+// Lag version
+two_pp = Ref(two_p, -4);
+
+// ================= SIGNAL =================
+BuySignal  = Cross(two_p, two_pp) AND two_p < 0;
+SellSignal = Cross(two_pp, two_p) AND two_p > 0;
+
+// ================= COLORS =================
+UpColor = colorRGB(85,255,218);
+DnColor = colorRGB(140,91,255);
+
+col =
+IIf(two_p > two_pp AND two_p >  0.5, colorRGB(55,220,200),
+IIf(two_p > two_pp AND two_p >  0,   colorRGB(85,255,218),
+IIf(two_p <= two_pp AND two_p < -0.5, colorRGB(120,80,200),
+                                      colorRGB(140,91,255)
+)));
+
+// ================= PLOT OSCILLATOR =================
+Plot(two_p, "Two Pole", col, styleLine | styleThick);
+Plot(two_pp, "Two Pole (Lag)", colorGrey40, styleDots);
+
+Plot(1, "", colorGrey40);
+Plot(0.5, "", colorGrey50);
+Plot(0, "", colorGrey50, styleDots);
+Plot(-0.5, "", colorGrey50);
+Plot(-1, "", colorGrey40);
+
+// ================= BUY / SELL SHAPES =================
+PlotShapes(
+    IIf(BuySignal, shapeCircle, shapeNone),
+    UpColor, 0, two_p, 0
+);

@@ -2,7 +2,7 @@
 <AmiBroker-Batch CompactMode="0">
 <Step>
 <Action>LoadProject</Action>
-<Param>C:\\Github\\CherryStock\\Amibroker\\Batch\\ALL_Shares.apx</Param>
+<Param>C:\\Github\\CherryStock\\Amibroker\\Batch\\Intraday ACCCNNTD.apx</Param>
 </Step>
 <Step>
 <Action>Explore</Action>
@@ -10,6 +10,6 @@
 </Step>
 <Step>
 <Action>Export</Action>
-<Param>C:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\All_Shares.csv</Param>
+<Param>C:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\Intraday ACCCNNTD.csv</Param>
 </Step>
 </AmiBroker-Batch>

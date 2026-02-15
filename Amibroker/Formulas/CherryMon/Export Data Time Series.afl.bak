@@ -1,18 +1,23 @@
 #include <T3_Include.afl>;
-_startDate = DateTimeAdd( Now( 5 ), -13, inMonthly );
-Filter = DateTime() >= _startDate;
+_startDate = DateTimeAdd( Now( 5 ), -130, inMonthly );
+_vol_running = 20000;
+// Volumn Condition
+_vol_condition = (Volume >= _vol_running) AND (Ref(Volume,-1) >= _vol_running) 
+	AND (Ref(Volume,-2) >= _vol_running) AND (Ref(Volume,-3) >= _vol_running) AND (Ref(Volume,-4) >= _vol_running);
 
-_indi_MA =  IIf( Close < MA(Close, 200), 400
-			, IIf( Close >= MA(Close, 5), 5
-			, IIf( Close >= MA(Close, 10) AND Close < MA(Close, 5), 10
-			, IIf( Close >= MA(Close, 20) AND Close < MA(Close, 10), 20
+Filter = DateTime() >= _startDate AND _vol_condition = 1;
+
+
+_indi_MA =  IIf( Close >= MA(Close, 20), 20
 			, IIf( Close >= MA(Close, 50) AND Close < MA(Close, 20), 50
-			, IIf( Close >= MA(Close, 100) AND Close < MA(Close, 50), 100
-			, IIf( Close >= MA(Close, 200) AND Close < MA(Close, 100), 200
-			, 0)))))));
+			, 0));
+
+_indi_MA_200 = IIf( Close < MA(Close, 200), 0,1);
 
 // Add columns for exploration
 AddColumn(Close, "Close");
 AddColumn(_indi_MA, "MA", 1.0);
+AddColumn(_indi_MA_200, "MA 200", 1.0);
+AddColumn((Close-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);
 
 //IIf( Close >= MA(Close, 200) AND Close < MA(Close, 100), -200, "")

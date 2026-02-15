@@ -2,14 +2,14 @@
 <AmiBroker-Analysis CompactMode="0">
 <General>
 <FormatVersion>1</FormatVersion>
-<Symbol>MWG</Symbol>
-<FormulaPath>C:\\Github\\CherryStock\\Amibroker\\Formulas\\CherryMon\\Export Shares.afl</FormulaPath>
-<FormulaContent>Filter = Status("lastbarinrange");\r\n//Filter = 1;\r\n\r\nAddColumn(Open, "Open");\r\nAddColumn(Close, "Close");\r\nAddTextColumn(StrReplace(GetFnData( "FullName"), ",", "" ),"Full Name");\r\nAddTextColumn(MarketID(1),"Market");\r\nAddColumn(Close*GetFnData( "SharesOut"),"Capital", 1.0);\r\nAddTextColumn(StrReplace(SectorID(1), ",", "" ),"Sector");\r\nAddTextColumn(IcbID(0),"ICB ID");\r\nAddTextColumn(StrReplace(IcbID(1), ",", "" ),"ICB");\r\nAddTextColumn(StrReplace(IndustryID(1), ",", "" ),"Industry");\r\nAddColumn(GetFnData( "SharesFloat"),"Shares Float", 1.0);\r\nAddColumn(GetFnData( "SharesOut"),"Shares Outstanding", 1.0);\r\nAddColumn(GetFnData( "EPS"),"EPS");\r\nAddColumn(Close/GetFnData( "EPS"),"PE",1.1);\r\nAddColumn(GetFnData( "BookValuePerShare"),"Book Value");\r\nAddColumn(GetFnData( "ReturnOnAssets"),"ROA");\r\nAddColumn(GetFnData( "ReturnOnEquity"),"ROE");\r\n\r\n/*\r\nGetFnData( ''field'' )\r\nRETURNS\tNUMBER or STRING\r\nFUNCTION\tGetFnData allows accessing fundamental data from Information window (Window-&gt;Symbol Information) "field" parameter can be one of the following:\r\n"EPS"\r\n"EPSEstCurrentYear"\r\n"EPSEstNextYear"\r\n"EPSEstNextQuarter"\r\n"PEGRatio"\r\n"SharesFloat"\r\n"SharesOut"\r\n"DividendPayDate"\r\n"ExDividendDate"\r\n"BookValuePerShare"\r\n"DividendPerShare"\r\n"ProfitMargin"\r\n"OperatingMargin"\r\n"OneYearTargetPrice"\r\n"ReturnOnAssets"\r\n"ReturnOnEquity"\r\n"QtrlyRevenueGrowth"\r\n"GrossProfitPerShare"\r\n"SalesPerShare"\r\n"EBITDAPerShare"\r\n"QtrlyEarningsGrowth"\r\n"InsiderHoldPercent"\r\n"InstitutionHoldPercent"\r\n"SharesShort"\r\n"SharesShortPrevMonth"\r\n"ForwardDividendPerShare"\r\n"ForwardEPS"\r\n"OperatingCashFlow"\r\n"LeveredFreeCashFlow"\r\n"Beta"\r\n"LastSplitRatio"\r\n"LastSplitDate"\r\n"Alias" (returns symbol alias - string) - 5.50 and above\r\n"Address" (returns symbol address - string) - 5.50 and above\r\n"Country" (returns symbol country - string) - 5.60 and above\r\n"DelistingDate" returns symbol delisting date (as datetime) - 5.70 and above\r\n"PointValue" - returns symbols point value\r\n"FullName" - returns full name of the symbol\r\n"Currency" - returns currency field - 5.70 and above\r\n"WebID" - returns web ID field - 5.70 and above\r\n*/\r\n\r\n</FormulaContent>
+<Symbol>MWG_NN</Symbol>
+<FormulaPath>C:\\Github\\CherryStock\\Amibroker\\Formulas\\CherryMon\\Export Intraday ACCCNNTD.afl</FormulaPath>
+<FormulaContent>#include &lt;T3_Include.afl&gt;;\r\n_startDate = DateTimeAdd( Now( 5 ), -15, inDaily );\r\nFilter = DateTime() &gt;= _startDate AND (Open!=0 OR Close!=0 OR Volume!=0 OR OpenInt!=0);\r\n\r\n// Add columns for exploration\r\nAddColumn(Open, "Open");\r\nAddColumn(Close, "Close");\r\nAddColumn(Volume, "Volume");\r\nAddColumn(OpenInt, "OpenInt");\r\nAddTextColumn(DateTimeFormat("%H:%M", Now( 5 ) ), "Now");\r\n</FormulaContent>
 <ApplyTo>2</ApplyTo>
-<RangeType>0</RangeType>
+<RangeType>2</RangeType>
 <RangeAmount>1</RangeAmount>
-<FromDate>2011-01-01 00:00:00</FromDate>
-<ToDate>2011-12-31</ToDate>
+<FromDate>2025-12-10 00:00:00</FromDate>
+<ToDate>2025-12-10</ToDate>
 <SyncOnSelect>0</SyncOnSelect>
 <RunEvery>0</RunEvery>
 <RunEveryInterval>5min</RunEveryInterval>
@@ -21,13 +21,13 @@
 <Type0>0</Type0>
 <Category0>-1</Category0>
 <Type1>1</Type1>
-<Category1>3</Category1>
+<Category1>-1</Category1>
 <Type2>2</Type2>
 <Category2>-1</Category2>
 <Type3>3</Type3>
 <Category3>-1</Category3>
 <Type4>4</Type4>
-<Category4>-1</Category4>
+<Category4>0</Category4>
 <Type5>5</Type5>
 <Category5>-1</Category5>
 <Type6>6</Type6>
@@ -89,10 +89,10 @@
 <UseConstantPriceArrays>0</UseConstantPriceArrays>
 <PointsOnlyTest>0</PointsOnlyTest>
 <AllowShrinkingPosition>0</AllowShrinkingPosition>
-<RangeType>0</RangeType>
+<RangeType>2</RangeType>
 <RangeLength>0</RangeLength>
-<RangeFromDate>2011-01-01 00:00:00</RangeFromDate>
-<RangeToDate>2011-12-31</RangeToDate>
+<RangeFromDate>2025-12-10 00:00:00</RangeFromDate>
+<RangeToDate>2025-12-10</RangeToDate>
 <ApplyTo>2</ApplyTo>
 <FilterQty>2</FilterQty>
 <IncludeFilter>
@@ -103,13 +103,13 @@
 <Type0>0</Type0>
 <Category0>-1</Category0>
 <Type1>1</Type1>
-<Category1>3</Category1>
+<Category1>-1</Category1>
 <Type2>2</Type2>
 <Category2>-1</Category2>
 <Type3>3</Type3>
 <Category3>-1</Category3>
 <Type4>4</Type4>
-<Category4>-1</Category4>
+<Category4>0</Category4>
 <Type5>5</Type5>
 <Category5>-1</Category5>
 <Type6>6</Type6>
@@ -152,7 +152,7 @@
 <WaitForBackfill>0</WaitForBackfill>
 <MaxRanked>4</MaxRanked>
 <MaxTraded>4</MaxTraded>
-<MaxTracked>0</MaxTracked>
+<MaxTracked>100</MaxTracked>
 <PortfolioReportMode>0</PortfolioReportMode>
 <MinShares>0.1</MinShares>
 <SharpeRiskFreeReturn>5</SharpeRiskFreeReturn>
@@ -189,7 +189,7 @@
 <MaxLongPos>0</MaxLongPos>
 <MaxShortPos>0</MaxShortPos>
 <SeparateLongShortRank>0</SeparateLongShortRank>
-<TotalSymbolQty>167</TotalSymbolQty>
+<TotalSymbolQty>1703</TotalSymbolQty>
 <EnableUserReportCharts>1</EnableUserReportCharts>
 <ChartWidth>500</ChartWidth>
 <ChartHeight>300</ChartHeight>

@@ -1,0 +1,19 @@
+_SECTION_BEGIN("True Strength Index (TSI)");
+// Parameters
+r = Param("Long Period", 25, 1, 100, 1);
+s = Param("Short Period", 13, 1, 100, 1);
+sig = Param("Signal Period", 7, 1, 100, 1);
+
+// Calculation
+mtm = C - Ref(C, -1);
+absMtm = abs(mtm);
+num = EMA(EMA(mtm, r), s);
+den = EMA(EMA(absMtm, r), s);
+TSI = 100 * Nz(num / den);
+SignalLine = EMA(TSI, sig);
+
+// Plotting
+Plot(TSI, "TSI(" + r + "," + s + ")", colorBlue, styleLine | styleThick);
+Plot(SignalLine, "Signal", colorRed, styleLine);
+Plot(0, "", colorGrey50, styleLine);
+_SECTION_END();

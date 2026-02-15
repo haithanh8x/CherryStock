@@ -15,6 +15,8 @@ AddColumn(GetFnData( "SharesOut"),"Shares Outstanding", 1.0);
 AddColumn(GetFnData( "EPS"),"EPS");
 AddColumn(Close/GetFnData( "EPS"),"PE",1.1);
 AddColumn(GetFnData( "BookValuePerShare"),"Book Value");
+AddColumn(GetFnData( "ReturnOnAssets"),"ROA");
+AddColumn(GetFnData( "ReturnOnEquity"),"ROE");
 
 /*
 GetFnData( ''field'' )

@@ -2,7 +2,7 @@
 <AmiBroker-Batch CompactMode="0">
 <Step>
 <Action>LoadProject</Action>
-<Param>C:\\Users\\ADMIN\\OneDrive\\Apps\\Amibroker\\Batch\\Intraday.apx</Param>
+<Param>C:\\Github\\CherryStock\\Amibroker\\Batch\\Intraday.apx</Param>
 </Step>
 <Step>
 <Action>Explore</Action>

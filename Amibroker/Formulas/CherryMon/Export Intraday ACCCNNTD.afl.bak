@@ -1,0 +1,9 @@
+#include <T3_Include.afl>;
+_startDate = DateTimeAdd( Now( 5 ), -15, inDaily );
+Filter = DateTime() >= _startDate AND (Open!=0 OR Close!=0 OR Volume!=0 OR OpenInt!=0);
+
+// Add columns for exploration
+AddColumn(Open, "Open");
+AddColumn(Close, "Close");
+AddColumn(Volume, "Volume");
+AddColumn(OpenInt, "OpenInt");

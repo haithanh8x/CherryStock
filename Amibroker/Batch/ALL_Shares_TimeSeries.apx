@@ -2,9 +2,9 @@
 <AmiBroker-Analysis CompactMode="0">
 <General>
 <FormatVersion>1</FormatVersion>
-<Symbol>VIC</Symbol>
-<FormulaPath>Formulas\\Imported\\Export Data Time Series.afl</FormulaPath>
-<FormulaContent>#include &lt;T3_Include.afl&gt;;\r\n_startDate = DateTimeAdd( Now( 5 ), -13, inMonthly );\r\nFilter = DateTime() &gt;= _startDate;\r\n\r\n_indi_MA =  IIf( Close &gt;= MA(Close, 20), 20\r\n\t\t\t, IIf( Close &gt;= MA(Close, 50) AND Close &lt; MA(Close, 20), 50\r\n\t\t\t, 0));\r\n\r\n_indi_MA_200 = IIf( Close &lt; MA(Close, 200), 0,1);\r\n\r\n// Add columns for exploration\r\nAddColumn(Close, "Close");\r\nAddColumn(_indi_MA, "MA", 1.0);\r\nAddColumn(_indi_MA_200, "MA 200", 1.0);\r\n\r\n//IIf( Close &gt;= MA(Close, 200) AND Close &lt; MA(Close, 100), -200, "")\r\n</FormulaContent>
+<Symbol>AAA_NN</Symbol>
+<FormulaPath>C:\\Github\\CherryStock\\Amibroker\\Formulas\\CherryMon\\Export Data Time Series.afl</FormulaPath>
+<FormulaContent>#include &lt;T3_Include.afl&gt;;\r\n_startDate = DateTimeAdd( Now( 5 ), -130, inMonthly );\r\n_vol_running = 20000;\r\n// Volumn Condition\r\n_vol_condition = (Volume &gt;= _vol_running) AND (Ref(Volume,-1) &gt;= _vol_running) \r\n\tAND (Ref(Volume,-2) &gt;= _vol_running) AND (Ref(Volume,-3) &gt;= _vol_running) AND (Ref(Volume,-4) &gt;= _vol_running);\r\n\r\nFilter = DateTime() &gt;= _startDate AND _vol_condition = 1;\r\n\r\n\r\n_indi_MA =  IIf( Close &gt;= MA(Close, 20), 20\r\n\t\t\t, IIf( Close &gt;= MA(Close, 50) AND Close &lt; MA(Close, 20), 50\r\n\t\t\t, 0));\r\n\r\n_indi_MA_200 = IIf( Close &lt; MA(Close, 200), 0,1);\r\n\r\n// Add columns for exploration\r\nAddColumn(Close, "Close");\r\nAddColumn(_indi_MA, "MA", 1.0);\r\nAddColumn(_indi_MA_200, "MA 200", 1.0);\r\nAddColumn((Close-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);\r\n\r\n//IIf( Close &gt;= MA(Close, 200) AND Close &lt; MA(Close, 100), -200, "")\r\n</FormulaContent>
 <ApplyTo>2</ApplyTo>
 <RangeType>0</RangeType>
 <RangeAmount>1</RangeAmount>
@@ -137,7 +137,7 @@
 </ExcludeFilter>
 <UseOptimizedEvaluation>0</UseOptimizedEvaluation>
 <BacktestRangeType>0</BacktestRangeType>
-<BacktestRangeLength>6</BacktestRangeLength>
+<BacktestRangeLength>0</BacktestRangeLength>
 <BacktestRangeFromDate>2011-01-01 00:00:00</BacktestRangeFromDate>
 <BacktestRangeToDate>2011-12-31</BacktestRangeToDate>
 <MarginRequirement>100</MarginRequirement>
@@ -189,7 +189,7 @@
 <MaxLongPos>0</MaxLongPos>
 <MaxShortPos>0</MaxShortPos>
 <SeparateLongShortRank>0</SeparateLongShortRank>
-<TotalSymbolQty>71</TotalSymbolQty>
+<TotalSymbolQty>217</TotalSymbolQty>
 <EnableUserReportCharts>1</EnableUserReportCharts>
 <ChartWidth>500</ChartWidth>
 <ChartHeight>300</ChartHeight>
