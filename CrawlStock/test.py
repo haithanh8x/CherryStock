@@ -1,12 +1,6 @@
 from datetime import datetime
 
-def convert_quarter_to_date(qstr: str) -> str:
-    """
-    Convert 'Quý X/YYYY' -> 'DD-MON-YYYY'
-    Return first day of that quarter
-    Example: 'Quý 1/2021' -> '01-JAN-2021'
-    """
-
+def fnc_quarter_to_date(qstr: str) -> str:
     qstr = qstr.strip()
 
     # Tách quý và năm
@@ -30,4 +24,4 @@ def convert_quarter_to_date(qstr: str) -> str:
 
     return date_obj.strftime("%Y%m%d").upper()
 
-print(convert_quarter_to_date('Quý 1/2021'))
+print(fnc_quarter_to_date('Quý 1/2021'))

@@ -58,10 +58,10 @@ def extract_header(page,
 # =========================================================
 # EXTRACT TABLE (BODY ONLY)
 # =========================================================
-def extract_table(page, plocator_tbl, headers, page_index=None):
+def extract_table(page, plocator_tbl, plocator_row, headers, page_index=None):
 
     table = page.locator(plocator_tbl)
-    rows = table.locator("tbody tr.Normal")
+    rows = table.locator(plocator_row)
     row_count = rows.count()
 
     table_data = []
@@ -114,11 +114,14 @@ def make_unique_columns(columns):
 def crawl_all_pages(URL):
 
     data_table_0 = []
-    data_table_1 = []
-
     headers_0 = None
-    headers_1 = None
 
+    data_table_1 = []
+    headers_1 = None
+    
+    data_table_2 = []
+    headers_2 = None
+    
     with sync_playwright() as p:
 
         browser = p.chromium.launch(headless=True)
@@ -144,19 +147,28 @@ def crawl_all_pages(URL):
             headers_1 = extract_header(page, "#table-1")
             headers_1 = make_unique_columns(headers_1)
 
+            headers_2 = extract_header(page, "#table-2")
+            headers_2 = make_unique_columns(headers_2)
             # ==============================
             # TABLE 0
             # ==============================
-            df0 = extract_table(page, "#table-0", headers_0)
+            df0 = extract_table(page, "#table-0", "tbody tr.Normal", headers_0)
             if df0 is not None:
                 data_table_0.append(df0)
 
             # ==============================
             # TABLE 1
             # ==============================
-            df1 = extract_table(page, "#table-1", headers_1)
+            df1 = extract_table(page, "#table-1", "tbody tr.Normal", headers_1)
             if df1 is not None:
                 data_table_1.append(df1)
+
+            # ==============================
+            # TABLE 2
+            # ==============================
+            df2 = extract_table(page, "#table-2", "tbody tr", headers_2)
+            if df2 is not None:
+                data_table_2.append(df2)
 
             # ==============================
             # PAGINATION
@@ -183,7 +195,7 @@ def crawl_all_pages(URL):
 
                 # Nếu không thay đổi => đã tới trang cuối
                 if table_before == table_after:
-                    print("Last page reached (no data change)")
+                    print("Last page reached")
                     break
 
                 page_count += 1
@@ -199,8 +211,9 @@ def crawl_all_pages(URL):
     # ==============================
     df_table_0 = pd.concat(data_table_0, ignore_index=True) if data_table_0 else None
     df_table_1 = pd.concat(data_table_1, ignore_index=True) if data_table_1 else None
+    df_table_2 = pd.concat(data_table_2, ignore_index=True) if data_table_2 else None
 
-    return df_table_0, df_table_1
+    return df_table_0, df_table_1, df_table_2
 
 
 # =========================================================
@@ -212,7 +225,7 @@ if __name__ == "__main__":
 
         print("Processing:", _ticker[0])
 
-        df0, df1 = crawl_all_pages(_ticker[1])
+        df0, df1, df2  = crawl_all_pages(_ticker[1])
 
         # =============================
         # EXPORT TABLE 0
@@ -239,6 +252,7 @@ if __name__ == "__main__":
             df1 = df1.replace(',', '', regex=True)
             df1 = df1.groupby(df1.columns[0], as_index=False).first()
             df1 = df1.set_index(df1.columns[0]).T.reset_index()
+            df1[df0.columns[0]] = df1[df0.columns[0]].apply(fnc_quarter_to_date)
             df1["Ticker"] = _ticker[0]
 
             df1.to_csv(
@@ -247,5 +261,22 @@ if __name__ == "__main__":
                 encoding="utf-8-sig"
             )
 
-        if df0 is None and df1 is None:
+        # =============================
+        # EXPORT TABLE 2
+        # =============================
+        if df2 is not None:
+
+            df2 = df2.replace(',', '', regex=True)
+            df2 = df2.groupby(df2.columns[0], as_index=False).first()
+            df2 = df2.set_index(df2.columns[0]).T.reset_index()
+            df2[df0.columns[0]] = df2[df0.columns[0]].apply(fnc_quarter_to_date)
+            df2["Ticker"] = _ticker[0]
+
+            df2.to_csv(
+                var_Datafile_Folder + f"BCTQ_table2_{_ticker[0]}.csv",
+                index=False,
+                encoding="utf-8-sig"
+            )
+
+        if df0 is None and df1 is None and df2 is None:
             print("No data found.")
