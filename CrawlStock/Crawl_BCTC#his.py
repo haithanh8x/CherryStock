@@ -1,8 +1,29 @@
 from playwright.sync_api import sync_playwright
 import pandas as pd
-import time
-from lstPara import var_user_agent, lstTicker
+from datetime import datetime
+import calendar
+from lstPara import var_user_agent, lstTicker, var_Datafile_Folder
 
+# =========================================================
+# LIB Function
+# =========================================================
+def fnc_quarter_to_date(qstr: str) -> str:
+    qstr = qstr.strip()
+    # Tách quý và năm
+    quarter_part, year = qstr.replace("Quý", "").strip().split("/")
+    quarter = int(quarter_part)
+    # Map quý -> tháng bắt đầu
+    quarter_month_map = {
+        1: 1,
+        2: 4,
+        3: 7,
+        4: 10
+    }
+    if quarter not in quarter_month_map:
+        raise ValueError("Quarter must be 1-4")
+    month = quarter_month_map[quarter]
+    date_obj = datetime(int(year), month, 1)
+    return date_obj.strftime("%Y%m%d").upper()
 
 # =========================================================
 # EXTRACT HEADER
@@ -33,7 +54,6 @@ def extract_header(page,
         headers.append(text)
 
     return headers
-
 
 # =========================================================
 # EXTRACT TABLE (BODY ONLY)
@@ -73,7 +93,6 @@ def extract_table(page, plocator_tbl, headers, page_index=None):
         df["page_index"] = page_index
 
     return df
-
 
 def make_unique_columns(columns):
     seen = {}
@@ -203,10 +222,11 @@ if __name__ == "__main__":
             df0 = df0.replace(',', '', regex=True)
             df0 = df0.groupby(df0.columns[0], as_index=False).first()
             df0 = df0.set_index(df0.columns[0]).T.reset_index()
+            df0[df0.columns[0]] = df0[df0.columns[0]].apply(fnc_quarter_to_date)
             df0["Ticker"] = _ticker[0]
 
             df0.to_csv(
-                f"BCTQ_table0_{_ticker[0]}.csv",
+                var_Datafile_Folder + f"BCTQ_table0_{_ticker[0]}.csv",
                 index=False,
                 encoding="utf-8-sig"
             )
@@ -222,7 +242,7 @@ if __name__ == "__main__":
             df1["Ticker"] = _ticker[0]
 
             df1.to_csv(
-                f"BCTQ_table1_{_ticker[0]}.csv",
+                var_Datafile_Folder + f"BCTQ_table1_{_ticker[0]}.csv",
                 index=False,
                 encoding="utf-8-sig"
             )
