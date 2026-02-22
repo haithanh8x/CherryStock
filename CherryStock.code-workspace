@@ -1,11 +1,37 @@
 {
 	"folders": [
 		{
+			"name": "CherryStock",
 			"path": "."
 		},
 		{
+			"name": "Datafile",
 			"path": "../../Users/ADMIN/OneDrive - ollyo/Datafile"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"sqltools.useNodeRuntime": true,
+		"sqltools.connections": [],
+		"workbench.editorAssociations": {
+			"*.copilotmd": "vscode.markdown.preview.editor",
+			"*.parquet": "duckdb.dataFileViewer",
+			"*.csv": "duckdb.dataFileViewer",
+			"*.tsv": "duckdb.dataFileViewer"
+		},
+		"duckdb.databases": [
+			{
+				"alias": "CherryMon",
+				"type": "file",
+				"path": "c:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\CherryMon.duckdb",
+				"attached": false
+			},
+			{
+				"alias": "ATTACH 'C:/Users/ADMIN/OneDrive - ollyo/Datafile/CherryMon.duckdb'",
+				"type": "manual",
+				"sql": "ATTACH 'C:/Users/ADMIN/OneDrive - ollyo/Datafile/CherryMon.duckdb';",
+				"attached": true
+			}
+		],
+		"duckdb.defaultDatabase": "CherryMon"
+	}
 }

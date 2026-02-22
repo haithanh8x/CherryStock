@@ -175,7 +175,7 @@ Up6BarFractal = Ref(H,-2) < H AND Ref(H,-1) < H AND (H == Ref(H,1)) AND Ref(H,2)
 Down5BarFractal = Ref(L,-2) > L AND Ref(L,-1) > L AND Ref(L,1) > L AND Ref(L,2) > L;
 Down6BarFractal = Ref(L,-2) > L AND Ref(L,-1) > L AND (L == Ref(L,1)) AND Ref(L,2) > L AND Ref(L,3) > L;
  
-//TODO: More filtering: Show only troughs that are around atrough in trix(9).
+// More filtering: Show only troughs that are around atrough in trix(9).
  
 PlotShapes( IIf(Down5BarFractal ,shapeSmallUpTriangle,0) ,colorBlack, 0, L,-12);
 PlotShapes( IIf(Down6BarFractal ,shapeSmallUpTriangle,0) ,colorBlack, 0, L,-12);

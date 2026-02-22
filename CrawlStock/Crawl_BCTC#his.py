@@ -1,8 +1,8 @@
 from playwright.sync_api import sync_playwright
 import pandas as pd
 from datetime import datetime
-import calendar
 from lstPara import var_user_agent, lstTicker, var_Datafile_Folder
+from functools import reduce
 
 # =========================================================
 # LIB Function
@@ -124,9 +124,13 @@ def crawl_all_pages(URL):
     
     with sync_playwright() as p:
 
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(user_agent=var_user_agent)
-        page = context.new_page()
+        browser = p.chromium.launch(headless=False)
+        context = browser.new_context(storage_state="state.json")
+        page = context.new_page() # pyright: ignore[reportCallIssue]
+
+        cookies = context.cookies()
+        print("cookies runtime:", len(cookies))
+        print([ (c["name"], c["domain"]) for c in cookies[:15] ]) # type: ignore
 
         page.goto(URL, wait_until="domcontentloaded")
         page.wait_for_timeout(4000)
@@ -195,15 +199,14 @@ def crawl_all_pages(URL):
 
                 # Nếu không thay đổi => đã tới trang cuối
                 if table_before == table_after:
-                    print("Last page reached")
+                    #print("Last page reached")
                     break
 
                 page_count += 1
-
+            
             except Exception as e:
                 print("Pagination error:", e)
                 break
-
         browser.close()
 
     # ==============================
@@ -227,56 +230,48 @@ if __name__ == "__main__":
 
         df0, df1, df2  = crawl_all_pages(_ticker[1])
 
+        # TRANSFORM and clean data
+
         # =============================
         # EXPORT TABLE 0
         # =============================
         if df0 is not None:
-
             df0 = df0.replace(',', '', regex=True)
             df0 = df0.groupby(df0.columns[0], as_index=False).first()
             df0 = df0.set_index(df0.columns[0]).T.reset_index()
             df0[df0.columns[0]] = df0[df0.columns[0]].apply(fnc_quarter_to_date)
             df0["Ticker"] = _ticker[0]
-
+            df0["Ticker"] = _ticker[0]       
             df0.to_csv(
                 var_Datafile_Folder + f"BCTQ_table0_{_ticker[0]}.csv",
                 index=False,
-                encoding="utf-8-sig"
-            )
+                encoding="utf-8-sig")
 
         # =============================
         # EXPORT TABLE 1
         # =============================
         if df1 is not None:
-
             df1 = df1.replace(',', '', regex=True)
             df1 = df1.groupby(df1.columns[0], as_index=False).first()
             df1 = df1.set_index(df1.columns[0]).T.reset_index()
-            df1[df0.columns[0]] = df1[df0.columns[0]].apply(fnc_quarter_to_date)
+            df1[df1.columns[0]] = df1[df1.columns[0]].apply(fnc_quarter_to_date)
             df1["Ticker"] = _ticker[0]
-
             df1.to_csv(
                 var_Datafile_Folder + f"BCTQ_table1_{_ticker[0]}.csv",
                 index=False,
-                encoding="utf-8-sig"
-            )
-
+                encoding="utf-8-sig")
+            
         # =============================
         # EXPORT TABLE 2
         # =============================
         if df2 is not None:
-
             df2 = df2.replace(',', '', regex=True)
             df2 = df2.groupby(df2.columns[0], as_index=False).first()
             df2 = df2.set_index(df2.columns[0]).T.reset_index()
-            df2[df0.columns[0]] = df2[df0.columns[0]].apply(fnc_quarter_to_date)
+            df2[df2.columns[0]] = df2[df2.columns[0]].apply(fnc_quarter_to_date)
             df2["Ticker"] = _ticker[0]
-
             df2.to_csv(
                 var_Datafile_Folder + f"BCTQ_table2_{_ticker[0]}.csv",
                 index=False,
-                encoding="utf-8-sig"
-            )
+            encoding="utf-8-sig")
 
-        if df0 is None and df1 is None and df2 is None:
-            print("No data found.")
