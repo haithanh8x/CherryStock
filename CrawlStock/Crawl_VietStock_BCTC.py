@@ -1,11 +1,12 @@
 from playwright.sync_api import sync_playwright
 import pandas as pd
-from lstPara import lstTicker, db_path_CherryMon
+from Ults.lstPara import lstTicker, db_path_CherryMon
 from lstDuckDB import prc_upsert_by_ticker
 import duckdb
 import numpy as np
-import os, traceback, time
+import sys, os, traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
 
 # =========================================================
 # EXTRACT HEADER
@@ -218,6 +219,8 @@ def upsert_DuckDB(con, _ticker, df0, df1, df2):
         df0 = df0.set_index(df0.columns[0]).T.reset_index()
         df0["Ticker"] = _ticker
         df0 = df0.replace(r'^\s*$', np.nan, regex=True)
+        #print("df0 cols:", len(df0.columns), df0.columns.tolist())
+        #print("table cols:", con.execute("SELECT COUNT(*) FROM pragma_table_info('bctc_kqkd')").fetchone()[0])
         prc_upsert_by_ticker(con, "bctc_kqkd", df0, _ticker, "Ticker")
 
     # =============================
@@ -254,8 +257,14 @@ def crawl(_ticker):
 # MAIN
 # =========================================================
 if __name__ == "__main__":
+    # fix unicode cho printf
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace") # type: ignore
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace") # type: ignore
+
     con = duckdb.connect(db_path_CherryMon)
-    
     max_workers = 3
     futures = {}
 

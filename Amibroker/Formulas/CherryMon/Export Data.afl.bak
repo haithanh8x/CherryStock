@@ -1,17 +1,21 @@
 #include <T3_Include.afl>;
 Filter = 1 ;
+
 _rsi = RSI(14);
-_vol_running = 20000;
+_tsi = corrResult = Correlation(Close, BarIndex(), 14);
+_vol_running = 10000;
 
 TimeFrameSet( inWeekly );
-_weekly_rsi = RSI(14);
+_weekly_rsi = RSI(12);
 _weekly_rsi_LinReg = LinRegSlope(_weekly_rsi, 5);
+_weekly_tsi = Correlation(Close, BarIndex(), 12);
 _weekly_ma_vol_20 = MA(Volume, 20);
 TimeFrameRestore();
 
 TimeFrameSet( inMonthly );
-_monthly_rsi = RSI(14);
+_monthly_rsi = RSI(12);
 _monthly_rsi_LinReg = LinRegSlope(_monthly_rsi, 5);
+_monthly_tsi = Correlation(Close, BarIndex(), 12);
 TimeFrameRestore();
 
 // add Columns
@@ -20,11 +24,44 @@ addcolumn(IIf( LinRegSlope(_rsi, 14)>=0, 1, -1 )*_rsi, "RSI_14", 1.2);
 addcolumn(IIf( _weekly_rsi_LinReg>=0, 1, -1 )*_weekly_rsi, "RSI_14_W", 1.2);
 addcolumn(IIf( _monthly_rsi_LinReg>=0, 1, -1 )*_monthly_rsi, "RSI_14_M", 1.2);
 addcolumn(Close, "CLose", 1.2, colorDefault);
-
-
+addcolumn(Ref(Close,-1), "Previous Close ", 1.2, colorDefault);
+addcolumn(llv(Low, 5), "1W Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-5), "1W Close", 1.2, colorDefault);
+addcolumn(hhv(High, 5), "1W High", 1.2, colorDefault);
+addcolumn(llv(Low, 20), "1M Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-20), "1M Close", 1.2, colorDefault);
+addcolumn(hhv(High, 20), "1M High", 1.2, colorDefault);
+addcolumn(llv(Low, 60), "3M Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-60), "3M Close", 1.2, colorDefault);
+addcolumn(hhv(High, 60), "3M High", 1.2, colorDefault);
+addcolumn(llv(Low, 120), "6M Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-120), "6M Close", 1.2, colorDefault);
+addcolumn(hhv(High, 120), "6M High", 1.2, colorDefault);
+addcolumn(llv(Low, 240), "1Y Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-240), "1Y Close", 1.2, colorDefault);
+addcolumn(hhv(High, 240), "1Y High", 1.2, colorDefault);
+addcolumn(llv(Low, 1200), "5Y Low", 1.2, colorDefault);
+addcolumn(Ref(Close,-1200), "5Y Close", 1.2, colorDefault);
+addcolumn(hhv(High, 1200), "5Y High", 1.2, colorDefault);
+AddTextColumn(MACD_Signal(), "MACD", 1.2, colorDefault);
+addcolumn(SlopeAngle(20), "LineSlope 20", 1.2, colorDefault);
+addcolumn(SlopeAngle(50), "LineSlope 50", 1.2, colorDefault);
+addcolumn(SlopeAngle(150), "LineSlope 150", 1.2, colorDefault);
+addcolumn(SlopeAngle(250), "LineSlope 250", 1.2, colorDefault);
+addcolumn(SlopeAngle(1250), "LineSlope 1250", 1.2, colorDefault);
+#include <VPA.afl>;
+#include <CandlestickPattern.afl>;
 addcolumn(Signal_RSI(), "BuySell_RSI", 1);
 addcolumn(V, "Vol", 1);
 addcolumn(_weekly_ma_vol_20, "Volume Weekly MA20", 1);
+addcolumn(_tsi, "TSI_12", 1.2);
+addcolumn(_weekly_tsi, "TSI_12_W", 1.2);
+addcolumn(_monthly_tsi, "TSI_12_M", 1.2);
+
+addcolumn(ATR(20)/C*100, "ATRpct_M", 1.2);
+addcolumn(ATR(60)/C*100, "ATRpct_Q", 1.2);
+addcolumn(ATR(240)/C*100, "ATRpct_Y", 1.2);
+
 
 // Volumn Condition
 _vol_condition = (Volume >= _vol_running) AND (Ref(Volume,-1) >= _vol_running) 

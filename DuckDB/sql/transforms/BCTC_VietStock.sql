@@ -1,4 +1,4 @@
-CREATE OR REPLACE TABLE tblBCTC AS
+CREATE OR REPLACE TABLE CherryMon.main.tblBCTC AS
 WITH ab AS (
     SELECT
         COALESCE(a."index", b."index") AS "index",
@@ -59,9 +59,10 @@ WITH ab AS (
     FULL OUTER JOIN "CherryMon"."main"."bctc_cdkt" b
         ON a."Ticker" = b."Ticker"
         AND a."index" = b."index"
-    WHERE a."Giai đoạn" is not null and b."Giai đoạn" is not null and a."Chi phí bán hàng" is not null
+    --WHERE a."Giai đoạn" is not null and b."Giai đoạn" is not null and a."Chi phí bán hàng" is not null
 )
 SELECT
+    ab.DT,
     COALESCE(ab."index", c."index") AS "Quarter",
     COALESCE(ab."Ticker", c."Ticker") AS "Ticker",
     -- Table A fields
@@ -132,4 +133,3 @@ FROM ab
 FULL OUTER JOIN "CherryMon"."main"."bctc_cstc" c
     ON ab."Ticker" = c."Ticker"
     AND ab."index" = c."index"
-WHERE c."Giai đoạn" is not null;

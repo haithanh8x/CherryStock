@@ -1,21 +1,23 @@
 #include <T3_Include.afl>;
-Filter = 1 ;
 
 _rsi = RSI(14);
 _tsi = corrResult = Correlation(Close, BarIndex(), 14);
-_vol_running = 10000;
+_vol_running = 5000;
+
 
 TimeFrameSet( inWeekly );
 _weekly_rsi = RSI(12);
 _weekly_rsi_LinReg = LinRegSlope(_weekly_rsi, 5);
 _weekly_tsi = Correlation(Close, BarIndex(), 12);
 _weekly_ma_vol_20 = MA(Volume, 20);
+_weekly_ATRpct = ATR(14)/C*100;
 TimeFrameRestore();
 
 TimeFrameSet( inMonthly );
 _monthly_rsi = RSI(12);
 _monthly_rsi_LinReg = LinRegSlope(_monthly_rsi, 5);
 _monthly_tsi = Correlation(Close, BarIndex(), 12);
+_monthly_ATRpct = ATR(14)/C*100;
 TimeFrameRestore();
 
 // add Columns
@@ -58,9 +60,15 @@ addcolumn(_tsi, "TSI_12", 1.2);
 addcolumn(_weekly_tsi, "TSI_12_W", 1.2);
 addcolumn(_monthly_tsi, "TSI_12_M", 1.2);
 
+addcolumn(ATR(14)/C*100, "ATRpct_D", 1.2);
+addcolumn(TimeFrameExpand(_weekly_ATRpct,inWeekly), "ATRpct_W", 1.2);
+addcolumn(TimeFrameExpand(_monthly_ATRpct,inMonthly), "ATRpct_M", 1.2);
+
+
 // Volumn Condition
 _vol_condition = (Volume >= _vol_running) AND (Ref(Volume,-1) >= _vol_running) 
 	AND (Ref(Volume,-2) >= _vol_running) AND (Ref(Volume,-3) >= _vol_running) AND (Ref(Volume,-4) >= _vol_running);
 addcolumn(_vol_condition, "Vol_Condition", 1);
+Filter = _vol_condition AND (BarIndex() >= LastValue(BarIndex()) - 14);
 
 

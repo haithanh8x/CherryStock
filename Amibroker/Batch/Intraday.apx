@@ -2,9 +2,9 @@
 <AmiBroker-Analysis CompactMode="0">
 <General>
 <FormatVersion>1</FormatVersion>
-<Symbol>AAA_NN</Symbol>
+<Symbol>HDC</Symbol>
 <FormulaPath>C:\\Github\\CherryStock\\Amibroker\\Formulas\\CherryMon\\Export Intraday.afl</FormulaPath>
-<FormulaContent>#include &lt;T3_Include.afl&gt;;\r\n_startDate = DateTimeAdd( Now( 5 ), -3, inMonthly );\r\nFilter = DateTime() &gt;= _startDate;\r\n\r\n// Add columns for exploration\r\nAddColumn(Open, "Open");\r\nAddColumn(Close, "Close");\r\nAddColumn(Volume, "Volume");\r\nAddColumn(OpenInt, "OpenInt");\r\naddcolumn((C-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);\r\naddcolumn((C-Ref(Low,-5))/Ref(Low,-5), "1W%", 1.4);\r\naddcolumn((C-Ref(Low,-20))/Ref(Low,-20), "1M%", 1.4);\r\naddcolumn(V/IIF(MA(V,20)==0,1,MA(V,20)), "VolMA", 1.2);\r\nAddTextColumn(DateTimeFormat("%H:%M", Now( 5 ) ), "Now");\r\n</FormulaContent>
+<FormulaContent>#include &lt;T3_Include.afl&gt;;\r\n_startDate = DateTimeAdd( Now( 5 ), -3, inMonthly );\r\nFilter = DateTime() &gt;= _startDate;\r\n\r\n// Add columns for exploration\r\nAddColumn(Open, "Open");\r\nAddColumn(Close, "Close");\r\nAddColumn(Volume, "Volume");\r\nAddColumn(OpenInt, "OpenInt");\r\naddcolumn((C-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);\r\naddcolumn((C-Ref(Low,-5))/Ref(Low,-5), "1W%", 1.4);\r\naddcolumn((C-Ref(Low,-20))/Ref(Low,-20), "1M%", 1.4);\r\naddcolumn(V/IIF(MA(V,20)==0,1,MA(Ref(V, -1),20)), "VolMA", 1.2);\r\nAddTextColumn(DateTimeFormat("%H:%M", Now( 5 ) ), "Now");\r\n</FormulaContent>
 <ApplyTo>2</ApplyTo>
 <RangeType>2</RangeType>
 <RangeAmount>1</RangeAmount>

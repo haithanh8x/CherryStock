@@ -10,5 +10,5 @@ AddColumn(OpenInt, "OpenInt");
 addcolumn((C-Ref(Close,-1))/Ref(Close,-1), "1D%", 1.4);
 addcolumn((C-Ref(Low,-5))/Ref(Low,-5), "1W%", 1.4);
 addcolumn((C-Ref(Low,-20))/Ref(Low,-20), "1M%", 1.4);
-addcolumn(V/IIF(MA(V,20)==0,1,MA(V,20)), "VolMA", 1.2);
+addcolumn(V/IIF(MA(V,20)==0,1,MA(Ref(V, -1),20)), "VolMA", 1.2);
 AddTextColumn(DateTimeFormat("%H:%M", Now( 5 ) ), "Now");

@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import pandas as pd
 from datetime import datetime
-from lstPara import var_user_agent, lstTicker, var_Datafile_Folder
+from Ults.lstPara import var_user_agent, lstTicker, var_Datafile_Folder
 from functools import reduce
 
 # =========================================================
