@@ -40,8 +40,7 @@ def prc_upsert_by_ticker(
     table: str,
     df: pd.DataFrame,
     ticker: str,
-    ticker_col: str = "Ticker"
-):
+    ticker_col: str = "Ticker"):
     """
     Delete old rows in 'table' where ticker_col = ticker, then insert df rows.
     Insert aligned to TABLE columns (no SELECT *).

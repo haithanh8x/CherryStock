@@ -1,3 +1,15 @@
+"""Telegram Channel Notification Module.
+
+This module provides a lightweight utility to send formatted HTML messages
+and user mentions to a specific Telegram channel using the python-telegram-bot 
+library.
+
+Attributes:
+    TOKEN (str): The Telegram Bot API token generated via @BotFather.
+    CHANNEL_ID (int): The unique identifier for the target Telegram channel.
+    bot (Bot): The initialized Telegram Bot instance.
+"""
+
 import asyncio
 from telegram import Bot
 from telegram.constants import ParseMode
