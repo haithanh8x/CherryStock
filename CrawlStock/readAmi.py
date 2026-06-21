@@ -3,6 +3,7 @@ import pandas as pd
 import os
 
 from datetime import datetime, timedelta
+from typing import Optional
 from Ults.Timing import timeit
 from Ults.lstFiles import list_files_in_folder
 from lstPara import AMIBROKER_EOD_ACTIVE_PATH, AMIBROKER_EOD_COMMODITY_PATH, AMIBROKER_EOD_FOREIGN_PATH, AMIBROKER_EOD_FUTURES_PATH, AMIBROKER_EOD_INDEX_PATH, AMIBROKER_EOD_INDUSTRY_PATH, AMIBROKER_EOD_MARKET_PATH, AMIBROKER_EOD_OTHER_PATH, AMIBROKER_EOD_PROP_PATH, AMIBROKER_EOD_STOCK_PATH, AMIBROKER_EOD_SUPPLYDEMAND_PATH, AMIBROKER_EOD_WARRANT_PATH, AMIBROKER_INTRADAY_FUTURES_PATH, AMIBROKER_INTRADAY_INDEX_PATH, AMIBROKER_INTRADAY_STOCK_PATH, AMIBROKER_INTRADAY_WARRANT_PATH
@@ -81,26 +82,29 @@ def read_amibroker_dat(file_path, from_date=None):
     return df
 
 @timeit
-def upsert_stock_eod(con, folder_path: str, table_name: str, from_date=None):
+def upsert_stock_eod(con, folder_path: str, table_name: str, from_last_day: Optional[int] = None):
     """
     1. Liệt kê các file .dat trong thư mục.
-    2. Đọc dữ liệu chứng khoán của từng file.
-    3. Gộp dữ liệu kèm cột Ticker tương ứng với file_name.
-    4. Thực hiện Upsert 1:1 vào DuckDB.
+    2. Tính toán checkpoint dựa trên số ngày gần nhất (from_last_day).
+    3. Đọc dữ liệu chứng khoán của từng file nhị phân.
+    4. Chỉ thực hiện DROP TABLE khi đọc toàn bộ (from_last_day = None).
+    5. Thực hiện Upsert 1:1 vào DuckDB.
     """
     # Bước 1: Liệt kê các file .dat trong folder
-    # print(f"-> Đang quét thư mục: {folder_path}")
     pd1 = list_files_in_folder(folder_path, file_extension=".dat")
-
     
     if pd1.empty:
         print("Không tìm thấy file .dat nào trong thư mục được chỉ định.")
         return
 
+    # Bước 2: Tính toán ngày checkpoint (from_date) từ tham số from_last_day
+    from_date = None
+    if from_last_day is not None:
+        from_date = datetime.now() - timedelta(days=from_last_day)
+
     all_stock_data = []
 
-    # Bước 2 & 3: Duyệt qua từng file, đọc dữ liệu và ghép tên file (Ticker)
-    #print(f"-> Phát hiện {len(pd1)} file. Đang đọc dữ liệu AmiBroker...")
+    # Bước 3: Duyệt qua từng file, đọc dữ liệu thô và ghép mã Ticker
     for _, row in pd1.iterrows():
         file_name = row['file_name']
         file_path = row['file_path']
@@ -108,24 +112,26 @@ def upsert_stock_eod(con, folder_path: str, table_name: str, from_date=None):
         # Lấy Ticker bằng cách bỏ phần mở rộng .dat (Ví dụ: 'AAA.dat' -> 'AAA')
         ticker = os.path.splitext(file_name)[0]
         
-        # Đọc dữ liệu file .dat
+        # Đọc dữ liệu file .dat kèm checkpoint ngày
         pd2 = read_amibroker_dat(file_path, from_date=from_date) 
         
-        # Kiểm tra nếu file có dữ liệu hợp lệ
         if pd2 is not None and not pd2.empty:
-            # Chèn thêm cột Ticker vào đầu hoặc cuối dataframe
             pd2.insert(0, 'Ticker', ticker)
             all_stock_data.append(pd2)
             
     if not all_stock_data:
-        print("Không trích xuất được dữ liệu hợp lệ từ bất kỳ file nào.")
+        print(f"Không trích xuất được dữ liệu mới/hợp lệ từ thư mục: {folder_path}")
         return
 
-    # Gộp tất cả các DataFrames lẻ thành một DataFrame tổng duy nhất
+    # Gộp tất cả các dữ liệu đơn lẻ thành một DataFrame tổng
     df_combined = pd.concat(all_stock_data, ignore_index=True)
     
-    con.execute(f"DROP TABLE IF EXISTS {table_name};")
-    # Tạo bảng đích với Khóa chính kết hợp (Ticker, Date) nếu chưa tồn tại
+    # 🌟 ĐIỀU KIỆN ĐẶC BIỆT: Chỉ DROP TABLE khi nạp lại toàn bộ (from_last_day = None)
+    if from_last_day is None:
+        print(f"-> Phát hiện cấu hình quét ALL. Thực hiện DROP TABLE: {table_name}")
+        con.execute(f"DROP TABLE IF EXISTS {table_name};")
+        
+    # Tạo bảng đích nếu chưa tồn tại với Khóa chính kết hợp
     con.execute(f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
             Ticker VARCHAR,
@@ -140,24 +146,21 @@ def upsert_stock_eod(con, folder_path: str, table_name: str, from_date=None):
         );
     """)
 
-    # Tự động tạo mệnh đề UPDATE cho tất cả các cột trừ khóa chính (Ticker, Date)
+    # Tự động tạo mệnh đề UPDATE cho cấu trúc Upsert
     exclude_cols = ['Ticker', 'Date']
     update_cols = [col for col in df_combined.columns if col not in exclude_cols]
     update_clause = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_cols])
 
-    # Thực hiện lệnh INSERT ON CONFLICT (Upsert) 1:1
-    # print(f"-> Đang thực hiện Upsert {len(df_combined)} bản ghi vào bảng '{table_name}' trong DuckDB...")
-    
+    # Thực hiện lệnh INSERT ON CONFLICT (Upsert) 1:1 bảo vệ dữ liệu cũ
     upsert_query = f"""
         INSERT INTO {table_name} SELECT * FROM df_combined
         ON CONFLICT(Ticker, Date) DO UPDATE SET {update_clause};
     """
     
     con.execute(upsert_query)
-    #print("Quá trình Upsert hoàn tất thành công!")
     
 @timeit
-def syncAmibroker_EOD(con):
+def syncAmibroker_EOD(con, from_last_day: Optional[int] = None):
     three_days_ago = datetime.now() - timedelta(days=3)    
     # Khai báo mảng chứa cặp cấu hình (folder_path, table_name) tương ứng 1:1
     sync_configs = [
@@ -182,17 +185,17 @@ def syncAmibroker_EOD(con):
         print(f"[{index}/{total_categories}] Tiến hành xử lý dữ liệu cho bảng: {table_name}")
 
         upsert_stock_eod(
-            con=con, 
-            folder_path=str(folder_path), 
+            con=con,
+            folder_path=str(folder_path),
             table_name=table_name,
-            from_date=three_days_ago
+            from_last_day=from_last_day
         )
         print("-" * 50)  # Đường gạch phân cách cho log dễ nhìn trực quan
     
     con.close()
 
 @timeit
-def syncAmibroker_Intraday(con):
+def syncAmibroker_Intraday(con, from_last_day: Optional[int] = None):
     
     one_days_ago = datetime.now() - timedelta(days=1)
     # Khai báo mảng chứa cặp cấu hình (folder_path, table_name) tương ứng 1:1
@@ -210,10 +213,10 @@ def syncAmibroker_Intraday(con):
         print(f"[{index}/{total_categories}] Tiến hành xử lý dữ liệu cho bảng: {table_name}")
 
         upsert_stock_eod(
-            con,
+            con=con,
             folder_path=str(folder_path),
             table_name=table_name,
-            from_date=one_days_ago
+            from_last_day=from_last_day
         )
         print("-" * 50)  # Đường gạch phân cách cho log dễ nhìn trực quan
     
