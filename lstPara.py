@@ -47,6 +47,9 @@ DB_MOTHERDUCK_PATH = "md:CherryMon"
 # File exporting paths
 DATAFILE_PATH = Path(r"C:\Users\ADMIN\OneDrive - ollyo\Datafile")
 
+# Amibroker paths
+AMIBROKER_LOG_PATH = Path(r"C:\Program1\AmiBroker\broker.log")
+AMIBROKER_AFL_PATH = Path(r"C:\Github\CherryStock\Amibroker\Formulas\CherryMon")
 AMIBROKER_EOD_PATH = Path(r"C:\Program1\AmiBroker\Data_FireAnt\AmiBroker\EOD")
 AMIBROKER_EOD_ACTIVE_PATH = AMIBROKER_EOD_PATH / "active"
 AMIBROKER_EOD_COMMODITY_PATH = AMIBROKER_EOD_PATH / "commodity"
@@ -60,23 +63,14 @@ AMIBROKER_EOD_PROP_PATH = AMIBROKER_EOD_PATH / "prop"
 AMIBROKER_EOD_STOCK_PATH = AMIBROKER_EOD_PATH / "stock"
 AMIBROKER_EOD_SUPPLYDEMAND_PATH = AMIBROKER_EOD_PATH / "supplydemand"
 AMIBROKER_EOD_WARRANT_PATH = AMIBROKER_EOD_PATH / "warrant"
-
 AMIBROKER_INTRADAY_PATH = Path(r"C:\Program1\AmiBroker\Data_FireAnt\AmiBroker\Intraday")
 AMIBROKER_INTRADAY_FUTURES_PATH = AMIBROKER_INTRADAY_PATH / "futures"
 AMIBROKER_INTRADAY_INDEX_PATH = AMIBROKER_INTRADAY_PATH / "index"
 AMIBROKER_INTRADAY_STOCK_PATH = AMIBROKER_INTRADAY_PATH / "stock"
 AMIBROKER_INTRADAY_WARRANT_PATH = AMIBROKER_INTRADAY_PATH / "warrant"
 
+# DuckDB sql Path
+DUCKDB_SQL_PATH = Path(r"C:\Github\CherryStock\DuckDB\sql")
 
-def getCherryMon_motherDuck() -> duckdb.DuckDBPyConnection:
-    """ Khởi tạo và trả về kết nối tới MotherDuck """
-    return duckdb.connect(
-        database=DB_MOTHERDUCK_PATH, 
-        config={"motherduck_token": DB_MOTHERDUCK_TOKEN}
-    )
-
-def getCherryMon_local() -> duckdb.DuckDBPyConnection:
-    """ Khởi tạo và trả về kết nối tới cơ sở dữ liệu cục bộ """
-    return duckdb.connect(
-        database=DB_PATH_CHERRYMON
-    )
+# AI Models
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")

@@ -1,0 +1,103 @@
+Filter = Status("lastbarinrange") AND GroupID(1) == "Gia co phieu";
+
+AddColumn(Open, "Open");
+AddColumn(Close, "Close");
+AddTextColumn(StrReplace(GetFnData("FullName"), ",", ""), "Full Name");
+AddTextColumn(MarketID(1), "Market");
+AddColumn(Close * GetFnData("SharesOut"), "Capital", 1.0);
+AddTextColumn(StrReplace(SectorID(1), ",", ""), "Sector");
+AddTextColumn(IcbID(0), "ICB ID");
+AddTextColumn(StrReplace(IcbID(1), ",", ""), "ICB");
+AddTextColumn(StrReplace(IndustryID(1), ",", ""), "Industry");
+AddColumn(GetFnData("SharesFloat"), "Shares Float", 1.0);
+AddColumn(GetFnData("SharesOut"), "Shares Outstanding", 1.0);
+AddColumn(GetFnData("EPS"), "EPS");
+
+_pe = IIf(GetFnData("EPS") > 0, Close / GetFnData("EPS"), Null);
+AddColumn(_pe, "PE", 1.1); 
+AddColumn(GetFnData("BookValuePerShare"), "Book Value");
+AddColumn(GetFnData("ReturnOnAssets"), "ROA");
+AddColumn(GetFnData("ReturnOnEquity"), "ROE");
+
+
+// Write RAM to Disk
+
+if( Status("action") == actionExplore )
+{
+
+    csv_path = GetVariable("py_csv_path");
+    
+
+    if( csv_path == "" ) 
+    {
+        csv_path = "C:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\Export_Shares.csv"; 
+    }
+    
+
+    if( Status("stocknum") == 0 ) 
+    {
+        fso = CreateStaticObject("Scripting.FileSystemObject");
+        fh = fso.CreateTextFile( csv_path, True );
+        
+
+        header_str = "Ticker,Open,Close,Full Name,Market,Capital,Sector,ICB ID,ICB,Industry,Shares Float,Shares Outstanding,EPS,PE,Book Value,ROA,ROE";
+        fh.WriteLine( header_str ); 
+    }
+    else
+    {
+
+        fso = CreateStaticObject("Scripting.FileSystemObject");
+        fh = fso.OpenTextFile( csv_path, 8 ); // 8 = ForAppending
+    }
+
+
+    if( Filter )
+    {
+
+        v_fullname = StrReplace(GetFnData("FullName"), ",", "");
+        v_market   = MarketID(1);
+        v_sector   = StrReplace(SectorID(1), ",", "");
+        v_icbid    = IcbID(0);
+        v_icb      = StrReplace(IcbID(1), ",", "");
+        v_industry = StrReplace(IndustryID(1), ",", "");
+        
+
+        v_open     = Open;
+        v_close    = Close;
+        v_capital  = v_close * GetFnData("SharesOut");
+        
+
+        v_float    = IIf(IsNan(GetFnData("SharesFloat")) OR NOT IsFinite(GetFnData("SharesFloat")), 0, GetFnData("SharesFloat"));
+        v_out      = IIf(IsNan(GetFnData("SharesOut"))   OR NOT IsFinite(GetFnData("SharesOut")),   0, GetFnData("SharesOut"));
+        v_eps      = IIf(IsNan(GetFnData("EPS"))         OR NOT IsFinite(GetFnData("EPS")),         0, GetFnData("EPS"));
+        v_pe       = IIf(IsNan(_pe)                      OR NOT IsFinite(_pe),                      0, _pe);
+        v_book     = IIf(IsNan(GetFnData("BookValuePerShare")) OR NOT IsFinite(GetFnData("BookValuePerShare")), 0, GetFnData("BookValuePerShare"));
+        v_roa      = IIf(IsNan(GetFnData("ReturnOnAssets"))    OR NOT IsFinite(GetFnData("ReturnOnAssets")),    0, GetFnData("ReturnOnAssets"));
+        v_roe      = IIf(IsNan(GetFnData("ReturnOnEquity"))    OR NOT IsFinite(GetFnData("ReturnOnEquity")),    0, GetFnData("ReturnOnEquity"));
+
+
+        row_str = Name() + "," +
+                  WriteVal(v_open, 1.2, False) + "," +
+                  WriteVal(v_close, 1.2, False) + "," +
+                  v_fullname + "," +
+                  v_market + "," +
+                  WriteVal(v_capital, 1.0, False) + "," +
+                  v_sector + "," +
+                  v_icbid + "," +
+                  v_icb + "," +
+                  v_industry + "," +
+                  WriteVal(v_float, 1.0, False) + "," +
+                  WriteVal(v_out, 1.0, False) + "," +
+                  WriteVal(v_eps, 1.2, False) + "," +
+                  WriteVal(v_pe, 1.2, False) + "," +
+                  WriteVal(v_book, 1.2, False) + "," +
+                  WriteVal(v_roa, 1.2, False) + "," +
+                  WriteVal(v_roe, 1.2, False);
+                  
+
+        fh.WriteLine( row_str );
+    }
+    
+
+    fh.Close();
+}

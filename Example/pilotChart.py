@@ -1,21 +1,21 @@
-#%%
-import duckdb
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+from Ults.DuckLib import getCherryMon_local
 
 # 1. Kích hoạt hiển thị đồ thị trong Notebook
 # %matplotlib inline
 
 # 2. Kết nối tới database DuckDB của bạn
 # Thay 'path_to_your_db.db' bằng đường dẫn thực tế tới file database của bạn
-con = duckdb.connect("path_to_your_db.db")
+con = getCherryMon_local()  # Hoặc getCherryMon_motherDuck() nếu bạn muốn kết nối tới MotherDuckDB
 
 # 3. Chạy câu lệnh SQL và chuyển thẳng thành Pandas DataFrame bằng hàm .df()
 query = """
     SELECT Date, Open, Volume 
     FROM "CherryMon"."main"."raw_stock_eod" 
     WHERE Ticker = 'MWG' 
-      AND Date >= '2026-05-01'
+      AND Date >= '2026-01-01'
 """
 df_mwg = con.execute(query).df()
 
@@ -65,4 +65,3 @@ axes[1].set_ylabel("Số phiên (Count)", fontsize=11)
 # Tối ưu khoảng cách và hiển thị
 plt.tight_layout()
 plt.show()
-# %%

@@ -1,0 +1,7 @@
+
+IsVnIndex = Name() == "VNINDEX";
+
+StartDate = DateTimeConvert( 2, 20100101 ); 
+InDateRange = DateTime() >= StartDate;
+
+Filter = IsVnIndex AND InDateRange;

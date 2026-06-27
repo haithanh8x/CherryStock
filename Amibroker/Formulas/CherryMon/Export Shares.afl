@@ -1,5 +1,4 @@
-Filter = Status("lastbarinrange");
-//Filter = 1;
+Filter = Status("lastbarinrange") AND GroupID(1) == "Gia co phieu";
 
 AddColumn(Open, "Open");
 AddColumn(Close, "Close");
@@ -13,7 +12,7 @@ AddTextColumn(StrReplace(IndustryID(1), ",", "" ),"Industry");
 AddColumn(GetFnData( "SharesFloat"),"Shares Float", 1.0);
 AddColumn(GetFnData( "SharesOut"),"Shares Outstanding", 1.0);
 AddColumn(GetFnData( "EPS"),"EPS");
-AddColumn(Close/GetFnData( "EPS"),"PE",1.1);
+AddColumn(IIf(GetFnData("EPS") > 0, Close / GetFnData("EPS"), Null),"PE",1.1); 
 AddColumn(GetFnData( "BookValuePerShare"),"Book Value");
 AddColumn(GetFnData( "ReturnOnAssets"),"ROA");
 AddColumn(GetFnData( "ReturnOnEquity"),"ROE");
