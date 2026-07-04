@@ -1,8 +1,11 @@
+import os
 from openrouter import OpenRouter
-from lstPara import OPENROUTER_API_KEY
+from dotenv import load_dotenv
+
+load_dotenv()
 
 with OpenRouter(
-  api_key=OPENROUTER_API_KEY,
+  api_key=os.getenv("OPENROUTER_API_KEY"),
 ) as client:
   response = client.chat.send(
     model="qwen/qwen3-next-80b-a3b-instruct",

@@ -8,6 +8,7 @@ import time
 import os
 import pandas as pd
 
+from Ults.DuckLib import DuckDBManager
 from Ults.Timing import timeit, toggle_print
 from datetime import datetime, timedelta
 from typing import Optional
@@ -90,7 +91,8 @@ def read_amibroker_dat(file_path, from_date=None):
 
 @timeit
 @toggle_print(allow_print=False)
-def upsert_stock_eod(con, folder_path: str, table_name: str, from_last_day: Optional[int] = None):
+def upsert_stock_eod(folder_path: str, table_name: str, from_last_day: Optional[int] = None):
+    con = DuckDBManager.get_connection()
     """
     1. Liệt kê các file .dat trong thư mục.
     2. Tính toán checkpoint dựa trên số ngày gần nhất (from_last_day).
@@ -174,8 +176,7 @@ def upsert_stock_eod(con, folder_path: str, table_name: str, from_last_day: Opti
     
 @timeit
 @toggle_print(allow_print=False)
-def syncAmibroker_EOD(con, from_last_day: Optional[int] = None):
-    three_days_ago = datetime.now() - timedelta(days=3)    
+def syncAmibroker_EOD(from_last_day: Optional[int] = None): 
     # Khai báo mảng chứa cặp cấu hình (folder_path, table_name) tương ứng 1:1
     sync_configs = [
         (AMIBROKER_EOD_ACTIVE_PATH, "raw_active_eod"),
@@ -199,7 +200,6 @@ def syncAmibroker_EOD(con, from_last_day: Optional[int] = None):
         print(f"[{index}/{total_categories}] Tiến hành xử lý dữ liệu cho bảng: {table_name}")
 
         upsert_stock_eod(
-            con=con,
             folder_path=str(folder_path),
             table_name=table_name,
             from_last_day=from_last_day
@@ -208,9 +208,7 @@ def syncAmibroker_EOD(con, from_last_day: Optional[int] = None):
 
 @timeit
 @toggle_print(allow_print=False)
-def syncAmibroker_Intraday(con, from_last_day: Optional[int] = None):
-    
-    one_days_ago = datetime.now() - timedelta(days=1)
+def syncAmibroker_Intraday(from_last_day: Optional[int] = None):
     # Khai báo mảng chứa cặp cấu hình (folder_path, table_name) tương ứng 1:1
     sync_configs = [
         (AMIBROKER_INTRADAY_FUTURES_PATH, "raw_futures_intraday"),
@@ -226,7 +224,6 @@ def syncAmibroker_Intraday(con, from_last_day: Optional[int] = None):
         print(f"[{index}/{total_categories}] Tiến hành xử lý dữ liệu cho bảng: {table_name}")
 
         upsert_stock_eod(
-            con=con,
             folder_path=str(folder_path),
             table_name=table_name,
             from_last_day=from_last_day
@@ -235,7 +232,7 @@ def syncAmibroker_Intraday(con, from_last_day: Optional[int] = None):
 
 @timeit
 @toggle_print(allow_print=False)
-def upsert_stock_fa(con):
+def upsert_stock_fa():
     """
     1. Chạy ngầm file Export Shares.afl qua AmiBroker COM (Python 32-bit).
     2. Spool file broker.log để bắt output từ lệnh _TRACE() trong AFL.
@@ -244,7 +241,8 @@ def upsert_stock_fa(con):
     # CHÚ Ý: Đảm bảo biến DATAFILE_PATH và AMIBROKER_AFL_PATH đã được khai báo hoặc import
     EXPORTED_CSV_PATH = DATAFILE_PATH / "tmp_Export_Shares.csv" 
     AMIBROKER_AFL_SHARES = AMIBROKER_AFL_PATH / "Export Shares.afl"
-    
+    con = DuckDBManager.get_connection()
+
     print(f"[*] Bắt đầu tiến trình cập nhật Fundamental Analysis (FA)...")
 
     # 1. Reset file log trước khi chạy để đảm bảo chỉ đọc log mới nhất
@@ -370,7 +368,7 @@ def upsert_stock_fa(con):
 
 @timeit
 @toggle_print(allow_print=False)
-def upsert_lstTicker(con):
+def upsert_lstTicker():
     """
     1. Đọc file Excel lstTicker.xlsx tại sheet có tên 'Ticker'.
     2. Chuẩn hóa dữ liệu văn bản và ép kiểu dữ liệu an toàn cho Khóa chính Ticker.
@@ -380,7 +378,7 @@ def upsert_lstTicker(con):
     # Nếu không truyền đường dẫn cụ thể, tự động lấy file từ thư mục cấu hình mặc định
     SRC_FILE_PATH = DATAFILE_PATH / "lstTicker.xlsx"
     file_path = SRC_FILE_PATH
-        
+    con = DuckDBManager.get_connection()    
     print(f"[*] Bắt đầu đọc file danh sách mã: {file_path}")
     
     if not os.path.exists(file_path):
@@ -445,8 +443,9 @@ def upsert_lstTicker(con):
             cols_def.append(f'"{col_name}" {col_type}')
             update_cols.append(col_name)
 
-    # 1. Tạo bảng thực tế nếu chưa tồn tại kèm định nghĩa khóa chính PRIMARY KEY (Ticker)
-    create_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(cols_def)});"
+    # 1. Xóa bảng cũ (nếu có) rồi tạo bảng thực tế kèm định nghĩa khóa chính PRIMARY KEY (Ticker)
+    #    Theo yêu cầu: thêm DROP TABLE phía trước khi CREATE
+    create_sql = f"DROP TABLE IF EXISTS {table_name}; CREATE TABLE {table_name} ({', '.join(cols_def)});"
     con.execute(create_sql)
 
     # 2. Xây dựng mệnh đề UPDATE cho cấu trúc DO UPDATE SET khi có xung đột khóa chính

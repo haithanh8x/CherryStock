@@ -1,14 +1,14 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from Ults.DuckLib import getCherryMon_local
+from Ults.DuckLib import DuckDBManager
 
 # 1. Kích hoạt hiển thị đồ thị trong Notebook
 # %matplotlib inline
 
 # 2. Kết nối tới database DuckDB của bạn
 # Thay 'path_to_your_db.db' bằng đường dẫn thực tế tới file database của bạn
-con = getCherryMon_local()  # Hoặc getCherryMon_motherDuck() nếu bạn muốn kết nối tới MotherDuckDB
+con = DuckDBManager.get_connection()  # Hoặc getCherryMon_motherDuck() nếu bạn muốn kết nối tới MotherDuckDB
 
 # 3. Chạy câu lệnh SQL và chuyển thẳng thành Pandas DataFrame bằng hàm .df()
 query = """
@@ -20,7 +20,7 @@ query = """
 df_mwg = con.execute(query).df()
 
 # Đóng kết nối database sau khi lấy dữ liệu xong
-con.close()
+DuckDBManager.close_connection()
 
 # --- BƯỚC VẼ ĐỒ THỊ PHÂN PHỐI ---
 # Cấu hình khung vẽ gồm 1 hàng, 2 cột

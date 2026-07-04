@@ -3,23 +3,34 @@ import io
 
 from Ults.Timing import timeit
 from CrawlStock.readAmi import syncAmibroker_EOD, syncAmibroker_Intraday, upsert_lstTicker, upsert_stock_fa
-from Ults.DuckLib import executeDuckSQL, getCherryMon_local, getCherryMon_motherDuck
+from Ults.DuckLib import DuckDBManager, executeDuckSQL
+from Ults.getData import get_last_point
 from lstPara import DUCKDB_SQL_PATH
 
 # --- HÀM MAIN ---
 @timeit
 def main():
-        # Kết nối đến cơ sở dữ liệu DuckDB hay MotherDuckDB
-        conn = getCherryMon_local()
-                
-        syncAmibroker_EOD(conn, from_last_day=1)
-        #syncAmibroker_Intraday(conn, from_last_day=0)
-        upsert_stock_fa(con=conn)
-        upsert_lstTicker(con=conn)
+        conn = DuckDBManager.get_connection()
+        days_diff_raw = get_last_point()   # Cộng thêm 1 ngày để đồng bộ từ ngày tiếp theo sau lần cập nhật cuối cùng
+        days_diff = 15
+        if days_diff_raw is not None:
+        # Nếu kết quả là đối tượng Timedelta của Pandas, dùng thuộc tính .days để lấy số ngày
+                if hasattr(days_diff_raw, 'days'):
+                        days_diff = int(days_diff_raw.days)
+                else:
+                        # Nếu đã là dạng số hoặc chuỗi số, ép trực tiếp về int
+                        days_diff = int(days_diff_raw)
 
+
+        # ---------------------------------------------------------------------------------        
+        syncAmibroker_EOD(from_last_day=days_diff)
+        #syncAmibroker_Intraday(conn, from_last_day=0)
+        upsert_stock_fa()
+        upsert_lstTicker()
         executeDuckSQL(con=conn, sql_file_path=str(DUCKDB_SQL_PATH / "updateHoliday.sql"))
 
-        conn.close()
+        # --------------------------------------------------------------------------------- 
+        DuckDBManager.close_connection()
 
 if __name__ == "__main__":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)

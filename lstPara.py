@@ -16,7 +16,9 @@ Attributes:
 import os
 from pathlib import Path
 
-import duckdb
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 # --- TICKER CONFIGURATION ---
 # Full ticker list preserved for future reference
@@ -37,12 +39,14 @@ USER_AGENT = (
 
 # Base Datafile Folder path resolved from environment variables
 PROJECT_FOLDER = Path(__file__).parent.parent.resolve()
-DATAFILE_FOLDER = os.getenv("OneDrive", "C:\\") + "\\Datafile\\"  # type: ignore
+DATAFILE_FOLDER = os.getenv("DATAFILE_FOLDER", os.getenv("OneDrive", "C:\\") + "\\Datafile\\")  # type: ignore
 
 # DuckDB Database File Paths
-DB_PATH_CHERRYMON = os.path.join(DATAFILE_FOLDER, "CherryMon.duckdb")
-DB_MOTHERDUCK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhhaXRoYW5oOHhAZ21haWwuY29tIiwibWRSZWdpb24iOiJhd3MtdXMtZWFzdC0xIiwic2Vzc2lvbiI6ImhhaXRoYW5oOHguZ21haWwuY29tIiwicGF0IjoiYzJTb0RrbXVSY0lBN1pDMHlrdkNEWVhtVzJ5SldSM0gtRy1ZT0o3aTBYWSIsInVzZXJJZCI6IjkzOGMwMjgzLWU4NjAtNGVhNC1iNGQwLTVlNzdiYjgwOWIwOSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc4MjAyMzUzOH0.bOLdAJCnG_DX9lFGOIR-pNxxp8hY8sJw3-q8Yr1_lMM"
-DB_MOTHERDUCK_PATH = "md:CherryMon"
+LOCAL_DB_PATH = os.getenv("LOCAL_DB_PATH", os.path.join(DATAFILE_FOLDER, "CherryMon.duckdb"))
+DB_PATH_CHERRYMON = LOCAL_DB_PATH
+DB_MOTHERDUCK_PATH = os.getenv("DB_MOTHERDUCK_PATH", "md:CherryMon")
+# DuckDB sql Path
+DUCKDB_SQL_PATH = Path(r"C:\Github\CherryStock\DuckDB\sql")
 
 # File exporting paths
 DATAFILE_PATH = Path(r"C:\Users\ADMIN\OneDrive - ollyo\Datafile")
@@ -69,8 +73,6 @@ AMIBROKER_INTRADAY_INDEX_PATH = AMIBROKER_INTRADAY_PATH / "index"
 AMIBROKER_INTRADAY_STOCK_PATH = AMIBROKER_INTRADAY_PATH / "stock"
 AMIBROKER_INTRADAY_WARRANT_PATH = AMIBROKER_INTRADAY_PATH / "warrant"
 
-# DuckDB sql Path
-DUCKDB_SQL_PATH = Path(r"C:\Github\CherryStock\DuckDB\sql")
-
-# AI Models
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
+# Agent and other constants
+AGENT_NAME = "CherryMonAgent"
+AGENT_PATH = Path(r"C:\Github\CherryStock\.github\agents")
