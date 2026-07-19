@@ -65,3 +65,37 @@ axes[1].set_ylabel("Số phiên (Count)", fontsize=11)
 # Tối ưu khoảng cách và hiển thị
 plt.tight_layout()
 plt.show()
+
+#%%
+from matplotlib.pyplot import show
+from Chart.plot import add_line, init_chart, load_chart, plotTicker
+
+plotTicker("MWG", "Daily")
+plotTicker("MWG", "weekly")
+plotTicker("MWG", "monthly")
+
+# %%
+from DuckDB.Data import get_symbol, upd_symbol_percent
+from Chart.plot import init_chart, add_line, load_chart
+
+start_date = '2025-12-10'
+
+chart = init_chart()
+add_line(chart=chart, color="#FFFFFF",
+    data=upd_symbol_percent(get_symbol('VNINDEX_NOT_VIN', start_date, source='custom')))
+add_line(chart=chart, color="#03FD10",
+    data=upd_symbol_percent(get_symbol('VNINDEX', start_date, source='index')))
+load_chart(chart=chart)
+
+# %%
+from DuckDB.Data import get_symbol, upd_symbol_percent
+from Chart.plot import init_chart, add_line, load_chart
+
+start_date = '2025-12-10'
+
+chart = init_chart()
+add_line(chart=chart, color="#FFFFFF", label_name="Remaining VNINDEX",
+    data=upd_symbol_percent(get_symbol('VNINDEX_NOT_VIN', start_date, source='custom')))
+add_line(chart=chart, color="#03FD10", label_name="VNINDEX",
+    data=upd_symbol_percent(get_symbol('VNINDEX', start_date, source='index')))
+load_chart(chart=chart)

@@ -3,7 +3,6 @@ import sys
 import time
 from functools import wraps
 
-
 def timeit(func):
     """Measure the execution time of a function."""
 
@@ -14,13 +13,11 @@ def timeit(func):
         end_time = time.time()
         print(f"⏱️   [Duration] '{func.__name__}' total time: {end_time - start_time:.1f} seconds")
         return result
-
     return wrapper
 
 
 def toggle_print(allow_print=True):
     """Silence stdout for wrapped functions when requested."""
-
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -37,7 +34,6 @@ def toggle_print(allow_print=True):
                 return func(*args, **kwargs)
         return wrapper
     return decorator
-
 
 def get_nearest_working_date(con, from_date):
     """Lấy ngày làm việc gần nhất theo dimCalendar và ngày tham số."""

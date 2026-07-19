@@ -13,10 +13,12 @@ Attributes:
     DATAFILE_PATH (Path): Path object pointing to the global project data directory.
 """
 
+from datetime import date
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from dateutil.relativedelta import relativedelta
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
@@ -27,6 +29,9 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 #     ["AAH"],["AAS"],["ABB"],["AAA"],["ACV"],["ACB"],["AFX"],["AGG"],["ANT"],["AGR"],["APH"],["ANV"],["BAF"],["APS"],["BCM"],["BFC"],["BIC"],["BID"],["BMI"],["BMP"],["BSI"],["BSR"],["BVB"],["BVH"],["BWE"],["BVS"],["C4G"],["C69"],["CDC"],["CEO"],["CII"],["CRC"],["CMG"],["CRE"],["CSV"],["CTD"],["CTF"],["CTG"],["CTI"],["CTR"],["CTS"],["DBC"],["DC4"],["DDB"],["DCM"],["DCL"],["DDV"],["DGC"],["DGW"],["DHC"],["DHA"],["DL1"],["DIG"],["DLG"],["DPG"],["DPM"],["DRI"],["DSE"],["DPR"],["DTD"],["DXG"],["DXS"],["DXP"],["EIB"],["ELC"],["EVF"],["EVG"],["FCN"],["FIT"],["FOX"],["FRT"],["FPT"],["FTS"],["G36"],["GDA"],["GEE"],["GAS"],["GEG"],["GEX"],["GVR"],["GMD"],["HAG"],["HAH"],["HAX"],["HBC"],["HCM"],["HDB"],["HDC"],["HHP"],["HDG"],["HHS"],["HHV"],["HID"],["HII"],["HNG"],["HPX"],["HPG"],["HQC"],["HSL"],["HSG"],["HT1"],["HUT"],["HVN"],["IDC"],["IDI"],["IJC"],["IPA"],["IMP"],["KBC"],["KDC"],["KDH"],["KHG"],["KLB"],["KOS"],["KSV"],["KSB"],["L40"],["LCG"],["LDG"],["LPB"],["LGL"],["LSG"],["MBB"],["MBS"],["MCH"],["MIG"],["MML"],["MSB"],["MSH"],["MZG"],["MSN"],["MSR"],["MST"],["NAB"],["MWG"],["NAF"],["NHH"],["NKG"],["NLG"],["NRC"],["NNC"],["NTC"],["NT2"],["NTL"],["NTP"],["NVL"],["OCB"],["OIL"],["ORS"],["PAT"],["PAC"],["PAN"],["PC1"],["PDR"],["PET"],["PHR"],["PIV"],["PLP"],["PLX"],["PNJ"],["PPT"],["POW"],["PSD"],["PTB"],["PVC"],["PVP"],["PVD"],["PVI"],["PVS"],["PVT"],["QNS"],["QCG"],["SBG"],["SAB"],["REE"],["SBS"],["SBT"],["SCS"],["SCR"],["SGP"],["SGR"],["SHB"],["SHI"],["SIP"],["SHS"],["SSB"],["SJE"],["SMC"],["SSI"],["SZC"],["TAL"],["STB"],["TCB"],["TCH"],["TCX"],["TCM"],["TDP"],["TIG"],["TOS"],["TLG"],["TNG"],["TPB"],["TRC"],["TSC"],["TTN"],["TTF"],["VAB"],["TV2"],["VC3"],["VCK"],["VCB"],["VCI"],["VCG"],["VCS"],["VEA"],["VEC"],["VDS"],["VFS"],["VGC"],["VGI"],["VGT"],["VGS"],["VHM"],["VHC"],["VIB"],["VIC"],["VJC"],["VIX"],["VNB"],["VND"],["VNP"],["VNM"],["VOS"],["VPB"],["VPL"],["VPI"],["VPX"],["VRE"],["VTZ"],["VTP"],["VVS"],["VSC"],["YEG"]
 # ]
 # fmt: on
+
+# lấy 3 năm gần nhất để đồng bộ dữ liệu và thời điểm tính toán các chỉ số
+START_DATE = (date.today() - relativedelta(years=3)).strftime("%Y-%m-%d")
 
 lstTicker = [["MZG"]]
 
@@ -45,6 +50,7 @@ DATAFILE_FOLDER = os.getenv("DATAFILE_FOLDER", os.getenv("OneDrive", "C:\\") + "
 LOCAL_DB_PATH = os.getenv("LOCAL_DB_PATH", os.path.join(DATAFILE_FOLDER, "CherryMon.duckdb"))
 DB_PATH_CHERRYMON = LOCAL_DB_PATH
 DB_MOTHERDUCK_PATH = os.getenv("DB_MOTHERDUCK_PATH", "md:CherryMon")
+DB_MOTHERDUCK_TOKEN = os.getenv("MOTHERDUCK_TOKEN", "")
 # DuckDB sql Path
 DUCKDB_SQL_PATH = Path(r"C:\Github\CherryStock\DuckDB\sql")
 

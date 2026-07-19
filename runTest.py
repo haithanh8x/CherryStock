@@ -1,80 +1,25 @@
-#%%
-from matplotlib.pyplot import show
-from Chart.plot import plotTicker
+# %%
+from Chart.plot import draw_comparision_main_sub
+from lstPara import START_DATE
+start_date = '2025-03-23'
+symbol_sources = {
+# main
+    'remaining_vnindex': {'symbol': 'VNINDEX_NOT_VIN', 'source': 'custom', 'color': '#A0AEC0', 'label_name': 'Remaining VNINDEX', 'target': 'main', },
+    'vnindex': {'symbol': 'VNINDEX', 'source': 'index', 'color': '#03FD10', 'label_name': 'VNINDEX', 'target': 'main', },
+    'btc': {'symbol': 'BTC-USD', 'source': 'other', 'color': '#F7931A', 'label_name': 'BTC-USD', 'target': 'main', },
+    'spx': {'symbol': '^SPX', 'source': 'other', 'color': '#3182CE', 'label_name': 'SPX', 'target': 'main', },
+    'ndx': {'symbol': '^NDX', 'source': 'other', 'color': '#00B5D8', 'label_name': 'NDX', 'target': 'main', },
+    'gcz': {'symbol': '^GCZ', 'source': 'other', 'color': '#ECC94B', 'label_name': 'Gold', 'target': 'main', },
+    'lcoz': {'symbol': '^LCOZ', 'source': 'other', 'color': '#E53E3E', 'label_name': 'Oil', 'target': 'main', },
+    'VIX': {'symbol': '^VIX', 'source': 'other', 'color': '#FFAA00', 'label_name': 'VIX', 'target': 'main', },
+# sub main
+    'dxy': {'symbol': 'DX-Y.NYB', 'source': 'other', 'color': '#A0AEC0', 'label_name': 'DX-Y.NYB', 'target': 'sub', },
+    #'USBY10Y': {'symbol': 'USBY10Y', 'source': 'other', 'color': '#FFAA00', 'label_name': 'US Bond 10Y', 'target': 'sub', },
+    'VIX': {'symbol': '^VIX', 'source': 'other', 'color': '#FFAA00', 'label_name': 'VIX', 'target': 'sub', },
+    'VND=X': {'symbol': 'VND=X', 'source': 'other', 'color': '#FFAA00', 'label_name': 'USD to VND', 'target': 'sub', },
+}
+draw_comparision_main_sub(start_date=start_date, symbol_sources=symbol_sources)
 
-
-plotTicker("MWG", "Daily")
-plotTicker("MWG", "weekly")
-plotTicker("MWG", "monthly")
-#%%
-from Ults.getData import get_last_point
-print('get_last_point:', get_last_point())
-
-#%%
-import pandas as pd
-from Ults.DuckLib import DuckDBManager
-from calcEngine.calcIndexes import calculate_composite_index
-from Ults.Timing import get_nearest_working_date
-
-# 1. Tính base value và dataframe cần tính composite index
-str_from_date = "2025-05-01"
-with DuckDBManager() as conn:
-    # Lấy base_value từ VNINDEX vào ngày from_date bằng Relation API
-    from_date = get_nearest_working_date(conn, from_date=pd.to_datetime(str_from_date))    
-    if from_date is None: from_date = pd.to_datetime(str_from_date)
-    relation = (
-        conn.table('"CherryMon"."main"."raw_index_eod"')
-            .filter(f"Ticker = 'VNINDEX' AND Date = '{from_date.strftime('%Y-%m-%d')}'")
-            .project('Close')
-            .limit(1)
-    )
-    df_idx = relation.df()
-    if df_idx is None or df_idx.shape[0] == 0: raise ValueError(f"Không tìm thấy giá trị VNINDEX cho {from_date.strftime('%Y-%m-%d')}")
-    base_value = int(df_idx['Close'].iloc[0])
-    if base_value is None: base_value=1000
-
-    # lấy dataframe
-    relation = (
-        conn.table('"CherryMon"."main"."raw_lstTicker"').set_alias('lt')
-            .join(conn.table('"CherryMon"."main"."raw_stock_fa"').set_alias('fa'), 'lt.Ticker = fa.Ticker')
-            .join(conn.table('"CherryMon"."main"."raw_stock_eod"').set_alias('eod'), 'lt.Ticker = eod.Ticker')
-            .filter(f"fa.Ticker NOT IN ('VIC','VRE', 'VHM') AND eod.Date >= '{from_date.strftime('%Y-%m-%d')}'")
-            .project('lt.Ticker','eod.Close','fa."Shares Float"','eod.Date')
-    )
-    df_all = relation.df()
-    df_all.columns = ['ticker', 'price', 'shares', 'Date']
-    df_all["Date"] = pd.to_datetime(df_all["Date"])
-    unique_dates = sorted(df_all["Date"].unique())
-
-previous_data = None
-prev_divisor = None
-results = []
-
-# Vòng lặp tính từng ngày return results[] type list
-for current_date in unique_dates:
-    df_date = df_all[df_all["Date"] == current_date].copy()
-    if previous_data is None:
-        idx, div = calculate_composite_index(df_date, base_value=base_value)
-    else:
-        idx, div = calculate_composite_index(
-            df_date, previous_data=previous_data, prev_divisor=prev_divisor
-        )
-
-    # Lưu kết quả vào list tạm
-    results.append({
-        "Close": idx,
-        "Date": current_date.date()
-    })
-    # Cập nhật trạng thái
-    previous_data = df_date.copy()
-    prev_divisor = div
-
-# insert data into table_name
-index_name = "VNINDEX_NOT_VIN"
-table_name = '"CherryMon"."main"."cal_Indexes"'
-with DuckDBManager() as con:
-    # Xóa dữ liệu cũ của INDEX_NAME='VNINDEX_NOT_VIN' trước khi insert
-    con.execute(f"DELETE FROM {table_name} WHERE INDEX_NAME = '{index_name}'")
-    con.from_df(pd.DataFrame(results)).select(f"'{index_name}' as INDEX_NAME", "Close", "Date").insert_into(table_name)
 
 # %%
+

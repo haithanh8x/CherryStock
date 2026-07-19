@@ -1,8 +1,11 @@
 import os
+from datetime import datetime, timezone
+from pathlib import Path
+
 import duckdb
 
 from Ults.Timing import timeit, toggle_print
-from lstPara import DB_MOTHERDUCK_PATH, DB_MOTHERDUCK_TOKEN, DB_PATH_CHERRYMON, LOCAL_DB_PATH
+from lstPara import AGENT_PATH, DB_MOTHERDUCK_PATH, DB_MOTHERDUCK_TOKEN, DB_PATH_CHERRYMON, LOCAL_DB_PATH
 
 
 class DuckDBManager:
@@ -98,3 +101,87 @@ def returnSQL(con: duckdb.DuckDBPyConnection, sqlString: str):
     except Exception as e:
         print(f"[Lỗi thực thi SQL trong returnSQL]: {e}")
         return None
+
+
+def exportDuckDB_metadata(
+    db_path: str | os.PathLike[str] | None = None,
+    output_path: str | os.PathLike[str] | None = None,
+) -> Path:
+    """Export DuckDB schema metadata to a Markdown file for the configured database."""
+    source_db = Path(db_path or LOCAL_DB_PATH).expanduser()
+    target_path = Path(output_path or (Path(AGENT_PATH) / "DB_Metadata.md")).expanduser()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not source_db.exists():
+        raise FileNotFoundError(f"Không tìm thấy file DuckDB tại: {source_db}")
+
+    sections: list[str] = []
+    sections.append("# DuckDB Metadata")
+    sections.append("")
+    sections.append(f"- Generated at: {datetime.now(timezone.utc).isoformat()}")
+    sections.append(f"- Database file: `{source_db}`")
+    sections.append(f"- Output file: `{target_path}`")
+    sections.append("")
+
+    try:
+        with DuckDBManager() as con:
+            table_relation = con.sql(
+                """
+                SELECT table_schema, table_name, table_type
+                FROM information_schema.tables
+                WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+                ORDER BY table_schema, table_name
+                """
+            )
+            table_df = table_relation.df()
+            table_rows = table_df.itertuples(index=False, name=None)
+
+            sections.append(f"- Schema count: {len({row[0] for row in table_rows})}")
+            sections.append(f"- Table/view count: {len(table_df)}")
+            sections.append("")
+            sections.append("## Schemas")
+            sections.append("")
+            for schema_name in sorted({row[0] for row in table_df[["table_schema"]].itertuples(index=False, name=None)}):
+                sections.append(f"- `{schema_name}`")
+            sections.append("")
+            sections.append("## Tables")
+            sections.append("")
+            for schema_name, table_name, table_type in table_df[["table_schema", "table_name", "table_type"]].itertuples(index=False, name=None):
+                if table_type.lower() in {"base table", "view"}:
+                    sections.append(f"- `{schema_name}`.`{table_name}` ({table_type})")
+            sections.append("")
+            sections.append("## Objects")
+            sections.append("")
+
+            for schema_name, table_name, table_type in table_df[["table_schema", "table_name", "table_type"]].itertuples(index=False, name=None):
+                column_relation = con.sql(
+                    """
+                    SELECT column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = ? AND table_name = ?
+                    ORDER BY ordinal_position
+                    """,
+                    params=[schema_name, table_name],
+                )
+                column_df = column_relation.df()
+
+                sections.append(f"### {schema_name}.{table_name} ({table_type})")
+                sections.append("")
+                sections.append("| Column | Type | Nullable | Default |")
+                sections.append("| --- | --- | --- | --- |")
+                for row in column_df.itertuples(index=False, name=None):
+                    column_name, data_type, is_nullable, column_default = row
+                    default_value = column_default if column_default is not None else ""
+                    sections.append(
+                        f"| `{column_name}` | `{data_type}` | `{is_nullable}` | `{default_value}` |"
+                    )
+                sections.append("")
+    except Exception as exc:  # pragma: no cover - depends on local DB lock state
+        sections.append("## Access note")
+        sections.append("")
+        sections.append(f"Metadata could not be read from the database because: `{exc}`")
+        sections.append("")
+        sections.append("Please close any other process using the DuckDB file and rerun the export.")
+
+    target_path.write_text("\n".join(sections), encoding="utf-8")
+    return target_path

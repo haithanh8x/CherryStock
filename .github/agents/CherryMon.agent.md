@@ -1,4 +1,6 @@
 # Project: CherryStock
+- “Read repository instructions first”
+- “Follow project conventions before editing”
 - StockTerm.md định nghia các thuật ngữ liên quan đến cổ phiếu, ví dụ: EOD, FA, Index, NetVol, NetVal, v.v.
 - \Datafile folder chứa các file dữ liệu từ các nguồn khác nhau về định dạng chuẩn để lưu vào DuckDB. Các file dữ liệu này có thể là CSV, Excel, JSON, v.v.
 - \Amibroker folder chứa các file dữ liệu từ Amibroker script, thực hiện explore, analysis, backtest và AFL

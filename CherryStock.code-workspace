@@ -7,6 +7,9 @@
 		{
 			"name": "Datafile",
 			"path": "../../Users/ADMIN/OneDrive - ollyo/Datafile"
+		},
+		{
+			"path": ".github"
 		}
 	],
 	"settings": {
@@ -33,6 +36,9 @@
 				"attached": true
 			}
 		],
-		"duckdb.defaultDatabase": "CherryMon"
+		"duckdb.defaultDatabase": "CherryMon",
+		"files.exclude": {
+			"**/.git": false
+		}
 	}
 }

@@ -2,7 +2,7 @@
 
 _rsi = RSI(14);
 _tsi = corrResult = Correlation(Close, BarIndex(), 14);
-_vol_running = 5000;
+_vol_running = 10000;
 
 
 TimeFrameSet( inWeekly );

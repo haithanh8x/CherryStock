@@ -1,11 +1,14 @@
 import sys
 import io
 
+from CrawlStock.readYahooFinance import syncYahooFinance_EOD
 from Ults.Timing import timeit
 from CrawlStock.readAmi import syncAmibroker_EOD, syncAmibroker_Intraday, upsert_lstTicker, upsert_stock_fa
 from Ults.DuckLib import DuckDBManager, executeDuckSQL
 from Ults.getData import get_last_point
 from lstPara import DUCKDB_SQL_PATH
+from calcEngine.calcIndexes import calculate_VNINDEX_NOT_VIN
+from CrawlStock.readYahooFinance import syncYahooFinance_EOD
 
 # --- HÀM MAIN ---
 @timeit
@@ -22,13 +25,17 @@ def main():
                         days_diff = int(days_diff_raw)
 
 
-        # ---------------------------------------------------------------------------------        
+        # ---------------------------------------------------------------------------------
+        # syncAmibroker_Intraday(conn, from_last_day=0)
+
         syncAmibroker_EOD(from_last_day=days_diff)
-        #syncAmibroker_Intraday(conn, from_last_day=0)
+        syncYahooFinance_EOD(from_last_day=days_diff)
         upsert_stock_fa()
         upsert_lstTicker()
         executeDuckSQL(con=conn, sql_file_path=str(DUCKDB_SQL_PATH / "updateHoliday.sql"))
 
+        # cal indexes
+        calculate_VNINDEX_NOT_VIN()
         # --------------------------------------------------------------------------------- 
         DuckDBManager.close_connection()
 
