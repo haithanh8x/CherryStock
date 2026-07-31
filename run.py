@@ -2,13 +2,15 @@ import sys
 import io
 
 from CrawlStock.readYahooFinance import syncYahooFinance_EOD
+from Ults import DuckLib
 from Ults.Timing import timeit
 from CrawlStock.readAmi import syncAmibroker_EOD, syncAmibroker_Intraday, upsert_lstTicker, upsert_stock_fa
 from Ults.DuckLib import DuckDBManager, executeDuckSQL
 from Ults.getData import get_last_point
-from lstPara import DUCKDB_SQL_PATH
+from lstPara import DUCKDB_SQL_PATH, START_DATE
 from calcEngine.calcIndexes import calculate_VNINDEX_NOT_VIN
 from CrawlStock.readYahooFinance import syncYahooFinance_EOD
+from calcEngine import calc_fv_Trend
 
 # --- HÀM MAIN ---
 @timeit
@@ -36,6 +38,10 @@ def main():
 
         # cal indexes
         calculate_VNINDEX_NOT_VIN()
+        calc_fv_Trend.cal_Moving_Average(from_last_day=days_diff)
+
+        # sync DuckDB metadata
+        DuckLib.exportDuckDB_metadata()
         # --------------------------------------------------------------------------------- 
         DuckDBManager.close_connection()
 

@@ -1,7 +1,81 @@
+from html import escape
 from typing import Literal, Optional, Sequence, Tuple, Union
+
 import pandas as pd
+from IPython.display import HTML, display
 from lightweight_charts import JupyterChart
+from sympy import plot
 from Ults.DuckLib import DuckDBManager
+from DuckDB import Data
+from lstPara import CHART_START_DATE, IFRAME_HEIGHT, IFRAME_WIDTH, PRICE_SCALE_MIN_WIDTH
+
+
+def _patched_jupyter_chart_load(self):
+    """Ensure generated chart HTML declares UTF-8 charset."""
+    if HTML is None:
+        raise ModuleNotFoundError('IPython.display.HTML was not found, and must be installed to use JupyterChart.')
+
+    html_source = self._html
+    if '<meta charset=' not in html_source.lower():
+        if '<head>' in html_source.lower():
+            html_source = html_source.replace('<head>', '<head>\n<meta charset="UTF-8">', 1)
+        elif '<html>' in html_source.lower():
+            html_source = html_source.replace('<html>', '<html>\n<head><meta charset="UTF-8"></head>', 1)
+        else:
+            html_source = f'<head><meta charset="UTF-8"></head>{html_source}'
+
+    html_code = escape(f"{html_source}</script></body></html>")
+    iframe = f'<iframe width="{self.width}" height="{self.height}" frameBorder="0" srcdoc="{html_code}"></iframe>'
+    display(HTML(iframe))
+
+
+JupyterChart._load = _patched_jupyter_chart_load
+
+
+def build_chart_iframe_html(
+    chart: JupyterChart,
+    width: int | str | None = None,
+    height: int | None = None,
+) -> str:
+    """Build responsive iframe HTML for embedding a lightweight chart."""
+    html_source = getattr(chart, "_html", None)
+    if not html_source:
+        return '<div style="padding:12px;color:#888;">Chart is not ready yet.</div>'
+
+    if '<meta charset=' not in html_source.lower():
+        if '<head>' in html_source.lower():
+            html_source = html_source.replace(
+                '<head>',
+                '<head>\n<meta charset="UTF-8">',
+                1,
+            )
+        elif '<html>' in html_source.lower():
+            html_source = html_source.replace(
+                '<html>',
+                '<html>\n<head><meta charset="UTF-8"></head>',
+                1,
+            )
+        else:
+            html_source = f'<head><meta charset="UTF-8"></head>{html_source}'
+
+    html_code = escape(f"{html_source}</script></body></html>")
+    iframe_height = height or getattr(chart, "height", IFRAME_HEIGHT)
+
+    if width is None:
+        width_css = "100%"
+    elif isinstance(width, int):
+        width_css = f"{width}px"
+    else:
+        width_css = width
+
+    return (
+        '<iframe '
+        'width="100%" '
+        f'height="{iframe_height}" '
+        'frameborder="0" '
+        f'style="width:{width_css};max-width:100%;min-width:0;height:{iframe_height}px;border:0;display:block;box-sizing:border-box;" '
+        f'srcdoc="{html_code}"></iframe>'
+    )
 
 
 def _prepare_line_df(data: pd.DataFrame, name: str, line_name: str) -> pd.DataFrame:
@@ -11,18 +85,21 @@ def _prepare_line_df(data: pd.DataFrame, name: str, line_name: str) -> pd.DataFr
     if data is None or data.empty:
         raise ValueError(f"Dữ liệu của line '{name}' đang rỗng.")
 
-    required_columns = {"time", name}
-    missing_columns = required_columns - set(data.columns)
+    if name in data.columns:
+        source_column = name
+    else:
+        value_columns = [col for col in data.columns if col != "time"]
+        if len(value_columns) == 1:
+            source_column = value_columns[0]
+        else:
+            raise ValueError(
+                f"Line '{name}' thiếu cột: {sorted({'time', name} - set(data.columns))}. "
+                f"Các cột hiện có: {list(data.columns)}"
+            )
 
-    if missing_columns:
-        raise ValueError(
-            f"Line '{name}' thiếu cột: {sorted(missing_columns)}. "
-            f"Các cột hiện có: {list(data.columns)}"
-        )
-
-    line_df = data[["time", name]].copy()
-    if line_name != name:
-        line_df = line_df.rename(columns={name: line_name})
+    line_df = data[["time", source_column]].copy()
+    if line_name != source_column:
+        line_df = line_df.rename(columns={source_column: line_name})
 
     return line_df
 
@@ -85,14 +162,14 @@ def plotTicker(ticker: str, timeframe: str = "Daily"):
         "Volume": "volume",
     })
 
-    chart = JupyterChart(width=900, height=550)
+    chart = JupyterChart(width=IFRAME_WIDTH, height=IFRAME_HEIGHT)
     chart.set(df_resampled)
     chart.load()
     return chart
 
 def init_chart(
-    width: int = 1200,
-    height: int = 550,
+    width: int = IFRAME_WIDTH,
+    height: int = IFRAME_HEIGHT,
     inner_width: float = 1,
     inner_height: float = 1,
     background_color: str = "#121314",
@@ -136,7 +213,8 @@ def add_line(
     price_line: bool = False,
     price_label: bool = False,
     price_scale_id: Optional[str] = None,
-    label_name: Optional[str] = None,
+    label_name: Optional[str] = None,    
+    hide_data: bool = False,    
 ):
     """
     Tạo line và gán dữ liệu vào chart.
@@ -157,7 +235,22 @@ def add_line(
         price_label=price_label,
         price_scale_id=price_scale_id,
     )
+    if hide_data:
+        line.hide_data()
 
+    chart.run_script(
+        f"""
+        if ({chart.id}.legend && {chart.id}.legend._lines) {{
+            const lastItem = {chart.id}.legend._lines[{chart.id}.legend._lines.length - 1];
+            if (lastItem && lastItem.div) {{
+                const symbol = lastItem.div.querySelector('span');
+                if (symbol) {{
+                    symbol.textContent = '◼';
+                }}
+            }}
+        }}
+        """
+    )
     line.set(line_df)
 
     return line
@@ -197,7 +290,9 @@ def create_subchart(
 
         chart.run_script(
             f"""
-            window.containerDiv.style.display = 'block';
+                if (window.containerDiv && window.containerDiv.style) {{
+                    window.containerDiv.style.display = 'block';
+                }}
 
             {chart.id}.wrapper.style.float = 'none';
             {subchart.id}.wrapper.style.float = 'none';
@@ -207,15 +302,12 @@ def create_subchart(
             {chart.id}.wrapper.style.width = '100%';
             {subchart.id}.wrapper.style.width = '100%';
 
-            const __totalH = window.innerHeight || 700;
+            const __totalH = {int(getattr(chart, 'height', IFRAME_HEIGHT))};
             const __mainH = Math.max(220, Math.floor(__totalH * {main_ratio:.6f}));
-            const __subH = Math.max(140, Math.floor(__totalH * {sub_ratio:.6f}));
+            const __subH = Math.max(140, __totalH - __mainH - 6);
 
             {chart.id}.wrapper.style.height = __mainH + 'px';
             {subchart.id}.wrapper.style.height = __subH + 'px';
-
-            {chart.id}.chart.resize(window.innerWidth, __mainH);
-            {subchart.id}.chart.resize(window.innerWidth, __subH);
 
             {subchart.id}.wrapper.style.marginTop = '6px';
             """
@@ -316,12 +408,90 @@ def subchart_add_line(
 
     return line
 
+def _enable_responsive_resize(
+    chart: JupyterChart,
+    *,
+    height: int,
+    subcharts: Optional[Sequence] = None,
+) -> None:
+    """Make chart wrappers follow the iframe viewport width."""
+    subcharts = list(subcharts or [])
+
+    sub_resize = []
+    sub_observe = []
+    for subchart in subcharts:
+        sub_resize.append(
+            f"""
+            if ({subchart.id} && {subchart.id}.wrapper) {{
+                {subchart.id}.wrapper.style.width = '100%';
+                const __subH = Math.max(1, {subchart.id}.wrapper.clientHeight);
+                {subchart.id}.chart.resize(__viewportWidth, __subH);
+            }}
+            """
+        )
+        sub_observe.append(
+            f"if ({subchart.id} && {subchart.id}.wrapper) __observer.observe({subchart.id}.wrapper);"
+        )
+
+    chart.run_script(
+        f"""
+        (() => {{
+            document.documentElement.style.width = '100%';
+            document.documentElement.style.margin = '0';
+            document.documentElement.style.overflowX = 'hidden';
+            document.body.style.width = '100%';
+            document.body.style.margin = '0';
+            document.body.style.overflowX = 'hidden';
+
+            if (window.containerDiv) {{
+                window.containerDiv.style.width = '100%';
+                window.containerDiv.style.maxWidth = '100%';
+                window.containerDiv.style.overflow = 'hidden';
+            }}
+
+            const __resizeAllCharts = () => {{
+                try {{
+                    const __viewportWidth = Math.max(
+                        1,
+                        document.documentElement.clientWidth || window.innerWidth || {getattr(chart, 'width', IFRAME_WIDTH)}
+                    );
+
+                    if ({chart.id} && {chart.id}.wrapper) {{
+                        {chart.id}.wrapper.style.width = '100%';
+                        {chart.id}.wrapper.style.maxWidth = '100%';
+                        const __mainH = Math.max(1, {chart.id}.wrapper.clientHeight || {height});
+                        {chart.id}.chart.resize(__viewportWidth, __mainH);
+                    }}
+
+                    {''.join(sub_resize)}
+                }} catch (error) {{
+                    console.debug('Chart resize skipped:', error);
+                }}
+            }};
+
+            const __observer = new ResizeObserver(() => {{
+                window.requestAnimationFrame(__resizeAllCharts);
+            }});
+
+            if ({chart.id} && {chart.id}.wrapper) __observer.observe({chart.id}.wrapper);
+            if (window.containerDiv) __observer.observe(window.containerDiv);
+            {''.join(sub_observe)}
+
+            window.addEventListener('resize', __resizeAllCharts, {{passive: true}});
+            window.requestAnimationFrame(__resizeAllCharts);
+            setTimeout(__resizeAllCharts, 50);
+            setTimeout(__resizeAllCharts, 250);
+        }})();
+        """
+    )
+
+
 def load_chart(
     chart: JupyterChart,
     precision: int = 1,
     subcharts: Optional[Sequence] = None,
     visible_range: Optional[Tuple[str, str]] = None,
-    price_scale_min_width: Optional[int] = None,
+    price_scale_min_width: Optional[int] = PRICE_SCALE_MIN_WIDTH,
 ) -> None:
     """
     Áp dụng formatter số âm bằng dấu '-' ASCII và render chart.
@@ -356,68 +526,212 @@ def load_chart(
             return color;
         }}
 
-        function __copilot_attach_legend_highlight(handler) {{
-            if (!handler || handler.__copilotLegendHighlightBound) return;
-            handler.__copilotLegendHighlightBound = true;
+        function __copilot_render_horizontal_legend(handler, legendId) {{
+            if (!handler || !handler.wrapper) return;
 
-            const getItems = function() {{
-                return (handler.legend && handler.legend._lines) ? handler.legend._lines : [];
+            let legendDiv = handler.wrapper.querySelector('#' + legendId);
+            if (!legendDiv) {{
+                legendDiv = document.createElement('div');
+                legendDiv.id = legendId;
+                legendDiv.style.position = 'absolute';
+                legendDiv.style.top = '8px';
+                legendDiv.style.left = '8px';
+                legendDiv.style.zIndex = '4500';
+                legendDiv.style.display = 'flex';
+                legendDiv.style.flexWrap = 'wrap';
+                legendDiv.style.alignItems = 'center';
+                legendDiv.style.gap = '8px 12px';
+                legendDiv.style.fontSize = '12px';
+                legendDiv.style.color = '#FFFFFF';
+                legendDiv.style.pointerEvents = 'auto';
+                handler.wrapper.appendChild(legendDiv);
+            }}
+
+            legendDiv.innerHTML = '';
+            const items = (handler.legend && handler.legend._lines) ? handler.legend._lines : [];
+            if (!handler.__copilotHiddenByKey) {{
+                handler.__copilotHiddenByKey = {{}};
+            }}
+
+            const hiddenByKey = handler.__copilotHiddenByKey;
+
+            const getItemKey = function(item, idx) {{
+                const namePart = (item && item.name) ? String(item.name) : 'series';
+                return String(idx) + '::' + namePart;
             }};
 
-            const resetAll = function() {{
-                getItems().forEach(function(item) {{
-                    item.series.applyOptions({{ color: item.solid }});
-                    if (item.originalLineWidth !== undefined) {{
-                        item.series.applyOptions({{ lineWidth: item.originalLineWidth }});
-                    }}
-                    item.row.style.opacity = '1';
-                }});
-                handler.__copilotLegendSelected = null;
-            }};
+            function applyLegendState() {{
+                const selectedKey = handler.__copilotLegendSelectedKey || null;
+                const selectionOn = !!selectedKey;
 
-            const applyHighlight = function(selectedItem) {{
-                const items = getItems();
-                const wasSelected = handler.__copilotLegendSelected === selectedItem;
+                items.forEach(function(item, idx) {{
+                    if (!item || !item.series) return;
 
-                if (wasSelected) {{
-                    resetAll();
-                    return;
-                }}
+                    const itemKey = getItemKey(item, idx);
 
-                handler.__copilotLegendSelected = selectedItem;
-
-                items.forEach(function(item) {{
-                    if (item.originalLineWidth === undefined) {{
+                    if (item.__copilotOriginalLineWidth === undefined) {{
                         const opts = item.series.options ? item.series.options() : {{}};
-                        item.originalLineWidth = opts.lineWidth || 2;
+                        item.__copilotOriginalLineWidth = opts.lineWidth || 2;
                     }}
 
-                    if (item === selectedItem) {{
-                        item.series.applyOptions({{ color: item.solid }});
-                        item.series.applyOptions({{ lineWidth: Math.max(2, item.originalLineWidth + 1) }});
-                        item.row.style.opacity = '1';
-                    }} else {{
-                        item.series.applyOptions({{ color: __copilot_fadeColor(item.solid, 0.18) }});
-                        item.row.style.opacity = '0.55';
+                    const hidden = !!hiddenByKey[itemKey];
+                    const isSelected = selectionOn && selectedKey === itemKey;
+                    const isFaded = selectionOn && !isSelected && !hidden;
+
+                    try {{
+                        item.series.applyOptions({{ visible: !hidden }});
+                    }} catch (err) {{
+                        // Fallback for chart versions without visible option.
+                        const fallbackColor = hidden
+                            ? __copilot_fadeColor(item.solid || '#FFFFFF', 0.08)
+                            : (isFaded ? __copilot_fadeColor(item.solid || '#FFFFFF', 0.2) : (item.solid || '#FFFFFF'));
+                        item.series.applyOptions({{ color: fallbackColor }});
                     }}
-                }});
-            }};
 
-            getItems().forEach(function(item) {{
-                if (!item || !item.row) return;
-                item.row.style.cursor = 'pointer';
-                item.row.addEventListener('click', function(ev) {{
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    applyHighlight(item);
-                }});
-            }});
+                    if (!hidden) {{
+                        item.series.applyOptions({{
+                            color: isFaded ? __copilot_fadeColor(item.solid || '#FFFFFF', 0.2) : (item.solid || '#FFFFFF'),
+                            lineWidth: isSelected
+                                ? Math.max(2, (item.__copilotOriginalLineWidth || 2) + 1)
+                                : (item.__copilotOriginalLineWidth || 2),
+                        }});
+                    }}
 
-            if (handler.div) {{
-                handler.div.addEventListener('dblclick', function() {{
-                    resetAll();
+                    if (item.__copilotLegendEye) {{
+                        item.__copilotLegendEye.textContent = hidden ? '🔓' : '🔒';
+                        item.__copilotLegendEye.style.opacity = '1';
+                        item.__copilotLegendEye.style.color = hidden ? '#9AA4B2' : '#FFFFFF';
+                        item.__copilotLegendEye.style.background = hidden ? '#2A2F36' : 'transparent';
+                        item.__copilotLegendEye.title = hidden ? 'Bật line' : 'Tắt line';
+                    }}
+
+                    if (item.__copilotLegendRow) {{
+                        item.__copilotLegendRow.style.opacity = '1';
+                        item.__copilotLegendRow.style.background = isSelected ? '#2A2F36' : 'transparent';
+                        item.__copilotLegendRow.style.outline = isSelected ? '1px solid #9AA4B2' : 'none';
+                        item.__copilotLegendRow.style.borderRadius = '6px';
+                        item.__copilotLegendRow.style.padding = '2px 6px';
+                        item.__copilotLegendRow.style.filter = 'none';
+                        item.__copilotLegendRow.style.backdropFilter = 'none';
+                    }}
+
+                    if (item.__copilotLegendLabel) {{
+                        item.__copilotLegendLabel.style.fontWeight = '600';
+                        item.__copilotLegendLabel.style.color = hidden ? '#A7B0BD' : '#FFFFFF';
+                        item.__copilotLegendLabel.style.textShadow = 'none';
+                        item.__copilotLegendLabel.style.webkitTextStroke = '0';
+                        item.__copilotLegendLabel.style.filter = 'none';
+                        item.__copilotLegendLabel.style.letterSpacing = '0';
+                    }}
+
+                    if (item.__copilotLegendDot) {{
+                        item.__copilotLegendDot.style.opacity = '1';
+                        item.__copilotLegendDot.style.filter = hidden ? 'grayscale(35%)' : 'none';
+                    }}
                 }});
             }}
+
+            items.forEach(function(item, idx) {{
+                if (!item || !item.series) return;
+
+                const row = document.createElement('span');
+                row.style.display = 'inline-flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '6px';
+                row.style.whiteSpace = 'nowrap';
+                row.style.cursor = 'pointer';
+                row.style.userSelect = 'none';
+                row.style.flex = '0 0 auto';
+                row.style.flexShrink = '0';
+                row.style.minWidth = 'max-content';
+                row.style.marginRight = '8px';
+                row.style.position = 'relative';
+                row.style.zIndex = '1';
+
+                const itemKey = getItemKey(item, idx);
+
+                const eye = document.createElement('span');
+                eye.textContent = hiddenByKey[itemKey] ? '🔓' : '🔒';
+                eye.style.cursor = 'pointer';
+                eye.style.opacity = '1';
+                eye.style.display = 'inline-flex';
+                eye.style.alignItems = 'center';
+                eye.style.justifyContent = 'center';
+                eye.style.width = '16px';
+                eye.style.height = '16px';
+                eye.style.borderRadius = '4px';
+                eye.title = hiddenByKey[itemKey] ? 'Bật line' : 'Tắt line';
+
+                const dot = document.createElement('span');
+                dot.textContent = '◼';
+                dot.style.color = item.solid || '#FFFFFF';
+                dot.style.cursor = 'pointer';
+                dot.style.display = 'inline-flex';
+                dot.style.alignItems = 'center';
+                dot.style.justifyContent = 'center';
+                dot.style.width = '14px';
+                dot.style.height = '14px';
+                dot.style.borderRadius = '50%';
+                dot.style.background = 'rgba(255,255,255,0.08)';
+                dot.style.userSelect = 'none';
+
+                const label = document.createElement('span');
+                label.textContent = item.name || ('Series ' + (idx + 1));
+                label.style.cursor = 'pointer';
+                label.style.userSelect = 'none';
+                label.style.textShadow = 'none';
+                label.style.display = 'inline-block';
+                label.style.whiteSpace = 'nowrap';
+                label.style.fontFamily = 'Segoe UI, Arial, sans-serif';
+                label.style.fontSize = '12px';
+                label.style.lineHeight = '1.2';
+                label.style.fontWeight = '600';
+                label.style.webkitFontSmoothing = 'antialiased';
+                label.style.mozOsxFontSmoothing = 'grayscale';
+
+                const selectLegendItem = function(ev) {{
+                    ev.preventDefault();
+                    ev.stopPropagation();
+
+                    if (hiddenByKey[itemKey]) {{
+                        return;
+                    }}
+
+                    handler.__copilotLegendSelectedKey =
+                        (handler.__copilotLegendSelectedKey === itemKey) ? null : itemKey;
+                    applyLegendState();
+                }};
+
+                eye.addEventListener('click', function(ev) {{
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    hiddenByKey[itemKey] = !hiddenByKey[itemKey];
+                    handler.__copilotLegendSelectedKey = null;
+                    applyLegendState();
+                }});
+
+                row.addEventListener('click', selectLegendItem);
+                dot.addEventListener('click', selectLegendItem);
+                dot.addEventListener('mousedown', selectLegendItem);
+                dot.addEventListener('pointerdown', selectLegendItem);
+                label.addEventListener('click', selectLegendItem);
+
+                row.appendChild(eye);
+                row.appendChild(dot);
+                row.appendChild(label);
+                legendDiv.appendChild(row);
+
+                item.__copilotLegendRow = row;
+                item.__copilotLegendEye = eye;
+                item.__copilotLegendDot = dot;
+                item.__copilotLegendLabel = label;
+            }});
+
+            const validKeys = new Set(items.map(function(item, idx) {{ return getItemKey(item, idx); }}));
+            if (handler.__copilotLegendSelectedKey && !validKeys.has(handler.__copilotLegendSelectedKey)) {{
+                handler.__copilotLegendSelectedKey = null;
+            }}
+            applyLegendState();
         }}
 
         {chart.id}.chart.applyOptions({{
@@ -429,19 +743,17 @@ def load_chart(
             }}
         }});
 
-        {chart.id}.legend.div.style.display = 'flex';
         {chart.id}.legend.ohlcEnabled = false;
         {chart.id}.legend.percentEnabled = false;
-        {chart.id}.legend.linesEnabled = true;
-        __copilot_attach_legend_highlight({chart.id});
-        if ({chart.id}.legend && {chart.id}.legend._lines) {{
-            {chart.id}.legend._lines.forEach(function(item) {{
-                item.row.style.display = 'flex';
-                if (!item.div.innerText || !item.div.innerText.trim()) {{
-                    item.div.innerHTML = '<span style="color: ' + item.solid + ';"></span>    ' + item.name;
-                }}
-            }});
+        {chart.id}.legend.linesEnabled = false;
+        if ({chart.id}.legend && {chart.id}.legend.div) {{
+            {chart.id}.legend.div.style.setProperty('display', 'none', 'important');
+            {chart.id}.legend.div.style.setProperty('visibility', 'hidden', 'important');
+            {chart.id}.legend.div.style.setProperty('opacity', '0', 'important');
+            {chart.id}.legend.div.style.setProperty('pointer-events', 'none', 'important');
         }}
+        __copilot_render_horizontal_legend({chart.id}, '{chart.id}_copilot_horizontal_legend');
+        setTimeout(function() {{ __copilot_render_horizontal_legend({chart.id}, '{chart.id}_copilot_horizontal_legend'); }}, 120);
         """
     ]
 
@@ -473,19 +785,17 @@ def load_chart(
                     }}
                 }});
 
-                {subchart.id}.legend.div.style.display = 'flex';
                 {subchart.id}.legend.ohlcEnabled = false;
                 {subchart.id}.legend.percentEnabled = false;
-                {subchart.id}.legend.linesEnabled = true;
-                __copilot_attach_legend_highlight({subchart.id});
-                if ({subchart.id}.legend && {subchart.id}.legend._lines) {{
-                    {subchart.id}.legend._lines.forEach(function(item) {{
-                        item.row.style.display = 'flex';
-                        if (!item.div.innerText || !item.div.innerText.trim()) {{
-                            item.div.innerHTML = '<span style="color: ' + item.solid + ';"></span>    ' + item.name;
-                        }}
-                    }});
+                {subchart.id}.legend.linesEnabled = false;
+                if ({subchart.id}.legend && {subchart.id}.legend.div) {{
+                    {subchart.id}.legend.div.style.setProperty('display', 'none', 'important');
+                    {subchart.id}.legend.div.style.setProperty('visibility', 'hidden', 'important');
+                    {subchart.id}.legend.div.style.setProperty('opacity', '0', 'important');
+                    {subchart.id}.legend.div.style.setProperty('pointer-events', 'none', 'important');
                 }}
+                __copilot_render_horizontal_legend({subchart.id}, '{subchart.id}_copilot_horizontal_legend');
+                setTimeout(function() {{ __copilot_render_horizontal_legend({subchart.id}, '{subchart.id}_copilot_horizontal_legend'); }}, 120);
                 """
             )
 
@@ -505,17 +815,22 @@ def load_chart(
                 )
 
     chart.run_script("\n".join(script_parts))
+    _enable_responsive_resize(
+        chart,
+        height=getattr(chart, "height", IFRAME_HEIGHT),
+        subcharts=subcharts,
+    )
 
     chart.load()
 
-def draw_comparision_main_sub(start_date: str = '2025-03-23', symbol_sources: Optional[dict] = None):
-    from timeit import timeit
-    import importlib
+def draw_comparision_main_sub(
+    start_date: str = '2025-03-23',
+    symbol_sources: Optional[dict] = None,
+    width: int = IFRAME_WIDTH,
+    height: int = IFRAME_HEIGHT,
+):
     import pandas as pd
-    import Chart.plot as plot
-    importlib.reload(plot)
     from DuckDB.Data import get_symbol, upd_symbol_percent, _align_to_base_time, _normalize_time
-    from Chart.plot import init_chart, add_line, init_subchart, subchart_add_line, load_chart
 
     base_time_df = pd.DataFrame({
         'time': pd.date_range(
@@ -550,7 +865,7 @@ def draw_comparision_main_sub(start_date: str = '2025-03-23', symbol_sources: Op
         for key, cfg in symbol_sources.items()
     }
 
-    chart = init_chart(width=1000, height=600, inner_width=1, inner_height=0.7)
+    chart = init_chart(width=width, height=height, inner_width=1, inner_height=0.7)
     subchart = init_subchart(chart=chart,sync=chart.id)
     for key, cfg in symbol_sources.items():
         target = cfg.get('target', 'main')
@@ -561,4 +876,34 @@ def draw_comparision_main_sub(start_date: str = '2025-03-23', symbol_sources: Op
             add_line(chart=chart, color=color, label_name=label_name, data=df[key])
         else:
             subchart_add_line(subchart=subchart, color=color, label_name=label_name, data=df[key])
-    load_chart(chart=chart,subcharts=[subchart],visible_range=visible_range,price_scale_min_width=80)
+    load_chart(chart=chart, subcharts=[subchart], visible_range=visible_range)
+    return chart
+
+
+def draw_ticker_above_MA(
+    start_date: Optional[str] = None,
+    width: int = IFRAME_WIDTH,
+    height: int = IFRAME_HEIGHT,
+):
+    """
+    Vẽ line chart tổng số Ticker có Close > MA20 và Close > MA200 theo từng ngày,
+    dữ liệu lấy từ "CherryMon"."main"."cal_Trends".
+
+    Parameters:
+    - start_date: Ngày bắt đầu lọc dữ liệu (định dạng 'YYYY-MM-DD'). None -> lấy toàn bộ lịch sử.
+    """
+
+    df = Data.get_total_ticker_above_MA(start_date=start_date)
+    df_VNINDEX = Data.get_symbol(index_name="VNINDEX", start_date=start_date, source="index")
+
+    chart = init_chart(width=width, height=height, inner_width=1, inner_height=1)
+    
+    add_line(chart=chart,data=df_VNINDEX,name="Close",color="#0080FF",label_name="VNINDEX",price_scale_id="left",width=3)
+    add_line(chart=chart,data=df,name="TickerAboveMA20",color="#00FF0D",label_name="Ticker > MA20",)
+    add_line(chart=chart,data=df,name="TickerAboveMA50",color="#A6FCB8",label_name="Ticker > MA50",hide_data=True)
+    add_line(chart=chart,data=df,name="TickerAboveMA100",color="#FC8B8B",label_name="Ticker > MA100",hide_data=True)
+    add_line(chart=chart,data=df,name="TickerAboveMA200",color="#FD0303",label_name="Ticker > MA200")
+
+
+    load_chart(chart=chart)
+    return chart

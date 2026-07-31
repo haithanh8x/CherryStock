@@ -32,6 +32,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 # lấy 3 năm gần nhất để đồng bộ dữ liệu và thời điểm tính toán các chỉ số
 START_DATE = (date.today() - relativedelta(years=3)).strftime("%Y-%m-%d")
+CHART_START_DATE = '2025-03-23'
 
 lstTicker = [["MZG"]]
 
@@ -82,3 +83,8 @@ AMIBROKER_INTRADAY_WARRANT_PATH = AMIBROKER_INTRADAY_PATH / "warrant"
 # Agent and other constants
 AGENT_NAME = "CherryMonAgent"
 AGENT_PATH = Path(r"C:\Github\CherryStock\.github\agents")
+
+# WebApp Configuration
+IFRAME_WIDTH = 1200
+IFRAME_HEIGHT = 600
+PRICE_SCALE_MIN_WIDTH = 80

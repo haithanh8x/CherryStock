@@ -1,11 +1,11 @@
 # DuckDB Metadata
 
-- Generated at: 2026-07-04T15:33:11.133439+00:00
+- Generated at: 2026-07-31T09:56:56.425371+00:00
 - Database file: `C:\Users\ADMIN\OneDrive - ollyo\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\.github\agents\DB_Metadata.md`
 
 - Schema count: 1
-- Table/view count: 26
+- Table/view count: 28
 
 ## Schemas
 
@@ -17,6 +17,7 @@
 - `main`.`bctc_cstc` (BASE TABLE)
 - `main`.`bctc_kqkd` (BASE TABLE)
 - `main`.`cal_Indexes` (BASE TABLE)
+- `main`.`cal_Trends` (BASE TABLE)
 - `main`.`dimCalendar` (BASE TABLE)
 - `main`.`raw_active_eod` (BASE TABLE)
 - `main`.`raw_commodity_eod` (BASE TABLE)
@@ -39,6 +40,7 @@
 - `main`.`tblBCTC` (BASE TABLE)
 - `main`.`vw_ACCCNNTD` (VIEW)
 - `main`.`vw_ACCCNNTD_Price` (VIEW)
+- `main`.`vw_Ticker` (VIEW)
 
 ## Objects
 
@@ -134,6 +136,18 @@
 | `INDEX_NAME` | `VARCHAR` | `YES` | `` |
 | `Close` | `DOUBLE` | `YES` | `` |
 | `Date` | `DATE` | `YES` | `` |
+
+### main.cal_Trends (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Date` | `DATE` | `NO` | `` |
+| `MA20` | `DOUBLE` | `YES` | `` |
+| `MA50` | `DOUBLE` | `YES` | `` |
+| `MA100` | `DOUBLE` | `YES` | `` |
+| `MA200` | `DOUBLE` | `YES` | `` |
+| `Close` | `DOUBLE` | `YES` | `` |
 
 ### main.dimCalendar (BASE TABLE)
 
@@ -266,12 +280,14 @@
 | `Ticker` | `VARCHAR` | `NO` | `` |
 | `Company Name` | `VARCHAR` | `YES` | `` |
 | `Industry` | `VARCHAR` | `YES` | `` |
+| `IndustryCode` | `VARCHAR` | `YES` | `` |
 | `Expected Price` | `DOUBLE` | `YES` | `` |
 | `Watchlist` | `VARCHAR` | `YES` | `` |
 | `EcoSystem` | `DOUBLE` | `YES` | `` |
 | `Sở hữu Nhà Nước` | `DOUBLE` | `YES` | `` |
 | `Owner Type` | `VARCHAR` | `YES` | `` |
 | `Margin` | `VARCHAR` | `YES` | `` |
+| `Status` | `VARCHAR` | `YES` | `` |
 | `Notes` | `DOUBLE` | `YES` | `` |
 
 ### main.raw_market_eod (BASE TABLE)
@@ -499,3 +515,21 @@
 | `NN_NetVal` | `DOUBLE` | `YES` | `` |
 | `TD_NetVal` | `DOUBLE` | `YES` | `` |
 | `CC_NetVal` | `DOUBLE` | `YES` | `` |
+
+### main.vw_Ticker (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Stock` | `VARCHAR` | `YES` | `` |
+| `Company Name` | `VARCHAR` | `YES` | `` |
+| `Industry` | `VARCHAR` | `YES` | `` |
+| `IndustryCode` | `VARCHAR` | `YES` | `` |
+| `Status` | `VARCHAR` | `YES` | `` |
+| `Capital` | `BIGINT` | `YES` | `` |
+| `Shares Outstanding` | `BIGINT` | `YES` | `` |
+| `EPS` | `DOUBLE` | `YES` | `` |
+| `PE` | `DOUBLE` | `YES` | `` |
+| `Book Value` | `DOUBLE` | `YES` | `` |
+| `ROA` | `DOUBLE` | `YES` | `` |
+| `ROE` | `DOUBLE` | `YES` | `` |

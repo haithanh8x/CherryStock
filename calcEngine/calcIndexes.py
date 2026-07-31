@@ -1,3 +1,4 @@
+from Ults.Timing import timeit, toggle_print
 from lstPara import START_DATE
 
 def calculate_composite_index(
@@ -80,6 +81,8 @@ def calculate_composite_index(
 
     return round(index_value, 2), round(current_divisor, 2)
 
+@timeit
+@toggle_print(allow_print=False)
 def calculate_VNINDEX_NOT_VIN():
     import pandas as pd
     from Ults.DuckLib import DuckDBManager
