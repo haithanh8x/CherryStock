@@ -7,9 +7,6 @@
 		{
 			"name": "Datafile",
 			"path": "../../Users/ADMIN/OneDrive - ollyo/Datafile"
-		},
-		{
-			"path": ".github"
 		}
 	],
 	"settings": {
@@ -28,17 +25,14 @@
 				"path": "c:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\CherryMon.duckdb",
 				"readOnly": true,
 				"attached": false
-			},
-			{
-				"alias": "ATTACH 'C:/Users/ADMIN/OneDrive - ollyo/Datafile/CherryMon.duckdb'",
-				"type": "manual",
-				"sql": "ATTACH 'C:/Users/ADMIN/OneDrive - ollyo/Datafile/CherryMon.duckdb';",
-				"attached": true
 			}
 		],
 		"duckdb.defaultDatabase": "CherryMon",
 		"files.exclude": {
 			"**/.git": false
+		},
+		"chat.tools.terminal.autoApprove": {
+			"ForEach-Object": true
 		}
 	}
 }

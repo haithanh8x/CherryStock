@@ -1,21 +1,21 @@
 import sys
 import io
 
-from CrawlStock.readYahooFinance import syncYahooFinance_EOD
-from Ults import DuckLib
-from Ults.Timing import timeit
-from CrawlStock.readAmi import syncAmibroker_EOD, syncAmibroker_Intraday, upsert_lstTicker, upsert_stock_fa
-from Ults.DuckLib import DuckDBManager, executeDuckSQL
-from Ults.getData import get_last_point
-from lstPara import DUCKDB_SQL_PATH, START_DATE
-from calcEngine.calcIndexes import calculate_VNINDEX_NOT_VIN
-from CrawlStock.readYahooFinance import syncYahooFinance_EOD
-from calcEngine import calc_fv_Trend
+from src.Ults import DuckLib
+from src.Ults.Timing import timeit
+from src.Ults.getData import get_last_point
+from src.cherrystock.config.settings import settings
+from src.cherrystock.application.services.sync_write_pipeline import SyncWritePipelineService
+from src.cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiBrokerAdapter
+from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
+from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
 
 # --- HÀM MAIN ---
 @timeit
 def main():
-        conn = DuckDBManager.get_connection()
+        amibroker_adapter = WindowsAmiBrokerAdapter(database_path=settings.amibroker_database_path)
+        write_pipeline = SyncWritePipelineService()
+        connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
         days_diff_raw = get_last_point()   # Cộng thêm 1 ngày để đồng bộ từ ngày tiếp theo sau lần cập nhật cuối cùng
         days_diff = 15
         if days_diff_raw is not None:
@@ -29,21 +29,23 @@ def main():
 
         # ---------------------------------------------------------------------------------
         # syncAmibroker_Intraday(conn, from_last_day=0)
+        with DuckDBUnitOfWork(connection_factory) as uow:
+                connection = uow.connection
+                if connection is None:
+                        raise RuntimeError("UnitOfWork did not initialize a writer connection.")
 
-        syncAmibroker_EOD(from_last_day=days_diff)
-        syncYahooFinance_EOD(from_last_day=days_diff)
-        upsert_stock_fa()
-        upsert_lstTicker()
-        executeDuckSQL(con=conn, sql_file_path=str(DUCKDB_SQL_PATH / "updateHoliday.sql"))
-
-        # cal indexes
-        calculate_VNINDEX_NOT_VIN()
-        calc_fv_Trend.cal_Moving_Average(from_last_day=days_diff)
+                write_pipeline.run(
+                        days_diff=days_diff,
+                        amibroker=amibroker_adapter,
+                        connection=connection,
+                        ticker_repository=uow.tickers,
+                        index_repository=uow.indexes,
+                        trend_repository=uow.trends,
+                )
 
         # sync DuckDB metadata
         DuckLib.exportDuckDB_metadata()
         # --------------------------------------------------------------------------------- 
-        DuckDBManager.close_connection()
 
 if __name__ == "__main__":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)

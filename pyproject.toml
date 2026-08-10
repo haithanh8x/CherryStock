@@ -1,0 +1,118 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "cherrystock"
+version = "0.1.0"
+description = "Vietnam Stock Data, FA, TA, AI Analysis and Recommendation Platform"
+requires-python = ">=3.13"
+
+dependencies = [
+    "duckdb",
+    "pandas",
+    "numpy",
+    "python-dotenv",
+    "requests",
+]
+
+[project.scripts]
+cherrystock = "cherrystock.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# =========================================================
+# OPTIONAL DEPENDENCIES
+# =========================================================
+
+[project.optional-dependencies]
+
+# NiceGUI + chart
+web = [
+    "nicegui",
+    "lightweight-charts",
+]
+
+# Crawl web
+crawler = [
+    "playwright",
+    "beautifulsoup4",
+    "lxml",
+]
+
+# AmiBroker / Windows integration
+windows = [
+    "pywin32; platform_system == 'Windows'",
+]
+
+# AmiBroker integration (explicit alias)
+amibroker = [
+    "pywin32; platform_system == 'Windows'",
+]
+
+# Telegram notification
+telegram = [
+    "python-telegram-bot",
+]
+
+# AI / LLM
+ai = [
+    "openrouter",
+]
+
+# Development tools
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
+
+# =========================================================
+# PYTEST
+# =========================================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-ra -q"
+
+
+# =========================================================
+# RUFF
+# =========================================================
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+]
+
+ignore = [
+    "E501",
+]
+
+# =========================================================
+# MYPY
+# =========================================================
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+
+
+

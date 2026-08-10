@@ -62,6 +62,7 @@ logs/
 *.bak
 *.backup
 ~$*
+.env
 
 # OS-specific
 Thumbs.db
