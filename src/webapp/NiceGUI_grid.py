@@ -235,9 +235,8 @@ def _stop_parent_swipe(element: Any) -> None:
     """
     Không cho gesture trong AG Grid nổi lên QTabPanels swipe handler.
 
-    Quasar swipeable xử lý không chỉ touch trên mobile mà còn có thể nhận
-    mouse/pointer gesture trên desktop. Vì vậy phải chặn cả ba nhóm event.
-    Chỉ stopPropagation, không preventDefault, để scroll/drag trong grid vẫn chạy.
+    Chặn touch, mouse và pointer nhưng không preventDefault, vì vậy scroll,
+    chọn cell, resize column và kéo horizontal scrollbar của grid vẫn hoạt động.
     """
     swipe_events = (
         "touchstart",
@@ -259,6 +258,55 @@ def _stop_parent_swipe(element: Any) -> None:
             event_name,
             js_handler="(event) => event.stopPropagation()",
         )
+
+
+def _install_global_tab_swipe_blocker() -> None:
+    """Chặn swipe navigation của QTabPanels mà không chặn hành vi mặc định của child."""
+    ui.add_head_html(
+        """
+        <script>
+        (() => {
+            if (window.__cherryStockTabSwipeBlockerInstalled) return;
+            window.__cherryStockTabSwipeBlockerInstalled = true;
+
+            const eventNames = [
+                'touchstart', 'touchmove', 'touchend', 'touchcancel',
+                'mousedown', 'mousemove', 'mouseup', 'mouseleave',
+                'pointerdown', 'pointermove', 'pointerup', 'pointercancel'
+            ];
+
+            const protectPanel = (panel) => {
+                if (!panel || panel.dataset.cherryStockNoSwipe === '1') return;
+                panel.dataset.cherryStockNoSwipe = '1';
+
+                eventNames.forEach((eventName) => {
+                    panel.addEventListener(
+                        eventName,
+                        (event) => event.stopPropagation(),
+                        {passive: true}
+                    );
+                });
+            };
+
+            const install = () => {
+                document.querySelectorAll('.q-tab-panel').forEach(protectPanel);
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', install, {once: true});
+            } else {
+                install();
+            }
+
+            const observer = new MutationObserver(install);
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true
+            });
+        })();
+        </script>
+        """
+    )
 
 
 def create_aggrid_options(
@@ -296,34 +344,12 @@ def create_market_grid(
     """
     Tạo bộ lọc multiselect, bộ chọn cột hiển thị và AG Grid.
 
-    filter_configs có dạng::
-
-        {
-            "Ticker": {"label": "Mã", "width": "w-28"},
-            "Stock": {"label": "Sàn", "width": "w-24"},
-        }
-
-    field_configs có dạng::
-
-        {
-            "Ticker": {
-                "display": True,
-                "headerName": "Ticker",
-                "width": 80,
-            },
-            "Internal Field": {
-                "display": False,
-            },
-        }
-
-    ``display`` xác định bộ cột được chọn mặc định. Bộ chọn "Cột hiển thị"
-    luôn lấy options trực tiếp từ toàn bộ ``df.columns`` nên người dùng có thể
-    bật/tắt mọi column có trong nguồn dữ liệu (ví dụ vw_Ticker).
-
-    Thứ tự field_configs được ưu tiên trên grid; các cột chưa cấu hình được
-    nối phía sau bằng cấu hình mặc định. Các filter được kết hợp theo AND.
-    Mỗi filter cho phép chọn nhiều giá trị theo OR.
+    ``display`` trong field_configs xác định bộ cột được chọn mặc định.
+    Bộ chọn "Cột hiển thị" luôn lấy options trực tiếp từ toàn bộ ``df.columns``.
+    Các filter được kết hợp theo AND; mỗi filter cho phép nhiều giá trị theo OR.
     """
+    _install_global_tab_swipe_blocker()
+
     field_configs = field_configs or {}
     filter_configs = filter_configs or {}
 
@@ -336,9 +362,7 @@ def create_market_grid(
         if actual_column is None:
             missing_fields.append(requested_field)
         else:
-            valid_filter_fields.append(
-                (requested_field, actual_column)
-            )
+            valid_filter_fields.append((requested_field, actual_column))
 
     if missing_fields:
         ui.notify(
@@ -350,9 +374,7 @@ def create_market_grid(
     selectable_columns = [str(column) for column in df.columns]
     default_visible_columns = _default_visible_columns(df, field_configs)
 
-    with ui.row().classes(
-        "w-full items-end gap-3 mb-4 flex-wrap"
-    ):
+    with ui.row().classes("w-full items-end gap-3 mb-4 flex-wrap"):
         for requested_field, actual_column in valid_filter_fields:
             distinct_values = (
                 df[actual_column]
@@ -363,10 +385,7 @@ def create_market_grid(
                 .tolist()
             )
 
-            filter_config = filter_configs.get(
-                requested_field,
-                {},
-            )
+            filter_config = filter_configs.get(requested_field, {})
             label = str(
                 filter_config.get(
                     "label",
@@ -407,10 +426,7 @@ def create_market_grid(
         )
 
         reset_button = (
-            ui.button(
-                "Xóa bộ lọc",
-                icon="filter_alt_off",
-            )
+            ui.button("Xóa bộ lọc", icon="filter_alt_off")
             .props("outline")
         )
 
@@ -461,9 +477,7 @@ def create_market_grid(
                     .isin(normalized_values)
                 ]
 
-        grid.options["rowData"] = dataframe_to_records(
-            filtered_df
-        )
+        grid.options["rowData"] = dataframe_to_records(filtered_df)
         grid.update()
 
     async def apply_column_visibility(_: Any = None) -> None:
@@ -492,10 +506,7 @@ def create_market_grid(
         grid.options["rowData"] = dataframe_to_records(df)
         grid.update()
 
-        await grid.run_grid_method(
-            "setFilterModel",
-            None,
-        )
+        await grid.run_grid_method("setFilterModel", None)
 
     for selector in selectors.values():
         selector.on_value_change(apply_filters)
