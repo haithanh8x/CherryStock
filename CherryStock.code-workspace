@@ -24,7 +24,7 @@
 				"type": "file",
 				"path": "c:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\CherryMon.duckdb",
 				"readOnly": true,
-				"attached": false
+				"attached": true
 			}
 		],
 		"duckdb.defaultDatabase": "CherryMon",
