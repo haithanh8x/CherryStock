@@ -75,55 +75,52 @@ class DuckDBManager:
             self._connection = None
         return False
 
+
 @timeit
 @toggle_print(allow_print=False)
-def executeDuckSQL(con: duckdb.DuckDBPyConnection, sql_file_path: str) -> None:
+def executeDuckSQL(
+    con: duckdb.DuckDBPyConnection,
+    sql_file_path: str,
+    sql_description: str | None = None,
+) -> None:
+    """Execute a SQL script file on the supplied DuckDB connection.
+
+    ``sql_description`` is optional and exists so orchestration/UI callers can
+    attach a human-readable step name without changing legacy call sites.
     """
-    Thực thi file script SQL để cập nhật trạng thái Holiday trong DuckDB.
-    
-    Parameters:
-    - con: Đối tượng kết nối DuckDB (DuckDB Connection)
-    - sql_file_path: Đường dẫn đến file chứa script SQL (updateHoliday.sql)
-    """
-    # 1. Kiểm tra xem file SQL có tồn tại hay không để tránh lỗi hệ thống
     if not os.path.exists(sql_file_path):
         raise FileNotFoundError(f"Không tìm thấy file SQL tại đường dẫn: {sql_file_path}")
-    
+
+    description = sql_description or Path(sql_file_path).name
+
     try:
-        # 2. Đọc nội dung file SQL bằng UTF-8 để tránh lỗi font tiếng Việt (nếu có comment)
-        with open(sql_file_path, 'r', encoding='utf-8') as file:
+        with open(sql_file_path, "r", encoding="utf-8") as file:
             sql_script = file.read()
-        # 3. Thực thi đoạn script SQL trên kết nối hiện tại
-        print(f"Đang thực thi script từ file: {sql_file_path}...")
+        print(f"Đang thực thi SQL: {description} | file: {sql_file_path}...")
         con.execute(sql_script)
-        print("Cập nhật dữ liệu thành công!")
-        
+        print(f"Cập nhật dữ liệu thành công: {description}")
     except Exception as e:
-        print(f"Có lỗi xảy ra trong quá trình thực thi: {e}")
-        raise e
+        print(f"Có lỗi xảy ra khi thực thi {description}: {e}")
+        raise
+
 
 def returnSQL(con: duckdb.DuckDBPyConnection, sqlString: str):
     """
     Thực thi câu lệnh SELECT trên kết nối DuckDB và trả về kết quả dưới dạng Pandas DataFrame.
-    
-    :param con: Đối tượng kết nối DuckDB (duckdb.DuckDBPyConnection)
+
+    :param con: Đối tượng kết nối DuckDB (duckdb Connection)
     :param sqlString: Chuỗi câu lệnh SQL SELECT cần truy vấn (str)
     :return: Pandas DataFrame chứa kết quả truy vấn, hoặc None nếu xảy ra lỗi.
     """
-    # Loại bỏ khoảng trắng thừa để kiểm tra tính hợp lệ của câu lệnh
     clean_sql = sqlString.strip().lower()
-    
-    # Rào trước nếu câu lệnh truyền vào không phải là SELECT hoặc WITH
+
     if not (clean_sql.startswith("select") or clean_sql.startswith("with")):
         print("⚠️ [Cảnh báo]: Hàm này chỉ hỗ trợ các câu lệnh truy vấn dữ liệu (SELECT / WITH).")
         return None
 
     try:
-        # Chuyển thẳng kết quả từ vùng nhớ của DuckDB sang Pandas DataFrame
-        # Cách này đem lại tốc độ xử lý và đọc ghi tối ưu cực hạn trên RAM
         df_result = con.execute(sqlString).df()
         return df_result
-            
     except Exception as e:
         print(f"[Lỗi thực thi SQL trong returnSQL]: {e}")
         return None
@@ -171,19 +168,30 @@ def exportDuckDB_metadata(
             sections.append("")
             sections.append("## Schemas")
             sections.append("")
-            for schema_name in sorted({row[0] for row in table_df[["table_schema"]].itertuples(index=False, name=None)}):
+            for schema_name in sorted(
+                {
+                    row[0]
+                    for row in table_df[["table_schema"]].itertuples(
+                        index=False, name=None
+                    )
+                }
+            ):
                 sections.append(f"- `{schema_name}`")
             sections.append("")
             sections.append("## Tables")
             sections.append("")
-            for schema_name, table_name, table_type in table_df[["table_schema", "table_name", "table_type"]].itertuples(index=False, name=None):
+            for schema_name, table_name, table_type in table_df[
+                ["table_schema", "table_name", "table_type"]
+            ].itertuples(index=False, name=None):
                 if table_type.lower() in {"base table", "view"}:
                     sections.append(f"- `{schema_name}`.`{table_name}` ({table_type})")
             sections.append("")
             sections.append("## Objects")
             sections.append("")
 
-            for schema_name, table_name, table_type in table_df[["table_schema", "table_name", "table_type"]].itertuples(index=False, name=None):
+            for schema_name, table_name, table_type in table_df[
+                ["table_schema", "table_name", "table_type"]
+            ].itertuples(index=False, name=None):
                 column_relation = con.sql(
                     """
                     SELECT column_name, data_type, is_nullable, column_default
@@ -209,7 +217,9 @@ def exportDuckDB_metadata(
     except Exception as exc:  # pragma: no cover - depends on local DB lock state
         sections.append("## Access note")
         sections.append("")
-        sections.append(f"Metadata could not be read from the database because: `{exc}`")
+        sections.append(
+            f"Metadata could not be read from the database because: `{exc}`"
+        )
         sections.append("")
         sections.append("Please close any other process using the DuckDB file and rerun the export.")
 
