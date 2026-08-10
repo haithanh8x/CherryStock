@@ -231,6 +231,15 @@ def _create_selectable_column_defs(
     return column_defs
 
 
+def _stop_parent_swipe(element: Any) -> None:
+    """Không cho touch gesture trong grid nổi lên QTabPanels swipe handler."""
+    for event_name in ("touchstart", "touchmove", "touchend", "touchcancel"):
+        element.on(
+            event_name,
+            js_handler="(event) => event.stopPropagation()",
+        )
+
+
 def create_aggrid_options(
     df: pd.DataFrame,
     field_configs: Mapping[str, FieldConfig] | None = None,
@@ -407,6 +416,7 @@ def create_market_grid(
         theme="quartz",
         auto_size_columns=False,
     ).classes(f"w-full h-[{grid_height}]")
+    _stop_parent_swipe(grid)
 
     async def apply_filters(_: Any = None) -> None:
         filtered_df = df
