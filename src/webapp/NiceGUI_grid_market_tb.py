@@ -45,6 +45,12 @@ field_configs: Final = {
         "minWidth": 180,
         "flex": 1,
     },
+    "IndustryCode": {
+        "display": False,
+        "analysis_group": "GENERAL",
+        "headerName": "Mã ngành",
+        "width": 110,
+    },
     "Status": {
         "display": False,
         "analysis_group": "GENERAL",
