@@ -31,7 +31,7 @@ where = ["src"]
 
 # NiceGUI + chart
 web = [
-    "nicegui",
+    "nicegui>=3.8.0",
     "lightweight-charts",
 ]
 
@@ -113,6 +113,3 @@ warn_return_any = true
 warn_unused_configs = true
 check_untyped_defs = true
 ignore_missing_imports = true
-
-
-
