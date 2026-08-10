@@ -232,8 +232,29 @@ def _create_selectable_column_defs(
 
 
 def _stop_parent_swipe(element: Any) -> None:
-    """Không cho touch gesture trong grid nổi lên QTabPanels swipe handler."""
-    for event_name in ("touchstart", "touchmove", "touchend", "touchcancel"):
+    """
+    Không cho gesture trong AG Grid nổi lên QTabPanels swipe handler.
+
+    Quasar swipeable xử lý không chỉ touch trên mobile mà còn có thể nhận
+    mouse/pointer gesture trên desktop. Vì vậy phải chặn cả ba nhóm event.
+    Chỉ stopPropagation, không preventDefault, để scroll/drag trong grid vẫn chạy.
+    """
+    swipe_events = (
+        "touchstart",
+        "touchmove",
+        "touchend",
+        "touchcancel",
+        "mousedown",
+        "mousemove",
+        "mouseup",
+        "mouseleave",
+        "pointerdown",
+        "pointermove",
+        "pointerup",
+        "pointercancel",
+    )
+
+    for event_name in swipe_events:
         element.on(
             event_name,
             js_handler="(event) => event.stopPropagation()",
