@@ -889,7 +889,7 @@ PIPELINE_STEPS: tuple[dict[str, str], ...] = (
         "title": "Đồng bộ AmiBroker EOD",
         "method": "_sync_amibroker_eod",
         "detail": "self._sync_amibroker_eod(from_last_day=days_diff, connection=connection)",
-        "icon": "database_sync",
+        "icon": "storage",
     },
     {
         "key": "yahoo_eod",
