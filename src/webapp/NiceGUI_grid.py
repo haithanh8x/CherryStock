@@ -139,6 +139,98 @@ def create_column_defs(
 
     return column_defs
 
+
+def _field_configs_by_actual_column(
+    df: pd.DataFrame,
+    field_configs: Mapping[str, FieldConfig],
+) -> dict[str, FieldConfig]:
+    """Map field_configs sang đúng tên cột thực tế của DataFrame."""
+    resolved: dict[str, FieldConfig] = {}
+
+    for requested_field, field_config in field_configs.items():
+        actual_column = _resolve_field_name(df, requested_field)
+        if actual_column is not None:
+            resolved[str(actual_column)] = field_config
+
+    return resolved
+
+
+def _default_visible_columns(
+    df: pd.DataFrame,
+    field_configs: Mapping[str, FieldConfig],
+) -> list[str]:
+    """Lấy bộ cột hiển thị mặc định theo display trong field_configs."""
+    if not field_configs:
+        return [str(column) for column in df.columns]
+
+    visible_columns: list[str] = []
+
+    for requested_field, field_config in field_configs.items():
+        if not bool(field_config.get("display", True)):
+            continue
+
+        actual_column = _resolve_field_name(df, requested_field)
+        if actual_column is not None:
+            visible_columns.append(str(actual_column))
+
+    return visible_columns
+
+
+def _create_selectable_column_defs(
+    df: pd.DataFrame,
+    field_configs: Mapping[str, FieldConfig],
+    visible_columns: list[str],
+) -> list[GridOptions]:
+    """
+    Tạo columnDefs cho toàn bộ cột nguồn để có thể bật/tắt động.
+
+    Các field có config được ưu tiên thứ tự trước; các cột còn lại của
+    DataFrame được nối phía sau với cấu hình mặc định.
+    """
+    config_by_column = _field_configs_by_actual_column(df, field_configs)
+    visible_set = set(visible_columns)
+    ordered_columns: list[Hashable] = []
+    seen: set[str] = set()
+
+    for requested_field in field_configs:
+        actual_column = _resolve_field_name(df, requested_field)
+        if actual_column is None:
+            continue
+
+        field_name = str(actual_column)
+        if field_name in seen:
+            continue
+
+        ordered_columns.append(actual_column)
+        seen.add(field_name)
+
+    for column in df.columns:
+        field_name = str(column)
+        if field_name in seen:
+            continue
+
+        ordered_columns.append(column)
+        seen.add(field_name)
+
+    column_defs: list[GridOptions] = []
+
+    for column in ordered_columns:
+        field_name = str(column)
+        field_config = config_by_column.get(field_name, {})
+        column_def = _default_column_def(df, column)
+        column_def.update(
+            {
+                key: value
+                for key, value in field_config.items()
+                if key != "display"
+            }
+        )
+        column_def["hide"] = field_name not in visible_set
+        column_defs.append(column_def)
+
+    return column_defs
+
+
 def create_aggrid_options(
     df: pd.DataFrame,
     field_configs: Mapping[str, FieldConfig] | None = None,
@@ -162,6 +254,7 @@ def create_aggrid_options(
         "animateRows": True,
     }
 
+
 def create_market_grid(
     df: pd.DataFrame,
     *,
@@ -171,7 +264,7 @@ def create_market_grid(
     pagination_page_size: int = 20,
 ) -> ui.aggrid:
     """
-    Tạo bộ lọc multiselect và AG Grid.
+    Tạo bộ lọc multiselect, bộ chọn cột hiển thị và AG Grid.
 
     filter_configs có dạng::
 
@@ -193,8 +286,12 @@ def create_market_grid(
             },
         }
 
-    Thứ tự khai báo trong field_configs là thứ tự cột trên grid.
-    Các filter được kết hợp theo AND.
+    ``display`` xác định bộ cột được chọn mặc định. Bộ chọn "Cột hiển thị"
+    luôn lấy options trực tiếp từ toàn bộ ``df.columns`` nên người dùng có thể
+    bật/tắt mọi column có trong nguồn dữ liệu (ví dụ vw_Ticker).
+
+    Thứ tự field_configs được ưu tiên trên grid; các cột chưa cấu hình được
+    nối phía sau bằng cấu hình mặc định. Các filter được kết hợp theo AND.
     Mỗi filter cho phép chọn nhiều giá trị theo OR.
     """
     field_configs = field_configs or {}
@@ -220,6 +317,8 @@ def create_market_grid(
         )
 
     selectors: dict[Hashable, ui.select] = {}
+    selectable_columns = [str(column) for column in df.columns]
+    default_visible_columns = _default_visible_columns(df, field_configs)
 
     with ui.row().classes(
         "w-full items-end gap-3 mb-4 flex-wrap"
@@ -261,6 +360,22 @@ def create_market_grid(
                 .classes(width)
             )
 
+        column_selector = (
+            ui.select(
+                options=selectable_columns,
+                value=default_visible_columns,
+                label="Cột hiển thị",
+                multiple=True,
+                with_input=True,
+                clearable=True,
+            )
+            .props(
+                "outlined dense options-dense use-chips "
+                "popup-content-class=max-h-96"
+            )
+            .classes("w-96 min-w-72")
+        )
+
         reset_button = (
             ui.button(
                 "Xóa bộ lọc",
@@ -269,12 +384,26 @@ def create_market_grid(
             .props("outline")
         )
 
-    grid = ui.aggrid(
-        create_aggrid_options(
+    grid_options: GridOptions = {
+        "defaultColDef": {
+            "sortable": True,
+            "filter": True,
+            "resizable": True,
+            "floatingFilter": True,
+        },
+        "columnDefs": _create_selectable_column_defs(
             df=df,
             field_configs=field_configs,
-            pagination_page_size=pagination_page_size,
+            visible_columns=default_visible_columns,
         ),
+        "rowData": dataframe_to_records(df),
+        "pagination": True,
+        "paginationPageSize": pagination_page_size,
+        "animateRows": True,
+    }
+
+    grid = ui.aggrid(
+        grid_options,
         theme="quartz",
         auto_size_columns=False,
     ).classes(f"w-full h-[{grid_height}]")
@@ -306,6 +435,24 @@ def create_market_grid(
         )
         grid.update()
 
+    async def apply_column_visibility(_: Any = None) -> None:
+        selected_values = column_selector.value or []
+
+        if not isinstance(selected_values, list):
+            selected_values = [selected_values]
+
+        selected_columns = {
+            str(value)
+            for value in selected_values
+            if value is not None and str(value) in selectable_columns
+        }
+
+        for column_def in grid.options.get("columnDefs", []):
+            field_name = str(column_def.get("field", ""))
+            column_def["hide"] = field_name not in selected_columns
+
+        grid.update()
+
     async def reset_filters(_: Any = None) -> None:
         for selector in selectors.values():
             selector.value = []
@@ -322,6 +469,7 @@ def create_market_grid(
     for selector in selectors.values():
         selector.on_value_change(apply_filters)
 
+    column_selector.on_value_change(apply_column_visibility)
     reset_button.on_click(reset_filters)
 
     return grid
