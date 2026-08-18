@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from CrawlStock.readAmi import syncAmibroker_EOD, upsert_lstTicker, upsert_stock_fa
+from CrawlStock.readAmi import syncAmibroker_EOD, upsert_lstTicker
+from CrawlStock.upsertFA import upsert_stock_fa
 from CrawlStock.readYahooFinance import syncYahooFinance_EOD
 from Ults.DuckLib import executeDuckSQL
 from Ults.lstPara import DUCKDB_SQL_PATH
