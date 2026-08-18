@@ -40,15 +40,24 @@ def upsert_stock_fa(amibroker: "AmiBrokerPort | None" = None, connection=None):
         if os.path.exists(AMIBROKER_LOG_PATH):
             open(AMIBROKER_LOG_PATH, "w", encoding="utf-8").close()
 
+        # Remove the previous export so a failed/empty AmiBroker run can never be
+        # mistaken for fresh data.
+        if exported_csv_path.exists():
+            exported_csv_path.unlink()
+
         export_error: list[Exception] = []
 
         def run_amibroker_explore() -> None:
             try:
+                # RangeMode=1 means N last quotes/bars. For FA we need the latest
+                # available quote, not the latest calendar day (RangeMode=2),
+                # because weekends/holidays or a not-yet-updated EOD database can
+                # otherwise produce an empty exploration.
                 service.run_latest_export(
                     formula_path=amibroker_afl_shares,
                     export_path=exported_csv_path,
                     apply_to=0,
-                    range_mode=2,
+                    range_mode=1,
                     range_n=1,
                 )
             except Exception as exc:
@@ -81,12 +90,21 @@ def upsert_stock_fa(amibroker: "AmiBrokerPort | None" = None, connection=None):
 
         print("[*] AmiBroker Script Execution Hoàn tất!")
 
-        if not os.path.exists(exported_csv_path.as_posix()):
+        if not exported_csv_path.exists():
             raise FileNotFoundError(f"Không tìm thấy file dữ liệu tại {exported_csv_path.as_posix()}")
 
+        export_size = exported_csv_path.stat().st_size
+        print(f"[*] FA CSV export: {exported_csv_path} | size={export_size} bytes")
+        if export_size == 0:
+            raise ValueError("AmiBroker đã tạo FA CSV nhưng file có kích thước 0 byte.")
+
         df = pd.read_csv(exported_csv_path.as_posix())
+        print(f"[*] FA CSV rows={len(df)} | columns={list(df.columns)}")
         if df.empty:
-            raise ValueError("Dữ liệu FA export từ AmiBroker trống.")
+            raise ValueError(
+                "Dữ liệu FA export từ AmiBroker trống. "
+                "Kiểm tra Filter trong Export Shares.afl và dữ liệu quote gần nhất trong AmiBroker."
+            )
 
         # Normalize headers first because AmiBroker exports may contain surrounding spaces.
         df.columns = [str(column).strip() for column in df.columns]
@@ -132,7 +150,6 @@ def upsert_stock_fa(amibroker: "AmiBrokerPort | None" = None, connection=None):
                 if col_name == "Ticker":
                     cols_def.append(f'"{col_name}" {col_type} PRIMARY KEY')
                 else:
-                    # Keep Date deterministic even if a pandas/duckdb version infers differently.
                     if col_name == "Date":
                         col_type = "DATE"
                     cols_def.append(f'"{col_name}" {col_type}')
