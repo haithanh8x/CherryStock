@@ -75,22 +75,27 @@ def load_settings() -> Settings:
     sql_env = _as_optional_str(os.getenv("DUCKDB_SQL_PATH"))
     duckdb_sql_path = Path(sql_env).expanduser() if sql_env else SRC_ROOT / "DuckDB" / "sql"
 
-    amibroker_db_env = _as_optional_str(os.getenv("AMIBROKER_DATABASE_PATH"))
-    amibroker_database_path: Path | None = None
-    if amibroker_db_env:
-        candidate = Path(amibroker_db_env).expanduser()
-        # Guard against stale/misconfigured Windows environment variables that
-        # point AMIBROKER_DATABASE_PATH at the DuckDB file. AmiBroker databases
-        # are directories; a .duckdb file must never be passed to LoadDatabase().
-        if candidate.suffix.lower() != ".duckdb":
-            amibroker_database_path = candidate
-
     amibroker_root_env = _as_optional_str(os.getenv("AMIBROKER_ROOT"))
     amibroker_root = (
         Path(amibroker_root_env).expanduser()
         if amibroker_root_env
         else Path("C:/Program1/AmiBroker")
     )
+
+    # AmiBroker database is a directory, never the CherryMon DuckDB file.
+    # If a stale Windows env var points AMIBROKER_DATABASE_PATH to *.duckdb,
+    # ignore it and fall back to the normal AmiBroker database directory.
+    default_amibroker_database = amibroker_root / "Data_FireAnt" / "AmiBroker"
+    amibroker_db_env = _as_optional_str(os.getenv("AMIBROKER_DATABASE_PATH"))
+    if amibroker_db_env:
+        candidate = Path(amibroker_db_env).expanduser()
+        amibroker_database_path = (
+            default_amibroker_database
+            if candidate.suffix.lower() == ".duckdb"
+            else candidate
+        )
+    else:
+        amibroker_database_path = default_amibroker_database
 
     amibroker_log_env = _as_optional_str(os.getenv("AMIBROKER_LOG_PATH"))
     amibroker_log_path = (
@@ -110,14 +115,14 @@ def load_settings() -> Settings:
     amibroker_eod_path = (
         Path(amibroker_eod_env).expanduser()
         if amibroker_eod_env
-        else (amibroker_root / "Data_FireAnt" / "AmiBroker" / "EOD")
+        else (default_amibroker_database / "EOD")
     )
 
     amibroker_intraday_env = _as_optional_str(os.getenv("AMIBROKER_INTRADAY_PATH"))
     amibroker_intraday_path = (
         Path(amibroker_intraday_env).expanduser()
         if amibroker_intraday_env
-        else (amibroker_root / "Data_FireAnt" / "AmiBroker" / "Intraday")
+        else (default_amibroker_database / "Intraday")
     )
 
     amibroker_eod_targets = (
