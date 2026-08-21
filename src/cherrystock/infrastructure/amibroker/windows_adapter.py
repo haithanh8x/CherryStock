@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import time
 from pathlib import Path
 
 
@@ -37,6 +38,44 @@ class WindowsAmiBrokerAdapter:
         except Exception:
             return str(path).lower().endswith(".duckdb")
 
+    @staticmethod
+    def _refresh_database(app) -> None:
+        """Ask AmiBroker to refresh DB/UI after an OLE database load."""
+        try:
+            app.LoadWatchlists()
+        except Exception:
+            pass
+
+        try:
+            app.RefreshAll(3)
+        except Exception:
+            try:
+                app.RefreshAll()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _wait_for_stocks(app, pythoncom, timeout_seconds: float = 15.0) -> int:
+        """Wait for AmiBroker's symbol collection to become available."""
+        deadline = time.monotonic() + timeout_seconds
+        last_count = 0
+        while time.monotonic() < deadline:
+            try:
+                last_count = int(app.Stocks.Count)
+            except Exception:
+                last_count = 0
+
+            if last_count > 0:
+                return last_count
+
+            try:
+                pythoncom.PumpWaitingMessages()
+            except Exception:
+                pass
+            time.sleep(0.5)
+
+        return last_count
+
     def run_explore_export(
         self,
         formula_path: Path,
@@ -68,6 +107,11 @@ class WindowsAmiBrokerAdapter:
             except Exception:
                 app = win32com.client.Dispatch("Broker.Application")
 
+            try:
+                version = str(app.Version or "")
+            except Exception:
+                version = "unknown"
+
             current_db = ""
             try:
                 current_db = str(app.DatabasePath or "")
@@ -93,23 +137,49 @@ class WindowsAmiBrokerAdapter:
                 except Exception:
                     pass
 
-            if configured_db is not None and current_resolved != configured_db:
-                if not configured_db.exists():
-                    if current_resolved is None:
-                        raise FileNotFoundError(
-                            "Không tìm thấy AmiBroker database directory: "
-                            f"{configured_db}. Hãy cấu hình AMIBROKER_DATABASE_PATH đúng."
-                        )
-                    print(
-                        f"[!] AmiBroker database cấu hình không tồn tại: {configured_db}; "
-                        f"giữ database đang mở: {current_db}"
+            if configured_db is not None and not configured_db.exists():
+                if current_resolved is None:
+                    raise FileNotFoundError(
+                        "Không tìm thấy AmiBroker database directory: "
+                        f"{configured_db}. Hãy cấu hình AMIBROKER_DATABASE_PATH đúng."
                     )
-                else:
-                    loaded = bool(app.LoadDatabase(str(configured_db)))
-                    if not loaded:
-                        raise RuntimeError(
-                            f"AmiBroker không load được database: {configured_db}"
-                        )
+                print(
+                    f"[!] AmiBroker database cấu hình không tồn tại: {configured_db}; "
+                    f"giữ database đang mở: {current_db}"
+                )
+                configured_db = None
+
+            # First read the actual collection, not only DatabasePath. A COM instance
+            # may report the correct path while its Stocks collection is still empty
+            # (for example after a previous invalid LoadDatabase call).
+            initial_stock_count = self._wait_for_stocks(app, pythoncom, timeout_seconds=1.0)
+
+            should_reload = (
+                configured_db is not None
+                and (
+                    current_resolved != configured_db
+                    or initial_stock_count == 0
+                    or current_is_invalid
+                )
+            )
+
+            if should_reload and configured_db is not None:
+                print(
+                    "[*] Force reload AmiBroker database: "
+                    f"{configured_db} | previous_path={current_db!r} | "
+                    f"previous_stocks={initial_stock_count}"
+                )
+                loaded = bool(app.LoadDatabase(str(configured_db)))
+                if not loaded:
+                    raise RuntimeError(
+                        f"AmiBroker không load được database: {configured_db}"
+                    )
+
+                self._refresh_database(app)
+                stock_count = self._wait_for_stocks(app, pythoncom, timeout_seconds=15.0)
+            else:
+                self._refresh_database(app)
+                stock_count = self._wait_for_stocks(app, pythoncom, timeout_seconds=5.0)
 
             try:
                 active_db = str(app.DatabasePath or "")
@@ -122,8 +192,20 @@ class WindowsAmiBrokerAdapter:
                     f"{active_db}. Database AmiBroker phải là một thư mục."
                 )
 
+            # Re-acquire the COM collection after LoadDatabase/RefreshAll so we do
+            # not keep a stale collection object from the previous database state.
             stocks = app.Stocks
-            stock_count = int(stocks.Count)
+            try:
+                stock_count = int(stocks.Count)
+            except Exception:
+                stock_count = 0
+
+            print(
+                "[*] AmiBroker COM database ready: "
+                f"version={version} | attached={attached_to_running} | "
+                f"database={active_db!r} | stocks={stock_count}"
+            )
+
             rows: list[list[object]] = []
             skipped_no_quotes = 0
             skipped_non_equity = 0
