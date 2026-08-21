@@ -1,4 +1,7 @@
-Filter = Status("lastbarinrange") AND GroupID(1) == "Gia co phieu";
+// Range is controlled by Python/COM (RangeMode=1, RangeN=1).
+// Do not additionally depend on Status("lastbarinrange") here because it can
+// behave differently between interactive Analysis and OLE automation.
+Filter = GroupID(1) == "Gia co phieu";
 
 AddColumn(Open, "Open");
 AddColumn(Close, "Close");
@@ -62,4 +65,3 @@ FUNCTION	GetFnData allows accessing fundamental data from Information window (Wi
 "Currency" - returns currency field - 5.70 and above
 "WebID" - returns web ID field - 5.70 and above
 */
-
