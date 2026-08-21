@@ -8,9 +8,7 @@ class WindowsAmiBrokerAdapter:
     """Windows COM adapter for AmiBroker integration.
 
     Fundamental data is read directly from AmiBroker's Stocks/Quotations COM
-    collections instead of the obsolete ``Application.Analysis`` object.  The
-    latter controls the old Automatic Analysis window and can return an empty
-    exploration while the New Analysis UI shows valid rows.
+    collections instead of the obsolete ``Application.Analysis`` object.
     """
 
     def __init__(self, database_path: Path | None = None):
@@ -30,6 +28,15 @@ class WindowsAmiBrokerAdapter:
         except Exception:
             return str(market_id)
 
+    @staticmethod
+    def _is_duckdb_path(path: Path | str | None) -> bool:
+        if not path:
+            return False
+        try:
+            return Path(path).suffix.lower() == ".duckdb"
+        except Exception:
+            return str(path).lower().endswith(".duckdb")
+
     def run_explore_export(
         self,
         formula_path: Path,
@@ -38,11 +45,7 @@ class WindowsAmiBrokerAdapter:
         range_mode: int = 2,
         range_n: int = 1,
     ) -> None:
-        """Export latest stock FA to CSV using AmiBroker COM objects directly.
-
-        ``formula_path``/analysis arguments are kept for port compatibility, but
-        the export no longer depends on Automatic/New Analysis state.
-        """
+        """Export latest stock FA to CSV using AmiBroker COM objects directly."""
         del formula_path, apply_to, range_mode, range_n
 
         try:
@@ -58,29 +61,54 @@ class WindowsAmiBrokerAdapter:
 
         pythoncom.CoInitialize()
         try:
-            app = win32com.client.Dispatch("Broker.Application")
+            # Prefer the already-running AmiBroker GUI instance so the COM code
+            # sees the same database/context the user sees on screen.
+            attached_to_running = False
+            try:
+                app = win32com.client.GetActiveObject("Broker.Application")
+                attached_to_running = True
+            except Exception:
+                app = win32com.client.Dispatch("Broker.Application")
 
-            # If a database is explicitly configured, only load it when it differs
-            # from the database already open in AmiBroker. This avoids resetting a
-            # valid GUI database/context unnecessarily.
-            configured_db = None
+            current_db = ""
+            try:
+                current_db = str(app.DatabasePath or "")
+            except Exception:
+                pass
+
+            configured_db: Path | None = None
             if self._database_path is not None:
-                configured_db = Path(self._database_path).resolve()
-                current_db = ""
+                candidate = Path(self._database_path).expanduser().resolve()
+                if self._is_duckdb_path(candidate):
+                    print(
+                        "[!] Bỏ qua AMIBROKER_DATABASE_PATH sai vì đang trỏ tới DuckDB: "
+                        f"{candidate}"
+                    )
+                else:
+                    configured_db = candidate
+
+            current_is_invalid = self._is_duckdb_path(current_db)
+            current_resolved: Path | None = None
+            if current_db and not current_is_invalid:
                 try:
-                    current_db = str(app.DatabasePath or "")
+                    current_resolved = Path(current_db).resolve()
                 except Exception:
                     pass
 
-                if current_db:
-                    try:
-                        current_resolved = Path(current_db).resolve()
-                    except Exception:
-                        current_resolved = None
+            # Load the real AmiBroker database directory when the current COM
+            # instance is empty/wrong or points elsewhere.
+            if configured_db is not None and current_resolved != configured_db:
+                if not configured_db.exists():
+                    if current_resolved is None:
+                        raise FileNotFoundError(
+                            "Không tìm thấy AmiBroker database directory: "
+                            f"{configured_db}. Hãy cấu hình AMIBROKER_DATABASE_PATH đúng."
+                        )
+                    print(
+                        f"[!] AmiBroker database cấu hình không tồn tại: {configured_db}; "
+                        f"giữ database đang mở: {current_db}"
+                    )
                 else:
-                    current_resolved = None
-
-                if current_resolved != configured_db:
                     loaded = bool(app.LoadDatabase(str(configured_db)))
                     if not loaded:
                         raise RuntimeError(
@@ -90,7 +118,13 @@ class WindowsAmiBrokerAdapter:
             try:
                 active_db = str(app.DatabasePath or "")
             except Exception:
-                active_db = str(configured_db or "")
+                active_db = str(configured_db or current_db or "")
+
+            if self._is_duckdb_path(active_db):
+                raise RuntimeError(
+                    "AmiBroker đang bị trỏ nhầm tới file DuckDB: "
+                    f"{active_db}. Database AmiBroker phải là một thư mục."
+                )
 
             stocks = app.Stocks
             stock_count = int(stocks.Count)
@@ -114,11 +148,6 @@ class WindowsAmiBrokerAdapter:
 
                     shares_out = self._safe_float(stock.SharesOut)
                     is_index = bool(stock.Index)
-
-                    # The former AFL selected the equity group.  COM does not expose
-                    # group names, so use stable characteristics of listed shares:
-                    # indexes are excluded and equities must have SharesOut > 0.
-                    # This also avoids exporting most indices/futures/FX symbols.
                     if is_index or shares_out <= 0:
                         skipped_non_equity += 1
                         continue
@@ -186,7 +215,8 @@ class WindowsAmiBrokerAdapter:
 
             print(
                 "[*] AmiBroker direct COM FA export: "
-                f"database={active_db!r} | stocks={stock_count} | rows={len(rows)} | "
+                f"attached={attached_to_running} | database={active_db!r} | "
+                f"stocks={stock_count} | rows={len(rows)} | "
                 f"no_quotes={skipped_no_quotes} | non_equity={skipped_non_equity} | "
                 f"failed={failed_symbols} | file={export_path}"
             )
