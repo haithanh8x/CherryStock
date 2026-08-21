@@ -76,9 +76,14 @@ def load_settings() -> Settings:
     duckdb_sql_path = Path(sql_env).expanduser() if sql_env else SRC_ROOT / "DuckDB" / "sql"
 
     amibroker_db_env = _as_optional_str(os.getenv("AMIBROKER_DATABASE_PATH"))
-    amibroker_database_path = (
-        Path(amibroker_db_env).expanduser() if amibroker_db_env else None
-    )
+    amibroker_database_path: Path | None = None
+    if amibroker_db_env:
+        candidate = Path(amibroker_db_env).expanduser()
+        # Guard against stale/misconfigured Windows environment variables that
+        # point AMIBROKER_DATABASE_PATH at the DuckDB file. AmiBroker databases
+        # are directories; a .duckdb file must never be passed to LoadDatabase().
+        if candidate.suffix.lower() != ".duckdb":
+            amibroker_database_path = candidate
 
     amibroker_root_env = _as_optional_str(os.getenv("AMIBROKER_ROOT"))
     amibroker_root = (
