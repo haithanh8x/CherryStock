@@ -6,7 +6,7 @@
 		},
 		{
 			"name": "Datafile",
-			"path": "../../Users/ADMIN/OneDrive - ollyo/Datafile"
+			"path": "C:/OneDrive/Working/Datafile"
 		}
 	],
 	"settings": {
@@ -22,7 +22,7 @@
 			{
 				"alias": "CherryMon",
 				"type": "file",
-				"path": "c:\\Users\\ADMIN\\OneDrive - ollyo\\Datafile\\CherryMon.duckdb",
+				"path": "C:\\OneDrive\\Working\\Datafile\\CherryMon.duckdb",
 				"attached": true
 			}
 		],
