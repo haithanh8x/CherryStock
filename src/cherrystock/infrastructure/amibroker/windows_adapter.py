@@ -25,7 +25,7 @@ class WindowsAmiBrokerAdapter:
             return str(path).lower().endswith(".duckdb")
 
     @staticmethod
-    def _wait_analysis(doc, pythoncom, timeout_seconds: float = 120.0) -> None:
+    def _wait_analysis(doc, pythoncom, timeout_seconds: float = 600.0) -> None:
         deadline = time.monotonic() + timeout_seconds
         while True:
             try:
@@ -163,9 +163,9 @@ class WindowsAmiBrokerAdapter:
                 f"database={active_db!r} | source={source}"
             )
 
-            # If this document was already running, wait for it before launching
-            # the FA exploration.
-            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=120.0)
+            # If this document was already running, wait up to 10 minutes before
+            # launching the FA exploration.
+            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=600.0)
 
             started = int(analysis_doc.Run(1))  # 1 = Exploration
             if started != 1:
@@ -174,7 +174,8 @@ class WindowsAmiBrokerAdapter:
                     "Analysis window có thể đang bận hoặc project không hợp lệ."
                 )
 
-            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=120.0)
+            # Large databases/plugin-backed scans can take several minutes.
+            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=600.0)
 
             exported = int(analysis_doc.Export(str(export_path), 0))
             if exported != 1:
