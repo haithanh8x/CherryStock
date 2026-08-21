@@ -62,7 +62,10 @@ def upsert_stock_fa(amibroker: "AmiBrokerPort | None" = None, connection=None):
                 )
             except Exception as exc:
                 export_error.append(exc)
-                print(f"❌ LỖI trong luồng AmiBroker COM: {exc}")
+                print(
+                    "❌ LỖI trong luồng AmiBroker COM: "
+                    f"{type(exc).__name__}: {exc}"
+                )
 
         explore_thread = threading.Thread(target=run_amibroker_explore)
         explore_thread.start()
@@ -80,7 +83,10 @@ def upsert_stock_fa(amibroker: "AmiBrokerPort | None" = None, connection=None):
         explore_thread.join()
 
         if export_error:
-            raise RuntimeError("AmiBroker FA export failed") from export_error[0]
+            # Preserve the original exception type/message. Wrapping everything in
+            # a generic RuntimeError made the useful AmiBroker diagnostics disappear
+            # from NiceGUI/Jupyter tracebacks.
+            raise export_error[0]
 
         if os.path.exists(AMIBROKER_LOG_PATH):
             with open(AMIBROKER_LOG_PATH, "r", encoding="utf-8", errors="ignore") as log_file:
@@ -103,7 +109,7 @@ def upsert_stock_fa(amibroker: "AmiBrokerPort | None" = None, connection=None):
         if df.empty:
             raise ValueError(
                 "Dữ liệu FA export từ AmiBroker trống. "
-                "Kiểm tra Filter trong Export Shares.afl và dữ liệu quote gần nhất trong AmiBroker."
+                "Kiểm tra database AmiBroker và dữ liệu quote/fundamental gần nhất."
             )
 
         # Normalize headers first because AmiBroker exports may contain surrounding spaces.
