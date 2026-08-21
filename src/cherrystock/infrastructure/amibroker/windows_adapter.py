@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import time
 from pathlib import Path
 
@@ -8,26 +7,13 @@ from pathlib import Path
 class WindowsAmiBrokerAdapter:
     """Windows COM adapter for AmiBroker integration.
 
-    Fundamental data is read directly from AmiBroker's Stocks/Quotations COM
-    collections instead of the obsolete ``Application.Analysis`` object.
+    FA export uses AmiBroker New Analysis (AnalysisDocs/AnalysisDoc), because the
+    Stocks collection can be empty for plugin-backed databases even when the New
+    Analysis UI has valid data.
     """
 
     def __init__(self, database_path: Path | None = None):
         self._database_path = database_path
-
-    @staticmethod
-    def _safe_float(value, default: float = 0.0) -> float:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
-
-    @staticmethod
-    def _market_name(app, market_id: int) -> str:
-        try:
-            return str(app.Markets.Item(int(market_id)).Name)
-        except Exception:
-            return str(market_id)
 
     @staticmethod
     def _is_duckdb_path(path: Path | str | None) -> bool:
@@ -39,34 +25,25 @@ class WindowsAmiBrokerAdapter:
             return str(path).lower().endswith(".duckdb")
 
     @staticmethod
-    def _refresh_database(app) -> None:
-        """Ask AmiBroker to refresh DB/UI after an OLE database load."""
-        try:
-            app.LoadWatchlists()
-        except Exception:
-            pass
-
-        try:
-            app.RefreshAll(3)
-        except Exception:
-            try:
-                app.RefreshAll()
-            except Exception:
-                pass
-
-    @staticmethod
-    def _wait_for_stocks(app, pythoncom, timeout_seconds: float = 15.0) -> int:
-        """Wait for AmiBroker's symbol collection to become available."""
+    def _wait_analysis(doc, pythoncom, timeout_seconds: float = 120.0) -> None:
         deadline = time.monotonic() + timeout_seconds
-        last_count = 0
-        while time.monotonic() < deadline:
+        while True:
             try:
-                last_count = int(app.Stocks.Count)
-            except Exception:
-                last_count = 0
+                busy = bool(doc.IsBusy)
+            except Exception as exc:
+                raise RuntimeError(f"Không đọc được trạng thái AnalysisDoc.IsBusy: {exc}") from exc
 
-            if last_count > 0:
-                return last_count
+            if not busy:
+                return
+
+            if time.monotonic() >= deadline:
+                try:
+                    doc.Abort()
+                except Exception:
+                    pass
+                raise TimeoutError(
+                    f"AmiBroker New Analysis không hoàn tất sau {timeout_seconds:.0f}s"
+                )
 
             try:
                 pythoncom.PumpWaitingMessages()
@@ -74,7 +51,16 @@ class WindowsAmiBrokerAdapter:
                 pass
             time.sleep(0.5)
 
-        return last_count
+    @staticmethod
+    def _csv_has_data(export_path: Path) -> bool:
+        if not export_path.exists() or export_path.stat().st_size <= 0:
+            return False
+        try:
+            with export_path.open("r", encoding="utf-8-sig", errors="ignore") as handle:
+                non_empty = [line for line in handle if line.strip()]
+            return len(non_empty) >= 2
+        except Exception:
+            return export_path.stat().st_size > 128
 
     def run_explore_export(
         self,
@@ -84,21 +70,34 @@ class WindowsAmiBrokerAdapter:
         range_mode: int = 2,
         range_n: int = 1,
     ) -> None:
-        """Export latest stock FA to CSV using AmiBroker COM objects directly."""
-        del formula_path, apply_to, range_mode, range_n
+        """Run FA exploration using AmiBroker New Analysis and export CSV.
+
+        Preferred source is an ``Export Shares.apx`` project next to the AFL. If
+        it does not exist, the most recently opened New Analysis document is used.
+        ``apply_to`` / ``range_mode`` / ``range_n`` are retained for interface
+        compatibility; New Analysis settings live in the APX/project itself.
+        """
+        del apply_to, range_mode, range_n
 
         try:
             import pythoncom  # type: ignore
             import win32com.client  # type: ignore
-        except ImportError as exc:  # pragma: no cover - depends on local environment
+        except ImportError as exc:  # pragma: no cover - Windows/local dependency
             raise RuntimeError(
                 "Windows AmiBroker adapter requires pywin32 (win32com/pythoncom)."
             ) from exc
 
+        formula_path = Path(formula_path).resolve()
         export_path = Path(export_path).resolve()
         export_path.parent.mkdir(parents=True, exist_ok=True)
+        apx_path = formula_path.with_suffix(".apx")
+
+        if export_path.exists():
+            export_path.unlink()
 
         pythoncom.CoInitialize()
+        analysis_doc = None
+        close_analysis_when_done = False
         try:
             attached_to_running = False
             try:
@@ -108,215 +107,101 @@ class WindowsAmiBrokerAdapter:
                 app = win32com.client.Dispatch("Broker.Application")
 
             try:
+                app.Visible = 1
+            except Exception:
+                pass
+
+            try:
                 version = str(app.Version or "")
             except Exception:
                 version = "unknown"
 
-            current_db = ""
-            try:
-                current_db = str(app.DatabasePath or "")
-            except Exception:
-                pass
-
-            configured_db: Path | None = None
-            if self._database_path is not None:
-                candidate = Path(self._database_path).expanduser().resolve()
-                if self._is_duckdb_path(candidate):
-                    print(
-                        "[!] Bỏ qua AMIBROKER_DATABASE_PATH sai vì đang trỏ tới DuckDB: "
-                        f"{candidate}"
-                    )
-                else:
-                    configured_db = candidate
-
-            current_is_invalid = self._is_duckdb_path(current_db)
-            current_resolved: Path | None = None
-            if current_db and not current_is_invalid:
-                try:
-                    current_resolved = Path(current_db).resolve()
-                except Exception:
-                    pass
-
-            if configured_db is not None and not configured_db.exists():
-                if current_resolved is None:
-                    raise FileNotFoundError(
-                        "Không tìm thấy AmiBroker database directory: "
-                        f"{configured_db}. Hãy cấu hình AMIBROKER_DATABASE_PATH đúng."
-                    )
-                print(
-                    f"[!] AmiBroker database cấu hình không tồn tại: {configured_db}; "
-                    f"giữ database đang mở: {current_db}"
-                )
-                configured_db = None
-
-            # First read the actual collection, not only DatabasePath. A COM instance
-            # may report the correct path while its Stocks collection is still empty
-            # (for example after a previous invalid LoadDatabase call).
-            initial_stock_count = self._wait_for_stocks(app, pythoncom, timeout_seconds=1.0)
-
-            should_reload = (
-                configured_db is not None
-                and (
-                    current_resolved != configured_db
-                    or initial_stock_count == 0
-                    or current_is_invalid
-                )
-            )
-
-            if should_reload and configured_db is not None:
-                print(
-                    "[*] Force reload AmiBroker database: "
-                    f"{configured_db} | previous_path={current_db!r} | "
-                    f"previous_stocks={initial_stock_count}"
-                )
-                loaded = bool(app.LoadDatabase(str(configured_db)))
-                if not loaded:
-                    raise RuntimeError(
-                        f"AmiBroker không load được database: {configured_db}"
-                    )
-
-                self._refresh_database(app)
-                stock_count = self._wait_for_stocks(app, pythoncom, timeout_seconds=15.0)
-            else:
-                self._refresh_database(app)
-                stock_count = self._wait_for_stocks(app, pythoncom, timeout_seconds=5.0)
-
             try:
                 active_db = str(app.DatabasePath or "")
             except Exception:
-                active_db = str(configured_db or current_db or "")
+                active_db = ""
 
             if self._is_duckdb_path(active_db):
                 raise RuntimeError(
-                    "AmiBroker đang bị trỏ nhầm tới file DuckDB: "
-                    f"{active_db}. Database AmiBroker phải là một thư mục."
+                    "AmiBroker đang bị trỏ nhầm tới DuckDB: "
+                    f"{active_db}. Hãy mở đúng database AmiBroker trước khi chạy FA."
                 )
 
-            # Re-acquire the COM collection after LoadDatabase/RefreshAll so we do
-            # not keep a stale collection object from the previous database state.
-            stocks = app.Stocks
+            analysis_docs = app.AnalysisDocs
             try:
-                stock_count = int(stocks.Count)
+                open_count = int(analysis_docs.Count)
             except Exception:
-                stock_count = 0
+                open_count = 0
 
-            print(
-                "[*] AmiBroker COM database ready: "
-                f"version={version} | attached={attached_to_running} | "
-                f"database={active_db!r} | stocks={stock_count}"
-            )
-
-            rows: list[list[object]] = []
-            skipped_no_quotes = 0
-            skipped_non_equity = 0
-            failed_symbols = 0
-            failure_samples: list[str] = []
-
-            for index in range(stock_count):
-                ticker_for_error = f"index={index}"
-                try:
-                    stock = stocks.Item(index)
-                    ticker = str(stock.Ticker or "").strip().upper()
-                    ticker_for_error = ticker or ticker_for_error
-                    if not ticker:
-                        continue
-
-                    quotations = stock.Quotations
-                    quote_count = int(quotations.Count)
-                    if quote_count <= 0:
-                        skipped_no_quotes += 1
-                        continue
-
-                    shares_out = self._safe_float(stock.SharesOut)
-                    is_index = bool(stock.Index)
-                    if is_index or shares_out <= 0:
-                        skipped_non_equity += 1
-                        continue
-
-                    quote = quotations.Item(quote_count - 1)
-                    open_price = self._safe_float(quote.Open)
-                    close_price = self._safe_float(quote.Close)
-                    shares_float = self._safe_float(stock.SharesFloat)
-                    eps = self._safe_float(stock.EPS)
-                    book_value = self._safe_float(stock.BookValuePerShare)
-                    roa = self._safe_float(stock.ReturnOnAssets)
-                    roe = self._safe_float(stock.ReturnOnEquity)
-                    pe = close_price / eps if eps > 0 else None
-                    capital = close_price * shares_out
-
-                    quote_date = quote.Date
-                    try:
-                        date_value = quote_date.strftime("%Y-%m-%d")
-                    except Exception:
-                        date_value = str(quote_date)
-
-                    rows.append(
-                        [
-                            ticker,
-                            date_value,
-                            open_price,
-                            close_price,
-                            str(stock.FullName or ""),
-                            self._market_name(app, int(stock.MarketID)),
-                            capital,
-                            shares_float,
-                            shares_out,
-                            eps,
-                            pe,
-                            book_value,
-                            roa,
-                            roe,
-                        ]
-                    )
-                except Exception as exc:
-                    failed_symbols += 1
-                    if len(failure_samples) < 5:
-                        failure_samples.append(
-                            f"{ticker_for_error}: {type(exc).__name__}: {exc}"
-                        )
-                    continue
-
-            headers = [
-                "Ticker",
-                "Date",
-                "Open",
-                "Close",
-                "Full Name",
-                "Market",
-                "Capital",
-                "Shares Float",
-                "Shares Outstanding",
-                "EPS",
-                "PE",
-                "Book Value",
-                "ROA",
-                "ROE",
-            ]
-
-            with export_path.open("w", newline="", encoding="utf-8-sig") as handle:
-                writer = csv.writer(handle)
-                writer.writerow(headers)
-                writer.writerows(rows)
-
-            print(
-                "[*] AmiBroker direct COM FA export: "
-                f"attached={attached_to_running} | database={active_db!r} | "
-                f"stocks={stock_count} | rows={len(rows)} | "
-                f"no_quotes={skipped_no_quotes} | non_equity={skipped_non_equity} | "
-                f"failed={failed_symbols} | file={export_path}"
-            )
-            if failure_samples:
-                print("[!] AmiBroker COM symbol failures (sample):")
-                for sample in failure_samples:
-                    print(f"    - {sample}")
-
-            if not rows:
-                details = " | ".join(failure_samples) if failure_samples else "không có lỗi symbol mẫu"
-                raise ValueError(
-                    "AmiBroker COM Stocks không trả về cổ phiếu FA hợp lệ. "
-                    f"Database đang mở: {active_db!r}; tổng symbols: {stock_count}; "
-                    f"no_quotes={skipped_no_quotes}; non_equity={skipped_non_equity}; "
-                    f"failed={failed_symbols}. Chi tiết: {details}"
+            source = ""
+            if apx_path.exists():
+                analysis_doc = analysis_docs.Open(str(apx_path))
+                close_analysis_when_done = True
+                source = f"apx={apx_path}"
+                if analysis_doc is None:
+                    raise RuntimeError(f"AmiBroker không mở được Analysis project: {apx_path}")
+            elif open_count > 0:
+                # Use the most recently opened New Analysis document. This matches
+                # the manual workflow where Export Shares.afl is already open and
+                # produces valid rows in the GUI.
+                analysis_doc = analysis_docs.Item(open_count - 1)
+                source = f"open_analysis_index={open_count - 1}"
+            else:
+                configured = ""
+                if self._database_path is not None:
+                    configured = str(Path(self._database_path).expanduser())
+                raise RuntimeError(
+                    "Không có New Analysis project để chạy FA. "
+                    f"Hãy mở '{formula_path.name}' trong New Analysis rồi chạy lại, "
+                    f"hoặc Save As thành '{apx_path.name}' tại {apx_path.parent}. "
+                    f"AmiBroker database config={configured!r}."
                 )
+
+            print(
+                "[*] AmiBroker New Analysis FA: "
+                f"version={version} | attached={attached_to_running} | "
+                f"database={active_db!r} | source={source}"
+            )
+
+            # If this document was already running, wait for it before launching
+            # the FA exploration.
+            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=120.0)
+
+            started = int(analysis_doc.Run(1))  # 1 = Exploration
+            if started != 1:
+                raise RuntimeError(
+                    "AmiBroker AnalysisDoc.Run(1) không khởi động được Exploration. "
+                    "Analysis window có thể đang bận hoặc project không hợp lệ."
+                )
+
+            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=120.0)
+
+            exported = int(analysis_doc.Export(str(export_path), 0))
+            if exported != 1:
+                raise RuntimeError(
+                    f"AmiBroker AnalysisDoc.Export thất bại: {export_path}"
+                )
+
+            if not self._csv_has_data(export_path):
+                raise ValueError(
+                    "New Analysis đã chạy nhưng CSV không có dòng dữ liệu. "
+                    f"source={source}; database={active_db!r}; file={export_path}. "
+                    "Kiểm tra project đang dùng đúng Export Shares.afl, Apply to=All symbols "
+                    "và Range=1 recent bar(s)."
+                )
+
+            print(
+                "[*] AmiBroker New Analysis export complete: "
+                f"file={export_path} | size={export_path.stat().st_size} bytes"
+            )
         finally:
+            if close_analysis_when_done and analysis_doc is not None:
+                try:
+                    self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=10.0)
+                except Exception:
+                    pass
+                try:
+                    analysis_doc.Close()
+                except Exception:
+                    pass
             pythoncom.CoUninitialize()
