@@ -61,8 +61,6 @@ class WindowsAmiBrokerAdapter:
 
         pythoncom.CoInitialize()
         try:
-            # Prefer the already-running AmiBroker GUI instance so the COM code
-            # sees the same database/context the user sees on screen.
             attached_to_running = False
             try:
                 app = win32com.client.GetActiveObject("Broker.Application")
@@ -95,8 +93,6 @@ class WindowsAmiBrokerAdapter:
                 except Exception:
                     pass
 
-            # Load the real AmiBroker database directory when the current COM
-            # instance is empty/wrong or points elsewhere.
             if configured_db is not None and current_resolved != configured_db:
                 if not configured_db.exists():
                     if current_resolved is None:
@@ -132,11 +128,14 @@ class WindowsAmiBrokerAdapter:
             skipped_no_quotes = 0
             skipped_non_equity = 0
             failed_symbols = 0
+            failure_samples: list[str] = []
 
             for index in range(stock_count):
+                ticker_for_error = f"index={index}"
                 try:
                     stock = stocks.Item(index)
                     ticker = str(stock.Ticker or "").strip().upper()
+                    ticker_for_error = ticker or ticker_for_error
                     if not ticker:
                         continue
 
@@ -187,8 +186,12 @@ class WindowsAmiBrokerAdapter:
                             roe,
                         ]
                     )
-                except Exception:
+                except Exception as exc:
                     failed_symbols += 1
+                    if len(failure_samples) < 5:
+                        failure_samples.append(
+                            f"{ticker_for_error}: {type(exc).__name__}: {exc}"
+                        )
                     continue
 
             headers = [
@@ -220,11 +223,18 @@ class WindowsAmiBrokerAdapter:
                 f"no_quotes={skipped_no_quotes} | non_equity={skipped_non_equity} | "
                 f"failed={failed_symbols} | file={export_path}"
             )
+            if failure_samples:
+                print("[!] AmiBroker COM symbol failures (sample):")
+                for sample in failure_samples:
+                    print(f"    - {sample}")
 
             if not rows:
+                details = " | ".join(failure_samples) if failure_samples else "không có lỗi symbol mẫu"
                 raise ValueError(
                     "AmiBroker COM Stocks không trả về cổ phiếu FA hợp lệ. "
-                    f"Database đang mở: {active_db!r}; tổng symbols: {stock_count}."
+                    f"Database đang mở: {active_db!r}; tổng symbols: {stock_count}; "
+                    f"no_quotes={skipped_no_quotes}; non_equity={skipped_non_equity}; "
+                    f"failed={failed_symbols}. Chi tiết: {details}"
                 )
         finally:
             pythoncom.CoUninitialize()
