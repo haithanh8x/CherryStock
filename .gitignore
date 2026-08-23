@@ -71,3 +71,4 @@ Thumbs.db
 # Project-specific
 state.json
 CherryStock.code-workspace
+*.code-workspace
