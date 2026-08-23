@@ -31,6 +31,7 @@ class SyncWritePipelineService:
         execute_sql: Callable[..., None] = executeDuckSQL,
         validate_dated: Callable[..., dict] = validate_and_persist_data_quality,
         validate_reference: Callable[..., dict] = validate_and_persist_reference_quality,
+        resolve_yahoo_expected_date: Callable[[object], object] | None = None,
     ) -> None:
         self._sql_dir = sql_dir
         self._sync_amibroker_eod = sync_amibroker_eod
@@ -42,6 +43,7 @@ class SyncWritePipelineService:
         self._execute_sql = execute_sql
         self._validate_dated = validate_dated
         self._validate_reference = validate_reference
+        self._resolve_yahoo_expected_date = resolve_yahoo_expected_date or self._latest_yahoo_date
 
     @staticmethod
     def _latest_yahoo_date(connection):
@@ -83,7 +85,7 @@ class SyncWritePipelineService:
         )
 
         self._sync_yahoo_eod(from_last_day=days_diff, connection=connection)
-        yahoo_expected_date = self._latest_yahoo_date(connection)
+        yahoo_expected_date = self._resolve_yahoo_expected_date(connection)
         self._validate_dated(
             connection=connection,
             table_name='"CherryMon"."main"."raw_other_eod"',
