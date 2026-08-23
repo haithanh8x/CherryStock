@@ -3,7 +3,10 @@ from datetime import date
 import duckdb
 import pytest
 
-from src.Ults.DataQualityOrchestration import validate_and_persist_data_quality
+from src.Ults.DataQualityOrchestration import (
+    validate_and_persist_data_quality,
+    validate_and_persist_reference_quality,
+)
 
 
 def _create_audit_table(connection: duckdb.DuckDBPyConnection) -> None:
@@ -133,3 +136,51 @@ def test_helper_rejects_empty_filters() -> None:
             pipeline_name="Composite Index",
             filters={},
         )
+
+
+def test_reference_quality_persists_pass() -> None:
+    connection = duckdb.connect(":memory:")
+    _create_audit_table(connection)
+    connection.execute("CREATE TABLE raw_lstTicker (Ticker VARCHAR, status VARCHAR)")
+    connection.executemany(
+        "INSERT INTO raw_lstTicker VALUES (?, ?)",
+        [("AAA", "Y"), ("BBB", "Y"), ("CCC", "N")],
+    )
+
+    result = validate_and_persist_reference_quality(
+        connection=connection,
+        table_name="raw_lstTicker",
+        pipeline_name="Ticker Master",
+        key_cols=["Ticker"],
+        required_cols=["Ticker", "status"],
+        audit_table="data_quality_audit",
+    )
+
+    assert result["status"] == "PASS"
+    assert result["metrics"]["validation_mode"] == "reference"
+    assert result["metrics"]["row_count_current"] == 3
+    assert result["metrics"]["duplicate_count"] == 0
+    assert connection.execute("SELECT COUNT(*) FROM data_quality_audit").fetchone()[0] == 1
+
+
+def test_reference_quality_persists_fail_before_raising() -> None:
+    connection = duckdb.connect(":memory:")
+    _create_audit_table(connection)
+    connection.execute("CREATE TABLE raw_lstTicker (Ticker VARCHAR, status VARCHAR)")
+    connection.executemany(
+        "INSERT INTO raw_lstTicker VALUES (?, ?)",
+        [("AAA", "Y"), ("AAA", None)],
+    )
+
+    with pytest.raises(RuntimeError, match="Reference data quality validation failed"):
+        validate_and_persist_reference_quality(
+            connection=connection,
+            table_name="raw_lstTicker",
+            pipeline_name="Ticker Master",
+            key_cols=["Ticker"],
+            required_cols=["Ticker", "status"],
+            audit_table="data_quality_audit",
+        )
+
+    status = connection.execute("SELECT status FROM data_quality_audit").fetchone()[0]
+    assert status == "FAIL"
