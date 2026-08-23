@@ -3,10 +3,6 @@
 		{
 			"name": "CherryStock",
 			"path": "."
-		},
-		{
-			"name": "Datafile",
-			"path": "C:/OneDrive/Working/Datafile"
 		}
 	],
 	"settings": {
@@ -22,7 +18,8 @@
 			{
 				"alias": "CherryMon",
 				"type": "file",
-				"path": "C:\\OneDrive\\Working\\Datafile\\CherryMon.duckdb",
+				"path": "../../OneDrive/Working/Datafile/CherryMon.duckdb",
+				"readOnly": true,
 				"attached": true
 			}
 		],
