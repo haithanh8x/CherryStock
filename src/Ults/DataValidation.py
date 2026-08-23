@@ -11,6 +11,7 @@ DEFAULT_MAX_ROW_CHANGE_PCT = 0.10
 DEFAULT_MAX_SYMBOL_CHANGE_PCT = 0.05
 DEFAULT_MAX_NULL_RATE = 0.01
 DEFAULT_HISTORY_WINDOW = 20
+DEFAULT_AUDIT_TABLE = '"CherryMon"."main"."data_quality_audit"'
 _ZSCORE_WARNING = 2.0
 _ZSCORE_FAIL = 3.0
 _SAMPLE_SIZE = 20
@@ -690,3 +691,196 @@ def validate_data_quality(
     finalized = _finalize_result(validation_result)
     _log_validation_summary(finalized)
     return finalized
+
+
+def _to_json_compatible(value: Any) -> Any:
+    """Normalize validation payload values so DuckDB JSON receives valid JSON."""
+    import math
+
+    if value is None:
+        return None
+    if isinstance(value, (date, datetime, pd.Timestamp)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): _to_json_compatible(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_to_json_compatible(item) for item in value]
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if hasattr(value, "item"):
+        try:
+            return _to_json_compatible(value.item())
+        except (TypeError, ValueError):
+            pass
+    return value
+
+
+def _validate_audit_payload(validation_result: dict[str, Any]) -> None:
+    if not isinstance(validation_result, dict):
+        raise TypeError("validation_result must be a dict returned by validate_data_quality")
+
+    required_keys = {"status", "table", "metrics", "errors", "warnings"}
+    missing_keys = sorted(required_keys.difference(validation_result))
+    if missing_keys:
+        raise ValueError(f"validation_result is missing required keys: {missing_keys}")
+
+    if validation_result["status"] not in {"PASS", "WARNING", "FAIL"}:
+        raise ValueError("validation_result.status must be PASS, WARNING, or FAIL")
+    if not isinstance(validation_result["table"], str) or not validation_result["table"].strip():
+        raise ValueError("validation_result.table must be a non-empty string")
+    if not isinstance(validation_result["metrics"], dict):
+        raise TypeError("validation_result.metrics must be a dict")
+    if not isinstance(validation_result["errors"], list):
+        raise TypeError("validation_result.errors must be a list")
+    if not isinstance(validation_result["warnings"], list):
+        raise TypeError("validation_result.warnings must be a list")
+
+
+def persist_data_quality_result(
+    connection: Any,
+    validation_result: dict[str, Any],
+    pipeline_name: str,
+    audit_table: str = DEFAULT_AUDIT_TABLE,
+    validation_id: str | None = None,
+    checked_at: datetime | None = None,
+) -> str:
+    """Persist one validation event into the configured DuckDB audit table.
+
+    The caller owns the supplied connection and transaction. This function does not open, close,
+    commit, or rollback the connection. Core validation remains read-only; only this persistence
+    helper writes audit history. Supplying the same ``validation_id`` more than once is idempotent.
+
+    The audit table must contain these core columns: ``validation_id``, ``checked_at``,
+    ``pipeline_name``, ``table_name``, ``status``, ``metrics``, ``errors``, and ``warnings``.
+    Known metric columns are persisted when present in the audit schema; detailed payloads are
+    always preserved in the JSON columns.
+    """
+    import json
+    import uuid
+
+    if connection is None:
+        raise ValueError("connection is required; persist_data_quality_result does not open DuckDB itself")
+    if not isinstance(pipeline_name, str) or not pipeline_name.strip():
+        raise ValueError("pipeline_name must be a non-empty string")
+    if checked_at is not None and not isinstance(checked_at, datetime):
+        raise TypeError("checked_at must be datetime or None")
+
+    _validate_audit_payload(validation_result)
+
+    audit_schema = _get_table_schema(connection, audit_table)
+    if audit_schema.empty:
+        raise RuntimeError(f"Audit table {audit_table!r} does not exist or has no readable schema.")
+
+    audit_columns = {
+        str(column_name).lower(): (str(column_name), str(data_type).upper())
+        for column_name, data_type in audit_schema[["column_name", "data_type"]].itertuples(
+            index=False, name=None
+        )
+    }
+    required_audit_columns = {
+        "validation_id",
+        "checked_at",
+        "pipeline_name",
+        "table_name",
+        "status",
+        "metrics",
+        "errors",
+        "warnings",
+    }
+    missing_audit_columns = sorted(required_audit_columns.difference(audit_columns))
+    if missing_audit_columns:
+        raise RuntimeError(
+            f"Audit table {audit_table!r} is missing required columns: {missing_audit_columns}."
+        )
+
+    resolved_validation_id = validation_id.strip() if isinstance(validation_id, str) else None
+    if validation_id is not None and not resolved_validation_id:
+        raise ValueError("validation_id must be a non-empty string when supplied")
+    resolved_validation_id = resolved_validation_id or str(uuid.uuid4())
+    resolved_checked_at = checked_at or datetime.now().astimezone()
+
+    metrics = validation_result["metrics"]
+    audit_values: dict[str, Any] = {
+        "validation_id": resolved_validation_id,
+        "checked_at": resolved_checked_at,
+        "pipeline_name": pipeline_name.strip(),
+        "table_name": validation_result["table"],
+        "expected_date": metrics.get("expected_date"),
+        "max_date": metrics.get("max_date"),
+        "status": validation_result["status"],
+        "row_count_current": metrics.get("row_count_current"),
+        "row_count_previous": metrics.get("row_count_previous"),
+        "row_count_change_pct": metrics.get("row_count_change_pct"),
+        "symbol_count_current": metrics.get("symbol_count_current"),
+        "symbol_count_previous": metrics.get("symbol_count_previous"),
+        "symbol_count_change_pct": metrics.get("symbol_count_change_pct"),
+        "missing_symbol_count": metrics.get("missing_symbol_count"),
+        "new_symbol_count": metrics.get("new_symbol_count"),
+        "duplicate_count": metrics.get("duplicate_count"),
+        "row_count_zscore": metrics.get("row_count_zscore"),
+        "symbol_count_zscore": metrics.get("symbol_count_zscore"),
+        "metrics": json.dumps(
+            _to_json_compatible(metrics), ensure_ascii=False, sort_keys=True, allow_nan=False
+        ),
+        "errors": json.dumps(
+            _to_json_compatible(validation_result["errors"]),
+            ensure_ascii=False,
+            allow_nan=False,
+        ),
+        "warnings": json.dumps(
+            _to_json_compatible(validation_result["warnings"]),
+            ensure_ascii=False,
+            allow_nan=False,
+        ),
+    }
+
+    insert_column_names: list[str] = []
+    insert_values: list[Any] = []
+    value_expressions: list[str] = []
+    for logical_name, value in audit_values.items():
+        schema_entry = audit_columns.get(logical_name)
+        if schema_entry is None:
+            continue
+        actual_name, data_type = schema_entry
+        insert_column_names.append(actual_name)
+        insert_values.append(value)
+        if data_type == "JSON":
+            value_expressions.append("CAST(? AS JSON)")
+        elif data_type == "DATE":
+            value_expressions.append("CAST(? AS DATE)")
+        elif data_type.startswith("TIMESTAMP"):
+            value_expressions.append("CAST(? AS TIMESTAMP)")
+        else:
+            value_expressions.append("?")
+
+    quoted_audit_table = _quote_relation(audit_table)
+    quoted_insert_columns = ", ".join(
+        _quote_identifier(column_name) for column_name in insert_column_names
+    )
+    validation_id_column = _quote_identifier(audit_columns["validation_id"][0])
+    insert_sql = f"""
+        INSERT INTO {quoted_audit_table} ({quoted_insert_columns})
+        SELECT {', '.join(value_expressions)}
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM {quoted_audit_table}
+            WHERE {validation_id_column} = ?
+        )
+    """
+
+    try:
+        # DuckLib.returnSQL is intentionally SELECT-only. Audit persistence requires a
+        # parameterized write on the caller-owned writer connection.
+        connection.execute(insert_sql, [*insert_values, resolved_validation_id])
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to persist data-quality audit for table {validation_result['table']!r} "
+            f"into {audit_table!r}: {exc}"
+        ) from exc
+
+    print(
+        "[DataValidation][AUDIT] "
+        f"validation_id={resolved_validation_id} | pipeline={pipeline_name.strip()} | "
+        f"table={validation_result['table']} | status={validation_result['status']}"
+    )
+    return resolved_validation_id
