@@ -15,6 +15,7 @@ from Ults.DataValidation import (
     persist_data_quality_result,
     validate_data_quality,
 )
+from Ults.DuckLib import returnSQL
 
 
 def _quote_identifier(identifier: str) -> str:
@@ -104,17 +105,7 @@ def validate_and_persist_data_quality(
     checked_at: datetime | None = None,
     raise_on_fail: bool = True,
 ) -> dict[str, Any]:
-    """Validate a dataset scope, persist its audit result, then apply the failure policy.
-
-    ``filters`` supports safe equality/IN/IS NULL predicates for validating one logical dataset
-    inside a shared physical table, for example ``{"INDEX_NAME": "VNINDEX_NOT_VIN"}``.
-    The helper creates a short-lived temporary view only when filters are supplied, validates that
-    view with the existing read-only validator, rewrites the result back to the source table name,
-    persists the audit event, and always removes the temporary view before returning or raising.
-
-    Persistence happens before ``raise_on_fail`` is evaluated so failed validations are still
-    recorded in ``data_quality_audit``.
-    """
+    """Validate a dated dataset scope, persist its audit result, then apply failure policy."""
     if connection is None:
         raise ValueError(
             "connection is required; validate_and_persist_data_quality does not open DuckDB itself"
@@ -152,9 +143,7 @@ def validate_and_persist_data_quality(
         )
 
         validation_result["table"] = table_name
-        validation_result["metrics"]["filters"] = (
-            dict(filters) if filters is not None else None
-        )
+        validation_result["metrics"]["filters"] = dict(filters) if filters is not None else None
 
         resolved_validation_id = persist_data_quality_result(
             connection=connection,
@@ -175,3 +164,151 @@ def validate_and_persist_data_quality(
     finally:
         if temporary_view is not None:
             connection.execute(f"DROP VIEW IF EXISTS {_quote_identifier(temporary_view)}")
+
+
+def validate_and_persist_reference_quality(
+    connection: Any,
+    table_name: str,
+    pipeline_name: str,
+    *,
+    key_cols: Sequence[str],
+    required_cols: Sequence[str],
+    max_null_rate: float = DEFAULT_MAX_NULL_RATE,
+    audit_table: str = DEFAULT_AUDIT_TABLE,
+    validation_id: str | None = None,
+    checked_at: datetime | None = None,
+    raise_on_fail: bool = True,
+) -> dict[str, Any]:
+    """Validate a reference/master table that has no daily time-series contract.
+
+    Checks table existence, row count, duplicate business keys and NULL rates for required fields,
+    persists the compatible audit payload, then optionally raises after persistence.
+    """
+    if connection is None:
+        raise ValueError("connection is required")
+    if not key_cols or not required_cols:
+        raise ValueError("key_cols and required_cols must not be empty")
+    if not 0 <= float(max_null_rate) <= 1:
+        raise ValueError("max_null_rate must be between 0 and 1")
+
+    quoted_table = _quote_relation(table_name)
+    schema_sql = f"DESCRIBE {quoted_table}"
+    schema_frame = returnSQL(connection, schema_sql)
+    if schema_frame is None or schema_frame.empty:
+        raise RuntimeError(f"Reference table {table_name!r} does not exist or has no readable schema")
+
+    schema_columns = {str(column).lower(): str(column) for column in schema_frame.iloc[:, 0].tolist()}
+    requested_columns = list(key_cols) + list(required_cols)
+    missing_columns = [column for column in requested_columns if column.lower() not in schema_columns]
+
+    metrics: dict[str, Any] = {
+        "expected_date": None,
+        "max_date": None,
+        "date_lag": None,
+        "row_count_current": None,
+        "row_count_previous": None,
+        "row_count_change_pct": None,
+        "symbol_count_current": None,
+        "symbol_count_previous": None,
+        "symbol_count_change_pct": None,
+        "missing_symbol_count": 0,
+        "missing_symbols": [],
+        "new_symbol_count": 0,
+        "new_symbols": [],
+        "duplicate_count": None,
+        "null_rate": {},
+        "historical_null_rate": {},
+        "historical_row_mean": None,
+        "historical_row_std": None,
+        "row_count_zscore": None,
+        "historical_symbol_mean": None,
+        "historical_symbol_std": None,
+        "symbol_count_zscore": None,
+        "validation_mode": "reference",
+    }
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if missing_columns:
+        errors.append(f"Configured reference columns are missing: {sorted(set(missing_columns))}.")
+    else:
+        row_frame = returnSQL(connection, f"SELECT COUNT(*) AS row_count FROM {quoted_table}")
+        if row_frame is None or row_frame.empty:
+            raise RuntimeError(f"Unable to count rows in reference table {table_name!r}")
+        row_count = int(row_frame["row_count"].iloc[0])
+        metrics["row_count_current"] = row_count
+        if row_count == 0:
+            errors.append(f"Reference table {table_name!r} is empty.")
+
+        actual_keys = [schema_columns[column.lower()] for column in key_cols]
+        grouped_keys = ", ".join(_quote_identifier(column) for column in actual_keys)
+        duplicate_frame = returnSQL(
+            connection,
+            f"""
+            SELECT COALESCE(SUM(duplicate_rows), 0) AS duplicate_count
+            FROM (
+                SELECT COUNT(*) - 1 AS duplicate_rows
+                FROM {quoted_table}
+                GROUP BY {grouped_keys}
+                HAVING COUNT(*) > 1
+            ) duplicate_groups
+            """,
+        )
+        if duplicate_frame is None or duplicate_frame.empty:
+            raise RuntimeError(f"Unable to check duplicate keys in {table_name!r}")
+        duplicate_count = int(duplicate_frame["duplicate_count"].iloc[0])
+        metrics["duplicate_count"] = duplicate_count
+        if duplicate_count > 0:
+            errors.append(f"Found {duplicate_count} duplicate rows for reference key {list(key_cols)}.")
+
+        for requested_column in required_cols:
+            actual_column = schema_columns[requested_column.lower()]
+            null_frame = returnSQL(
+                connection,
+                f"""
+                SELECT COUNT(*) AS total_rows,
+                       SUM(CASE WHEN {_quote_identifier(actual_column)} IS NULL THEN 1 ELSE 0 END) AS null_count
+                FROM {quoted_table}
+                """,
+            )
+            if null_frame is None or null_frame.empty:
+                raise RuntimeError(f"Unable to check NULL rate for {actual_column!r}")
+            total_rows = int(null_frame["total_rows"].iloc[0])
+            null_count = int(null_frame["null_count"].iloc[0] or 0)
+            null_rate = null_count / total_rows if total_rows else 0.0
+            metrics["null_rate"][actual_column] = null_rate
+            if null_rate > max_null_rate:
+                errors.append(
+                    f"{actual_column} NULL rate is {null_rate:.2%}, exceeding {max_null_rate:.2%}."
+                )
+
+    status = "FAIL" if errors else "WARNING" if warnings else "PASS"
+    validation_result = {
+        "status": status,
+        "table": table_name,
+        "metrics": metrics,
+        "errors": errors,
+        "warnings": warnings,
+    }
+
+    resolved_validation_id = persist_data_quality_result(
+        connection=connection,
+        validation_result=validation_result,
+        pipeline_name=pipeline_name,
+        audit_table=audit_table,
+        validation_id=validation_id,
+        checked_at=checked_at,
+    )
+    validation_result["validation_id"] = resolved_validation_id
+
+    print(
+        "[DataValidation][REFERENCE] "
+        f"table={table_name} | status={status} | rows={metrics['row_count_current']} | "
+        f"duplicates={metrics['duplicate_count']}"
+    )
+
+    if raise_on_fail and status == "FAIL":
+        raise RuntimeError(
+            f"Reference data quality validation failed for {table_name!r}: {' | '.join(errors)}"
+        )
+    return validation_result
