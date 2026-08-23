@@ -10,7 +10,7 @@
 - \DuckDB folder chứa các file dữ liệu DuckDB script, sql script này sẽ được thực thi để tạo ra các bảng dữ liệu trong DuckDB. Các bảng dữ liệu này sẽ được sử dụng bởi các module khác trong dự án.
 - \Orchestrator folder các script đặt lịch chạy, invoke các module khác trong dự án, ví dụ: crawl dữ liệu, tính toán composite index, v.v.
 - \Telegram folder chứa các module gửi thông báo, cảnh báo, v.v. qua Telegram
-- \Ults folder chứa các module tiện ích, ví dụ: DuckLib, Timing, v.v.
+- \Ults folder chứa các module tiện ích, ví dụ: DuckLib, Timing, DataValidation, v.v.
 - runTest.py là file test các module trong dự án, ví dụ: test crawl dữ liệu, test tính toán composite index, v.v.
 - run.py là file chính để chạy các module trong dự án, ví dụ: crawl dữ liệu, tính toán composite index, v.v.
  
@@ -40,3 +40,18 @@
   - NN_NetVol, NN_NetVal: khối lượng và giá trị ròng của các cổ phiếu trong ngày của giao dịch nhà đầu tư nước ngoài
   - TD_NetVol, TD_NetVal: khối lượng và giá trị ròng của các cổ phiếu trong ngày của giao dịch tổ chức tự doanh
   - CC_NetVol, CC_NetVal: khối lượng và giá trị ròng của các cổ phiếu trong ngày của giao dịch cung cầu
+6. "CherryMon"."main"."data_quality_audit" - Bảng lưu lịch sử kết quả kiểm tra chất lượng dữ liệu sau các lần chạy crawl/upsert. Bảng dùng để theo dõi trạng thái PASS/WARNING/FAIL, freshness, completeness, anomaly và các metrics phục vụ audit/dashboard.
+
+# Data Quality Validation
+1. sử dụng `Ults.DataValidation.validate_data_quality()` để kiểm tra chất lượng dữ liệu sau các pipeline crawl/upsert khi dataset phù hợp với validation contract.
+2. `validate_data_quality()` là validation layer dạng read-only: không tự ý sửa, xóa hoặc insert vào dataset nguồn; function trả kết quả dạng dict gồm `status`, `table`, `metrics`, `errors`, `warnings`.
+3. kết quả validation cần được ghi log ngắn gọn để phục vụ theo dõi realtime/debug pipeline và persist vào `"CherryMon"."main"."data_quality_audit"` để lưu lịch sử phân tích.
+4. việc persist audit phải tách khỏi core validation logic. Không thêm INSERT/UPDATE vào `validate_data_quality()`; sử dụng function/helper riêng hoặc orchestration layer để ghi `data_quality_audit`.
+5. khi persist audit, ưu tiên lưu các metrics thường xuyên query thành column riêng và đồng thời giữ payload chi tiết trong JSON (`metrics`, `errors`, `warnings`) để không mất thông tin khi validation được mở rộng.
+6. pipeline phải persist kết quả validation cho cả PASS, WARNING và FAIL; không chỉ lưu các lần lỗi. Điều này cần thiết để xây dựng baseline và theo dõi xu hướng chất lượng dữ liệu theo thời gian.
+7. `WARNING` mặc định không chặn pipeline nhưng phải được log và persist. `FAIL` phải được log và persist trước khi orchestration quyết định raise exception/chặn bước tiếp theo.
+8. không dùng dữ liệu trong `data_quality_audit` thay thế cho việc validation trực tiếp dataset nguồn. Audit table là lịch sử kết quả kiểm tra, không phải source of truth của dữ liệu chứng khoán.
+9. khi xác định ngày giao dịch kỳ vọng, ưu tiên logic lịch giao dịch hiện có của CherryStock (`dimCalendar`/helper phù hợp) thay vì chỉ dựa vào thứ Hai đến thứ Sáu.
+10. không hard-code đường dẫn DuckDB trong DataValidation hoặc audit persistence; luôn reuse connection do pipeline/orchestrator quản lý theo DuckDB connection convention của project.
+11. các pipeline Price, FA và dataset khác có thể có key/schema khác nhau; truyền `date_col`, `symbol_col`, `key_cols`, `required_cols` phù hợp thay vì duplicate implementation riêng cho từng dataset.
+12. dữ liệu audit phải hỗ trợ truy vết tối thiểu: thời điểm kiểm tra, pipeline/table được kiểm tra, expected date, max data date, final status, row/symbol metrics, duplicate/missing metrics, anomaly metrics, errors và warnings.
