@@ -39,6 +39,39 @@
 - `vw_*`: view phục vụ truy vấn/dashboard.
 - `sys_*`: **bảng hệ thống phục vụ vận hành, monitoring và audit pipeline** (không phải dữ liệu chứng khoán), ví dụ `sys_data_quality_audit`. Bảng loại này là lịch sử kết quả kiểm tra, không phải source of truth của dữ liệu.
 
+## Indicator column naming convention
+Áp dụng cho các bảng tính toán chỉ số thuộc nhóm `cal_*`, ví dụ `"CherryMon"."main"."cal_Trends"`.
+
+1. Column indicator phải tuân theo format:
+   `<INDICATOR><PERIOD>_<TIMEFRAME>`
+2. `INDICATOR` là tên viết tắt chuẩn của indicator và viết hoa, ví dụ:
+   - `MA` = Moving Average
+   - `EMA` = Exponential Moving Average
+   - `RSI` = Relative Strength Index
+3. `PERIOD` là số kỳ tính toán của indicator và đặt ngay sau tên indicator, không dùng dấu gạch dưới giữa indicator và period.
+4. `TIMEFRAME` là hậu tố viết hoa sau dấu `_`:
+   - `_D` = Daily
+   - `_W` = Weekly
+   - `_M` = Monthly
+5. Ví dụ chuẩn cho Moving Average:
+   - `MA20_D` = Moving Average period 20 trên timeframe Daily
+   - `MA50_D` = Moving Average period 50 trên timeframe Daily
+   - `MA100_D` = Moving Average period 100 trên timeframe Daily
+   - `MA200_D` = Moving Average period 200 trên timeframe Daily
+   - `MA20_W` = Moving Average period 20 trên timeframe Weekly
+   - `MA50_W` = Moving Average period 50 trên timeframe Weekly
+   - `MA100_W` = Moving Average period 100 trên timeframe Weekly
+   - `MA200_W` = Moving Average period 200 trên timeframe Weekly
+   - `MA20_M` = Moving Average period 20 trên timeframe Monthly
+   - `MA50_M` = Moving Average period 50 trên timeframe Monthly
+   - `MA100_M` = Moving Average period 100 trên timeframe Monthly
+   - `MA200_M` = Moving Average period 200 trên timeframe Monthly
+6. Ví dụ với indicator khác:
+   - `EMA20_D`, `EMA50_W`, `EMA100_M`
+   - `RSI14_D`, `RSI14_W`, `RSI14_M`
+7. Không sử dụng các format không thống nhất như `MA_D20`, `MA_20_D`, `Daily_MA20`, `ma20_d`.
+8. Khi thêm indicator mới vào các bảng `cal_*`, phải reuse convention này để đảm bảo schema nhất quán giữa Daily, Weekly và Monthly.
+
 ## Danh sách bảng chính
 1. "CherryMon"."main"."raw_stock_eod" - Bảng chứa dữ liệu giá đóng cửa hàng ngày của các cổ phiếu
 2. "CherryMon"."main"."raw_stock_fa" - Bảng chứa dữ liệu cơ bản của các cổ phiếu
