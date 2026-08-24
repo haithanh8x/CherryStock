@@ -1633,7 +1633,7 @@ def overview_tab_content() -> None:
         "btc": {"symbol": "BTC-USD", "source": "other", "color": "#F7931A", "label_name": "BTC-USD", "target": "main"},
         "spx": {"symbol": "^SPX", "source": "other", "color": "#3182CE", "label_name": "SPX", "target": "main"},
         "ndx": {"symbol": "^NDX", "source": "other", "color": "#00B5D8", "label_name": "NDX", "target": "main"},
-        "gcz": {"symbol": "^GCZ", "source": "other", "color": "#ECC94B", "label_name": "Gold", "target": "main"},
+        "gcz": {"symbol": "GC=F", "source": "other", "color": "#ECC94B", "label_name": "Gold", "target": "main"},
         "lcoz": {"symbol": "^LCOZ", "source": "other", "color": "#E53E3E", "label_name": "Oil", "target": "main"},
         "dxy": {"symbol": "DX-Y.NYB", "source": "other", "color": "#A0AEC0", "label_name": "DXY", "target": "sub"},
         "VND=X": {"symbol": "VND=X", "source": "other", "color": "#FFAA00", "label_name": "USD/VND", "target": "sub"},

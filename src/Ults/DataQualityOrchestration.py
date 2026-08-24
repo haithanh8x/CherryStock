@@ -192,7 +192,8 @@ def validate_and_persist_reference_quality(
         raise ValueError("max_null_rate must be between 0 and 1")
 
     quoted_table = _quote_relation(table_name)
-    schema_sql = f"DESCRIBE {quoted_table}"
+    # DESCRIBE is not a SELECT/WITH statement, so it cannot go through returnSQL().
+    schema_sql = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}'"
     schema_frame = returnSQL(connection, schema_sql)
     if schema_frame is None or schema_frame.empty:
         raise RuntimeError(f"Reference table {table_name!r} does not exist or has no readable schema")

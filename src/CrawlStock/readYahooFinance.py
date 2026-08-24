@@ -6,7 +6,7 @@ from Ults.DuckLib import DuckDBManager
 from Ults.Timing import timeit, toggle_print
 
 
-YAHOO_OTHER_TICKERS = ["DX-Y.NYB","BTC-USD","VND=X"]
+YAHOO_OTHER_TICKERS = ["DX-Y.NYB","BTC-USD","VND=X","GC=F"]
 
 
 def _days_to_period(from_last_day: Optional[int]) -> str:
