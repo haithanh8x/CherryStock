@@ -97,3 +97,4 @@
 10. không hard-code đường dẫn DuckDB trong DataValidation hoặc audit persistence; luôn reuse connection do pipeline/orchestrator quản lý theo DuckDB connection convention của project.
 11. các pipeline Price, FA và dataset khác có thể có key/schema khác nhau; truyền `date_col`, `symbol_col`, `key_cols`, `required_cols` phù hợp thay vì duplicate implementation riêng cho từng dataset.
 12. dữ liệu audit phải hỗ trợ truy vết tối thiểu: thời điểm kiểm tra, pipeline/table được kiểm tra, expected date, max data date, final status, row/symbol metrics, duplicate/missing metrics, anomaly metrics, errors và warnings.
+13. cột indicator có NULL hợp lệ do rolling window `min_periods` (ví dụ MA20_W, MA50_W, MA20_M, MA50_M trong `cal_Trends`) không được đưa vào `required_cols` với ngưỡng 1%; dùng `optional_null_rate_cols` với `max_optional_null_rate` (mặc định 35%) — FAIL khi vượt ngưỡng lỏng, WARNING khi cột chưa tồn tại trong schema (DB cũ chưa migrate).

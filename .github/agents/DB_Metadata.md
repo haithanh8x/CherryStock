@@ -62,6 +62,10 @@
 | `MA50` | `DOUBLE` | `YES` | `` |
 | `MA100` | `DOUBLE` | `YES` | `` |
 | `MA200` | `DOUBLE` | `YES` | `` |
+| `MA20_W` | `DOUBLE` | `YES` | `` |
+| `MA50_W` | `DOUBLE` | `YES` | `` |
+| `MA20_M` | `DOUBLE` | `YES` | `` |
+| `MA50_M` | `DOUBLE` | `YES` | `` |
 | `Close` | `DOUBLE` | `YES` | `` |
 
 ### main.dimCalendar (BASE TABLE)

@@ -256,6 +256,8 @@ def validate_data_quality(
     symbol_col: str = "Ticker",
     key_cols: Sequence[str] | None = None,
     required_cols: Sequence[str] | None = None,
+    optional_null_rate_cols: Sequence[str] | None = None,
+    max_optional_null_rate: float = 0.35,
     expected_date: date | datetime | str | None = None,
     max_row_change_pct: float = DEFAULT_MAX_ROW_CHANGE_PCT,
     max_symbol_change_pct: float = DEFAULT_MAX_SYMBOL_CHANGE_PCT,
@@ -276,6 +278,9 @@ def validate_data_quality(
         "max_symbol_change_pct", max_symbol_change_pct
     )
     max_null_rate = _validate_threshold("max_null_rate", max_null_rate)
+    max_optional_null_rate = _validate_threshold(
+        "max_optional_null_rate", max_optional_null_rate
+    )
     if not isinstance(history_window, int) or isinstance(history_window, bool) or history_window < 2:
         raise ValueError("history_window must be an integer >= 2")
 
@@ -307,11 +312,18 @@ def validate_data_quality(
     requested_required_cols = _normalize_column_sequence(
         required_cols, [date_col, symbol_col], "required_cols"
     )
+    if optional_null_rate_cols is None:
+        requested_optional_cols: list[str] = []
+    else:
+        requested_optional_cols = _normalize_column_sequence(
+            optional_null_rate_cols, [], "optional_null_rate_cols"
+        )
     requested_key_cols = _normalize_column_sequence(
         key_cols, [symbol_col, date_col], "key_cols"
     )
 
     resolved_required_cols: list[str] = []
+    resolved_optional_cols: list[str] = []
     resolved_key_cols: list[str] = []
     missing_configured_columns: list[str] = []
     for requested_name in requested_required_cols:
@@ -321,6 +333,17 @@ def validate_data_quality(
             )
         except KeyError:
             missing_configured_columns.append(str(requested_name))
+    for requested_name in requested_optional_cols:
+        try:
+            resolved_optional_cols.append(
+                _resolve_column(requested_name, column_lookup, "optional_null_rate_cols")
+            )
+        except KeyError:
+            # Cột optional không tồn tại trong schema (ví dụ DB cũ chưa migrate)
+            # chỉ ghi warning, không FAIL — khác với required_cols.
+            warnings.append(
+                f"Optional validation column is missing in table schema: {requested_name!r}."
+            )
     for requested_name in requested_key_cols:
         try:
             resolved_key_cols.append(_resolve_column(requested_name, column_lookup, "key_cols"))
@@ -565,6 +588,29 @@ def validate_data_quality(
         if null_rate > max_null_rate:
             errors.append(
                 f"{column} NULL rate is {null_rate:.2%}, exceeding {max_null_rate:.2%}."
+            )
+
+    # Optional columns (ví dụ MA20_W/MA50_W/MA20_M/MA50_M trong cal_Trends) được phép
+    # có NULL do min_periods của rolling window; chỉ FAIL khi NULL rate vượt ngưỡng
+    # lỏng max_optional_null_rate, và WARNING khi tăng đột biến so với baseline.
+    for index, column in enumerate(resolved_optional_cols):
+        optional_null_sql = f"""
+            SELECT COUNT(*) AS total_rows,
+                   SUM(CASE WHEN {_quote_identifier(column)} IS NULL THEN 1 ELSE 0 END) AS null_count
+            FROM {quoted_table}
+            WHERE TRY_CAST({quoted_date_col} AS DATE) = DATE '{current_date_literal}'
+        """
+        optional_frame = _query_frame(
+            connection, optional_null_sql, f"checking optional-column NULL rate for {column}"
+        )
+        optional_total = int(optional_frame["total_rows"].iloc[0])
+        optional_null_count = int(optional_frame["null_count"].iloc[0])
+        optional_null_rate = optional_null_count / optional_total if optional_total else 0.0
+        metrics["null_rate"][column] = optional_null_rate
+        if optional_null_rate > max_optional_null_rate:
+            errors.append(
+                f"{column} NULL rate is {optional_null_rate:.2%}, exceeding "
+                f"max_optional_null_rate {max_optional_null_rate:.2%}."
             )
 
     if not history_frame.empty and resolved_required_cols:

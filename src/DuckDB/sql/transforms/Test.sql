@@ -24,4 +24,4 @@ select Ticker, min("Date"), max("Date") from "CherryMon"."main"."raw_commodity_e
 select * from "CherryMon"."main"."raw_other_eod" where Ticker='^GCZ';
 
 
-select * from "CherryMon"."main"."cal_Trends"
+select * from "CherryMon"."main"."cal_Trends" where Ticker='MWG' order by Date desc;

@@ -56,7 +56,38 @@ def cal_Moving_Average(from_last_day: Optional[int] = None, connection=None, rep
               .transform(lambda s: s.rolling(window=window, min_periods=window).mean())
         )
 
-    ma_columns = list(windows.keys())
+    # Weekly/Monthly MA: tính trên chuỗi Close resample theo tuần (W-FRI) và tháng (ME),
+    # sau đó map giá trị MA kỳ lớn về từng ngày giao dịch trong kỳ đó.
+    weekly_ma_columns = ("MA20_W", "MA50_W")
+    monthly_ma_columns = ("MA20_M", "MA50_M")
+    for col_name in (*weekly_ma_columns, *monthly_ma_columns):
+        df[col_name] = pd.NA
+
+    for ticker, ticker_df in df.groupby("Ticker", sort=False):
+        ticker_index = ticker_df.index
+        for frequency, ma_columns in (("W-FRI", weekly_ma_columns), ("ME", monthly_ma_columns)):
+            period_close = (
+                ticker_df.set_index("Date")["Close"].resample(frequency).last().dropna()
+            )
+            period_frame = pd.DataFrame(index=period_close.index)
+            period_frame["MA20_W" if frequency == "W-FRI" else "MA20_M"] = (
+                period_close.rolling(window=20, min_periods=20).mean()
+            )
+            period_frame["MA50_W" if frequency == "W-FRI" else "MA50_M"] = (
+                period_close.rolling(window=50, min_periods=50).mean()
+            )
+            mapped = pd.merge_asof(
+                ticker_df[["Date"]].sort_values("Date"),
+                period_frame.reset_index()
+                    .rename(columns={period_frame.index.name or "index": "PeriodEnd"})
+                    .rename(columns={"PeriodEnd": "Date"}),
+                on="Date",
+                direction="backward",
+            )
+            for col_name in ma_columns:
+                df.loc[ticker_index, col_name] = mapped[col_name].to_numpy()
+
+    ma_columns = [*windows.keys(), *weekly_ma_columns, *monthly_ma_columns]
     if from_last_day is not None:
         from_date = datetime.now() - timedelta(days=from_last_day)
         df_result = df.loc[df["Date"] >= from_date, ["Ticker", "Date", "Close", *ma_columns]].copy()
@@ -86,22 +117,31 @@ def cal_Moving_Average(from_last_day: Optional[int] = None, connection=None, rep
                 MA50 DOUBLE,
                 MA100 DOUBLE,
                 MA200 DOUBLE,
+                MA20_W DOUBLE,
+                MA50_W DOUBLE,
+                MA20_M DOUBLE,
+                MA50_M DOUBLE,
                 PRIMARY KEY (Ticker, Date)
             );
         """)
-        con.execute(f"ALTER TABLE {table_target} ADD COLUMN IF NOT EXISTS Close DOUBLE;")
+        for added_column in ("MA20_W", "MA50_W", "MA20_M", "MA50_M"):
+            con.execute(f"ALTER TABLE {table_target} ADD COLUMN IF NOT EXISTS {added_column} DOUBLE;")
 
         con.register("df_moving_average", df_result)
         con.execute(f"""
-            INSERT INTO {table_target} (Ticker, Date, Close, MA20, MA50, MA100, MA200)
-            SELECT Ticker, Date, Close, MA20, MA50, MA100, MA200
+            INSERT INTO {table_target} (Ticker, Date, Close, MA20, MA50, MA100, MA200, MA20_W, MA50_W, MA20_M, MA50_M)
+            SELECT Ticker, Date, Close, MA20, MA50, MA100, MA200, MA20_W, MA50_W, MA20_M, MA50_M
             FROM df_moving_average
             ON CONFLICT (Ticker, Date) DO UPDATE SET
                 Close = EXCLUDED.Close,
                 MA20 = EXCLUDED.MA20,
                 MA50 = EXCLUDED.MA50,
                 MA100 = EXCLUDED.MA100,
-                MA200 = EXCLUDED.MA200;
+                MA200 = EXCLUDED.MA200,
+                MA20_W = EXCLUDED.MA20_W,
+                MA50_W = EXCLUDED.MA50_W,
+                MA20_M = EXCLUDED.MA20_M,
+                MA50_M = EXCLUDED.MA50_M;
         """)
         con.unregister("df_moving_average")
     finally:

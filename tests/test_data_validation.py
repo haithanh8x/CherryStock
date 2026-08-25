@@ -248,3 +248,68 @@ def test_validate_data_quality_supports_fa_snapshot_without_ohlc() -> None:
     assert result["errors"] == []
     assert result["metrics"]["invalid_ohlc_count"] == 0
     assert result["metrics"]["duplicate_count"] == 0
+
+
+def test_validate_data_quality_optional_cols_pass_within_threshold() -> None:
+    connection = duckdb.connect(":memory:")
+    current_date = date(2026, 8, 21)
+    _create_price_table(connection)
+    _insert_price_history(connection, current_date)
+    connection.execute("ALTER TABLE raw_stock_eod ADD COLUMN MA20_W DOUBLE")
+    # 1/3 rows NULL = 33% > max_null_rate mặc định nhưng < max_optional_null_rate
+    connection.execute(
+        "UPDATE raw_stock_eod SET MA20_W = 11.0 WHERE Ticker IN ('AAA', 'BBB')"
+    )
+
+    result = validate_data_quality(
+        connection=connection,
+        table_name="raw_stock_eod",
+        expected_date=current_date,
+        required_cols=["Ticker", "Date", "Close"],
+        optional_null_rate_cols=["MA20_W"],
+        max_optional_null_rate=0.35,
+    )
+
+    assert result["status"] == "PASS"
+    assert result["metrics"]["null_rate"]["MA20_W"] == pytest.approx(1 / 3)
+
+
+def test_validate_data_quality_optional_col_exceeding_threshold_fails() -> None:
+    connection = duckdb.connect(":memory:")
+    current_date = date(2026, 8, 21)
+    _create_price_table(connection)
+    _insert_price_history(connection, current_date)
+    connection.execute("ALTER TABLE raw_stock_eod ADD COLUMN MA20_M DOUBLE")
+    # Tất cả NULL = 100% > ngưỡng 35%
+    result = validate_data_quality(
+        connection=connection,
+        table_name="raw_stock_eod",
+        expected_date=current_date,
+        required_cols=["Ticker", "Date", "Close"],
+        optional_null_rate_cols=["MA20_M"],
+        max_optional_null_rate=0.35,
+    )
+
+    assert result["status"] == "FAIL"
+    assert any(
+        "MA20_M NULL rate" in error and "max_optional_null_rate" in error
+        for error in result["errors"]
+    )
+
+
+def test_validate_data_quality_missing_optional_column_warns_not_fails() -> None:
+    connection = duckdb.connect(":memory:")
+    current_date = date(2026, 8, 21)
+    _create_price_table(connection)
+    _insert_price_history(connection, current_date)
+
+    result = validate_data_quality(
+        connection=connection,
+        table_name="raw_stock_eod",
+        expected_date=current_date,
+        required_cols=["Ticker", "Date", "Close"],
+        optional_null_rate_cols=["MA50_M"],
+    )
+
+    assert result["status"] == "WARNING"
+    assert any("MA50_M" in warning for warning in result["warnings"])

@@ -20,21 +20,32 @@ class TrendRepository:
                 MA50 DOUBLE,
                 MA100 DOUBLE,
                 MA200 DOUBLE,
+                MA20_W DOUBLE,
+                MA50_W DOUBLE,
+                MA20_M DOUBLE,
+                MA50_M DOUBLE,
                 PRIMARY KEY (Ticker, Date)
             );
         """)
-        self._connection.execute(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS Close DOUBLE;")
+        for added_column in ("Close", "MA20_W", "MA50_W", "MA20_M", "MA50_M"):
+            self._connection.execute(
+                f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {added_column} DOUBLE;"
+            )
 
         self._connection.register("df_moving_average", dataframe)
         self._connection.execute(f"""
-            INSERT INTO {table_name} (Ticker, Date, Close, MA20, MA50, MA100, MA200)
-            SELECT Ticker, Date, Close, MA20, MA50, MA100, MA200
+            INSERT INTO {table_name} (Ticker, Date, Close, MA20, MA50, MA100, MA200, MA20_W, MA50_W, MA20_M, MA50_M)
+            SELECT Ticker, Date, Close, MA20, MA50, MA100, MA200, MA20_W, MA50_W, MA20_M, MA50_M
             FROM df_moving_average
             ON CONFLICT (Ticker, Date) DO UPDATE SET
                 Close = EXCLUDED.Close,
                 MA20 = EXCLUDED.MA20,
                 MA50 = EXCLUDED.MA50,
                 MA100 = EXCLUDED.MA100,
-                MA200 = EXCLUDED.MA200;
+                MA200 = EXCLUDED.MA200,
+                MA20_W = EXCLUDED.MA20_W,
+                MA50_W = EXCLUDED.MA50_W,
+                MA20_M = EXCLUDED.MA20_M,
+                MA50_M = EXCLUDED.MA50_M;
         """)
         self._connection.unregister("df_moving_average")

@@ -149,5 +149,6 @@ class SyncWritePipelineService:
             symbol_col="Ticker",
             key_cols=["Ticker", "Date"],
             required_cols=["Ticker", "Date", "Close"],
+            optional_null_rate_cols=["MA20", "MA50", "MA100", "MA200", "MA20_W", "MA50_W", "MA20_M", "MA50_M"],
             raise_on_fail=True,
         )
