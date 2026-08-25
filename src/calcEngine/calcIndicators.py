@@ -21,7 +21,8 @@ SOURCE_TABLE = '"CherryMon"."main"."raw_stock_eod"'
 TICKER_TABLE = '"CherryMon"."main"."raw_lstTicker"'
 TARGET_TABLE = '"CherryMon"."main"."cal_indicator_values"'
 
-SUPPORTED_TIMEFRAMES = {"D", "W", "M"}
+DEFAULT_TIMEFRAMES = ("D", "W", "M")
+SUPPORTED_TIMEFRAMES = set(DEFAULT_TIMEFRAMES)
 RUNTIME_PARAMETER_NAMES = {"open", "open_", "high", "low", "close", "volume"}
 VALUE_COLUMNS = ("Open", "High", "Low", "Close", "Volume")
 
@@ -237,6 +238,72 @@ def get_indicator_components(
             )
         )
     return components
+
+
+def _parameter_set_key(config: IndicatorConfig) -> str:
+    """Return a stable identity for one IndicatorCode + Parameters executable family."""
+    return json.dumps(
+        config.parameters,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+
+
+def validate_indicator_onboarding_contract(
+    configs: list[IndicatorConfig],
+    components: dict[str, list[IndicatorComponent]],
+    *,
+    require_default_timeframes: bool = True,
+) -> None:
+    """Validate the metadata lifecycle required before an indicator can execute.
+
+    CherryStock onboarding order is:
+    ``dim_indicator`` -> ``dim_indicator_component`` -> ``dim_indicator_config``.
+
+    Every configured indicator must have at least one active component row. During
+    the normal main/full refresh, every unique ``IndicatorCode + Parameters`` set
+    must also have all three default timeframes: D, W and M. Targeted maintenance
+    runs using ``config_ids`` or ``timeframes`` may intentionally execute a subset,
+    so the D/W/M completeness check can be disabled by the caller.
+    """
+    configured_codes = sorted({config.indicator_code for config in configs})
+    missing_components = [code for code in configured_codes if not components.get(code)]
+    if missing_components:
+        raise ValueError(
+            "Indicator onboarding incomplete: missing active rows in "
+            f"{DIM_COMPONENT_TABLE} for IndicatorCode={missing_components}. "
+            "Insert dim_indicator_component after dim_indicator and before enabling configs."
+        )
+
+    if not require_default_timeframes:
+        return
+
+    expected = set(DEFAULT_TIMEFRAMES)
+    families: dict[tuple[str, str], set[str]] = {}
+    config_codes: dict[tuple[str, str], list[str]] = {}
+    for config in configs:
+        family = (config.indicator_code, _parameter_set_key(config))
+        families.setdefault(family, set()).add(config.timeframe)
+        config_codes.setdefault(family, []).append(config.config_code)
+
+    incomplete: list[str] = []
+    for family, available in sorted(families.items()):
+        missing = sorted(expected - available)
+        if not missing:
+            continue
+        indicator_code, parameter_key = family
+        incomplete.append(
+            f"{indicator_code} Parameters={parameter_key} missing={missing} "
+            f"existing={sorted(available)} ConfigCodes={sorted(config_codes[family])}"
+        )
+
+    if incomplete:
+        details = "; ".join(incomplete)
+        raise ValueError(
+            "Indicator onboarding incomplete: every enabled parameter set must have "
+            f"default timeframes {list(DEFAULT_TIMEFRAMES)} before the main refresh. {details}"
+        )
 
 
 def validate_indicator_config(
@@ -772,6 +839,14 @@ def refresh_technical_indicators(
     ``from_last_day`` is the same checkpoint value supplied by ``run.py`` to the
     write pipeline. The engine expands the read window backwards using
     ``WarmupBars`` but only replaces values inside the requested checkpoint.
+
+    Before the normal full refresh, metadata onboarding is validated as an atomic
+    contract: every enabled IndicatorCode + Parameters set must have active
+    component metadata and default D/W/M configs. This catches partial onboarding
+    before any calculated values are persisted. Targeted runs using ``config_ids``
+    or ``timeframes`` bypass only the D/W/M completeness check, not component or
+    config validation.
+
     Weekly/monthly cleanup starts at the containing period so provisional values
     from an earlier trading day in the same week/month cannot remain stale.
     """
@@ -802,6 +877,7 @@ def refresh_technical_indicators(
                 "reason": "No enabled indicator configs",
                 "records_upserted": 0,
                 "configs_processed": 0,
+                "indicators_processed": 0,
                 "tickers_processed": 0,
             }
             if owns_transaction:
@@ -817,6 +893,12 @@ def refresh_technical_indicators(
             con,
             [config.indicator_code for config in configs],
         )
+
+        validate_indicator_onboarding_contract(
+            configs,
+            component_map,
+            require_default_timeframes=config_ids is None and timeframes is None,
+        )
         for config in configs:
             validate_indicator_config(config, definitions[config.indicator_code])
 
@@ -827,6 +909,7 @@ def refresh_technical_indicators(
                 "reason": "No active raw_stock_eod source data",
                 "records_upserted": 0,
                 "configs_processed": len(configs),
+                "indicators_processed": len({config.indicator_code for config in configs}),
                 "tickers_processed": 0,
             }
             if owns_transaction:
@@ -892,15 +975,18 @@ def refresh_technical_indicators(
             "source_max_date": source_max_date.isoformat(),
             "records_upserted": records_upserted,
             "configs_processed": len(configs),
+            "indicators_processed": len({config.indicator_code for config in configs}),
             "tickers_processed": int(source_df["Ticker"].nunique()),
+            "default_timeframes_validated": config_ids is None and timeframes is None,
         }
         if owns_transaction:
             con.execute("COMMIT")
         print(
             "Technical Indicator Engine: "
-            f"status={summary['status']} | configs={summary['configs_processed']} | "
-            f"tickers={summary['tickers_processed']} | records={records_upserted} | "
-            f"checkpoint={summary['checkpoint_start']} | warmup_start={summary['source_start']}"
+            f"status={summary['status']} | indicators={summary['indicators_processed']} | "
+            f"configs={summary['configs_processed']} | tickers={summary['tickers_processed']} | "
+            f"records={records_upserted} | checkpoint={summary['checkpoint_start']} | "
+            f"warmup_start={summary['source_start']}"
         )
         return summary
     except Exception:
