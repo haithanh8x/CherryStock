@@ -15,6 +15,7 @@ def test_unit_of_work_commits_on_success(tmp_path: Path) -> None:
 
     with DuckDBUnitOfWork(factory) as uow:
         assert uow.connection is not None
+        assert uow.indicators is not None
         uow.connection.execute("CREATE TABLE IF NOT EXISTS t (id INTEGER PRIMARY KEY, value VARCHAR)")
         uow.connection.execute("INSERT INTO t (id, value) VALUES (1, 'ok')")
 
@@ -32,6 +33,7 @@ def test_unit_of_work_rolls_back_on_error(tmp_path: Path) -> None:
     try:
         with DuckDBUnitOfWork(factory) as uow:
             assert uow.connection is not None
+            assert uow.indicators is not None
             uow.connection.execute("INSERT INTO t (id, value) VALUES (2, 'will_rollback')")
             raise RuntimeError("force rollback")
     except RuntimeError:
