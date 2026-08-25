@@ -28,7 +28,8 @@
 			"**/.git": false
 		},
 		"chat.tools.terminal.autoApprove": {
-			"ForEach-Object": true
+			"ForEach-Object": true,
+			".venv\\Scripts\\python.exe": true
 		}
 	}
 }

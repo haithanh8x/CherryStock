@@ -26,29 +26,6 @@ select * from "CherryMon"."main"."raw_other_eod" where Ticker='^GCZ';
 
 select * from "CherryMon"."main"."cal_Trends" where Ticker='MWG' order by Date desc;
 
-select * from "CherryMon"."main"."sys_data_quality_audit";
-
-
-CREATE SEQUENCE IF NOT EXISTS seq_indicator_config START 1;
-
-
-
-
-CREATE TABLE "CherryMon"."main"."cal_indicator_values" (
-    Ticker              VARCHAR NOT NULL,
-    Date                DATE NOT NULL,
-
-    ConfigId            BIGINT NOT NULL,
-    ComponentCode       VARCHAR NOT NULL,
-
-    Value               DOUBLE,
-
-    CalculatedAt        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (
-        Ticker,
-        Date,
-        ConfigId,
-        ComponentCode
-    )
-);
+select * from "CherryMon"."main"."dim_indicator";
+select * from "CherryMon"."main"."dim_indicator_component";
+select * from "CherryMon"."main"."dim_indicator_config";
