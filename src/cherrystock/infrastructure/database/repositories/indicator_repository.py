@@ -26,9 +26,12 @@ class IndicatorRepository:
             """
         )
         self._connection.execute(
+            "CREATE SEQUENCE IF NOT EXISTS seq_indicator_config START 1;"
+        )
+        self._connection.execute(
             """
             CREATE TABLE IF NOT EXISTS "CherryMon"."main"."dim_indicator_config" (
-                ConfigId BIGINT NOT NULL,
+                ConfigId BIGINT NOT NULL DEFAULT nextval('seq_indicator_config'),
                 ConfigCode VARCHAR NOT NULL,
                 IndicatorCode VARCHAR NOT NULL,
                 Timeframe VARCHAR NOT NULL,
