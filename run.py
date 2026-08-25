@@ -41,6 +41,7 @@ def main():
                         ticker_repository=uow.tickers,
                         index_repository=uow.indexes,
                         trend_repository=uow.trends,
+                        indicator_repository=uow.indicators,
                 )
 
         # sync DuckDB metadata
