@@ -3,6 +3,7 @@ from __future__ import annotations
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from cherrystock.infrastructure.database.repositories import (
     IndexRepository,
+    IndicatorRepository,
     TickerRepository,
     TrendRepository,
 )
@@ -15,6 +16,7 @@ class DuckDBUnitOfWork:
         self._factory = factory
         self.connection = None
         self.indexes: IndexRepository | None = None
+        self.indicators: IndicatorRepository | None = None
         self.tickers: TickerRepository | None = None
         self.trends: TrendRepository | None = None
 
@@ -22,6 +24,7 @@ class DuckDBUnitOfWork:
         self.connection = self._factory.create_writer()
         self.connection.execute("BEGIN")
         self.indexes = IndexRepository(self.connection)
+        self.indicators = IndicatorRepository(self.connection)
         self.tickers = TickerRepository(self.connection)
         self.trends = TrendRepository(self.connection)
         return self
@@ -36,5 +39,6 @@ class DuckDBUnitOfWork:
             self.connection.close()
             self.connection = None
             self.indexes = None
+            self.indicators = None
             self.tickers = None
             self.trends = None
