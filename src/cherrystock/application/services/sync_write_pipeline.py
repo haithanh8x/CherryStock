@@ -14,6 +14,7 @@ from Ults.DuckLib import executeDuckSQL, returnSQL
 from Ults.lstPara import DUCKDB_SQL_PATH
 from calcEngine import calc_fv_Trend
 from calcEngine.calcIndexes import calculate_VNINDEX_NOT_VIN
+from calcEngine.calcIndicators import refresh_technical_indicators
 
 
 class SyncWritePipelineService:
@@ -28,6 +29,7 @@ class SyncWritePipelineService:
         upsert_tickers: Callable[..., None] = upsert_lstTicker,
         calc_index: Callable[..., None] = calculate_VNINDEX_NOT_VIN,
         calc_trend: Callable[..., None] = calc_fv_Trend.cal_Moving_Average,
+        calc_indicators: Callable[..., dict] = refresh_technical_indicators,
         execute_sql: Callable[..., None] = executeDuckSQL,
         validate_dated: Callable[..., dict] = validate_and_persist_data_quality,
         validate_reference: Callable[..., dict] = validate_and_persist_reference_quality,
@@ -40,6 +42,7 @@ class SyncWritePipelineService:
         self._upsert_tickers = upsert_tickers
         self._calc_index = calc_index
         self._calc_trend = calc_trend
+        self._calc_indicators = calc_indicators
         self._execute_sql = execute_sql
         self._validate_dated = validate_dated
         self._validate_reference = validate_reference
@@ -71,6 +74,7 @@ class SyncWritePipelineService:
         ticker_repository=None,
         index_repository=None,
         trend_repository=None,
+        indicator_repository=None,
     ) -> None:
         self._sync_amibroker_eod(from_last_day=days_diff, connection=connection)
         self._validate_dated(
@@ -152,3 +156,20 @@ class SyncWritePipelineService:
             optional_null_rate_cols=["MA20", "MA50", "MA100", "MA200", "MA20_W", "MA50_W", "MA20_M", "MA50_M"],
             raise_on_fail=True,
         )
+
+        indicator_summary = self._calc_indicators(
+            from_last_day=days_diff,
+            connection=connection,
+            repository=indicator_repository,
+        )
+        if int(indicator_summary.get("records_upserted", 0)) > 0:
+            self._validate_dated(
+                connection=connection,
+                table_name='"CherryMon"."main"."cal_indicator_values"',
+                pipeline_name="Technical Indicator Engine",
+                date_col="Date",
+                symbol_col="Ticker",
+                key_cols=["Ticker", "Date", "ConfigId", "ComponentCode"],
+                required_cols=["Ticker", "Date", "ConfigId", "ComponentCode", "Value"],
+                raise_on_fail=True,
+            )
