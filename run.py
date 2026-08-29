@@ -87,6 +87,14 @@ def _run_all_steps(
                 repository=uow.trends,
             ),
         ),
+        (
+            "Refresh Technical Indicators",
+            lambda: write_pipeline._calc_indicators(
+                from_last_day=days_diff,
+                connection=connection,
+                repository=uow.indicators,
+            ),
+        ),
     )
 
     for index, (title, step) in enumerate(steps, start=1):
@@ -108,7 +116,7 @@ def main():
     print(f"CherryStock Run All | from_last_day={days_diff}")
 
     # Tương đương nút Run All trong NiceGUI_chart.py:
-    # 7 step tuần tự, dùng chung một DuckDB UnitOfWork/transaction.
+    # 8 step tuần tự, dùng chung một DuckDB UnitOfWork/transaction.
     with DuckDBUnitOfWork(connection_factory) as uow:
         connection = uow.connection
         if connection is None:
