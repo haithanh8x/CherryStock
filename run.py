@@ -10,45 +10,132 @@ from src.cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiB
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
 
+
+def _resolve_days_diff(default_days: int = 15) -> int:
+    """Resolve số ngày cần cập nhật từ checkpoint hiện tại."""
+    days_diff_raw = get_last_point()
+    if days_diff_raw is None:
+        return default_days
+    if hasattr(days_diff_raw, "days"):
+        return int(days_diff_raw.days)
+    return int(days_diff_raw)
+
+
+def _run_all_steps(
+    *,
+    write_pipeline: SyncWritePipelineService,
+    amibroker_adapter: WindowsAmiBrokerAdapter,
+    connection,
+    days_diff: int,
+    uow: DuckDBUnitOfWork,
+) -> None:
+    """
+    Chạy toàn bộ write pipeline theo đúng thứ tự Run All trong NiceGUI_chart.py.
+
+    Tất cả step dùng chung một writer connection/UoW để đảm bảo cùng transaction.
+    Nếu một step lỗi, context manager của DuckDBUnitOfWork sẽ rollback toàn bộ.
+    """
+    steps = (
+        (
+            "Đồng bộ AmiBroker EOD",
+            lambda: write_pipeline._sync_amibroker_eod(
+                from_last_day=days_diff,
+                connection=connection,
+            ),
+        ),
+        (
+            "Đồng bộ Yahoo Finance EOD",
+            lambda: write_pipeline._sync_yahoo_eod(
+                from_last_day=days_diff,
+                connection=connection,
+            ),
+        ),
+        (
+            "Cập nhật Fundamental Analysis",
+            lambda: write_pipeline._upsert_fa(
+                amibroker=amibroker_adapter,
+                connection=connection,
+            ),
+        ),
+        (
+            "Cập nhật danh sách Ticker",
+            lambda: write_pipeline._upsert_tickers(
+                connection=connection,
+                repository=uow.tickers,
+            ),
+        ),
+        (
+            "Cập nhật ngày nghỉ",
+            lambda: write_pipeline._execute_sql(
+                con=connection,
+                sql_file_path=str(write_pipeline._sql_dir / "updateHoliday.sql"),
+                sql_description="Update Holiday Table",
+            ),
+        ),
+        (
+            "Tính VNINDEX_NOT_VIN",
+            lambda: write_pipeline._calc_index(
+                connection=connection,
+                repository=uow.indexes,
+            ),
+        ),
+        (
+            "Tính Moving Average / Trend",
+            lambda: write_pipeline._calc_trend(
+                from_last_day=days_diff,
+                connection=connection,
+                repository=uow.trends,
+            ),
+        ),
+    )
+
+    for index, (title, step) in enumerate(steps, start=1):
+        print(f"[{index}/{len(steps)}] ▶ {title}")
+        step()
+        print(f"[{index}/{len(steps)}] ✓ {title}")
+
+
 # --- HÀM MAIN ---
 @timeit
 def main():
-        amibroker_adapter = WindowsAmiBrokerAdapter(database_path=settings.amibroker_database_path)
-        write_pipeline = SyncWritePipelineService()
-        connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
-        days_diff_raw = get_last_point()   # Cộng thêm 1 ngày để đồng bộ từ ngày tiếp theo sau lần cập nhật cuối cùng
-        days_diff = 15
-        if days_diff_raw is not None:
-        # Nếu kết quả là đối tượng Timedelta của Pandas, dùng thuộc tính .days để lấy số ngày
-                if hasattr(days_diff_raw, 'days'):
-                        days_diff = int(days_diff_raw.days)
-                else:
-                        # Nếu đã là dạng số hoặc chuỗi số, ép trực tiếp về int
-                        days_diff = int(days_diff_raw)
+    amibroker_adapter = WindowsAmiBrokerAdapter(
+        database_path=settings.amibroker_database_path
+    )
+    write_pipeline = SyncWritePipelineService()
+    connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
+    days_diff = _resolve_days_diff()
 
+    print(f"CherryStock Run All | from_last_day={days_diff}")
 
-        # ---------------------------------------------------------------------------------
-        # syncAmibroker_Intraday(conn, from_last_day=0)
-        with DuckDBUnitOfWork(connection_factory) as uow:
-                connection = uow.connection
-                if connection is None:
-                        raise RuntimeError("UnitOfWork did not initialize a writer connection.")
+    # Tương đương nút Run All trong NiceGUI_chart.py:
+    # 7 step tuần tự, dùng chung một DuckDB UnitOfWork/transaction.
+    with DuckDBUnitOfWork(connection_factory) as uow:
+        connection = uow.connection
+        if connection is None:
+            raise RuntimeError("UnitOfWork did not initialize a writer connection.")
 
-                write_pipeline.run(
-                        days_diff=days_diff,
-                        amibroker=amibroker_adapter,
-                        connection=connection,
-                        ticker_repository=uow.tickers,
-                        index_repository=uow.indexes,
-                        trend_repository=uow.trends,
-                        indicator_repository=uow.indicators,
-                )
+        _run_all_steps(
+            write_pipeline=write_pipeline,
+            amibroker_adapter=amibroker_adapter,
+            connection=connection,
+            days_diff=days_diff,
+            uow=uow,
+        )
 
-        # sync DuckDB metadata
-        DuckLib.exportDuckDB_metadata()
-        # --------------------------------------------------------------------------------- 
+    # Chỉ export metadata sau khi toàn bộ transaction đã commit thành công.
+    DuckLib.exportDuckDB_metadata()
+    print("✓ Run All hoàn tất. DuckDB metadata đã được export.")
+
 
 if __name__ == "__main__":
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True)
-    main() # thực thi hàm main() để chạy toàn bộ quy trình đồng bộ dữ liệu từ Amibroker vào DuckDB/MotherDuckDB
+    sys.stdout = io.TextIOWrapper(
+        sys.stdout.buffer,
+        encoding="utf-8",
+        line_buffering=True,
+    )
+    sys.stderr = io.TextIOWrapper(
+        sys.stderr.buffer,
+        encoding="utf-8",
+        line_buffering=True,
+    )
+    main()
