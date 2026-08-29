@@ -1,11 +1,11 @@
 # DuckDB Metadata
 
-- Generated at: 2026-08-08T11:43:50.120192+00:00
-- Database file: `C:\Users\ADMIN\OneDrive - ollyo\Datafile\CherryMon.duckdb`
+- Generated at: 2026-08-29T09:58:11.254066+00:00
+- Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\.github\agents\DB_Metadata.md`
 
 - Schema count: 1
-- Table/view count: 28
+- Table/view count: 34
 
 ## Schemas
 
@@ -15,7 +15,11 @@
 
 - `main`.`cal_Indexes` (BASE TABLE)
 - `main`.`cal_Trends` (BASE TABLE)
+- `main`.`cal_indicator_values` (BASE TABLE)
 - `main`.`dimCalendar` (BASE TABLE)
+- `main`.`dim_indicator` (BASE TABLE)
+- `main`.`dim_indicator_component` (BASE TABLE)
+- `main`.`dim_indicator_config` (BASE TABLE)
 - `main`.`raw_active_eod` (BASE TABLE)
 - `main`.`raw_bctc_cdkt` (BASE TABLE)
 - `main`.`raw_bctc_cstc` (BASE TABLE)
@@ -38,6 +42,8 @@
 - `main`.`raw_tblBCTC` (BASE TABLE)
 - `main`.`raw_warrant_eod` (BASE TABLE)
 - `main`.`raw_warrant_intraday` (BASE TABLE)
+- `main`.`sys_data_quality_audit` (BASE TABLE)
+- `main`.`t` (BASE TABLE)
 - `main`.`vw_ACCCNNTD` (VIEW)
 - `main`.`vw_ACCCNNTD_Price` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
@@ -62,11 +68,22 @@
 | `MA50` | `DOUBLE` | `YES` | `` |
 | `MA100` | `DOUBLE` | `YES` | `` |
 | `MA200` | `DOUBLE` | `YES` | `` |
+| `Close` | `DOUBLE` | `YES` | `` |
 | `MA20_W` | `DOUBLE` | `YES` | `` |
 | `MA50_W` | `DOUBLE` | `YES` | `` |
 | `MA20_M` | `DOUBLE` | `YES` | `` |
 | `MA50_M` | `DOUBLE` | `YES` | `` |
-| `Close` | `DOUBLE` | `YES` | `` |
+
+### main.cal_indicator_values (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Date` | `DATE` | `NO` | `` |
+| `ConfigId` | `BIGINT` | `NO` | `` |
+| `ComponentCode` | `VARCHAR` | `NO` | `` |
+| `Value` | `DOUBLE` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.dimCalendar (BASE TABLE)
 
@@ -86,6 +103,49 @@
 | `QuarterYear` | `VARCHAR` | `YES` | `` |
 | `CalendarYear` | `BIGINT` | `YES` | `` |
 | `IsHoliday` | `VARCHAR` | `YES` | `` |
+
+### main.dim_indicator (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `IndicatorCode` | `VARCHAR` | `NO` | `` |
+| `IndicatorName` | `VARCHAR` | `NO` | `` |
+| `Category` | `VARCHAR` | `NO` | `` |
+| `Engine` | `VARCHAR` | `NO` | `` |
+| `FunctionName` | `VARCHAR` | `NO` | `` |
+| `RequiredInputs` | `JSON` | `NO` | `` |
+| `ParameterSchema` | `JSON` | `YES` | `` |
+| `Description` | `VARCHAR` | `YES` | `` |
+| `IsActive` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.dim_indicator_component (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `IndicatorCode` | `VARCHAR` | `NO` | `` |
+| `ComponentCode` | `VARCHAR` | `NO` | `` |
+| `ComponentName` | `VARCHAR` | `NO` | `` |
+| `OutputPrefix` | `VARCHAR` | `YES` | `` |
+| `SortOrder` | `INTEGER` | `YES` | `` |
+| `IsPrimary` | `BOOLEAN` | `NO` | `CAST('f' AS BOOLEAN)` |
+| `IsActive` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+
+### main.dim_indicator_config (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `NO` | `nextval('CherryMon.main.seq_indicator_config')` |
+| `ConfigCode` | `VARCHAR` | `NO` | `` |
+| `IndicatorCode` | `VARCHAR` | `NO` | `` |
+| `Timeframe` | `VARCHAR` | `NO` | `` |
+| `Parameters` | `JSON` | `NO` | `` |
+| `WarmupBars` | `INTEGER` | `YES` | `` |
+| `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `Description` | `VARCHAR` | `YES` | `` |
+| `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.raw_active_eod (BASE TABLE)
 
@@ -351,7 +411,7 @@
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
 | `Ticker` | `VARCHAR` | `NO` | `` |
-| `Date/Time` | `VARCHAR` | `YES` | `` |
+| `Date` | `DATE` | `YES` | `` |
 | `Open` | `DOUBLE` | `YES` | `` |
 | `Close` | `DOUBLE` | `YES` | `` |
 | `Full Name` | `VARCHAR` | `YES` | `` |
@@ -489,6 +549,39 @@
 | `Close` | `DOUBLE` | `YES` | `` |
 | `Volume` | `BIGINT` | `YES` | `` |
 | `OpenInt` | `DOUBLE` | `YES` | `` |
+
+### main.sys_data_quality_audit (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `validation_id` | `VARCHAR` | `YES` | `` |
+| `checked_at` | `TIMESTAMP` | `YES` | `` |
+| `pipeline_name` | `VARCHAR` | `YES` | `` |
+| `table_name` | `VARCHAR` | `YES` | `` |
+| `expected_date` | `DATE` | `YES` | `` |
+| `max_date` | `DATE` | `YES` | `` |
+| `status` | `VARCHAR` | `YES` | `` |
+| `row_count_current` | `BIGINT` | `YES` | `` |
+| `row_count_previous` | `BIGINT` | `YES` | `` |
+| `row_count_change_pct` | `DOUBLE` | `YES` | `` |
+| `symbol_count_current` | `BIGINT` | `YES` | `` |
+| `symbol_count_previous` | `BIGINT` | `YES` | `` |
+| `symbol_count_change_pct` | `DOUBLE` | `YES` | `` |
+| `missing_symbol_count` | `BIGINT` | `YES` | `` |
+| `new_symbol_count` | `BIGINT` | `YES` | `` |
+| `duplicate_count` | `BIGINT` | `YES` | `` |
+| `row_count_zscore` | `DOUBLE` | `YES` | `` |
+| `symbol_count_zscore` | `DOUBLE` | `YES` | `` |
+| `metrics` | `JSON` | `YES` | `` |
+| `errors` | `JSON` | `YES` | `` |
+| `warnings` | `JSON` | `YES` | `` |
+
+### main.t (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `id` | `INTEGER` | `NO` | `` |
+| `value` | `VARCHAR` | `YES` | `` |
 
 ### main.vw_ACCCNNTD (VIEW)
 
