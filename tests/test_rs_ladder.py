@@ -26,7 +26,10 @@ def candidate(
         source_code=code,
         timeframe=timeframe,
         indicator_code="MA",
-        config_id=abs(hash((code, timeframe, length))) % 100000,
+        config_id=sum(
+            (index + 1) * ord(char)
+            for index, char in enumerate(f"{code}:{timeframe}:{length}")
+        ),
         config_code=code,
         component_code="VALUE",
         source_date=AS_OF,
