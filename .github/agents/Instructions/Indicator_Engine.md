@@ -943,6 +943,67 @@ Ví dụ MA100 khi MA đã active:
 
 Không recompute MA20/MA50 nếu không cần.
 
+## 9.4 DEACTIVATE / DELETE Indicator hoặc Config Family
+
+Trước khi thao tác, Agent phải phân biệt rõ hai intent:
+
+```text
+DEACTIVATE
+    -> mặc định an toàn
+    -> set dim_indicator_config.IsEnabled = FALSE
+    -> giữ metadata và historical values để rollback/audit
+
+PERMANENT_DELETE
+    -> chỉ thực hiện khi user yêu cầu xoá vĩnh viễn sau impact report
+    -> xóa đúng rows thuộc ConfigId được yêu cầu, không ảnh hưởng indicator khác
+```
+
+Discovery bắt buộc qua `cherrymon-duckdb` MCP trước write:
+
+```sql
+SELECT
+    cfg.ConfigId,
+    cfg.ConfigCode,
+    cfg.IndicatorCode,
+    cfg.Timeframe,
+    cfg.Parameters,
+    cfg.IsEnabled,
+    COUNT(values.Ticker) AS FactRows
+FROM "CherryMon"."main"."dim_indicator_config" AS cfg
+LEFT JOIN "CherryMon"."main"."cal_indicator_values" AS values
+    ON values.ConfigId = cfg.ConfigId
+WHERE cfg.IndicatorCode = '<INDICATOR_CODE>'
+GROUP BY
+    cfg.ConfigId,
+    cfg.ConfigCode,
+    cfg.IndicatorCode,
+    cfg.Timeframe,
+    cfg.Parameters,
+    cfg.IsEnabled
+ORDER BY cfg.ConfigId;
+```
+
+Rules:
+
+```text
+- Không disable component nếu vẫn còn enabled config của indicator sử dụng component đó.
+- Không delete dim_indicator khi còn config hoặc component liên quan.
+- Không truncate cal_indicator_values.
+- Không delete fact rows của ConfigId khác.
+- Không đổi semantics của ConfigCode đã có history; dùng config family mới và deactivate family cũ khi cần.
+- Permanent delete phải chạy trong một transaction MCP: fact rows -> configs -> unused components -> definition (chỉ khi không còn dependent rows).
+- Nếu MCP không hỗ trợ transaction, STOP trước bất kỳ permanent delete multi-step nào.
+```
+
+Post-operation validation:
+
+```text
+[ ] ConfigId bị tác động không còn active trong vw_Indicator_config.
+[ ] Khi permanent delete, không còn fact rows cho đúng ConfigId bị xóa.
+[ ] ConfigId không liên quan vẫn giữ nguyên fact-row count.
+[ ] D/W/M completeness của các family còn active vẫn PASS.
+```
+
 ---
 
 # 10. Configuration SSOT — `vw_Indicator_config`
