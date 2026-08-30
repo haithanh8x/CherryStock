@@ -1975,7 +1975,8 @@ def rs_tab_content() -> None:
     def clear_output(message: str) -> None:
         for label in metric_values.values():
             label.set_text("—")
-        ladder_chart.options = empty_level_ladder_chart_options(message)
+        ladder_chart.options.clear()
+        ladder_chart.options.update(empty_level_ladder_chart_options(message))
         ladder_chart.update()
         level_grid.options["rowData"] = []
         level_grid.update()
@@ -2036,14 +2037,17 @@ def rs_tab_content() -> None:
             else "—"
         )
 
-        ladder_chart.options = build_level_ladder_chart_options(
-            result,
-            support_color=THEME["positive"],
-            resistance_color=THEME["negative"],
-            current_color=THEME["warning"],
-            text_color=THEME["text"],
-            muted_color=THEME["muted"],
-            grid_color=THEME["border"],
+        ladder_chart.options.clear()
+        ladder_chart.options.update(
+            build_level_ladder_chart_options(
+                result,
+                support_color=THEME["positive"],
+                resistance_color=THEME["negative"],
+                current_color=THEME["warning"],
+                text_color=THEME["text"],
+                muted_color=THEME["muted"],
+                grid_color=THEME["border"],
+            )
         )
         ladder_chart.update()
 

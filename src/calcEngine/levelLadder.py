@@ -172,12 +172,12 @@ def _require_view_columns(connection: Any, view_name: str, required: set[str]) -
         """
         SELECT column_name
         FROM information_schema.columns
-        WHERE table_catalog = 'CherryMon'
-          AND table_schema = 'main'
-          AND table_name = ?
+        WHERE lower(table_catalog) = lower(?)
+          AND lower(table_schema) = lower(?)
+          AND lower(table_name) = lower(?)
         ORDER BY ordinal_position
         """,
-        [view_name],
+        ["CherryMon", "main", view_name],
     ).fetchall()
     available = {str(row[0]) for row in rows}
     missing = sorted(required - available)

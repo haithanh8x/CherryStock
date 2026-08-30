@@ -23,8 +23,10 @@ from pathlib import Path
 
 # Allow direct script execution (python path/to/duckdb_mcp.py)
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
+_SRC_ROOT = Path(__file__).resolve().parents[1]
+for _path in (_PROJECT_ROOT, _SRC_ROOT):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 from mcp.server.mcpserver import MCPServer
 
