@@ -130,12 +130,12 @@ def exportDuckDB_metadata(
     db_path: str | os.PathLike[str] | None = None,
     output_path: str | os.PathLike[str] | None = None,
 ) -> Path:
-    """Export DuckDB schema metadata to a Markdown file for the configured database."""
+    """Export DuckDB schema metadata to ``docs/reference/DB_Metadata.md`` by default."""
     source_db = Path(db_path).expanduser() if db_path else settings.local_db_path.expanduser()
     target_path = (
         Path(output_path).expanduser()
         if output_path
-        else (settings.agent_path / "DB_Metadata.md").expanduser()
+        else (settings.project_root / "docs" / "reference" / "DB_Metadata.md").expanduser()
     )
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
