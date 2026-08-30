@@ -19,8 +19,8 @@
 				"alias": "CherryMon",
 				"type": "file",
 				"path": "../../OneDrive/Working/Datafile/CherryMon.duckdb",
-				"readOnly": false,
-				"attached": false
+				"readOnly": true,
+				"attached": true
 			}
 		],
 		"duckdb.defaultDatabase": "CherryMon",
