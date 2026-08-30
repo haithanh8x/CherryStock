@@ -6,11 +6,11 @@ Database access is read-only; calculation and rendering remain separate.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
-from datetime import date
 import json
 import logging
 import math
+from dataclasses import dataclass, field, replace
+from datetime import date
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
@@ -160,7 +160,7 @@ def _parse_parameters(value: Any) -> dict[str, Any]:
         return {}
     try:
         parsed = json.loads(str(value))
-    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+    except (TypeError, ValueError) as exc:
         raise ValueError(f"Invalid indicator Parameters JSON: {value!r}") from exc
     if not isinstance(parsed, dict):
         raise ValueError("Indicator Parameters must be a JSON object")
@@ -172,7 +172,8 @@ def _require_view_columns(connection: Any, view_name: str, required: set[str]) -
         """
         SELECT column_name
         FROM information_schema.columns
-        WHERE table_schema = 'main'
+        WHERE table_catalog = 'CherryMon'
+          AND table_schema = 'main'
           AND table_name = ?
         ORDER BY ordinal_position
         """,
