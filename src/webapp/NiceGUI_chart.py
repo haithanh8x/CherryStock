@@ -2057,7 +2057,6 @@ def rs_tab_content() -> None:
         )
 
     refresh_button.on("click", refresh_rs_ladder)
-    refresh_rs_ladder()
 
 # =============================================================================
 # Page layout
