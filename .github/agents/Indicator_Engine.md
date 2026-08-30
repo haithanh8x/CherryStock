@@ -1,197 +1,1135 @@
-# Indicator Engine
+# Indicator Engine Agent
 
-> Source: Confluence page `Indicator Engine` (page ID `43057153`), synchronized on 2026-08-30.
+> **Canonical Agent Instruction** — File này đã merge operational onboarding contract từ `.github/Indicator_Engine.md` với architecture/design reference hiện có của `.github/agents/Indicator_Engine.md`.
+>
+> Khi có khác biệt giữa phần onboarding operational contract và phần architecture reference, Agent phải ưu tiên **Mandatory Three-Phase State Machine** và các **Agent Safety Rules** trong file này.
+>
+> Agent phải thực hiện đúng 3 phase theo thứ tự: **PHASE 1 — Config Metadata → PHASE 2 — Historical Initialization / Backfill → PHASE 3 — Validate `cal_indicator_values`**. Không được bỏ qua phase và không được coi indicator là production-ready khi phase trước chưa PASS.
 
-Với CherryStock, mình khuyên **không nhét toàn bộ indicator vào một table wide duy nhất**, nhưng cũng **không tách mỗi indicator thành một table riêng**. Tối ưu nhất là mô hình **hybrid: một table fact dạng long để lưu indicator value + một số table wide/materialized cho nhóm core dùng thường xuyên**.
+---
 
-Hiện tại `cal_Trends` đang theo kiểu wide: `Ticker`, `Date`, `MA20`, `MA50`, `MA100`, `MA200`, `Close`. Cách này ổn khi số indicator cố định và ít, nhưng về lâu dài cứ thêm RSI, MACD, ATR, Bollinger, ADX, MFI, RS... là phải `ALTER TABLE ADD COLUMN`, rồi xử lý backfill historical data.
-
-## 1. Kiến trúc lưu trữ
+# 1. Core Architecture
 
 ```text
+raw_stock_eod
+      ↓
+dim_indicator
+      ↓
+dim_indicator_component
+      ↓
+dim_indicator_config (D/W/M)
+      ↓
+vw_Indicator_config          ← Configuration SSOT
+      ↓
+refresh_technical_indicators()
+      ↓
+cal_indicator_values         ← internal persistence
+      ↓
+vw_Ticker_indicators         ← Calculated Value SSOT
+      ↓
+CherryMon / Screener / Score / Chart / API / ML
+```
+
+Vai trò:
+
+```text
+dim_indicator
+    Master definition: indicator là gì, library function nào, cần input nào.
+
+dim_indicator_component
+    Output contract: indicator trả ra component nào.
+
+dim_indicator_config
+    Executable contract: Parameters, Timeframe, WarmupBars, IsEnabled.
+
+vw_Indicator_config
+    Single Source of Truth cho metadata + executable config + component mapping.
+
 cal_indicator_values
------------------------------
-Ticker
-Date
+    Calculated long-format persistence nội bộ của Indicator Engine.
+
+vw_Ticker_indicators
+    Single Source of Truth / public read contract cho calculated indicator values.
+```
+
+Primary key của `cal_indicator_values`:
+
+```text
+Ticker + Date + ConfigId + ComponentCode
+```
+
+Nguyên tắc kiến trúc bắt buộc:
+
+```text
+- Không ALTER fact table khi thêm indicator.
+- Không tạo table riêng cho từng indicator.
+- Không hard-code indicator mới vào run.py.
+- Không truncate cal_indicator_values khi onboarding.
+- Không recompute historical của indicator khác nếu targeted backfill theo ConfigId có thể đáp ứng.
+- Downstream consumer không đọc trực tiếp cal_indicator_values nếu vw_Ticker_indicators đáp ứng use case.
+```
+
+---
+
+# 2. Agent Scope và Trigger
+
+Indicator Engine Agent xử lý các scenario:
+
+```text
+A. NEW
+   IndicatorCode chưa tồn tại trong dim_indicator.
+
+B. ACTIVATE
+   Indicator đã tồn tại nhưng IsActive=FALSE hoặc configs IsEnabled=FALSE.
+
+C. NEW_PARAMETER_FAMILY
+   Indicator đang active, cần thêm Parameters mới.
+   Ví dụ MA đã có MA20/MA50, cần thêm MA100.
+
+D. REPAIR
+   Metadata tồn tại nhưng thiếu component, thiếu D/W/M, thiếu backfill hoặc validation chưa PASS.
+```
+
+Agent phải xác định scenario trước khi ghi dữ liệu.
+
+Không được insert duplicate `dim_indicator` nếu `IndicatorCode` đã tồn tại.
+
+---
+
+# 3. Mandatory Three-Phase State Machine
+
+```text
+REQUEST
+   ↓
+DISCOVERY / PRE-CHECK
+   ↓
+PHASE 1 — CONFIG METADATA
+   ↓ PASS only
+PHASE 2 — HISTORICAL INITIALIZATION / BACKFILL
+   ↓ PASS only
+PHASE 3 — VALIDATE cal_indicator_values
+   ↓ PASS only
+PRODUCTION_READY
+   ↓
+run.py incremental refresh
+```
+
+State rules:
+
+```text
+PHASE_1_FAILED
+    -> STOP
+    -> không chạy backfill
+
+PHASE_2_FAILED
+    -> STOP
+    -> không production active
+
+PHASE_3_FAILED
+    -> STOP
+    -> trạng thái NOT_READY
+    -> không báo onboarding thành công
+
+PHASE_1_PASS + PHASE_2_PASS + PHASE_3_PASS
+    -> PRODUCTION_READY
+```
+
+Agent không được tự động bỏ qua lỗi để tiếp tục phase sau.
+
+---
+
+# 4. Discovery / Pre-Check trước PHASE 1
+
+Trước khi thay đổi metadata, Agent phải đọc trạng thái hiện tại.
+
+## 4.1 Master definition
+
+```sql
+SELECT
+    IndicatorCode,
+    IndicatorName,
+    Category,
+    Engine,
+    FunctionName,
+    RequiredInputs,
+    ParameterSchema,
+    IsActive
+FROM "CherryMon"."main"."dim_indicator"
+WHERE IndicatorCode = '<INDICATOR_CODE>';
+```
+
+## 4.2 Components
+
+```sql
+SELECT
+    IndicatorCode,
+    ComponentCode,
+    ComponentName,
+    OutputPrefix,
+    SortOrder,
+    IsPrimary,
+    IsActive
+FROM "CherryMon"."main"."dim_indicator_component"
+WHERE IndicatorCode = '<INDICATOR_CODE>'
+ORDER BY SortOrder, ComponentCode;
+```
+
+## 4.3 Configs
+
+```sql
+SELECT
+    ConfigId,
+    ConfigCode,
+    IndicatorCode,
+    Timeframe,
+    Parameters,
+    WarmupBars,
+    IsEnabled
+FROM "CherryMon"."main"."dim_indicator_config"
+WHERE IndicatorCode = '<INDICATOR_CODE>'
+ORDER BY Parameters, Timeframe;
+```
+
+## 4.4 Verify library function
+
+Phải xác nhận:
+
+```text
+Engine
+FunctionName
+RequiredInputs
+Parameters
+Return type
+Output columns
+Warmup requirement
+```
+
+Primary engine:
+
+```text
+pandas-ta-classic
+```
+
+`FunctionName` phải resolve được qua:
+
+```text
+src/calcEngine/indicatorRegistry.py
+```
+
+Source argument mapping:
+
+```text
+Open   -> open_
+High   -> high
+Low    -> low
+Close  -> close
+Volume -> volume
+```
+
+Với multi-output indicator, phải xác định mapping library output prefix → CherryStock `ComponentCode` trước khi enable config.
+
+Nếu library function không resolve được, STOP trước khi ghi metadata.
+
+---
+
+# 5. PHASE 1 — Config Metadata
+
+## 5.1 Objective
+
+Tạo executable metadata contract hoàn chỉnh:
+
+```text
+dim_indicator
+    + dim_indicator_component
+    + dim_indicator_config D/W/M
+```
+
+PHASE 1 chỉ PASS khi ba lớp metadata nhất quán và engine có thể validate được.
+
+---
+
+## 5.2 Upsert `dim_indicator`
+
+Mỗi `IndicatorCode` có đúng một master definition.
+
+Required fields:
+
+```text
 IndicatorCode
-Timeframe
-Value
-Version
-CalculatedAt
+IndicatorName
+Category
+Engine
+FunctionName
+RequiredInputs
+ParameterSchema
+IsActive
+```
+
+Ví dụ ATR:
+
+```sql
+INSERT INTO "CherryMon"."main"."dim_indicator" (
+    IndicatorCode,
+    IndicatorName,
+    Category,
+    Engine,
+    FunctionName,
+    RequiredInputs,
+    ParameterSchema,
+    IsActive
+)
+VALUES (
+    'ATR',
+    'Average True Range',
+    'VOLATILITY',
+    'PANDAS_TA_CLASSIC',
+    'atr',
+    '["High","Low","Close"]'::JSON,
+    '{"length":{"type":"integer","min":2,"required":true}}'::JSON,
+    TRUE
+)
+ON CONFLICT (IndicatorCode) DO UPDATE SET
+    IndicatorName = EXCLUDED.IndicatorName,
+    Category = EXCLUDED.Category,
+    Engine = EXCLUDED.Engine,
+    FunctionName = EXCLUDED.FunctionName,
+    RequiredInputs = EXCLUDED.RequiredInputs,
+    ParameterSchema = EXCLUDED.ParameterSchema,
+    IsActive = EXCLUDED.IsActive,
+    UpdatedAt = CURRENT_TIMESTAMP;
+```
+
+Rules:
+
+```text
+- RequiredInputs là runtime contract và phải khớp function signature.
+- ParameterSchema phải validate được Parameters của config.
+- Không dùng library defaults để che config thiếu/sai.
+- Nếu onboarding từng bước, có thể giữ IsActive=FALSE cho đến khi metadata hoàn chỉnh.
+```
+
+---
+
+## 5.3 Upsert `dim_indicator_component`
+
+Mọi indicator phải có ít nhất một active component.
+
+Single-output contract:
+
+```text
+ComponentCode = VALUE
+OutputPrefix  = NULL
+IsPrimary     = TRUE
+IsActive      = TRUE
+```
+
+Ví dụ ATR:
+
+```sql
+INSERT INTO "CherryMon"."main"."dim_indicator_component" (
+    IndicatorCode,
+    ComponentCode,
+    ComponentName,
+    OutputPrefix,
+    SortOrder,
+    IsPrimary,
+    IsActive
+)
+VALUES (
+    'ATR',
+    'VALUE',
+    'Average True Range',
+    NULL,
+    1,
+    TRUE,
+    TRUE
+)
+ON CONFLICT (IndicatorCode, ComponentCode) DO UPDATE SET
+    ComponentName = EXCLUDED.ComponentName,
+    OutputPrefix = EXCLUDED.OutputPrefix,
+    SortOrder = EXCLUDED.SortOrder,
+    IsPrimary = EXCLUDED.IsPrimary,
+    IsActive = EXCLUDED.IsActive;
+```
+
+Multi-output examples:
+
+```text
+BB
+├── LOWER   -> BBL
+├── MIDDLE  -> BBM
+├── UPPER   -> BBU
+├── WIDTH   -> BBB
+└── PERCENT -> BBP
+
+MACD
+├── LINE   -> MACD
+├── SIGNAL -> MACDs
+└── HIST   -> MACDh
+
+ADX
+├── ADX      -> ADX
+├── PLUS_DI  -> DMP
+└── MINUS_DI -> DMN
+```
+
+Agent không được enable executable configs khi component mapping chưa đầy đủ.
+
+---
+
+## 5.4 Upsert `dim_indicator_config` mặc định D/W/M
+
+Một `IndicatorCode + canonical Parameters JSON` là một **config family**.
+
+Mặc định production family phải đủ:
+
+```text
+D = Daily
+W = Weekly
+M = Monthly
+```
+
+Ví dụ ATR14:
+
+```sql
+INSERT INTO "CherryMon"."main"."dim_indicator_config" (
+    ConfigCode,
+    IndicatorCode,
+    Timeframe,
+    Parameters,
+    WarmupBars,
+    IsEnabled
+)
+VALUES
+    ('ATR14_D', 'ATR', 'D', '{"length":14}'::JSON, 14, TRUE),
+    ('ATR14_W', 'ATR', 'W', '{"length":14}'::JSON, 14, TRUE),
+    ('ATR14_M', 'ATR', 'M', '{"length":14}'::JSON, 14, TRUE)
+ON CONFLICT (ConfigCode) DO UPDATE SET
+    IndicatorCode = EXCLUDED.IndicatorCode,
+    Timeframe = EXCLUDED.Timeframe,
+    Parameters = EXCLUDED.Parameters,
+    WarmupBars = EXCLUDED.WarmupBars,
+    IsEnabled = EXCLUDED.IsEnabled,
+    UpdatedAt = CURRENT_TIMESTAMP;
+```
+
+Ví dụ nhiều parameter families:
+
+```text
+MA20_D / MA20_W / MA20_M
+MA50_D / MA50_W / MA50_M
+MA100_D / MA100_W / MA100_M
+MA200_D / MA200_W / MA200_M
+```
+
+Completeness được kiểm tra theo `IndicatorCode + Parameters`, không chỉ IndicatorCode.
+
+---
+
+## 5.5 WarmupBars contract
+
+```text
+MA20      >= 20
+MA200     >= 200
+RSI14     >= 14
+ATR14     >= 14
+MACD      recommended >= slow + signal
+```
+
+Agent phải chọn WarmupBars đủ để indicator tạo output ổn định sau checkpoint.
+
+Không dùng `WarmupBars=0` nếu indicator có lookback requirement.
+
+---
+
+## 5.6 Metadata validation
+
+Checklist:
+
+```text
+[ ] đúng 1 dim_indicator definition
+[ ] FunctionName resolve được
+[ ] RequiredInputs đúng function signature
+[ ] ParameterSchema validate được Parameters
+[ ] IsActive=TRUE trước production calculation
+[ ] có >= 1 active component
+[ ] component mapping đúng library output
+[ ] mỗi parameter family đủ D/W/M
+[ ] WarmupBars hợp lý
+[ ] configs cần onboarding có IsEnabled=TRUE
+```
+
+### PHASE 1 PASS criteria
+
+```text
+DefinitionValid = TRUE
+ComponentsValid = TRUE
+ConfigFamiliesComplete = TRUE
+ParametersValid = TRUE
+WarmupValid = TRUE
+LibraryFunctionResolvable = TRUE
+```
+
+Nếu bất kỳ điều kiện nào FALSE, PHASE 1 = FAIL và Agent phải STOP.
+
+### PHASE 1 required output
+
+```text
+IndicatorCode
+Scenario: NEW | ACTIVATE | NEW_PARAMETER_FAMILY | REPAIR
+FunctionName
+RequiredInputs
+Components configured
+Config families configured
+ConfigIds D/W/M
+WarmupBars
+PHASE_1_STATUS: PASS | FAIL
+```
+
+---
+
+# 6. PHASE 2 — Historical Initialization / Backfill
+
+## 6.1 Objective
+
+Tạo đủ historical calculated values cho indicator/config family vừa onboarding.
+
+Không được coi indicator là production-ready nếu chỉ có dữ liệu incremental gần hiện tại.
+
+---
+
+## 6.2 Targeted smoke test trước full backfill
+
+Khuyến nghị chạy một ticker có lịch sử đủ dài, ví dụ MWG:
+
+```python
+refresh_technical_indicators(
+    config_ids=[<CONFIG_ID>],
+    tickers=["MWG"],
+    from_last_day=120,
+    connection=connection,
+    repository=repository,
+)
+```
+
+Smoke test xác nhận:
+
+```text
+- function chạy được;
+- input mapping đúng;
+- Parameters đúng;
+- component mapping đúng;
+- output không empty bất thường;
+- Value numeric.
+```
+
+Nếu smoke test fail, STOP và quay lại PHASE 1.
+
+---
+
+## 6.3 Historical full initialization
+
+Script chuẩn:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\init_refresh_technical_indicators.py
+```
+
+Script gọi:
+
+```python
+refresh_technical_indicators(
+    from_last_day=None,
+    tickers=None,
+    config_ids=None,
+    timeframes=None,
+    connection=connection,
+    repository=uow.indicators,
+)
+```
+
+Semantics:
+
+```text
+from_last_day=None -> full historical source
+tickers=None       -> toàn bộ active source tickers
+config_ids=None    -> toàn bộ enabled configs
+timeframes=None    -> D/W/M
+```
+
+Active source ticker contract:
+
+```text
+raw_lstTicker.status = 'Y'
+AND
+Ticker tồn tại trong raw_stock_eod
+```
+
+---
+
+## 6.4 Preferred targeted backfill cho family mới
+
+Khi chỉ onboarding một family mới, Agent phải ưu tiên targeted backfill:
+
+```python
+refresh_technical_indicators(
+    from_last_day=None,
+    tickers=None,
+    config_ids=[101, 102, 103],
+    connection=connection,
+    repository=uow.indicators,
+)
 ```
 
 Ví dụ:
 
 ```text
-MWG | 2026-08-24 | MA20  | D | 78.35
-MWG | 2026-08-24 | MA50  | D | 75.20
-MWG | 2026-08-24 | RSI14 | D | 63.40
-MWG | 2026-08-24 | ATR14 | D | 2.15
-MWG | 2026-08-24 | MA20  | W | 72.10
-MWG | 2026-08-24 | RSI14 | W | 59.20
+101 = ATR14_D
+102 = ATR14_W
+103 = ATR14_M
 ```
 
-Khi thêm `ADX14`, `MFI14`, `CMF20`, `BB_WIDTH20`, `RS_VNINDEX_60` thì **không cần alter schema**, chỉ insert thêm row.
-
-Nên có metadata `dim_indicator`, và giữ một số table wide/materialized như `cal_technical_core` cho query nhanh, dashboard hoặc model training.
+Expected scope:
 
 ```text
-raw_stock_eod
-      │
-      ▼
-vw_Ticker_indicators       ← SINGLE SOURCE OF TRUTH
-      │
-      ├── Trend
-      ├── Momentum
-      ├── Volatility
-      ├── Volume
-      ├── Structure
-      └── Relative Strength
-             │
-             ▼
-      cal_technical_core
-             │
-             ├── CherryMon
-             ├── Screener
-             ├── Technical Score
-             └── ML / Prediction
+ATR14_D/W/M -> backfill
+MA          -> untouched
+RSI         -> untouched
+BB          -> untouched
 ```
 
-Không nên tách thành `cal_MA`, `cal_RSI`, `cal_MACD`, `cal_ATR`, ... vì sẽ tạo quá nhiều table, join phức tạp và maintenance khó. Cũng không nên giữ một bảng wide 100+ columns vì mỗi lần thêm indicator lại phải thay schema và backfill.
+Agent không được chọn full-engine recompute nếu targeted ConfigIds đủ để hoàn thành onboarding, trừ khi có lý do kỹ thuật rõ ràng.
 
-Với DuckDB, cấu trúc mục tiêu:
+---
 
-1. `raw_stock_eod` — raw data.
-2. `dim_indicator` — metadata / definition.
-3. `vw_Ticker_indicators` — **Single Source of Truth** for all calculated technical indicators; replaces direct consumer access to `cal_indicator_values`.
-4. `cal_technical_core` — wide-format core features.
-5. `cal_technical_score` — TrendScore, MomentumScore, VolumeScore, VolatilityScore, StructureScore, RelativeStrengthScore, TechnicalScore.
-
-Trong long fact table, **không encode timeframe vào `IndicatorCode`**. Ví dụ `IndicatorCode = MA20`, `Timeframe = D`. Ở wide table thì `MA20_D`, `MA20_W`, `MA20_M`, `RSI14_D` là phù hợp.
-
-## 2. Indicator engine
-
-Sử dụng `pandas-ta-classic` làm engine chính để generate indicator value; TA-Lib có thể làm backend/đối chiếu cho các indicator phổ biến.
+## 6.5 Upsert / idempotency contract
 
 ```text
-dim_indicator
-        │
-        ▼
-dim_indicator_config
-        │ đọc IndicatorCode / Timeframe / Parameters
-        ▼
+resolve target range
+    ↓
+delete stale rows của đúng Ticker + ConfigId + target range
+    ↓
+insert calculated values
+    ↓
+ON CONFLICT (Ticker, Date, ConfigId, ComponentCode)
+DO UPDATE
+```
+
+Required behavior:
+
+```text
+- rerun không duplicate;
+- không truncate cal_indicator_values;
+- không delete data của ConfigId khác;
+- không làm mất historical của indicator khác;
+- Weekly/Monthly cleanup bắt đầu từ period boundary.
+```
+
+### PHASE 2 PASS criteria
+
+```text
+BackfillExecutionCompleted = TRUE
+RecordsUpserted > 0
+ExpectedConfigIdsProcessed = TRUE
+ExpectedTickerScopeProcessed = TRUE
+NoTransactionError = TRUE
+```
+
+Nếu `RecordsUpserted = 0`, phải investigate source availability, WarmupBars, Parameters và component mapping.
+
+### PHASE 2 required output
+
+```text
+Backfill mode: TARGETED | FULL_ENGINE
+ConfigIds processed
+Timeframes processed
+Tickers processed
+Source start
+Source max date
+Records upserted
+Transaction status
+PHASE_2_STATUS: PASS | FAIL
+```
+
+---
+
+# 7. PHASE 3 — Validate `cal_indicator_values`
+
+## 7.1 Objective
+
+Xác minh historical output vừa backfill đầy đủ, đúng cấu trúc, đúng coverage và không làm hỏng fact storage.
+
+PHASE 3 phải kiểm tra tối thiểu D/W/M coverage, component coverage, ticker coverage, zero-output configs, date coverage, NULL behavior, duplicate PK và sample values.
+
+---
+
+## 7.2 Config / component coverage
+
+```sql
+SELECT
+    c.IndicatorCode,
+    c.ConfigCode,
+    c.Timeframe,
+    v.ComponentCode,
+    COUNT(*) AS Records,
+    COUNT(DISTINCT v.Ticker) AS Tickers,
+    MIN(v.Date) AS MinDate,
+    MAX(v.Date) AS MaxDate,
+    SUM(CASE WHEN v.Value IS NULL THEN 1 ELSE 0 END) AS NullValues
+FROM "CherryMon"."main"."cal_indicator_values" v
+INNER JOIN "CherryMon"."main"."dim_indicator_config" c
+    ON c.ConfigId = v.ConfigId
+WHERE c.IndicatorCode = '<INDICATOR_CODE>'
+GROUP BY
+    c.IndicatorCode,
+    c.ConfigCode,
+    c.Timeframe,
+    v.ComponentCode
+ORDER BY c.ConfigCode, v.ComponentCode;
+```
+
+PASS expectation:
+
+```text
+- đủ D/W/M config family;
+- đủ expected ComponentCode;
+- Records > 0 cho expected configs;
+- MinDate/MaxDate hợp lý.
+```
+
+---
+
+## 7.3 Source ticker coverage
+
+```sql
+SELECT COUNT(DISTINCT eod.Ticker) AS ActiveSourceTickers
+FROM "CherryMon"."main"."raw_stock_eod" eod
+INNER JOIN "CherryMon"."main"."raw_lstTicker" ticker
+    ON ticker.Ticker = eod.Ticker
+WHERE ticker.status = 'Y';
+```
+
+```sql
+SELECT COUNT(DISTINCT v.Ticker) AS IndicatorTickers
+FROM "CherryMon"."main"."cal_indicator_values" v
+INNER JOIN "CherryMon"."main"."dim_indicator_config" c
+    ON c.ConfigId = v.ConfigId
+WHERE c.IndicatorCode = '<INDICATOR_CODE>';
+```
+
+Hai số không bắt buộc bằng tuyệt đối vì ticker mới có thể chưa đủ WarmupBars.
+
+Nếu source có hàng trăm ticker nhưng output chỉ có 1 ticker thì phải coi là FAIL/anomaly và investigate.
+
+---
+
+## 7.4 Enabled config không sinh output
+
+```sql
+SELECT
+    c.ConfigId,
+    c.ConfigCode,
+    c.Timeframe,
+    COUNT(v.Ticker) AS OutputRows
+FROM "CherryMon"."main"."dim_indicator_config" c
+LEFT JOIN "CherryMon"."main"."cal_indicator_values" v
+    ON v.ConfigId = c.ConfigId
+WHERE c.IndicatorCode = '<INDICATOR_CODE>'
+  AND c.IsEnabled = TRUE
+GROUP BY c.ConfigId, c.ConfigCode, c.Timeframe
+ORDER BY c.ConfigCode;
+```
+
+`OutputRows = 0` phải investigate:
+
+```text
+RequiredInputs
+Parameters
+WarmupBars
+library output
+component mapping
+source data availability
+```
+
+---
+
+## 7.5 Duplicate PK
+
+```sql
+SELECT
+    Ticker,
+    Date,
+    ConfigId,
+    ComponentCode,
+    COUNT(*) AS cnt
+FROM "CherryMon"."main"."cal_indicator_values"
+GROUP BY Ticker, Date, ConfigId, ComponentCode
+HAVING COUNT(*) > 1;
+```
+
+Mandatory PASS: `0 rows`.
+
+---
+
+## 7.6 Unexpected components
+
+```sql
+SELECT DISTINCT
+    c.IndicatorCode,
+    v.ComponentCode
+FROM "CherryMon"."main"."cal_indicator_values" v
+INNER JOIN "CherryMon"."main"."dim_indicator_config" c
+    ON c.ConfigId = v.ConfigId
+LEFT JOIN "CherryMon"."main"."dim_indicator_component" comp
+    ON comp.IndicatorCode = c.IndicatorCode
+   AND comp.ComponentCode = v.ComponentCode
+WHERE c.IndicatorCode = '<INDICATOR_CODE>'
+  AND comp.ComponentCode IS NULL;
+```
+
+Mandatory PASS: `0 rows`.
+
+---
+
+## 7.7 Sample values
+
+```sql
+SELECT
+    v.Ticker,
+    v.Date,
+    c.ConfigCode,
+    v.ComponentCode,
+    v.Value
+FROM "CherryMon"."main"."cal_indicator_values" v
+INNER JOIN "CherryMon"."main"."dim_indicator_config" c
+    ON c.ConfigId = v.ConfigId
+WHERE c.IndicatorCode = '<INDICATOR_CODE>'
+  AND v.Ticker = 'MWG'
+ORDER BY c.ConfigCode, v.Date DESC
+LIMIT 100;
+```
+
+Agent phải kiểm tra:
+
+```text
+- Value numeric;
+- không all NULL;
+- không all identical bất thường nếu indicator không có semantics như vậy;
+- component đúng metadata;
+- Date đúng timeframe semantics.
+```
+
+---
+
+## 7.8 PHASE 3 PASS criteria
+
+```text
+DWMConfigCoverage = PASS
+ComponentCoverage = PASS
+TickerCoverage = PASS hoặc explained acceptable gap
+ZeroOutputConfigCheck = PASS
+DateCoverage = PASS
+NullBehavior = PASS
+DuplicatePK = 0
+UnexpectedComponent = 0
+SampleValueCheck = PASS
+```
+
+### PHASE 3 required output
+
+```text
+IndicatorCode
+ConfigCode / Timeframe coverage
+Expected vs actual components
+Active source ticker count
+Indicator output ticker count
+Records by config
+MinDate / MaxDate
+NULL counts/rates
+Duplicate count
+Unexpected component count
+Zero-output config count
+Sample check result
+PHASE_3_STATUS: PASS | FAIL
+```
+
+---
+
+# 8. Production Activation Contract
+
+Indicator/config family chỉ `PRODUCTION_READY` khi:
+
+```text
+PHASE_1_STATUS = PASS
+AND
+PHASE_2_STATUS = PASS
+AND
+PHASE_3_STATUS = PASS
+```
+
+Equivalent conditions:
+
+```text
+dim_indicator.IsActive = TRUE
+AND
+>= 1 active dim_indicator_component
+AND
+config family D/W/M đầy đủ
+AND
+D/W/M IsEnabled = TRUE
+AND
+historical backfill hoàn tất
+AND
+cal_indicator_values validation PASS
+```
+
+Sau đó `run.py` tự thực hiện incremental refresh:
+
+```python
+refresh_technical_indicators(
+    from_last_day=days_diff,
+    connection=connection,
+    repository=uow.indicators,
+)
+```
+
+Không thêm hard-code indicator vào `run.py`.
+
+---
+
+# 9. Scenario-Specific Instructions
+
+## 9.1 NEW — Add New Indicator
+
+```text
+1. Verify library function.
+2. Create/upsert dim_indicator.
+3. Create components.
+4. Create complete D/W/M config family.
+5. Validate metadata.
+6. Smoke test.
+7. Historical backfill targeted by ConfigIds.
+8. Validate cal_indicator_values.
+9. Mark production-ready only after PASS.
+```
+
+## 9.2 ACTIVATE — Existing Indicator
+
+```text
+1. Không duplicate dim_indicator.
+2. Revalidate FunctionName / RequiredInputs / ParameterSchema.
+3. Verify/repair components.
+4. Verify/repair complete D/W/M configs.
+5. Enable parent + complete config family.
+6. Smoke test.
+7. Backfill newly enabled ConfigIds.
+8. Validate output.
+```
+
+## 9.3 NEW_PARAMETER_FAMILY
+
+Ví dụ MA100 khi MA đã active:
+
+```text
+1. Không sửa dim_indicator nếu contract không đổi.
+2. Không sửa component nếu output contract không đổi.
+3. Create MA100_D/W/M.
+4. WarmupBars >= 100.
+5. Enable complete family.
+6. Smoke test MA100.
+7. Backfill only MA100 ConfigIds.
+8. Validate MA100 output.
+```
+
+Không recompute MA20/MA50 nếu không cần.
+
+---
+
+# 10. Configuration SSOT — `vw_Indicator_config`
+
+`vw_Indicator_config` là public read contract cho metadata + executable config + component mapping.
+
+```sql
+CREATE OR REPLACE VIEW "CherryMon"."main"."vw_Indicator_config" AS
+SELECT
+    cfg.ConfigId,
+    cfg.ConfigCode,
+    cfg.IndicatorCode,
+    cfg.Timeframe,
+    cfg.Parameters,
+    cfg.WarmupBars,
+    cfg.IsEnabled                    AS ConfigIsEnabled,
+    cfg.Description                  AS ConfigDescription,
+    cfg.CreatedAt                    AS ConfigCreatedAt,
+    cfg.UpdatedAt                    AS ConfigUpdatedAt,
+    ind.IndicatorName,
+    ind.Category,
+    ind.Engine,
+    ind.FunctionName,
+    ind.RequiredInputs,
+    ind.ParameterSchema,
+    ind.Description                  AS IndicatorDescription,
+    ind.IsActive                     AS IndicatorIsActive,
+    ind.CreatedAt                    AS IndicatorCreatedAt,
+    ind.UpdatedAt                    AS IndicatorUpdatedAt,
+    comp.ComponentCode,
+    comp.ComponentName,
+    comp.OutputPrefix,
+    comp.SortOrder,
+    comp.IsPrimary,
+    comp.IsActive                    AS ComponentIsActive
+FROM "CherryMon"."main"."dim_indicator_config" cfg
+INNER JOIN "CherryMon"."main"."dim_indicator" ind
+    ON ind.IndicatorCode = cfg.IndicatorCode
+LEFT JOIN "CherryMon"."main"."dim_indicator_component" comp
+    ON comp.IndicatorCode = cfg.IndicatorCode;
+```
+
+Grain:
+
+```text
+ConfigId + ComponentCode
+```
+
+Active config contract:
+
+```sql
+SELECT *
+FROM "CherryMon"."main"."vw_Indicator_config"
+WHERE ConfigIsEnabled = TRUE
+  AND IndicatorIsActive = TRUE
+  AND COALESCE(ComponentIsActive, TRUE) = TRUE;
+```
+
+Downstream config logic phải ưu tiên đọc `vw_Indicator_config` thay vì tự join ba dimension tables nếu view đáp ứng đủ dữ liệu cần thiết.
+
+---
+
+# 11. Calculated Value SSOT — `vw_Ticker_indicators`
+
+`cal_indicator_values` là internal persistence; `vw_Ticker_indicators` là calculated value Single Source of Truth cho downstream consumers.
+
+```text
 Indicator Engine
-  pandas-ta-classic
-        │
-        ▼
-normalize output
-        │
-        ▼
+      ↓
+cal_indicator_values
+      ↓
 vw_Ticker_indicators
+      ├── CherryMon
+      ├── Screener
+      ├── Technical Score
+      ├── Chart / Level analysis
+      ├── API
+      └── ML / Prediction
 ```
 
-Không gọi function tự do trực tiếp từ DB bằng `getattr()`. Phải có **Indicator Registry** whitelist function và required inputs.
+Downstream nên query:
 
-```python
-INDICATOR_REGISTRY = {
-    "MA": {"function": ta.sma, "inputs": ["Close"]},
-    "RSI": {"function": ta.rsi, "inputs": ["Close"]},
-    "BB": {"function": ta.bbands, "inputs": ["Close"]},
-    "MACD": {"function": ta.macd, "inputs": ["Close"]},
-    "ADX": {"function": ta.adx, "inputs": ["High", "Low", "Close"]},
-    "ATR": {"function": ta.atr, "inputs": ["High", "Low", "Close"]},
-}
+```sql
+SELECT ...
+FROM "CherryMon"."main"."vw_Ticker_indicators";
 ```
 
-Input requirements khác nhau theo indicator:
+Không duplicate `IndicatorCode`, `Timeframe`, `Period`, `Parameters` trong `cal_indicator_values`; resolve qua `ConfigId`.
 
-- MA / RSI / MACD / BB → `Close`.
-- ATR / ADX → `High + Low + Close`.
-- OBV → `Close + Volume`.
-- MFI → `High + Low + Close + Volume`.
+---
 
-Phải có abstraction:
+# 12. Timeframe Contract
+
+Daily:
 
 ```text
-Pandas TA output
-       ↓
-Indicator Adapter
-       ↓
-CherryStock ComponentCode
+không resample
 ```
 
-Ví dụ mapping:
-
-```python
-OUTPUT_MAPPING = {
-    "BB": {
-        "BBL": "LOWER",
-        "BBM": "MIDDLE",
-        "BBU": "UPPER",
-        "BBB": "WIDTH",
-        "BBP": "PERCENT",
-    },
-    "MACD": {
-        "MACD": "LINE",
-        "MACDs": "SIGNAL",
-        "MACDh": "HIST",
-    },
-    "ADX": {
-        "ADX": "ADX",
-        "DMP": "PLUS_DI",
-        "DMN": "MINUS_DI",
-    },
-}
-```
-
-Không lưu tên column do library sinh trực tiếp vào database để tránh coupling với implementation.
-
-## 3. Parameter schema
-
-`dim_indicator_config.Parameters` dùng JSON, không dùng chuỗi `FAST=12;SLOW=26;SIGNAL=9`.
-
-```json
-{"fast": 12, "slow": 26, "signal": 9}
-```
-
-Bollinger:
-
-```json
-{"length": 20, "std": 2.0}
-```
-
-SuperTrend:
-
-```json
-{"length": 10, "multiplier": 3.0}
-```
-
-## 4. Data model chốt
+Weekly / Monthly:
 
 ```text
-dim_indicator
-        │
-        ├──────────────► dim_indicator_component
-        │
-        ▼
-dim_indicator_config
-        │
-        ▼
-vw_Indicator_config          ← Configuration SSOT
-        │
-        ▼
-Indicator Engine
-        │
-        ▼
-cal_indicator_values         ← internal persistence
-        │
-        ▼
-vw_Ticker_indicators         ← Calculated Value SSOT
+Open   = first
+High   = max
+Low    = min
+Close  = last
+Volume = sum
+Date   = last actual trading date in period
 ```
 
-### 4.1 `dim_indicator`
+Rules:
 
-Definition của indicator, không chứa period cụ thể.
+```text
+- Current partial W/M được phép tính.
+- Không hard-code Friday.
+- Không hard-code ngày 30/31.
+- W/M cleanup bắt đầu từ period boundary để replace stale provisional row.
+```
+
+---
+
+# 13. `refresh_technical_indicators()` Contract
+
+```python
+def refresh_technical_indicators(
+    *,
+    from_last_day: int | None = None,
+    tickers: list[str] | None = None,
+    config_ids: list[int] | None = None,
+    timeframes: list[str] | None = None,
+    connection=None,
+    repository=None,
+) -> dict[str, object]:
+    ...
+```
+
+Execution flow:
+
+```text
+1. Ensure storage
+2. Load enabled configs
+3. Load active definitions
+4. Load active components
+5. Validate onboarding contract
+6. Validate D/W/M completeness
+7. Validate ParameterSchema
+8. Resolve checkpoint
+9. Resolve WarmupBars
+10. Batch load OHLCV
+11. Resample D/W/M
+12. Calculate
+13. Normalize components
+14. Delete stale target rows
+15. Upsert cal_indicator_values
+16. Return execution summary
+```
+
+Normal production run phải enforce complete D/W/M family.
+
+Targeted `config_ids`/`timeframes` chỉ dùng cho smoke test, debug hoặc backfill.
+
+---
+
+# 14. Function Responsibilities
+
+| Function | Responsibility |
+| --- | --- |
+| `get_enabled_indicator_configs()` | Load enabled executable configs |
+| `get_indicator_definitions()` | Load master indicator definitions |
+| `get_indicator_components()` | Load component mapping |
+| `validate_indicator_onboarding_contract()` | Enforce metadata lifecycle + D/W/M completeness |
+| `validate_indicator_config()` | Validate Parameters và config relationships |
+| `load_indicator_source_data()` | Batch load required OHLCV |
+| `resample_indicator_timeframe()` | Convert Daily source sang D/W/M |
+| `calculate_indicator_from_config()` | Calculate một config cho một ticker |
+| `normalize_indicator_output()` | Convert library output sang CherryStock ComponentCode |
+| `calculate_indicator_batch()` | Calculate batch, không DB call trong inner loop nếu tránh được |
+| `replace_indicator_checkpoint()` | Delete stale checkpoint rows và upsert values |
+| `refresh_technical_indicators()` | Public orchestration |
+
+Không query DuckDB bên trong loop từng config nếu có thể batch.
+
+---
+
+# 15. Data Model Reference
+
+## 15.1 `dim_indicator`
 
 ```sql
 CREATE TABLE "CherryMon"."main"."dim_indicator" (
@@ -210,23 +1148,7 @@ CREATE TABLE "CherryMon"."main"."dim_indicator" (
 );
 ```
 
-Ví dụ `RequiredInputs`:
-
-| IndicatorCode | FunctionName | RequiredInputs |
-| --- | --- | --- |
-| MA | `sma` | `["Close"]` |
-| RSI | `rsi` | `["Close"]` |
-| BB | `bbands` | `["Close"]` |
-| MACD | `macd` | `["Close"]` |
-| ATR | `atr` | `["High","Low","Close"]` |
-| ADX | `adx` | `["High","Low","Close"]` |
-| OBV | `obv` | `["Close","Volume"]` |
-
-`ParameterSchema` dùng để validate `dim_indicator_config`. Không được silent fallback sang library defaults khi config sai.
-
-### 4.2 `dim_indicator_component`
-
-Giải quyết indicator có nhiều output.
+## 15.2 `dim_indicator_component`
 
 ```sql
 CREATE TABLE "CherryMon"."main"."dim_indicator_component" (
@@ -241,38 +1163,7 @@ CREATE TABLE "CherryMon"."main"."dim_indicator_component" (
 );
 ```
 
-Bollinger:
-
-```text
-BB
-├── UPPER
-├── MIDDLE
-├── LOWER
-├── WIDTH
-└── PERCENT
-```
-
-MACD:
-
-```text
-MACD
-├── LINE
-├── SIGNAL
-└── HIST
-```
-
-ADX:
-
-```text
-ADX
-├── ADX
-├── PLUS_DI
-└── MINUS_DI
-```
-
-### 4.3 `dim_indicator_config`
-
-Quyết định thực tế phải calculate cái gì.
+## 15.3 `dim_indicator_config`
 
 ```sql
 CREATE SEQUENCE IF NOT EXISTS seq_indicator_config START 1;
@@ -293,200 +1184,7 @@ CREATE TABLE "CherryMon"."main"."dim_indicator_config" (
 );
 ```
 
-Ví dụ:
-
-| ConfigCode | Indicator | TF | Parameters |
-| --- | --- | --- | --- |
-| MA20_D | MA | D | `{"length":20}` |
-| MA50_D | MA | D | `{"length":50}` |
-| RSI14_D | RSI | D | `{"length":14}` |
-| BB20_2_D | BB | D | `{"length":20,"std":2}` |
-| MACD12_26_9_D | MACD | D | `{"fast":12,"slow":26,"signal":9}` |
-| ATR14_D | ATR | D | `{"length":14}` |
-
-`WarmupBars` phải đủ để tính chính xác vùng target. Ví dụ MA200 cần load thêm ít nhất 200 bars trước vùng persist.
-
-
-
-### 4.4 Configuration SSOT View — `vw_Indicator_config`
-
-Để tránh việc mỗi service/function phải tự join lại ba bảng:
-
-- `"CherryMon"."main"."dim_indicator"`
-- `"CherryMon"."main"."dim_indicator_config"`
-- `"CherryMon"."main"."dim_indicator_component"`
-
-CherryStock phải expose một **Single Source of Truth cho configuration**:
-
-```sql
-CREATE OR REPLACE VIEW "CherryMon"."main"."vw_Indicator_config" AS
-SELECT
-    cfg.ConfigId,
-    cfg.ConfigCode,
-    cfg.IndicatorCode,
-    cfg.Timeframe,
-    cfg.Parameters,
-    cfg.WarmupBars,
-    cfg.IsEnabled                    AS ConfigIsEnabled,
-    cfg.Description                  AS ConfigDescription,
-    cfg.CreatedAt                    AS ConfigCreatedAt,
-    cfg.UpdatedAt                    AS ConfigUpdatedAt,
-
-    ind.IndicatorName,
-    ind.Category,
-    ind.Engine,
-    ind.FunctionName,
-    ind.RequiredInputs,
-    ind.ParameterSchema,
-    ind.Description                  AS IndicatorDescription,
-    ind.IsActive                     AS IndicatorIsActive,
-    ind.CreatedAt                    AS IndicatorCreatedAt,
-    ind.UpdatedAt                    AS IndicatorUpdatedAt,
-
-    comp.ComponentCode,
-    comp.ComponentName,
-    comp.OutputPrefix,
-    comp.SortOrder,
-    comp.IsPrimary,
-    comp.IsActive                    AS ComponentIsActive
-
-FROM "CherryMon"."main"."dim_indicator_config" cfg
-INNER JOIN "CherryMon"."main"."dim_indicator" ind
-    ON ind.IndicatorCode = cfg.IndicatorCode
-LEFT JOIN "CherryMon"."main"."dim_indicator_component" comp
-    ON comp.IndicatorCode = cfg.IndicatorCode;
-```
-
-View này là **public read contract cho toàn bộ indicator configuration**.
-
-Mọi downstream logic cần metadata/config/component phải query:
-
-```sql
-SELECT ...
-FROM "CherryMon"."main"."vw_Indicator_config"
-```
-
-thay vì tự join trực tiếp ba bảng dimension.
-
-Kiến trúc:
-
-```text
-dim_indicator
-        │
-        ├──────────────► dim_indicator_component
-        │
-        ▼
-dim_indicator_config
-        │
-        ▼
-vw_Indicator_config
-        │
-        ├── Indicator Engine
-        ├── Config Validator
-        ├── Registry / Adapter
-        ├── Admin / Config UI
-        └── Technical Pipeline
-```
-
-#### Grain của view
-
-Grain của `vw_Indicator_config` là:
-
-```text
-ConfigId + ComponentCode
-```
-
-Với indicator single-output, mỗi `ConfigId` thường có một component.
-
-Với indicator multi-output như Bollinger Bands, MACD, ADX, một `ConfigId` sẽ xuất hiện nhiều row — mỗi row tương ứng một `ComponentCode`.
-
-Ví dụ:
-
-```text
-ConfigId | ConfigCode    | IndicatorCode | Timeframe | ComponentCode
----------------------------------------------------------------------
-4        | BB20_2_D      | BB            | D         | LOWER
-4        | BB20_2_D      | BB            | D         | MIDDLE
-4        | BB20_2_D      | BB            | D         | UPPER
-4        | BB20_2_D      | BB            | D         | WIDTH
-4        | BB20_2_D      | BB            | D         | PERCENT
-```
-
-#### Active configuration contract
-
-Khi Indicator Engine cần lấy các config có thể thực thi, filter tại view:
-
-```sql
-SELECT *
-FROM "CherryMon"."main"."vw_Indicator_config"
-WHERE ConfigIsEnabled = TRUE
-  AND IndicatorIsActive = TRUE
-  AND COALESCE(ComponentIsActive, TRUE) = TRUE;
-```
-
-Như vậy toàn bộ rule active/inactive được resolve tại cùng một read model.
-
-#### Naming convention
-
-View này được xem là:
-
-```text
-vw_Indicator_config
-        ↓
-Single Source of Truth
-for indicator configuration
-```
-
-Trong khi:
-
-```text
-vw_Ticker_indicators
-        ↓
-Single Source of Truth
-for calculated indicator values
-```
-
-Hai SSOT phải được phân biệt rõ:
-
-| View | Vai trò |
-| --- | --- |
-| `vw_Indicator_config` | SSOT cho metadata + executable config + component mapping |
-| `vw_Ticker_indicators` | SSOT cho giá trị indicator đã tính theo ticker/date |
-
-
-### 4.5 `vw_Ticker_indicators`
-
-`"CherryMon"."main"."vw_Ticker_indicators"` là **Single Source of Truth (SSOT)** cho toàn bộ technical indicator mà các downstream consumer phải sử dụng. View này **thay thế vai trò source of truth của `cal_indicator_values`**.
-
-`cal_indicator_values` có thể tiếp tục tồn tại như physical persistence/staging table nội bộ của Indicator Engine, nhưng **không được xem là contract đọc dữ liệu chính** cho CherryMon, Screener, Technical Score, charting, API hay ML feature consumption.
-
-Nguyên tắc:
-
-```text
-Indicator Engine
-      │
-      ▼
-cal_indicator_values        ← internal persistence / implementation detail
-      │
-      ▼
-vw_Ticker_indicators       ← SINGLE SOURCE OF TRUTH / public read contract
-      │
-      ├── CherryMon
-      ├── Screener
-      ├── Technical Score
-      ├── Chart / Level analysis
-      ├── API
-      └── ML / Prediction
-```
-
-Mọi logic downstream khi cần indicator phải ưu tiên query:
-
-```sql
-SELECT ...
-FROM "CherryMon"."main"."vw_Ticker_indicators"
-```
-
-thay vì đọc trực tiếp từ `cal_indicator_values`.
+## 15.4 `cal_indicator_values`
 
 ```sql
 CREATE TABLE "CherryMon"."main"."cal_indicator_values" (
@@ -500,291 +1198,11 @@ CREATE TABLE "CherryMon"."main"."cal_indicator_values" (
 );
 ```
 
-Không duplicate `IndicatorCode`, `Timeframe`, `Period`, `Parameters` trong fact table; resolve qua `ConfigId`.
+---
 
-Ví dụ Bollinger:
+# 16. Migration / Compatibility with `cal_Trends`
 
-```text
-Ticker  Date        ConfigId ComponentCode Value
-MWG     2026-08-25  4        UPPER         82.50
-MWG     2026-08-25  4        MIDDLE        78.20
-MWG     2026-08-25  4        LOWER         73.90
-MWG     2026-08-25  4        WIDTH          8.60
-MWG     2026-08-25  4        PERCENT        0.67
-```
-
-Primary key đảm bảo rerun idempotent.
-
-## 5. Timeframe convention
-
-Không cần `Timeframe` trong fact table vì nằm trong config.
-
-Quy ước `Date`:
-
-- `D` → trading date.
-- `W` → ngày giao dịch cuối cùng của tuần.
-- `M` → ngày giao dịch cuối cùng của tháng.
-
-Không hard-code Friday hoặc ngày 30/31 vì holiday.
-
-Resample OHLCV:
-
-- Open = first
-- High = max
-- Low = min
-- Close = last
-- Volume = sum
-- Date = last trading date
-
-## 6. Python models
-
-```python
-from dataclasses import dataclass
-from typing import Any
-
-@dataclass(frozen=True)
-class IndicatorDefinition:
-    indicator_code: str
-    indicator_name: str
-    category: str
-    engine: str
-    function_name: str
-    required_inputs: tuple[str, ...]
-    parameter_schema: dict[str, Any] | None
-
-@dataclass(frozen=True)
-class IndicatorComponent:
-    indicator_code: str
-    component_code: str
-    component_name: str
-    output_prefix: str | None
-    is_primary: bool
-
-@dataclass(frozen=True)
-class IndicatorConfig:
-    config_id: int
-    config_code: str
-    indicator_code: str
-    timeframe: str
-    parameters: dict[str, Any]
-    warmup_bars: int
-```
-
-Không cần ORM; project dùng DuckDB + pandas trực tiếp.
-
-## 7. Function contracts
-
-| Function | Responsibility |
-| --- | --- |
-| `get_indicator_definition()` | lấy metadata indicator |
-| `get_indicator_components()` | lấy component mapping |
-| `get_enabled_indicator_configs()` | lấy config cần chạy từ `vw_Indicator_config` |
-| `validate_indicator_config()` | validate Parameters |
-| `load_indicator_source_data()` | load OHLCV |
-| `resample_indicator_timeframe()` | D → W/M |
-| `calculate_indicator_from_config()` | gọi engine tính một config |
-| `normalize_indicator_output()` | library output → CherryStock component |
-| `calculate_indicator_batch()` | tính nhiều config trên một dataset |
-| `upsert_indicator_values()` | persist idempotent |
-| `refresh_technical_indicators()` | orchestration chính |
-
-### Config access
-
-```python
-def get_enabled_indicator_configs(
-    *,
-    config_ids: list[int] | None = None,
-    indicator_codes: list[str] | None = None,
-    timeframes: list[str] | None = None,
-    connection=None,
-) -> list[IndicatorConfig]:
-    ...
-```
-
-### Validate config
-
-```python
-def validate_indicator_config(
-    config: IndicatorConfig,
-    definition: IndicatorDefinition,
-) -> None:
-    ...
-```
-
-Config sai phải raise rõ ràng; không silent fallback.
-
-### Load source data
-
-```python
-def load_indicator_source_data(
-    *,
-    tickers: list[str] | None = None,
-    start_date=None,
-    end_date=None,
-    required_inputs: tuple[str, ...],
-    connection=None,
-) -> pd.DataFrame:
-    ...
-```
-
-Chỉ query các field cần thiết, không `SELECT *`.
-
-### Resample timeframe
-
-```python
-def resample_indicator_timeframe(
-    price_df: pd.DataFrame,
-    timeframe: str,
-) -> pd.DataFrame:
-    ...
-```
-
-### Calculate one config
-
-```python
-def calculate_indicator_from_config(
-    source_df: pd.DataFrame,
-    config: IndicatorConfig,
-    definition: IndicatorDefinition,
-    components: list[IndicatorComponent],
-) -> pd.DataFrame:
-    ...
-```
-
-Output luôn có schema:
-
-```text
-Ticker
-Date
-ConfigId
-ComponentCode
-Value
-```
-
-### Normalize output
-
-```python
-def normalize_indicator_output(
-    *,
-    ticker: str,
-    config: IndicatorConfig,
-    raw_output: pd.Series | pd.DataFrame,
-    components: list[IndicatorComponent],
-) -> pd.DataFrame:
-    ...
-```
-
-### Batch calculation
-
-Không query DuckDB bên trong loop từng config nếu có thể batch.
-
-```python
-def calculate_indicator_batch(
-    source_df: pd.DataFrame,
-    configs: list[IndicatorConfig],
-    definitions: dict[str, IndicatorDefinition],
-    components: dict[str, list[IndicatorComponent]],
-) -> pd.DataFrame:
-    ...
-```
-
-### Persist
-
-```python
-def upsert_indicator_values(
-    indicator_values: pd.DataFrame,
-    *,
-    connection=None,
-    repository=None,
-) -> int:
-    ...
-```
-
-Upsert key: `Ticker + Date + ConfigId + ComponentCode`.
-
-### Public orchestrator
-
-```python
-def refresh_technical_indicators(
-    *,
-    from_last_day: int | None = None,
-    tickers: list[str] | None = None,
-    config_ids: list[int] | None = None,
-    timeframes: list[str] | None = None,
-    connection=None,
-    repository=None,
-) -> dict:
-    ...
-```
-
-`refresh_technical_indicators()` mặc định calculate tất cả active configs; có thể filter theo date window, ticker, config hoặc timeframe.
-
-## 8. Processing flow
-
-```text
-refresh_technical_indicators()
-                │
-                ▼
-get_enabled_indicator_configs()
-                │
-                ▼
-vw_Indicator_config
-                │
-                ▼
-get resolved definition/config/components
-                │
-                ▼
-validate_indicator_config()
-                │
-                ▼
-group configs by timeframe
-                │
-                ▼
-calculate warmup requirements
-                │
-                ▼
-load_indicator_source_data()
-                │
-                ├───────── D ──────────┐
-                │                     │
-                ├── resample W ───────┤
-                │                     │
-                └── resample M ───────┤
-                                      ▼
-                         calculate_indicator_batch()
-                                      │
-                                      ▼
-                     calculate_indicator_from_config()
-                                      │
-                                      ▼
-                       normalize_indicator_output()
-                                      │
-                                      ▼
-                        vw_Ticker_indicators
-```
-
-Sau khi persist/upsert vào internal storage, view `vw_Ticker_indicators` là lớp contract cuối cùng expose dữ liệu cho downstream consumers.
-
-## 9. File structure
-
-```text
-src/
-├── calcEngine/
-│   ├── calcIndicators.py
-│   └── indicatorRegistry.py
-├── DuckDB/
-│   ├── Data.py
-│   └── sql/
-│       └── create_indicator_tables.sql
-└── Ults/
-    └── ...
-```
-
-`calcIndicators.py` chứa models, validation, resampling, calculation, normalization, batch và orchestration. `indicatorRegistry.py` chỉ chứa registry/library adapter. Data access reuse connection convention hiện tại của project.
-
-## 10. Migration từ `cal_Trends`
-
-**Chưa xóa `cal_Trends`.** Phase đầu chạy song song:
+Chưa xóa `cal_Trends` trong giai đoạn migration.
 
 ```text
 cal_Moving_Average()
@@ -793,12 +1211,12 @@ cal_Trends
 
 refresh_technical_indicators()
        ↓
-cal_indicator_values (internal persistence)
+cal_indicator_values
        ↓
-vw_Ticker_indicators (SSOT)
+vw_Ticker_indicators
 ```
 
-Sau khi validation:
+Chỉ migrate hoàn toàn sau khi validate:
 
 ```text
 MA20 old == MA20 new
@@ -807,40 +1225,134 @@ MA100 old == MA100 new
 MA200 old == MA200 new
 ```
 
-mới migrate. Cuối cùng `cal_Trends` có thể trở thành compatibility view/pivot được derive từ `vw_Ticker_indicators` thay vì đọc trực tiếp `cal_indicator_values`.
+Sau migration, `cal_Trends` có thể trở thành compatibility view/pivot derive từ `vw_Ticker_indicators`.
 
-## 11. Thiết kế chốt
+---
+
+# 17. Agent Safety Rules — MUST / MUST NOT
+
+Agent **MUST**:
 
 ```text
-dim_indicator
-        ↓
-indicator definition
-
-dim_indicator_component
-        ↓
-multi-output definition
-
-dim_indicator_config
-        ↓
-executable ParamSet + timeframe
-
-vw_Indicator_config
-        ↓
-CONFIGURATION SINGLE SOURCE OF TRUTH
-
-cal_indicator_values
-        ↓
-internal persistence
-
-vw_Ticker_indicators
-        ↓
-SINGLE SOURCE OF TRUTH / downstream read contract
+- đọc metadata hiện tại trước khi ghi;
+- xác định scenario onboarding;
+- verify library function trước config;
+- dùng upsert/idempotent metadata writes;
+- config đủ D/W/M theo parameter family;
+- dùng targeted ConfigIds khi backfill family mới nếu có thể;
+- validate trước production-ready;
+- report rõ PASS/FAIL từng phase;
+- fail-fast khi contract sai.
 ```
 
-Public orchestration:
+Agent **MUST NOT**:
 
-```python
-refresh_technical_indicators()
+```text
+- truncate cal_indicator_values;
+- xóa historical của indicator khác;
+- ALTER fact table để thêm indicator;
+- enable partial D/W/M family trong production;
+- enable config nếu parent indicator inactive;
+- disable component đang được enabled config sử dụng mà chưa migrate;
+- thay semantics Parameters trên cùng ConfigCode đã có historical mà không controlled migration;
+- coi RecordsUpserted=0 là success mà không investigate;
+- production active khi PHASE 3 FAIL;
+- sửa run.py chỉ để thêm indicator mới.
 ```
 
-Với model này, thêm `RSI21`, `BB50(2.5)`, `SuperTrend(10,3)`, `MACD(8,21,5)`, `Ichimoku` phần lớn chỉ cần insert metadata/config, không phải thay đổi schema database.
+---
+
+# 18. Agent Required Final Response
+
+```text
+INDICATOR ONBOARDING RESULT
+
+IndicatorCode: <CODE>
+Scenario: NEW | ACTIVATE | NEW_PARAMETER_FAMILY | REPAIR
+
+PHASE 1 — CONFIG METADATA
+Status: PASS | FAIL
+Definition: ...
+Components: ...
+Config families: ...
+ConfigIds: ...
+D/W/M completeness: ...
+WarmupBars: ...
+
+PHASE 2 — HISTORICAL BACKFILL
+Status: PASS | FAIL
+Mode: TARGETED | FULL_ENGINE
+ConfigIds processed: ...
+Tickers processed: ...
+Records upserted: ...
+Source range: ...
+
+PHASE 3 — VALIDATION
+Status: PASS | FAIL
+D/W/M coverage: ...
+Component coverage: ...
+Ticker coverage: ...
+Date range: ...
+Duplicate PK: ...
+Zero-output configs: ...
+Unexpected components: ...
+Sample validation: ...
+
+FINAL STATUS
+PRODUCTION_READY | NOT_READY
+
+Next execution:
+run.py incremental refresh
+```
+
+Nếu `FINAL STATUS = NOT_READY`, Agent phải nêu chính xác phase và condition gây fail.
+
+---
+
+# 19. Compact Operational Checklist
+
+```text
+PHASE 1 — CONFIG
+[ ] Verify pandas-ta-classic function
+[ ] Discover existing metadata
+[ ] Upsert dim_indicator
+[ ] Upsert dim_indicator_component
+[ ] Upsert dim_indicator_config D/W/M
+[ ] Validate RequiredInputs
+[ ] Validate ParameterSchema
+[ ] Validate WarmupBars
+[ ] Validate complete D/W/M family
+[ ] PHASE 1 PASS
+
+PHASE 2 — BACKFILL
+[ ] Smoke test targeted ticker/config
+[ ] Resolve D/W/M ConfigIds
+[ ] Prefer targeted historical backfill
+[ ] Run from_last_day=None
+[ ] Confirm records_upserted > 0
+[ ] Confirm idempotent/upsert behavior
+[ ] PHASE 2 PASS
+
+PHASE 3 — VALIDATION
+[ ] Validate D/W/M coverage
+[ ] Validate component coverage
+[ ] Compare source ticker vs output ticker
+[ ] Detect zero-output configs
+[ ] Validate MinDate/MaxDate
+[ ] Validate NULL behavior
+[ ] Duplicate PK = 0
+[ ] Unexpected component = 0
+[ ] Validate sample values
+[ ] PHASE 3 PASS
+
+PRODUCTION
+[ ] All three phases PASS
+[ ] Production ready
+[ ] Future incremental refresh handled by run.py
+```
+
+---
+
+# 20. Final Principle
+
+> **Thêm mới hoặc active indicator hoàn toàn bằng metadata/config, tạo historical data bằng targeted upsert theo ConfigId, validate đầy đủ trước production, không thay đổi fact schema và không ảnh hưởng historical data của indicator khác.**
