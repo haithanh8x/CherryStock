@@ -1305,7 +1305,7 @@ Renderer không query DB và không chứa business calculation.
 
 ## Decision 5 — Reuse Indicator Engine
 
-Không tính lại technical indicators đã tồn tại trong `cal_indicator_values` / reporting views.
+Không tính lại technical indicators; RS Ladder đọc calculated values từ public SSOT `vw_Ticker_indicators` và metadata/config từ `vw_Indicator_config`.
 
 ## Decision 6 — D/W/M confluence is first-class information
 
