@@ -2,19 +2,19 @@
 
 ## 1. Purpose
 
-Tài liệu này định nghĩa kiến trúc, data model, execution flow, onboarding lifecycle, function contracts và vận hành Technical Indicator Engine của CherryStock.
+Tài liệu này định nghĩa kiến trúc, data model, execution flow, onboarding lifecycle, function contracts và quy trình vận hành Technical Indicator Engine của CherryStock.
 
 Mục tiêu:
 
-- Hỗ trợ nhiều technical indicator mà không phải `ALTER TABLE ADD COLUMN` khi thêm indicator mới.
+- Hỗ trợ thêm technical indicator mà không phải `ALTER TABLE ADD COLUMN`.
 - Hỗ trợ indicator có một hoặc nhiều output/component.
-- Hỗ trợ mặc định ba timeframe: Daily, Weekly và Monthly.
-- Cho phép engine đọc metadata/config từ DuckDB rồi gọi `pandas-ta-classic` theo cơ chế config-driven.
-- Tách indicator definition, output component, executable config và calculated values.
-- Hỗ trợ checkpoint của CherryStock khi chạy `run.py`.
-- Tự mở rộng historical window theo `WarmupBars` nhưng chỉ persist vùng checkpoint cần refresh.
-- Đảm bảo rerun idempotent.
-- Cho phép onboarding indicator mới chủ yếu bằng metadata/config thay vì sửa pipeline.
+- Hỗ trợ mặc định ba timeframe `D/W/M`.
+- Sử dụng metadata/config trong DuckDB để gọi `pandas-ta-classic` theo cơ chế config-driven.
+- Tách definition, component, executable config và calculated values.
+- Dùng cùng checkpoint với `run.py`.
+- Tự mở rộng historical window theo `WarmupBars`.
+- Rerun idempotent.
+- Onboarding indicator mới chủ yếu bằng metadata/config, không hard-code vào pipeline.
 
 ---
 
@@ -74,7 +74,7 @@ Wide table/view chỉ nên được tạo ở feature/reporting layer khi cần 
 
 ## 3.1 IndicatorCode
 
-`IndicatorCode` chỉ mô tả loại indicator, không encode period hay timeframe.
+`IndicatorCode` chỉ mô tả loại indicator, không encode period hoặc timeframe.
 
 Ví dụ:
 
@@ -94,8 +94,6 @@ ICHIMOKU
 ```
 
 ## 3.2 ComponentCode
-
-Mô tả output chuẩn nội bộ của CherryStock.
 
 Ví dụ:
 
@@ -136,11 +134,9 @@ MACD12_26_9_W
 MACD12_26_9_M
 ```
 
-Runtime không được parse Parameters từ ConfigCode. Runtime luôn đọc `Parameters` JSON.
+Runtime không parse Parameters từ `ConfigCode`. Runtime luôn đọc `Parameters` JSON.
 
 ## 3.4 Timeframe
-
-Chuẩn mặc định:
 
 ```text
 D = Daily
@@ -150,7 +146,7 @@ M = Monthly
 
 `DEFAULT_TIMEFRAMES = ("D", "W", "M")`.
 
-Khi onboarding một indicator/config mới, mặc định phải tạo đủ cả ba timeframe.
+Mỗi config family mặc định phải có đủ D/W/M.
 
 ---
 
@@ -158,44 +154,34 @@ Khi onboarding một indicator/config mới, mặc định phải tạo đủ c�
 
 ## 4.1 `"CherryMon"."main"."dim_indicator"`
 
-Lưu master definition của indicator.
+Master definition của indicator.
 
-```sql
-CREATE TABLE "CherryMon"."main"."dim_indicator" (
-    IndicatorCode       VARCHAR NOT NULL,
-    IndicatorName       VARCHAR NOT NULL,
-    Category            VARCHAR NOT NULL,
-    Engine              VARCHAR NOT NULL,
-    FunctionName        VARCHAR NOT NULL,
-    RequiredInputs      JSON NOT NULL,
-    ParameterSchema     JSON,
-    Description         VARCHAR,
-    IsActive            BOOLEAN NOT NULL DEFAULT TRUE,
-    CreatedAt           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UpdatedAt           TIMESTAMP,
-    PRIMARY KEY (IndicatorCode)
-);
-```
-
-Ví dụ:
+Các field chính:
 
 ```text
-RSI
-RequiredInputs = ["Close"]
-
-ADX
-RequiredInputs = ["High", "Low", "Close"]
-
-OBV
-RequiredInputs = ["Close", "Volume"]
-
-MFI
-RequiredInputs = ["High", "Low", "Close", "Volume"]
+IndicatorCode
+IndicatorName
+Category
+Engine
+FunctionName
+RequiredInputs
+ParameterSchema
+Description
+IsActive
+CreatedAt
+UpdatedAt
 ```
 
-`RequiredInputs` là contract source-data của engine, không phải mô tả tham khảo.
+Ví dụ `RequiredInputs`:
 
----
+```text
+RSI -> ["Close"]
+ADX -> ["High","Low","Close"]
+OBV -> ["Close","Volume"]
+MFI -> ["High","Low","Close","Volume"]
+```
+
+`RequiredInputs` là runtime source-data contract.
 
 ## 4.2 ParameterSchema
 
@@ -205,71 +191,30 @@ Ví dụ Bollinger Bands:
 
 ```json
 {
-  "length": {
-    "type": "integer",
-    "min": 2,
-    "required": true
-  },
-  "std": {
-    "type": "number",
-    "min": 0,
-    "required": true
-  }
+  "length": {"type":"integer","min":2,"required":true},
+  "std": {"type":"number","min":0,"required":true}
 }
 ```
 
-MACD:
+Ví dụ MACD:
 
 ```json
 {
-  "fast": {
-    "type": "integer",
-    "min": 1,
-    "required": true
-  },
-  "slow": {
-    "type": "integer",
-    "min": 2,
-    "required": true
-  },
-  "signal": {
-    "type": "integer",
-    "min": 1,
-    "required": true
-  }
+  "fast": {"type":"integer","min":1,"required":true},
+  "slow": {"type":"integer","min":2,"required":true},
+  "signal": {"type":"integer","min":1,"required":true}
 }
 ```
 
-Ngoài schema validation, engine có thể validate relationship, ví dụ:
-
-```text
-MACD: fast < slow
-```
+Ngoài schema validation, engine có thể validate relationship, ví dụ `MACD: fast < slow`.
 
 Không silent fallback sang default parameter của library khi config sai.
 
----
-
 ## 4.3 `"CherryMon"."main"."dim_indicator_component"`
 
-Lưu output/component của indicator.
+Lưu output/component chuẩn nội bộ.
 
-```sql
-CREATE TABLE "CherryMon"."main"."dim_indicator_component" (
-    IndicatorCode       VARCHAR NOT NULL,
-    ComponentCode       VARCHAR NOT NULL,
-    ComponentName       VARCHAR NOT NULL,
-    OutputPrefix        VARCHAR,
-    SortOrder           INTEGER,
-    IsPrimary           BOOLEAN NOT NULL DEFAULT FALSE,
-    IsActive            BOOLEAN NOT NULL DEFAULT TRUE,
-    PRIMARY KEY (IndicatorCode, ComponentCode)
-);
-```
-
-### Single-output indicator
-
-Ví dụ RSI:
+Single-output indicator vẫn phải có component:
 
 ```text
 IndicatorCode = RSI
@@ -278,7 +223,7 @@ OutputPrefix  = NULL
 IsPrimary     = TRUE
 ```
 
-### Bollinger Bands
+Ví dụ multi-output:
 
 ```text
 BB
@@ -287,55 +232,25 @@ BB
 ├── UPPER   -> BBU
 ├── WIDTH   -> BBB
 └── PERCENT -> BBP
-```
 
-### MACD
-
-```text
 MACD
 ├── LINE   -> MACD
 ├── SIGNAL -> MACDs
 └── HIST   -> MACDh
-```
 
-### ADX
-
-```text
 ADX
 ├── ADX      -> ADX
 ├── PLUS_DI  -> DMP
 └── MINUS_DI -> DMN
 ```
 
-Database không lưu raw library column name trong fact table. Adapter normalize library output về `ComponentCode` chuẩn của CherryStock.
-
----
+Database không persist raw library column name trong fact table. Adapter normalize output về `ComponentCode` chuẩn CherryStock.
 
 ## 4.4 `"CherryMon"."main"."dim_indicator_config"`
 
 Lưu executable configuration.
 
-```sql
-CREATE SEQUENCE IF NOT EXISTS seq_indicator_config START 1;
-
-CREATE TABLE "CherryMon"."main"."dim_indicator_config" (
-    ConfigId            BIGINT NOT NULL
-                        DEFAULT nextval('seq_indicator_config'),
-    ConfigCode          VARCHAR NOT NULL,
-    IndicatorCode       VARCHAR NOT NULL,
-    Timeframe           VARCHAR NOT NULL,
-    Parameters          JSON NOT NULL,
-    WarmupBars          INTEGER,
-    IsEnabled           BOOLEAN NOT NULL DEFAULT TRUE,
-    Description         VARCHAR,
-    CreatedAt           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UpdatedAt           TIMESTAMP,
-    PRIMARY KEY (ConfigId),
-    UNIQUE (ConfigCode)
-);
-```
-
-Ví dụ một parameter set RSI14 phải có ba executable configs:
+Ví dụ RSI14:
 
 ```text
 RSI14_D | RSI | D | {"length":14}
@@ -343,15 +258,7 @@ RSI14_W | RSI | W | {"length":14}
 RSI14_M | RSI | M | {"length":14}
 ```
 
-Bollinger:
-
-```text
-BB20_2_D | BB | D | {"length":20,"std":2.0}
-BB20_2_W | BB | W | {"length":20,"std":2.0}
-BB20_2_M | BB | M | {"length":20,"std":2.0}
-```
-
-MA có nhiều parameter set độc lập:
+Ví dụ MA có nhiều parameter family độc lập:
 
 ```text
 MA20_D / MA20_W / MA20_M
@@ -360,13 +267,9 @@ MA100_D / MA100_W / MA100_M
 MA200_D / MA200_W / MA200_M
 ```
 
-Mỗi `IndicatorCode + Parameters` được coi là một **config family** và mặc định phải có đủ `D/W/M`.
-
----
+Một `IndicatorCode + canonical Parameters JSON` được coi là một **config family**. Mỗi family mặc định phải đủ D/W/M.
 
 ## 4.5 WarmupBars
-
-Indicator cần historical data trước checkpoint.
 
 Ví dụ:
 
@@ -377,85 +280,94 @@ RSI14     WarmupBars >= 14
 MACD      WarmupBars nên >= slow + signal
 ```
 
-Nếu main cần refresh 10 ngày nhưng MA200 cần 200 bars:
-
-```text
-Persist target: khoảng 10 ngày
-Read source: checkpoint + ít nhất 200 historical trading bars
-```
-
-Engine tính trên full warmup window nhưng chỉ persist target checkpoint.
-
----
+Engine load thêm historical data trước checkpoint, calculate trên full warmup window nhưng chỉ persist vùng checkpoint cần refresh.
 
 ## 4.6 `"CherryMon"."main"."cal_indicator_values"`
 
-Source of truth của calculated indicator values.
-
-```sql
-CREATE TABLE "CherryMon"."main"."cal_indicator_values" (
-    Ticker              VARCHAR NOT NULL,
-    Date                DATE NOT NULL,
-    ConfigId            BIGINT NOT NULL,
-    ComponentCode       VARCHAR NOT NULL,
-    Value               DOUBLE,
-    CalculatedAt        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (
-        Ticker,
-        Date,
-        ConfigId,
-        ComponentCode
-    )
-);
-```
-
-Ví dụ Bollinger:
+Source of truth của calculated values:
 
 ```text
-MWG | 2026-08-25 | ConfigId=BB20_2_D | LOWER   | 73.90
-MWG | 2026-08-25 | ConfigId=BB20_2_D | MIDDLE  | 78.20
-MWG | 2026-08-25 | ConfigId=BB20_2_D | UPPER   | 82.50
-MWG | 2026-08-25 | ConfigId=BB20_2_D | WIDTH   | 8.60
-MWG | 2026-08-25 | ConfigId=BB20_2_D | PERCENT | 0.67
+Ticker
+Date
+ConfigId
+ComponentCode
+Value
+CalculatedAt
 ```
 
-Không duplicate `IndicatorCode`, `Timeframe`, `Parameters` trong fact table vì resolve được qua `ConfigId`.
+Primary key:
+
+```text
+Ticker + Date + ConfigId + ComponentCode
+```
+
+Không duplicate IndicatorCode, Timeframe, Parameters trong fact table vì resolve được qua ConfigId.
 
 ---
 
 # 5. Mandatory Indicator Onboarding Lifecycle
 
-Đây là quy trình bắt buộc khi thêm một indicator mới vào CherryStock.
-
-## 5.1 Thứ tự insert
-
-Luôn theo thứ tự:
+Đây là contract bắt buộc. Không enable config để chạy production trước khi hoàn tất toàn bộ lifecycle.
 
 ```text
-STEP 1
-"CherryMon"."main"."dim_indicator"
+STEP 0  Verify library function / design
         ↓
-STEP 2
-"CherryMon"."main"."dim_indicator_component"
+STEP 1  dim_indicator
         ↓
-STEP 3
-"CherryMon"."main"."dim_indicator_config"
+STEP 2  dim_indicator_component
         ↓
-STEP 4
-refresh_technical_indicators()
+STEP 3  dim_indicator_config D/W/M
         ↓
-"CherryMon"."main"."cal_indicator_values"
+STEP 4  Metadata pre-check
+        ↓
+STEP 5  Targeted calculation test
+        ↓
+STEP 6  Historical initialization / backfill
+        ↓
+STEP 7  Validate cal_indicator_values
+        ↓
+STEP 8  Production active
+        ↓
+STEP 9  Incremental refresh through run.py
 ```
 
-Không tạo config trước khi definition/component hoàn chỉnh.
+Ba bảng metadata phải được coi như một logical unit:
 
-Khuyến nghị thực hiện ba bước metadata trong cùng transaction nếu onboarding bằng script.
+```text
+dim_indicator
+    + dim_indicator_component
+    + dim_indicator_config
+```
+
+Khuyến nghị onboarding bằng script/transaction thay vì insert thủ công rời rạc.
 
 ---
 
-## 5.2 Step 1 — Insert `dim_indicator`
+## 5.1 STEP 0 — Verify library function và thiết kế output
 
-Phải define tối thiểu:
+Trước khi insert database, phải xác nhận:
+
+```text
+Engine
+FunctionName
+RequiredInputs
+Parameters
+Return type
+Output columns
+Warmup requirement
+```
+
+Với `pandas-ta-classic`, phải xác nhận function tồn tại trong `indicatorRegistry` hoặc có thể resolve qua registry hiện tại.
+
+Không thêm metadata trước rồi mới kiểm tra library function.
+
+Với multi-output indicator, xác định trước mapping từ library output prefix sang CherryStock `ComponentCode`.
+
+---
+
+## 5.2 STEP 1 — Upsert `dim_indicator`
+
+Phải define đầy đủ tối thiểu:
 
 ```text
 IndicatorCode
@@ -468,146 +380,42 @@ ParameterSchema
 IsActive
 ```
 
-Ví dụ ATR:
+### Quy tắc IsActive khi onboarding mới
 
-```sql
-INSERT INTO "CherryMon"."main"."dim_indicator" (
-    IndicatorCode,
-    IndicatorName,
-    Category,
-    Engine,
-    FunctionName,
-    RequiredInputs,
-    ParameterSchema,
-    IsActive
-)
-VALUES (
-    'ATR',
-    'Average True Range',
-    'VOLATILITY',
-    'PANDAS_TA_CLASSIC',
-    'atr',
-    '["High","Low","Close"]'::JSON,
-    '{"length":{"type":"integer","min":2,"required":true}}'::JSON,
-    TRUE
-);
+Khuyến nghị tạo indicator mới với:
+
+```text
+IsActive = FALSE
 ```
+
+trong giai đoạn chuẩn bị metadata, sau đó chuyển `TRUE` khi component và config đã hoàn chỉnh.
+
+Nếu script onboarding thực hiện cả definition + component + config trong cùng transaction và validate trước commit thì có thể set `IsActive=TRUE` ngay.
 
 ---
 
-## 5.3 Step 2 — Insert `dim_indicator_component`
+## 5.3 STEP 2 — Upsert `dim_indicator_component`
 
-Single-output indicator vẫn phải có component metadata.
+Mọi indicator phải có ít nhất một active component.
 
-ATR:
+Single-output:
 
-```sql
-INSERT INTO "CherryMon"."main"."dim_indicator_component" (
-    IndicatorCode,
-    ComponentCode,
-    ComponentName,
-    OutputPrefix,
-    SortOrder,
-    IsPrimary,
-    IsActive
-)
-VALUES (
-    'ATR',
-    'VALUE',
-    'Average True Range',
-    NULL,
-    1,
-    TRUE,
-    TRUE
-);
+```text
+ComponentCode = VALUE
+OutputPrefix  = NULL
+IsPrimary     = TRUE
+IsActive      = TRUE
 ```
 
-Multi-output indicator phải insert đầy đủ mọi output cần persist.
+Multi-output phải khai báo đầy đủ component cần persist.
+
+Không enable executable config nếu component mapping chưa hoàn chỉnh.
 
 ---
 
-## 5.4 Step 3 — Insert `dim_indicator_config`
+## 5.4 STEP 3 — Upsert `dim_indicator_config`
 
-Mặc định mỗi parameter set phải có đủ:
-
-```text
-Daily   -> D
-Weekly  -> W
-Monthly -> M
-```
-
-Ví dụ ATR14:
-
-```sql
-INSERT INTO "CherryMon"."main"."dim_indicator_config" (
-    ConfigCode,
-    IndicatorCode,
-    Timeframe,
-    Parameters,
-    WarmupBars,
-    IsEnabled
-)
-VALUES
-    ('ATR14_D', 'ATR', 'D', '{"length":14}'::JSON, 14, TRUE),
-    ('ATR14_W', 'ATR', 'W', '{"length":14}'::JSON, 14, TRUE),
-    ('ATR14_M', 'ATR', 'M', '{"length":14}'::JSON, 14, TRUE);
-```
-
-Nếu thêm một parameter set khác, ví dụ ATR20, ATR20 cũng phải có D/W/M:
-
-```text
-ATR20_D
-ATR20_W
-ATR20_M
-```
-
-Không được coi việc có `ATR14_D`, `ATR20_W`, `ATR20_M` là đủ. Engine kiểm tra completeness theo **IndicatorCode + Parameters**, không chỉ IndicatorCode.
-
----
-
-## 5.5 Step 4 — Refresh calculated values
-
-Sau khi metadata đầy đủ:
-
-```python
-refresh_technical_indicators()
-```
-
-Engine tự discover toàn bộ config `IsEnabled = TRUE`.
-
-Không cần sửa `run.py` hoặc thêm hard-code riêng cho indicator mới nếu library/function/component mapping đã được hỗ trợ.
-
----
-
-# 6. Onboarding Validation Contract
-
-`refresh_technical_indicators()` validate metadata trước khi đọc source/calculation.
-
-## 6.1 Component validation
-
-Mọi IndicatorCode xuất hiện trong enabled config phải có ít nhất một row active trong:
-
-```text
-"CherryMon"."main"."dim_indicator_component"
-```
-
-Nếu thiếu:
-
-```text
-raise ValueError
-```
-
-Không fallback ngầm về `VALUE` trong main refresh.
-
-## 6.2 Default timeframe validation
-
-Trong normal full refresh, với mỗi:
-
-```text
-IndicatorCode + canonical Parameters JSON
-```
-
-engine yêu cầu:
+Mỗi parameter family phải đủ:
 
 ```text
 D
@@ -615,64 +423,402 @@ W
 M
 ```
 
-Ví dụ hợp lệ:
+Ví dụ ATR14:
 
 ```text
-RSI + {"length":14}
-    D
-    W
-    M
+ATR14_D | ATR | D | {"length":14}
+ATR14_W | ATR | W | {"length":14}
+ATR14_M | ATR | M | {"length":14}
 ```
 
-Ví dụ không hợp lệ:
+Nếu thêm ATR20 thì ATR20 là family riêng và cũng phải đủ D/W/M.
+
+### Quy tắc IsEnabled khi onboarding mới
+
+Nên tạo config ban đầu với:
 
 ```text
-RSI + {"length":14}
-    D
-    W
-    # thiếu M
+IsEnabled = FALSE
 ```
 
-Engine fail trước khi persist bất kỳ calculated value nào.
+nếu metadata đang được chuẩn bị từng bước.
 
-## 6.3 Targeted maintenance run
+Chỉ chuyển cả family D/W/M sang `IsEnabled=TRUE` khi:
 
-Các run có filter:
-
-```python
-refresh_technical_indicators(config_ids=[...])
+```text
+dim_indicator.IsActive = TRUE
+components đầy đủ và active
+Parameters valid
+WarmupBars valid
+D/W/M đầy đủ
+library function resolve được
 ```
 
-hoặc:
-
-```python
-refresh_technical_indicators(timeframes=["D"])
-```
-
-được phép chạy subset để debug/backfill.
-
-Trong trường hợp này engine bỏ qua chỉ riêng validation D/W/M completeness của batch đã filter, nhưng vẫn validate:
-
-- config tồn tại và enabled;
-- definition active;
-- component metadata tồn tại;
-- RequiredInputs hợp lệ;
-- Parameters hợp lệ;
-- library function hợp lệ.
-
-Normal `run.py` không truyền `config_ids`/`timeframes`, vì vậy luôn enforce D/W/M đầy đủ.
+Không enable từng timeframe rời rạc cho normal production refresh.
 
 ---
 
-# 7. Indicator Registry / Library Adapter
+## 5.5 STEP 4 — Metadata pre-check trước khi calculate
 
-Engine chính sử dụng:
+Phải kiểm tra tối thiểu:
+
+```sql
+SELECT
+    IndicatorCode,
+    IndicatorName,
+    Engine,
+    FunctionName,
+    RequiredInputs,
+    ParameterSchema,
+    IsActive
+FROM "CherryMon"."main"."dim_indicator"
+WHERE IndicatorCode = '<INDICATOR_CODE>';
+```
+
+```sql
+SELECT
+    IndicatorCode,
+    ComponentCode,
+    OutputPrefix,
+    IsPrimary,
+    IsActive
+FROM "CherryMon"."main"."dim_indicator_component"
+WHERE IndicatorCode = '<INDICATOR_CODE>'
+ORDER BY SortOrder, ComponentCode;
+```
+
+```sql
+SELECT
+    ConfigId,
+    ConfigCode,
+    IndicatorCode,
+    Timeframe,
+    Parameters,
+    WarmupBars,
+    IsEnabled
+FROM "CherryMon"."main"."dim_indicator_config"
+WHERE IndicatorCode = '<INDICATOR_CODE>'
+ORDER BY Parameters, Timeframe;
+```
+
+Checklist:
+
+```text
+[ ] dim_indicator có đúng 1 definition
+[ ] IsActive = TRUE trước production calculation
+[ ] RequiredInputs đúng với library function
+[ ] ParameterSchema đúng
+[ ] >= 1 active component
+[ ] OutputPrefix mapping đúng với library output
+[ ] mỗi parameter family đủ D/W/M
+[ ] WarmupBars đủ lớn
+[ ] toàn bộ family cần chạy có IsEnabled=TRUE
+```
+
+---
+
+## 5.6 STEP 5 — Targeted calculation test
+
+Trước khi full historical load, nên chạy targeted test cho config mới.
+
+Ví dụ:
+
+```python
+refresh_technical_indicators(
+    config_ids=[<CONFIG_ID>],
+    tickers=["MWG"],
+    from_last_day=120,
+    connection=connection,
+    repository=repository,
+)
+```
+
+Mục tiêu:
+
+```text
+- xác nhận library function chạy được;
+- xác nhận RequiredInputs đúng;
+- xác nhận Parameters đúng;
+- xác nhận component mapping đúng;
+- xác nhận output không empty bất thường;
+- xác nhận Value có kiểu numeric hợp lệ.
+```
+
+Targeted maintenance run được phép chạy subset config/timeframe và bỏ riêng validation completeness D/W/M cho batch filter. Đây chỉ là test/debug/backfill, không phải production contract.
+
+---
+
+## 5.7 STEP 6 — Historical initialization / backfill
+
+### Khi thêm indicator/config family mới
+
+Phải backfill historical data cho config mới trước khi coi indicator là production-ready.
+
+Script full initialization toàn engine:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\init_refresh_technical_indicators.py
+```
+
+Script sử dụng:
+
+```python
+refresh_technical_indicators(
+    from_last_day=None,
+    tickers=None,
+    config_ids=None,
+    timeframes=None,
+)
+```
+
+Nghĩa là:
+
+```text
+from_last_day=None -> full historical
+ tickers=None       -> toàn bộ ticker active có raw_stock_eod
+ config_ids=None    -> toàn bộ enabled configs
+ timeframes=None    -> D/W/M
+```
+
+### Khuyến nghị khi chỉ thêm một config family mới
+
+Để tránh recalculate toàn bộ indicator cũ, ưu tiên backfill có filter `config_ids` của family mới nếu có script/tool phù hợp.
+
+Không cần xóa hay recompute historical data của indicator khác.
+
+---
+
+## 5.8 STEP 7 — Validate calculated values
+
+Sau backfill phải kiểm tra:
+
+```sql
+SELECT
+    c.ConfigCode,
+    v.ComponentCode,
+    COUNT(*) AS Records,
+    COUNT(DISTINCT v.Ticker) AS Tickers,
+    MIN(v.Date) AS MinDate,
+    MAX(v.Date) AS MaxDate,
+    SUM(CASE WHEN v.Value IS NULL THEN 1 ELSE 0 END) AS NullValues
+FROM "CherryMon"."main"."cal_indicator_values" v
+INNER JOIN "CherryMon"."main"."dim_indicator_config" c
+    ON c.ConfigId = v.ConfigId
+WHERE c.IndicatorCode = '<INDICATOR_CODE>'
+GROUP BY c.ConfigCode, v.ComponentCode
+ORDER BY c.ConfigCode, v.ComponentCode;
+```
+
+Phải kiểm tra:
+
+```text
+[ ] Có data cho config D/W/M
+[ ] Có đủ expected ComponentCode
+[ ] Có nhiều ticker, không chỉ ticker test
+[ ] MinDate/MaxDate hợp lý
+[ ] NULL rate hợp lý theo warmup behavior
+[ ] Không duplicate PK
+[ ] Không xuất hiện output component ngoài metadata
+```
+
+Kiểm tra duplicate:
+
+```sql
+SELECT
+    Ticker,
+    Date,
+    ConfigId,
+    ComponentCode,
+    COUNT(*) AS cnt
+FROM "CherryMon"."main"."cal_indicator_values"
+GROUP BY Ticker, Date, ConfigId, ComponentCode
+HAVING COUNT(*) > 1;
+```
+
+Kết quả phải là 0 row.
+
+---
+
+## 5.9 STEP 8 — Production activation
+
+Indicator được coi là **production active** khi đồng thời thỏa:
+
+```text
+dim_indicator.IsActive = TRUE
+AND
+>= 1 dim_indicator_component.IsActive = TRUE
+AND
+config family D/W/M đầy đủ
+AND
+các config cần chạy IsEnabled = TRUE
+AND
+historical backfill đã hoàn tất
+AND
+post-validation PASS
+```
+
+Sau thời điểm này không cần thêm hard-code riêng vào `run.py`.
+
+`refresh_technical_indicators()` tự discover enabled configs.
+
+---
+
+## 5.10 STEP 9 — Incremental refresh trong `run.py`
+
+`run.py` có step:
+
+```text
+Refresh Technical Indicators
+```
+
+và gọi:
+
+```python
+refresh_technical_indicators(
+    from_last_day=days_diff,
+    connection=connection,
+    repository=uow.indicators,
+)
+```
+
+Từ lần chạy production tiếp theo, indicator mới được refresh incremental cùng các indicator khác.
+
+---
+
+# 6. SOP: Active một indicator đã tồn tại
+
+Trường hợp indicator đã có trong `dim_indicator` nhưng đang inactive hoặc chưa có executable config.
+
+Không insert duplicate definition. Thực hiện theo thứ tự sau.
+
+## 6.1 Trường hợp A — `dim_indicator.IsActive = FALSE`
+
+```text
+1. Kiểm tra FunctionName / RequiredInputs / ParameterSchema còn đúng.
+2. Kiểm tra component metadata đã tồn tại và đúng.
+3. Bổ sung/sửa component nếu thiếu.
+4. Kiểm tra config family D/W/M.
+5. Bổ sung config còn thiếu với IsEnabled=FALSE trước.
+6. Set dim_indicator.IsActive=TRUE.
+7. Set toàn bộ config family D/W/M cần chạy IsEnabled=TRUE cùng lúc.
+8. Chạy targeted test.
+9. Chạy historical backfill cho config family vừa active.
+10. Validate cal_indicator_values.
+11. Để run.py tiếp tục incremental refresh.
+```
+
+## 6.2 Trường hợp B — Indicator active nhưng config đang `IsEnabled = FALSE`
+
+Không cần tạo lại `dim_indicator` hoặc component nếu metadata vẫn đúng.
+
+Thứ tự:
+
+```text
+1. Xác nhận dim_indicator.IsActive=TRUE.
+2. Xác nhận component metadata active.
+3. Xác nhận parameter family đủ D/W/M.
+4. Validate Parameters/WarmupBars.
+5. Enable toàn bộ D/W/M của family cùng lúc.
+6. Targeted test.
+7. Historical backfill cho family vừa enable.
+8. Post-validation.
+9. Production incremental qua run.py.
+```
+
+## 6.3 Trường hợp C — Thêm parameter family mới cho indicator đã active
+
+Ví dụ đã có `MA20`, muốn thêm `MA100`.
+
+Không sửa `dim_indicator` hoặc component nếu cùng function/output contract.
+
+Chỉ cần:
+
+```text
+1. Tạo MA100_D/W/M với cùng canonical Parameters family.
+2. Set WarmupBars phù hợp.
+3. Validate đủ D/W/M.
+4. Enable family.
+5. Targeted test MA100.
+6. Historical backfill MA100.
+7. Validate output.
+```
+
+Không recompute MA20/MA50 nếu không cần.
+
+---
+
+# 7. Activation Safety Rules
+
+## 7.1 Không enable partial family trong production
+
+Không hợp lệ:
+
+```text
+RSI14_D = TRUE
+RSI14_W = TRUE
+RSI14_M = FALSE
+```
+
+Normal full refresh enforce D/W/M completeness theo `IndicatorCode + Parameters`.
+
+## 7.2 Không enable config nếu parent indicator inactive
+
+Logical rule:
+
+```text
+IsEnabled config = TRUE
+requires
+IsActive indicator = TRUE
+```
+
+## 7.3 Không disable component đang được enabled config sử dụng
+
+Nếu thay đổi output mapping, phải validate targeted calculation trước khi production refresh.
+
+## 7.4 Không đổi Parameters trên cùng ConfigCode nếu semantics thay đổi
+
+Nếu một config đã có historical data và cần thay đổi parameter semantics, ưu tiên tạo ConfigCode mới hoặc thực hiện controlled migration/backfill.
+
+Không để cùng `ConfigCode` đại diện hai công thức khác nhau qua thời gian.
+
+## 7.5 Không xóa historical data của indicator khác khi onboarding
+
+Long-format architecture cho phép backfill độc lập theo ConfigId.
+
+---
+
+# 8. Onboarding Validation Contract
+
+`refresh_technical_indicators()` validate metadata trước calculation.
+
+Normal full refresh phải validate:
+
+```text
+- enabled config tồn tại;
+- active dim_indicator definition tồn tại;
+- active component metadata tồn tại;
+- RequiredInputs hợp lệ;
+- Parameters hợp lệ;
+- WarmupBars hợp lệ;
+- mỗi IndicatorCode + Parameters family đủ D/W/M;
+- library function resolve được.
+```
+
+Nếu lifecycle không hoàn chỉnh, engine phải fail trước persistence.
+
+Targeted run có `config_ids` hoặc `timeframes` có thể bỏ riêng D/W/M completeness check của filtered batch nhưng không bỏ các validation khác.
+
+---
+
+# 9. Indicator Registry / Library Adapter
+
+Primary engine library:
 
 ```text
 pandas-ta-classic
 ```
 
-Luồng:
+Flow:
 
 ```text
 dim_indicator.FunctionName
@@ -682,9 +828,7 @@ indicatorRegistry
 approved pandas-ta-classic callable
 ```
 
-Không gọi arbitrary `getattr()` từ raw database string mà không whitelist/validate.
-
-`RequiredInputs` được map từ CherryStock column sang library argument:
+Source argument mapping:
 
 ```text
 Open   -> open_
@@ -694,32 +838,19 @@ Close  -> close
 Volume -> volume
 ```
 
-Ví dụ:
-
-```text
-ADX RequiredInputs
-["High","Low","Close"]
-
-        ↓
-
-adx(high=..., low=..., close=..., **Parameters)
-```
+Không persist raw pandas-ta column names trực tiếp vào fact table.
 
 ---
 
-# 8. Timeframe Resampling
+# 10. Timeframe Resampling
 
-Source gốc:
+Source:
 
 ```text
 "CherryMon"."main"."raw_stock_eod"
 ```
 
-## Daily
-
-Không resample.
-
-## Weekly
+Weekly/Monthly aggregation:
 
 ```text
 Open   = first
@@ -727,59 +858,36 @@ High   = max
 Low    = min
 Close  = last
 Volume = sum
-Date   = last actual trading date of week
+Date   = last actual trading date in period
 ```
 
-## Monthly
-
-```text
-Open   = first
-High   = max
-Low    = min
-Close  = last
-Volume = sum
-Date   = last actual trading date of month
-```
-
-Không hard-code Friday hoặc ngày 30/31 làm Date.
+Current partial W/M được phép tính. Cleanup bắt đầu từ đầu kỳ chứa checkpoint để thay provisional row cũ khi Date đại diện thay đổi.
 
 ---
 
-# 9. Checkpoint Contract
+# 11. Checkpoint Contract
 
-`run.py` resolve checkpoint bằng `get_last_point()` và truyền `days_diff` xuống write pipeline.
-
-Indicator Engine nhận cùng contract:
-
-```python
-refresh_technical_indicators(
-    from_last_day=days_diff,
-    connection=connection,
-    repository=indicator_repository,
-)
-```
-
-Nguyên tắc:
+`run.py` resolve `days_diff` và Indicator Engine nhận cùng checkpoint.
 
 ```text
 from_last_day
     ↓
 resolve checkpoint target
     ↓
-calculate required WarmupBars
+resolve WarmupBars
     ↓
-load historical source trước checkpoint
+load historical source
     ↓
 calculate full loaded window
     ↓
 persist only checkpoint target
 ```
 
-Weekly/monthly cleanup bắt đầu từ đầu kỳ chứa checkpoint để tránh giữ stale provisional value trong cùng tuần/tháng.
+`from_last_day=None` nghĩa là full historical refresh.
 
 ---
 
-# 10. `refresh_technical_indicators()` Contract
+# 12. `refresh_technical_indicators()` Contract
 
 Public function:
 
@@ -796,7 +904,7 @@ def refresh_technical_indicators(
     ...
 ```
 
-## Normal main execution
+Normal main execution:
 
 ```python
 refresh_technical_indicators(
@@ -806,24 +914,26 @@ refresh_technical_indicators(
 )
 ```
 
-Hành vi:
+Execution flow:
 
-1. Ensure indicator storage tables tồn tại.
-2. Load all `IsEnabled = TRUE` configs.
+```text
+1. Ensure storage.
+2. Load enabled configs.
 3. Load active definitions.
 4. Load active components.
 5. Validate onboarding contract.
-6. Enforce D/W/M cho từng `IndicatorCode + Parameters` family.
-7. Validate each config/ParameterSchema.
+6. Validate D/W/M completeness.
+7. Validate configs/ParameterSchema.
 8. Resolve checkpoint.
 9. Resolve warmup window.
-10. Batch load OHLCV source.
+10. Batch load required OHLCV source.
 11. Resample D/W/M.
-12. Calculate indicator values.
-13. Normalize output component.
+12. Calculate values.
+13. Normalize components.
 14. Delete/replace checkpoint region.
-15. Upsert `cal_indicator_values`.
-16. Return execution summary.
+15. Upsert cal_indicator_values.
+16. Return summary.
+```
 
 Summary gồm tối thiểu:
 
@@ -841,7 +951,7 @@ default_timeframes_validated
 
 ---
 
-# 11. Function Responsibilities
+# 13. Function Responsibilities
 
 | Function | Responsibility |
 |---|---|
@@ -849,56 +959,28 @@ default_timeframes_validated
 | `get_indicator_definitions()` | Load master indicator definition |
 | `get_indicator_components()` | Load component/output mapping |
 | `validate_indicator_onboarding_contract()` | Enforce metadata lifecycle + D/W/M completeness |
-| `validate_indicator_config()` | Validate Parameters and config relationships |
+| `validate_indicator_config()` | Validate Parameters and relationships |
 | `load_indicator_source_data()` | Batch load required OHLCV inputs |
 | `resample_indicator_timeframe()` | Convert Daily source to D/W/M |
 | `calculate_indicator_from_config()` | Calculate one config for one ticker |
 | `normalize_indicator_output()` | Convert library output to CherryStock long format |
 | `calculate_indicator_batch()` | Calculate all configs without DB calls inside loops |
-| `replace_indicator_checkpoint()` | Delete stale checkpoint rows and upsert new values |
+| `replace_indicator_checkpoint()` | Delete stale checkpoint rows and upsert values |
 | `refresh_technical_indicators()` | Public orchestration function |
 
 ---
 
-# 12. Idempotency
+# 14. Idempotency and Data Quality
 
-Fact primary key:
-
-```text
-Ticker
-Date
-ConfigId
-ComponentCode
-```
-
-Rerun cùng checkpoint:
+Fact PK:
 
 ```text
-không duplicate
+Ticker + Date + ConfigId + ComponentCode
 ```
 
-Engine replace checkpoint region trước khi insert, đặc biệt cần cho Weekly/Monthly vì ngày đại diện của kỳ hiện tại có thể thay đổi sau mỗi phiên giao dịch.
+Rerun cùng checkpoint không duplicate.
 
----
-
-# 13. Data Quality
-
-Sau Technical Indicator Engine trong main pipeline, nếu có records được upsert, chạy data-quality validation cho:
-
-```text
-"CherryMon"."main"."cal_indicator_values"
-```
-
-Key:
-
-```text
-Ticker
-Date
-ConfigId
-ComponentCode
-```
-
-Required:
+Sau Technical Indicator Engine, data-quality validation cần kiểm tra:
 
 ```text
 Ticker
@@ -908,99 +990,98 @@ ComponentCode
 Value
 ```
 
-Các lỗi metadata/config phải fail trước calculated-value persistence.
+Metadata/config errors phải fail trước calculated-value persistence.
 
 ---
 
-# 14. Adding a New Indicator — Operational Checklist
+# 15. Operational Checklist — New Indicator
 
-Ví dụ thêm ATR:
-
-```text
-[1] Verify pandas-ta-classic function
-    atr
-
-[2] Insert dim_indicator
-    IndicatorCode = ATR
-    RequiredInputs = [High, Low, Close]
-
-[3] Insert dim_indicator_component
-    VALUE
-
-[4] Define parameter set
-    {"length":14}
-
-[5] Insert dim_indicator_config
-    ATR14_D
-    ATR14_W
-    ATR14_M
-
-[6] Confirm all configs IsEnabled=TRUE
-
-[7] Run targeted test if needed
-    refresh_technical_indicators(config_ids=[...])
-
-[8] Run normal refresh
-    refresh_technical_indicators()
-
-[9] Validate cal_indicator_values
-
-[10] No schema alteration required
-```
-
-Ví dụ thêm MACD:
+Ví dụ ATR:
 
 ```text
-[1] dim_indicator
-    MACD / macd / RequiredInputs=[Close]
-
-[2] dim_indicator_component
-    LINE
-    SIGNAL
-    HIST
-
-[3] dim_indicator_config
-    MACD12_26_9_D
-    MACD12_26_9_W
-    MACD12_26_9_M
-
-[4] refresh_technical_indicators()
+[ ] 0. Verify pandas-ta-classic function `atr`
+[ ] 1. Define RequiredInputs = [High, Low, Close]
+[ ] 2. Define ParameterSchema
+[ ] 3. Insert/upsert dim_indicator
+[ ] 4. Insert/upsert component VALUE
+[ ] 5. Define parameter family {"length":14}
+[ ] 6. Create ATR14_D / ATR14_W / ATR14_M
+[ ] 7. Set correct WarmupBars
+[ ] 8. Validate metadata lifecycle
+[ ] 9. Enable definition + complete config family
+[ ] 10. Run targeted test
+[ ] 11. Run historical backfill
+[ ] 12. Validate ticker/config/component/date coverage
+[ ] 13. Confirm no duplicate PK
+[ ] 14. Let run.py perform future incremental refresh
+[ ] 15. No fact-table schema alteration required
 ```
 
 ---
 
-# 15. Rule Summary
+# 16. Operational Checklist — Activate Existing Indicator
 
-Các rule bắt buộc:
+```text
+[ ] 1. Find existing dim_indicator row
+[ ] 2. Verify FunctionName / RequiredInputs / ParameterSchema
+[ ] 3. Verify active components
+[ ] 4. Verify or create complete D/W/M config family
+[ ] 5. Verify Parameters and WarmupBars
+[ ] 6. Set dim_indicator.IsActive=TRUE if needed
+[ ] 7. Set complete config family IsEnabled=TRUE
+[ ] 8. Run targeted test
+[ ] 9. Historical backfill for newly activated family
+[ ] 10. Validate cal_indicator_values
+[ ] 11. Continue incremental refresh through run.py
+```
+
+---
+
+# 17. Rule Summary
 
 ```text
 1 indicator definition
-    = 1 row trong dim_indicator
+    = 1 row dim_indicator
 
 1 indicator
-    = >= 1 row trong dim_indicator_component
+    = >= 1 active dim_indicator_component row
 
-1 Parameter set
-    = mặc định 3 config rows: D + W + M
+1 parameter family
+    = default D + W + M configs
+
+production active
+    = IsActive definition
+      + active components
+      + complete enabled D/W/M family
+      + historical backfill
+      + validation PASS
 
 1 calculated output
     = Ticker + Date + ConfigId + ComponentCode + Value
 ```
 
-Onboarding order:
+Mandatory onboarding order:
 
 ```text
+verify function/design
+    ↓
 dim_indicator
     ↓
 dim_indicator_component
     ↓
-dim_indicator_config (D/W/M)
+dim_indicator_config D/W/M
     ↓
-refresh_technical_indicators()
+metadata validation
     ↓
-cal_indicator_values
+targeted test
+    ↓
+historical backfill
+    ↓
+post-validation
+    ↓
+production active
+    ↓
+run.py incremental refresh
 ```
 
-Normal main refresh phải fail nếu configured indicator chưa hoàn tất lifecycle trên.
-
-Mục tiêu cuối cùng là: **thêm indicator mới bằng metadata/config, không thay đổi fact schema và không ảnh hưởng historical data của indicator khác**.
+Mục tiêu cuối cùng: **thêm hoặc active indicator bằng metadata/config, không thay đổi fact schema và không ảnh hưởng historical data của indicator khác**.
