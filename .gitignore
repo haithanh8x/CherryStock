@@ -37,6 +37,9 @@ env/
 *~
 .DS_Store
 
+# Obsidian local vault configuration
+.obsidian/
+
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb_checkpoints
@@ -72,4 +75,3 @@ Thumbs.db
 state.json
 CherryStock.code-workspace
 *.code-workspace
-.obsidian
