@@ -50,7 +50,6 @@ raw_stock_eod
             │ CurrentPrice
             │
             │
-cal_indicator_values
 vw_Ticker_indicators
 vw_Indicator_config
 raw_stock_eod / derived levels
@@ -170,8 +169,8 @@ price_field: str = "Close"
 
 - Optional.
 - Nếu `None`, resolve latest valid trading date.
-- Trading date phải sử dụng `dimCalendar` hoặc helper hiện có của CherryStock.
-- Không tự assume Monday–Friday là trading calendar.
+- V1 resolve ngày thực tế bằng latest `raw_stock_eod.Date <= as_of_date`; đây là actual trading-data date và không assume Monday–Friday.
+- Khi business rule cần calendar semantics ngoài dữ liệu giá, sử dụng `dimCalendar` hoặc helper hiện có.
 
 `price_field`:
 
