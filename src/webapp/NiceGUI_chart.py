@@ -28,6 +28,12 @@ from DuckDB.Data import view_to_dataframe
 from Ults.DuckLib import DuckDBManager
 import Chart.plot as chart_plot
 importlib.reload(chart_plot)
+from calcEngine.levelLadder import build_level_ladder
+from Chart.levelLadderChart import (
+    build_level_ladder_chart_options,
+    empty_level_ladder_chart_options,
+    ladder_rows,
+)
 from Ults.lstPara import CHART_START_DATE, IFRAME_HEIGHT, THEME, TIMEFRAME_OPTIONS
 
 
@@ -1846,6 +1852,213 @@ def portfolio_tab_content() -> None:
             create_portfolio_grid()
 
 
+
+def rs_tab_content() -> None:
+    """Render the Support / Resistance Ladder V1 page.
+
+    Data acquisition and business calculation belong to calcEngine.levelLadder;
+    this function only composes controls, metrics, chart and table.
+    """
+    with ui.card().classes(card_classes("p-4 w-full")):
+        with ui.row().classes("w-full items-end gap-3 flex-wrap"):
+            with ui.column().classes("gap-0 mr-auto min-w-[260px]"):
+                card_header(
+                    "Support / Resistance Ladder",
+                    "V1: MA20 / MA50 / MA100 / MA200 trên D / W / M",
+                    icon="vertical_align_center",
+                )
+                ui.label(
+                    "R1/S1 = level gần giá hiện tại nhất; Strength là độ mạnh độc lập."
+                ).classes(f"text-xs text-[{THEME['muted']}] mt-1")
+
+            ticker_input = ui.input(
+                label="Ticker",
+                value="MWG",
+                placeholder="MWG",
+            ).props("outlined dense clearable").classes("w-32 uppercase")
+
+            as_of_input = ui.input(
+                label="As of date",
+                placeholder="YYYY-MM-DD",
+            ).props("outlined dense clearable type=date").classes("w-44")
+
+            cluster_input = ui.number(
+                label="Cluster %",
+                value=1.0,
+                min=0.1,
+                max=5.0,
+                step=0.1,
+                format="%.1f",
+            ).props("outlined dense").classes("w-32")
+
+            refresh_button = ui.button(
+                "Refresh",
+                icon="refresh",
+            ).props("unelevated dense no-caps")
+
+    metric_values: dict[str, Any] = {}
+    with ui.element("div").classes("grid grid-cols-2 lg:grid-cols-4 gap-3 w-full"):
+        for key, title, icon in (
+            ("current", "Current Price", "paid"),
+            ("r1", "R1 gần nhất", "north"),
+            ("s1", "S1 gần nhất", "south"),
+            ("rr", "Reward / Risk", "balance"),
+        ):
+            with ui.card().classes(card_classes("p-4")):
+                with ui.row().classes("items-center gap-2"):
+                    ui.icon(icon).classes(f"text-[{THEME['primary']}]")
+                    ui.label(title).classes(
+                        f"text-xs uppercase tracking-wider text-[{THEME['muted']}]"
+                    )
+                metric_values[key] = ui.label("—").classes("text-xl font-bold mt-2")
+
+    with ui.element("div").classes("grid grid-cols-1 xl:grid-cols-12 gap-4 w-full"):
+        with ui.card().classes(card_classes("p-4 xl:col-span-8")):
+            card_header(
+                "R/S Price Ladder",
+                "Khoảng cách dọc phản ánh đúng khoảng cách giá thực tế",
+                icon="stacked_line_chart",
+            )
+            ladder_chart = ui.echart(
+                empty_level_ladder_chart_options()
+            ).classes("w-full h-[620px]")
+
+        with ui.card().classes(card_classes("p-4 xl:col-span-4")):
+            card_header(
+                "Level Details",
+                "Source, timeframe, distance và strength",
+                icon="table_chart",
+            )
+            level_grid = ui.aggrid(
+                {
+                    "defaultColDef": {
+                        "sortable": True,
+                        "resizable": True,
+                    },
+                    "columnDefs": [
+                        {"headerName": "Rank", "field": "rank", "width": 72},
+                        {"headerName": "Type", "field": "type", "width": 105},
+                        {
+                            "headerName": "Price",
+                            "field": "price",
+                            "width": 105,
+                            ":valueFormatter": "params => Number(params.value).toLocaleString('vi-VN')",
+                        },
+                        {
+                            "headerName": "Dist %",
+                            "field": "distance_pct",
+                            "width": 92,
+                            ":valueFormatter": "params => (params.value > 0 ? '+' : '') + Number(params.value).toFixed(2) + '%'",
+                        },
+                        {
+                            "headerName": "Strength",
+                            "field": "strength",
+                            "width": 96,
+                        },
+                        {"headerName": "TF", "field": "timeframes", "width": 78},
+                        {
+                            "headerName": "Sources",
+                            "field": "sources",
+                            "minWidth": 170,
+                            "flex": 1,
+                        },
+                    ],
+                    "rowData": [],
+                    "animateRows": True,
+                    "headerHeight": 36,
+                    "rowHeight": 38,
+                },
+                theme="quartz",
+                auto_size_columns=False,
+            ).classes("w-full h-[620px]")
+
+    def clear_output(message: str) -> None:
+        for label in metric_values.values():
+            label.set_text("—")
+        ladder_chart.options = empty_level_ladder_chart_options(message)
+        ladder_chart.update()
+        level_grid.options["rowData"] = []
+        level_grid.update()
+
+    def refresh_rs_ladder() -> None:
+        ticker = str(ticker_input.value or "").strip().upper()
+        if not ticker:
+            clear_output("Ticker là bắt buộc")
+            ui.notify("Ticker là bắt buộc", type="warning")
+            return
+
+        selected_date = None
+        raw_date = str(as_of_input.value or "").strip()
+        if raw_date:
+            try:
+                selected_date = date.fromisoformat(raw_date)
+            except ValueError:
+                clear_output("As of date không hợp lệ")
+                ui.notify("As of date phải theo YYYY-MM-DD", type="negative")
+                return
+
+        try:
+            cluster_pct = float(cluster_input.value or 1.0)
+            result = build_level_ladder(
+                ticker,
+                as_of_date=selected_date,
+                cluster_threshold_pct=cluster_pct / 100.0,
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).exception(
+                "R/S tab refresh failed | ticker=%s", ticker
+            )
+            clear_output("Không thể build R/S Ladder")
+            ui.notify(f"R/S error: {exc}", type="negative", timeout=8000)
+            return
+
+        metric_values["current"].set_text(f"{result.current_price:,.0f}")
+
+        if result.nearest_resistance is not None:
+            r1 = result.nearest_resistance
+            metric_values["r1"].set_text(
+                f"{r1.price:,.0f}  (+{r1.distance_pct:.2f}%)"
+            )
+        else:
+            metric_values["r1"].set_text("—")
+
+        if result.nearest_support is not None:
+            s1 = result.nearest_support
+            metric_values["s1"].set_text(
+                f"{s1.price:,.0f}  ({s1.distance_pct:.2f}%)"
+            )
+        else:
+            metric_values["s1"].set_text("—")
+
+        metric_values["rr"].set_text(
+            f"{result.risk_reward_ratio:.2f}"
+            if result.risk_reward_ratio is not None
+            else "—"
+        )
+
+        ladder_chart.options = build_level_ladder_chart_options(
+            result,
+            support_color=THEME["positive"],
+            resistance_color=THEME["negative"],
+            current_color=THEME["warning"],
+            text_color=THEME["text"],
+            muted_color=THEME["muted"],
+            grid_color=THEME["border"],
+        )
+        ladder_chart.update()
+
+        level_grid.options["rowData"] = ladder_rows(result)
+        level_grid.update()
+
+        ui.notify(
+            f"{result.ticker} R/S @ {result.as_of_date.isoformat()} | "
+            f"S={len(result.support_levels)} R={len(result.resistance_levels)}",
+            type="positive",
+        )
+
+    refresh_button.on("click", refresh_rs_ladder)
+    refresh_rs_ladder()
+
 # =============================================================================
 # Page layout
 # =============================================================================
@@ -1931,6 +2144,7 @@ def build_page() -> None:
             ui.tab("overview", label="Tổng quan", icon="dashboard")
             ui.tab("market", label="Screener", icon="filter_alt")
             ui.tab("portfolio", label="Danh mục", icon="account_balance_wallet")
+            ui.tab("rs", label="R/S", icon="vertical_align_center")
             ui.tab("operations", label="Vận Hành", icon="settings_suggest")
 
         with ui.tab_panels(tabs, value="overview").classes(
@@ -1942,6 +2156,8 @@ def build_page() -> None:
                 market_tab_content()
             with ui.tab_panel("portfolio").classes("p-0 gap-4"):
                 portfolio_tab_content()
+            with ui.tab_panel("rs").classes("p-0 gap-4"):
+                rs_tab_content()
             with ui.tab_panel("operations").classes("p-0 gap-4"):
                 operations_tab_content()
 
