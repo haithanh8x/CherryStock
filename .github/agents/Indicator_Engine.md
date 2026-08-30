@@ -177,7 +177,16 @@ dim_indicator
 dim_indicator_config
         │
         ▼
-vw_Ticker_indicators
+vw_Indicator_config          ← Configuration SSOT
+        │
+        ▼
+Indicator Engine
+        │
+        ▼
+cal_indicator_values         ← internal persistence
+        │
+        ▼
+vw_Ticker_indicators         ← Calculated Value SSOT
 ```
 
 ### 4.1 `dim_indicator`
@@ -297,7 +306,155 @@ Ví dụ:
 
 `WarmupBars` phải đủ để tính chính xác vùng target. Ví dụ MA200 cần load thêm ít nhất 200 bars trước vùng persist.
 
-### 4.4 `vw_Ticker_indicators`
+
+
+### 4.4 Configuration SSOT View — `vw_Indicator_config`
+
+Để tránh việc mỗi service/function phải tự join lại ba bảng:
+
+- `"CherryMon"."main"."dim_indicator"`
+- `"CherryMon"."main"."dim_indicator_config"`
+- `"CherryMon"."main"."dim_indicator_component"`
+
+CherryStock phải expose một **Single Source of Truth cho configuration**:
+
+```sql
+CREATE OR REPLACE VIEW "CherryMon"."main"."vw_Indicator_config" AS
+SELECT
+    cfg.ConfigId,
+    cfg.ConfigCode,
+    cfg.IndicatorCode,
+    cfg.Timeframe,
+    cfg.Parameters,
+    cfg.WarmupBars,
+    cfg.IsEnabled                    AS ConfigIsEnabled,
+    cfg.Description                  AS ConfigDescription,
+    cfg.CreatedAt                    AS ConfigCreatedAt,
+    cfg.UpdatedAt                    AS ConfigUpdatedAt,
+
+    ind.IndicatorName,
+    ind.Category,
+    ind.Engine,
+    ind.FunctionName,
+    ind.RequiredInputs,
+    ind.ParameterSchema,
+    ind.Description                  AS IndicatorDescription,
+    ind.IsActive                     AS IndicatorIsActive,
+    ind.CreatedAt                    AS IndicatorCreatedAt,
+    ind.UpdatedAt                    AS IndicatorUpdatedAt,
+
+    comp.ComponentCode,
+    comp.ComponentName,
+    comp.OutputPrefix,
+    comp.SortOrder,
+    comp.IsPrimary,
+    comp.IsActive                    AS ComponentIsActive
+
+FROM "CherryMon"."main"."dim_indicator_config" cfg
+INNER JOIN "CherryMon"."main"."dim_indicator" ind
+    ON ind.IndicatorCode = cfg.IndicatorCode
+LEFT JOIN "CherryMon"."main"."dim_indicator_component" comp
+    ON comp.IndicatorCode = cfg.IndicatorCode;
+```
+
+View này là **public read contract cho toàn bộ indicator configuration**.
+
+Mọi downstream logic cần metadata/config/component phải query:
+
+```sql
+SELECT ...
+FROM "CherryMon"."main"."vw_Indicator_config"
+```
+
+thay vì tự join trực tiếp ba bảng dimension.
+
+Kiến trúc:
+
+```text
+dim_indicator
+        │
+        ├──────────────► dim_indicator_component
+        │
+        ▼
+dim_indicator_config
+        │
+        ▼
+vw_Indicator_config
+        │
+        ├── Indicator Engine
+        ├── Config Validator
+        ├── Registry / Adapter
+        ├── Admin / Config UI
+        └── Technical Pipeline
+```
+
+#### Grain của view
+
+Grain của `vw_Indicator_config` là:
+
+```text
+ConfigId + ComponentCode
+```
+
+Với indicator single-output, mỗi `ConfigId` thường có một component.
+
+Với indicator multi-output như Bollinger Bands, MACD, ADX, một `ConfigId` sẽ xuất hiện nhiều row — mỗi row tương ứng một `ComponentCode`.
+
+Ví dụ:
+
+```text
+ConfigId | ConfigCode    | IndicatorCode | Timeframe | ComponentCode
+---------------------------------------------------------------------
+4        | BB20_2_D      | BB            | D         | LOWER
+4        | BB20_2_D      | BB            | D         | MIDDLE
+4        | BB20_2_D      | BB            | D         | UPPER
+4        | BB20_2_D      | BB            | D         | WIDTH
+4        | BB20_2_D      | BB            | D         | PERCENT
+```
+
+#### Active configuration contract
+
+Khi Indicator Engine cần lấy các config có thể thực thi, filter tại view:
+
+```sql
+SELECT *
+FROM "CherryMon"."main"."vw_Indicator_config"
+WHERE ConfigIsEnabled = TRUE
+  AND IndicatorIsActive = TRUE
+  AND COALESCE(ComponentIsActive, TRUE) = TRUE;
+```
+
+Như vậy toàn bộ rule active/inactive được resolve tại cùng một read model.
+
+#### Naming convention
+
+View này được xem là:
+
+```text
+vw_Indicator_config
+        ↓
+Single Source of Truth
+for indicator configuration
+```
+
+Trong khi:
+
+```text
+vw_Ticker_indicators
+        ↓
+Single Source of Truth
+for calculated indicator values
+```
+
+Hai SSOT phải được phân biệt rõ:
+
+| View | Vai trò |
+| --- | --- |
+| `vw_Indicator_config` | SSOT cho metadata + executable config + component mapping |
+| `vw_Ticker_indicators` | SSOT cho giá trị indicator đã tính theo ticker/date |
+
+
+### 4.5 `vw_Ticker_indicators`
 
 `"CherryMon"."main"."vw_Ticker_indicators"` là **Single Source of Truth (SSOT)** cho toàn bộ technical indicator mà các downstream consumer phải sử dụng. View này **thay thế vai trò source of truth của `cal_indicator_values`**.
 
@@ -421,7 +578,7 @@ Không cần ORM; project dùng DuckDB + pandas trực tiếp.
 | --- | --- |
 | `get_indicator_definition()` | lấy metadata indicator |
 | `get_indicator_components()` | lấy component mapping |
-| `get_enabled_indicator_configs()` | lấy config cần chạy |
+| `get_enabled_indicator_configs()` | lấy config cần chạy từ `vw_Indicator_config` |
 | `validate_indicator_config()` | validate Parameters |
 | `load_indicator_source_data()` | load OHLCV |
 | `resample_indicator_timeframe()` | D → W/M |
@@ -571,7 +728,10 @@ refresh_technical_indicators()
 get_enabled_indicator_configs()
                 │
                 ▼
-get indicator definitions/components
+vw_Indicator_config
+                │
+                ▼
+get resolved definition/config/components
                 │
                 ▼
 validate_indicator_config()
@@ -663,6 +823,10 @@ multi-output definition
 dim_indicator_config
         ↓
 executable ParamSet + timeframe
+
+vw_Indicator_config
+        ↓
+CONFIGURATION SINGLE SOURCE OF TRUTH
 
 cal_indicator_values
         ↓
