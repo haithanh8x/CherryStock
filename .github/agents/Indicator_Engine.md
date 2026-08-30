@@ -39,7 +39,7 @@ Nên có metadata `dim_indicator`, và giữ một số table wide/materialized 
 raw_stock_eod
       │
       ▼
-cal_indicator_values       ← source of truth
+vw_Ticker_indicators       ← SINGLE SOURCE OF TRUTH
       │
       ├── Trend
       ├── Momentum
@@ -63,7 +63,7 @@ Với DuckDB, cấu trúc mục tiêu:
 
 1. `raw_stock_eod` — raw data.
 2. `dim_indicator` — metadata / definition.
-3. `cal_indicator_values` — long-format historical indicator store.
+3. `vw_Ticker_indicators` — **Single Source of Truth** for all calculated technical indicators; replaces direct consumer access to `cal_indicator_values`.
 4. `cal_technical_core` — wide-format core features.
 5. `cal_technical_score` — TrendScore, MomentumScore, VolumeScore, VolatilityScore, StructureScore, RelativeStrengthScore, TechnicalScore.
 
@@ -87,7 +87,7 @@ Indicator Engine
 normalize output
         │
         ▼
-cal_indicator_values
+vw_Ticker_indicators
 ```
 
 Không gọi function tự do trực tiếp từ DB bằng `getattr()`. Phải có **Indicator Registry** whitelist function và required inputs.
@@ -177,7 +177,7 @@ dim_indicator
 dim_indicator_config
         │
         ▼
-cal_indicator_values
+vw_Ticker_indicators
 ```
 
 ### 4.1 `dim_indicator`
@@ -297,9 +297,39 @@ Ví dụ:
 
 `WarmupBars` phải đủ để tính chính xác vùng target. Ví dụ MA200 cần load thêm ít nhất 200 bars trước vùng persist.
 
-### 4.4 `cal_indicator_values`
+### 4.4 `vw_Ticker_indicators`
 
-Source of truth của calculated technical indicators.
+`"CherryMon"."main"."vw_Ticker_indicators"` là **Single Source of Truth (SSOT)** cho toàn bộ technical indicator mà các downstream consumer phải sử dụng. View này **thay thế vai trò source of truth của `cal_indicator_values`**.
+
+`cal_indicator_values` có thể tiếp tục tồn tại như physical persistence/staging table nội bộ của Indicator Engine, nhưng **không được xem là contract đọc dữ liệu chính** cho CherryMon, Screener, Technical Score, charting, API hay ML feature consumption.
+
+Nguyên tắc:
+
+```text
+Indicator Engine
+      │
+      ▼
+cal_indicator_values        ← internal persistence / implementation detail
+      │
+      ▼
+vw_Ticker_indicators       ← SINGLE SOURCE OF TRUTH / public read contract
+      │
+      ├── CherryMon
+      ├── Screener
+      ├── Technical Score
+      ├── Chart / Level analysis
+      ├── API
+      └── ML / Prediction
+```
+
+Mọi logic downstream khi cần indicator phải ưu tiên query:
+
+```sql
+SELECT ...
+FROM "CherryMon"."main"."vw_Ticker_indicators"
+```
+
+thay vì đọc trực tiếp từ `cal_indicator_values`.
 
 ```sql
 CREATE TABLE "CherryMon"."main"."cal_indicator_values" (
@@ -570,8 +600,10 @@ load_indicator_source_data()
                        normalize_indicator_output()
                                       │
                                       ▼
-                        cal_indicator_values
+                        vw_Ticker_indicators
 ```
+
+Sau khi persist/upsert vào internal storage, view `vw_Ticker_indicators` là lớp contract cuối cùng expose dữ liệu cho downstream consumers.
 
 ## 9. File structure
 
@@ -601,7 +633,9 @@ cal_Trends
 
 refresh_technical_indicators()
        ↓
-cal_indicator_values
+cal_indicator_values (internal persistence)
+       ↓
+vw_Ticker_indicators (SSOT)
 ```
 
 Sau khi validation:
@@ -613,7 +647,7 @@ MA100 old == MA100 new
 MA200 old == MA200 new
 ```
 
-mới migrate. Cuối cùng `cal_Trends` có thể trở thành wide view/pivot từ `cal_indicator_values`.
+mới migrate. Cuối cùng `cal_Trends` có thể trở thành compatibility view/pivot được derive từ `vw_Ticker_indicators` thay vì đọc trực tiếp `cal_indicator_values`.
 
 ## 11. Thiết kế chốt
 
@@ -632,7 +666,11 @@ executable ParamSet + timeframe
 
 cal_indicator_values
         ↓
-actual values
+internal persistence
+
+vw_Ticker_indicators
+        ↓
+SINGLE SOURCE OF TRUTH / downstream read contract
 ```
 
 Public orchestration:
