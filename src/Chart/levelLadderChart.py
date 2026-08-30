@@ -131,7 +131,7 @@ def build_level_ladder_chart_options(
             "scale": True,
             "axisLabel": {
                 "color": muted_color,
-                "formatter": "function(value){return Math.round(value).toLocaleString('vi-VN');}",
+                ":formatter": "value => Math.round(value).toLocaleString('vi-VN')",
             },
             "axisLine": {"show": True, "lineStyle": {"color": grid_color}},
             "splitLine": {"lineStyle": {"color": grid_color, "opacity": 0.45}},
