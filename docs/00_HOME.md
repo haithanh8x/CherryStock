@@ -33,6 +33,7 @@ When the request involves architecture, system design, solution design, componen
 
 ### Chart / Visualization
 - [[architecture/Chart_Architecture|Chart Architecture]]
+- [[architecture/RS_Ladder|RS Ladder Architecture]]
 - [[../.github/instructions/chart.instructions|Chart Instructions]]
 
 ### Crawlers / Data Ingestion
@@ -48,6 +49,7 @@ When the request involves architecture, system design, solution design, componen
 - [[architecture/Indicator_Engine|Indicator Engine]]
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
+- [[architecture/RS_Ladder|RS Ladder Architecture]]
 
 ## Architecture Decision Records
 - [[adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
