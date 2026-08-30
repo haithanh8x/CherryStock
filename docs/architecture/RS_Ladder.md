@@ -26,8 +26,8 @@ RS Ladder tuân thủ các nguyên tắc của `copilot-instructions.md`, `Cherr
 3. Renderer không query database và không tính Support / Resistance.
 4. Data access, normalization, calculation, validation và rendering phải được tách rõ.
 5. Không hard-code indicator configuration nếu metadata/config hiện tại đã có thể resolve từ DuckDB.
-6. Technical indicator values sử dụng `cal_indicator_values` làm source of truth.
-7. Runtime không parse Parameters từ `ConfigCode`; Parameters phải được resolve từ `dim_indicator_config.Parameters`.
+6. Downstream technical indicator values sử dụng `vw_Ticker_indicators` làm calculated-value Single Source of Truth; `cal_indicator_values` chỉ là internal persistence của Indicator Engine.
+7. Runtime không parse Parameters từ `ConfigCode`; downstream phải resolve Parameters từ public config contract `vw_Indicator_config.Parameters`.
 8. Mặc định hỗ trợ ba timeframe:
    - `D` = Daily
    - `W` = Weekly
@@ -280,26 +280,26 @@ timeframes: tuple[str, ...] = ("D", "W", "M")
 
 ## 6.4 Indicator Data Source
 
-Indicator Engine source of truth:
-
-```text
-dim_indicator
-        │
-dim_indicator_component
-        │
-dim_indicator_config
-        │
-cal_indicator_values
-```
-
-Reporting/read-side có thể ưu tiên các Single Source of Truth views hiện có khi contract phù hợp:
+RS Ladder là downstream consumer của Indicator Engine nên public read contracts là bắt buộc:
 
 ```text
 "CherryMon"."main"."vw_Ticker_indicators"
+    = Calculated Value SSOT
+
 "CherryMon"."main"."vw_Indicator_config"
+    = Configuration / metadata SSOT
 ```
 
-Provider không được duplicate indicator calculation nếu giá trị đã tồn tại trong Indicator Engine.
+Các table nội bộ vẫn giữ vai trò lineage/persistence của Indicator Engine:
+
+```text
+dim_indicator
+dim_indicator_component
+dim_indicator_config
+cal_indicator_values
+```
+
+RS Ladder không đọc trực tiếp `cal_indicator_values` khi public view đáp ứng contract, không duplicate indicator calculation và không fallback sang `cal_Trends` nếu public contract bị thiếu/sai.
 
 ## 6.5 Output Contract
 
@@ -1357,3 +1357,241 @@ RS Ladder V1 được coi là hoàn thành khi:
 12. Invalid critical input fail rõ ràng, không silent fallback.
 13. Cùng input tạo deterministic output.
 14. Test thực tế ít nhất một ticker có cả Support và Resistance.
+
+
+---
+
+# 24. V1 Implementation Contract
+
+## 24.1 Scope
+
+V1 được implement với duy nhất nguồn `MA`, gồm 12 configuration mục tiêu:
+
+| Length | Daily | Weekly | Monthly |
+|---:|---|---|---|
+| 20 | MA20_D | MA20_W | MA20_M |
+| 50 | MA50_D | MA50_W | MA50_M |
+| 100 | MA100_D | MA100_W | MA100_M |
+| 200 | MA200_D | MA200_W | MA200_M |
+
+Runtime chọn family bằng `vw_Indicator_config.Parameters.length`, không parse period từ `ConfigCode`. Các MA length khác nếu tồn tại trong database không tham gia V1.
+
+## 24.2 Runtime Source of Truth
+
+```text
+raw_stock_eod
+    └── latest valid Close <= as_of_date
+            ↓
+        CurrentPrice
+
+vw_Ticker_indicators
+        +
+vw_Indicator_config
+        ↓
+latest MA value per ConfigId + ComponentCode <= as_of_date
+        ↓
+LevelCandidate[]
+```
+
+Required public columns:
+
+`vw_Ticker_indicators`
+- Ticker
+- Date
+- ConfigId
+- ComponentCode
+- Value
+
+`vw_Indicator_config`
+- ConfigId
+- ConfigCode
+- IndicatorCode
+- Timeframe
+- Parameters
+- ConfigIsEnabled
+- IndicatorIsActive
+- ComponentCode
+- ComponentIsActive
+
+Implementation phải fail rõ ràng nếu public view không đáp ứng contract. Không silent fallback sang internal persistence.
+
+## 24.3 V1 Strength Model
+
+```text
+StrengthScore =
+      35% SourceConfluenceScore
+    + 25% TimeframeScore
+    + 25% TouchScore
+    + 15% RecencyScore
+```
+
+Default timeframe importance:
+
+```text
+D = 1.0
+W = 1.5
+M = 2.0
+```
+
+MA weights dùng khi tính representative price của cluster:
+
+```text
+MA20  = 0.80
+MA50  = 1.00
+MA100 = 1.15
+MA200 = 1.30
+```
+
+Touch V1:
+- history window: 252 observations;
+- zone tolerance: 0.3%;
+- saturation target: 4 touches.
+
+Recency horizon: 180 days.
+
+Final strength được normalize về 0–100. Strength không thay đổi proximity rank.
+
+## 24.4 Clustering V1
+
+Default:
+
+```text
+cluster_threshold_pct = 1%
+neutral_threshold_pct = 0.3%
+```
+
+Clustering phải deterministic. Candidate được sort theo price/source trước khi cluster; representative price dùng weighted average. Zone gần/current price nằm trong neutral threshold được classify `CURRENT` và không nhận S/R rank.
+
+---
+
+# 25. NiceGUI Integration
+
+V1 tạo tab mới trong:
+
+```text
+src/webapp/NiceGUI_chart.py
+Tab label: R/S
+```
+
+Dependency direction:
+
+```text
+NiceGUI R/S Tab
+      │
+      ▼
+build_level_ladder()
+src/calcEngine/levelLadder.py
+      │
+      ▼
+LevelLadderResult
+      │
+      ▼
+build_level_ladder_chart_options()
+src/Chart/levelLadderChart.py
+      │
+      ▼
+NiceGUI EChart + Level Details Grid
+```
+
+UI không query DuckDB trực tiếp và không tính clustering/classification/strength/ranking.
+
+Controls V1:
+- Ticker, default MWG;
+- optional As-of date;
+- Cluster %;
+- Refresh.
+
+Outputs:
+- Current Price;
+- nearest R1;
+- nearest S1;
+- Reward/Risk;
+- numeric price ladder chart;
+- level details table.
+
+Error state phải clear output cũ và hiển thị lỗi rõ ràng.
+
+---
+
+# 26. Physical Implementation
+
+```text
+src/calcEngine/levelLadder.py
+    CurrentPrice
+    LevelCandidate
+    NormalizedLevel
+    LevelZone
+    ScoredLevel
+    RankedLevel
+    LevelLadderResult
+    StrengthConfig
+    load_current_price()
+    load_ma_level_candidates()
+    normalize_levels()
+    cluster_levels()
+    classify_zones()
+    score_zones()
+    rank_levels()
+    build_level_ladder_from_data()
+    build_level_ladder()
+
+src/Chart/levelLadderChart.py
+    build_level_ladder_chart_options()
+    empty_level_ladder_chart_options()
+    ladder_rows()
+
+src/webapp/NiceGUI_chart.py
+    rs_tab_content()
+
+tests/test_rs_ladder.py
+    focused automated domain tests
+
+tests/test_R_S.md
+    local MCP + production data + NiceGUI cross-check guide
+```
+
+Tên logical `test_R/S.md` không thể là một filename trên Windows/Git vì `/` là path separator, nên file repository-safe được chuẩn hóa thành `tests/test_R_S.md`.
+
+---
+
+# 27. V1 Failure / Empty-State Contract
+
+- Current price không tồn tại → fail request rõ ràng.
+- Public Indicator view thiếu required columns → `RuntimeError`; không fallback internal table.
+- Price hợp lệ nhưng không có eligible MA level → trả empty Support/Resistance lists, renderer hiển thị empty state.
+- Candidate invalid/NaN/<=0 → validation error.
+- Missing S1 hoặc R1 → Reward/Risk = `None`.
+- Same source data + same request/config → deterministic result.
+
+---
+
+# 28. MCP Cross-check Handoff
+
+Local agent phải dùng MCP server `cherrymon-duckdb` để verify dữ liệu thật, theo:
+
+```text
+tests/test_R_S.md
+```
+
+Cross-check bắt buộc:
+1. public views tồn tại;
+2. schema columns đúng runtime contract;
+3. MA20/50/100/200 có D/W/M active family;
+4. current MWG Close khớp production output;
+5. latest candidate values <= as_of_date khớp public views;
+6. S1/R1 proximity invariants;
+7. strength range 0–100;
+8. NiceGUI R/S tab smoke test.
+
+---
+
+# 29. ADR
+
+**Not required for V1.**
+
+Lý do: implementation này áp dụng các ADR/architecture decision đã có:
+- public Indicator Engine views là SSOT;
+- read-only DuckDB access;
+- calculation và rendering tách biệt.
+
+Không tạo persistence model, database schema hay Source of Truth mới.
