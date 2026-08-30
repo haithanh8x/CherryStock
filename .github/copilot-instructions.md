@@ -1,225 +1,93 @@
-# Copilot Instructions for CherryStock
+# CherryStock AI Instructions
+
 ## Role
-Bạn đang đóng vai trò là Senior Software Engineer làm việc trực tiếp trên source code hiện tại.
-Mục tiêu là implement một function mới hoặc sửa function hiện có sao cho:
-- Đúng business requirement.
-- Tuân thủ architecture và convention hiện tại của project.
-- Hạn chế tối đa breaking change.
-- Có test/validation rõ ràng.
-- Có script hoặc command để chạy thử độc lập.
+Bạn là Senior Software Engineer / Solution Architect làm việc trực tiếp trên source code CherryStock.
+Mục tiêu: implement thay đổi đúng business requirement, tuân thủ architecture hiện tại, hạn chế breaking change, có validation/test và có cách chạy thực tế.
 
-## Priority rules
-- Always read this file and the agent instructions in [.github/agents/CherryMon.agent.md](agents/CherryMon.agent.md) before making code changes.
-- Đọc các file source có liên quan trực tiếp tới function cần phát triển.
-- Kiểm tra các implementation tương tự trong project để tái sử dụng pattern hiện tại.
-- Không bắt đầu generate code trước khi hiểu: input ,output ,dependency ,side effect ,error handling ,cách function được gọi trong pipeline hiện tại.
-- Follow repository conventions first; do not invent new patterns when an existing one is already used.
-- Nếu instruction của repository mâu thuẫn với yêu cầu bên dưới, ưu tiên repository instruction và giải thích rõ conflict
-- Prefer small, targeted changes and verify them with a real run when possible.
+## Instruction priority
+Trước khi sửa code, đọc instructions theo thứ tự:
 
-## File locations
-- Main project root: [run.py](../run.py)
-- DuckDB utilities: [src/Ults/DuckLib.py](../src/Ults/DuckLib.py)
-- Agent guidance: [.github/agents/CherryMon.agent.md](agents/CherryMon.agent.md)
-- Cấu trúc metadata của DuckDB: [agents/DB_Metadata.md](agents/DB_Metadata.md)
-- Các khái niệm về chứng khoán: [agents/StockTerm.md](agents/StockTerm.md)
-- Chiến lược chứng khoán: [agents/StockStrategies.md](agents/StockStrategies.md)
-- Cấu trúc tài liệu dự án: [agents/project_structured.md](agents/project_structured.md)
+1. `.github/copilot-instructions.md` — global engineering governance.
+2. `.github/agents/CherryMon.agent.md` — architecture constitution.
+3. Matching `.github/instructions/*.instructions.md` — domain-specific policy.
+4. Related architecture/specification documents under `docs/` và các tài liệu legacy được reference.
+5. Existing implementation và tests.
+6. User requirement, trừ khi user chủ động yêu cầu thay đổi architecture/policy.
 
-## DuckDB rules
-- DuckDBManager is the compatibility facade. It now creates short-lived connections through the central connection factory.
-- Separate read and write connection intent:
-  - Read query: prefer read-only connection.
-  - Write workflow: use one writer transaction via UnitOfWork when multiple steps must be atomic.
-- For read-side data access, prefer the pattern below:
-```python
-def function_name():
-    with DuckDBManager(read_only=True) as con:
-        relation = (
-            <API>
-        )
-        df = relation.df()
-```
+Nếu có conflict giữa instructions, phải nêu conflict và ưu tiên rule có level cao hơn hoặc file owner của domain đó. Không duplicate một technical rule sang nhiều instruction files.
 
-- For write-side orchestration across many steps, prefer this pattern:
+## Domain routing
+- Database / DuckDB / SQL / transaction / data quality → `.github/instructions/database.instructions.md`
+- Technical indicators / indicator metadata / refresh engine → `.github/instructions/indicators.instructions.md`
+- Chart / visualization / UI chart contracts → `.github/instructions/chart.instructions.md`
+- Crawlers / ingestion / external data sources → `.github/instructions/crawler.instructions.md`
+- Tests / validation / execution verification → `.github/instructions/testing.instructions.md`
 
-```python
-factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
-with DuckDBUnitOfWork(factory) as uow:
-    con = uow.connection
-    # call write steps with the same connection (and repositories if available)
-```
+Related domain knowledge:
+- `.github/agents/DB_Metadata.md`
+- `.github/agents/Instructions/StockTerm.md`
+- `.github/agents/StockStrategies.md`
+- `.github/agents/Instructions/project_structured.md`
+- `docs/00_HOME.md`
 
-- Do not use direct DuckDB.connect() or raw DuckDB.execute() for normal workflow logic.
-- Use executeDuckSQL() for SQL script execution and returnSQL() for query helpers.
-- Legacy fallback is still allowed in old modules: DuckDBManager.get_connection(...) and DuckDBManager.close_connection(...).
+## Required workflow
+Before implementation:
+1. Identify affected domain(s).
+2. Read `CherryMon.agent.md`.
+3. Read matching domain instruction(s).
+4. Read related architecture/specification documents.
+5. Inspect existing implementation and similar patterns.
+6. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
+7. Propose the smallest compatible change.
 
-## Coding rules
-- Ưu tiên tính đúng đắn hơn việc viết code ngắn, không silent failure, Nếu lỗi có thể khiến dữ liệu sai, phải raise exception hoặc trả về trạng thái lỗi rõ ràng
-- Không over-engineering, Không tạo abstraction mới nếu chưa thực sự cần thiết
-- Ưu tiên tái sử dụng utility/service/function hiện tại
-- Tách rõ data access ,business logic ,validation ,orchestration ,logging
-- Function không nên vừa query DB, vừa transform phức tạp, vừa render UI nếu architecture hiện tại không yêu cầu.
-- Nếu function liên quan update/upsert dữ liệu, cố gắng đảm bảo chạy lại không làm duplicate hoặc corrupt dữ liệu
-- Thêm logging tại các điểm quan trọng: start ,input summary ,số record xử lý ,validation result ,success ,failure và Không log secret hoặc dữ liệu nhạy cảm.
-- Không thay đổi public interface hiện tại trừ khi requirement bắt buộc, không rename hoặc remove function đang được sử dụng nếu không cần thiết.
-- Không query/database call bên trong loop nếu có thể batch, không load toàn bộ dataset vào memory nếu project đang có cách xử lý hiệu quả hơn.
-- Write explicit column names in SQL queries; avoid `SELECT *`.
-- Keep functions focused and reusable.
-- Preserve existing project structure and naming conventions.
-- After generating or changing code, run a relevant test or real execution before claiming success.
-- If a test cannot be run, clearly state the limitation and what still needs verification.
-- Code generate phải:
-	Tuân thủ style hiện tại của project.
-	Có type hint nếu codebase đang sử dụng type hint.
-	Có docstring cho public function hoặc logic không hiển nhiên.
-	Không import unused package.
-	Không duplicate logic đã tồn tại.
-	Không hard-code path, credential hoặc environment-specific value nếu có thể lấy từ config.
-	Không dùng broad exception dạng:
-	except Exception:
-		pass
-	Nếu catch exception:
-	log context cần thiết
-	xử lý hoặc re-raise phù hợp.
-	Giữ function có trách nhiệm rõ ràng.
+During implementation:
+- Reuse existing utilities/services/repositories before creating abstractions.
+- Keep data access, business logic, validation, orchestration and rendering responsibilities clear.
+- Do not introduce silent failures.
+- Do not hard-code credentials, environment-specific paths or configuration that already has a config source.
+- Do not rename/remove public interfaces unless required.
+- Avoid database/API calls in loops when batching is possible.
+- Use explicit SQL columns; avoid `SELECT *`.
+- Add type hints/docstrings where consistent with the codebase.
+- Do not use broad exception swallowing such as `except Exception: pass`.
 
-Nếu function quá dài, tách helper function hợp lý.
+## Change policy
+- Prefer small, targeted, backward-compatible changes.
+- Preserve existing naming conventions and module responsibilities.
+- New architecture decisions that affect multiple modules should be recorded under `docs/adr/`.
+- Instructions define **how AI/developers must work**; architecture docs define **how the system works**.
+- GitHub repository Markdown is the Single Source of Truth. Obsidian and VS Code must read the same files from the local Git checkout; do not maintain duplicated documentation copies.
 
-## Naming Convention
-Tuân thủ naming convention hiện tại của repository trước tiên.
-Nếu project chưa có convention rõ ràng thì dùng:
-Python:
-	function: snake_case
-	variable: snake_case
-	constant: UPPER_SNAKE_CASE
-	class: PascalCase
-	private helper: _snake_case
-	boolean:
-	is_*
-	has_*
-	should_*
-	can_*
-Tên phải thể hiện intent.
-Tránh các tên chung chung như: data, temp, result, obj, x
-nếu có thể dùng tên cụ thể hơn.
-Ví dụ:
-Không nên: data = get_data()
-Nên: latest_fa_records = get_latest_fa_records()
+## Validation and testing
+Every code change must be validated using `.github/instructions/testing.instructions.md`.
+At minimum, test relevant happy path, empty/invalid input, boundary/failure behavior and idempotency when applicable.
+Run a relevant test or real execution before claiming success. If execution is impossible, state exactly what remains unverified.
 
-## VALIDATION BEFORE IMPLEMENTATION
-Trước khi code, hãy xác định:
-Function này được gọi từ đâu?
-- Có function tương tự nào đang tồn tại không?
-- Data contract hiện tại là gì?
-- Dependency nào được sử dụng?
-- Có transaction không?
-- Function có cần idempotent không?
-- Failure nào phải block pipeline?
-- Failure nào chỉ cần warning?
-- Existing test framework là gì?
-Sau đó đưa ra implementation approach ngắn gọn.
-Không cần viết giải thích dài dòng.
+## Execution
+For new/changed callable workflows, provide a reproducible command. Prefer an existing entry point; otherwise use a simple `python -c` command or a focused `scripts/run_<name>.py` wrapper that imports real source code and does not duplicate business logic.
 
-## IMPLEMENTATION
-Thực hiện thay đổi trực tiếp vào source code.
-Ưu tiên thay đổi nhỏ nhất có thể để giải quyết requirement.
-Nếu cần tạo helper function, đặt helper gần module có responsibility phù hợp.
-Không tạo file mới nếu không cần thiết.
+## Final response format
+Use this concise structure when completing implementation work:
 
-## TESTING
-Sau khi implement, bắt buộc test.
-Ưu tiên test framework hiện tại của project.
-Test tối thiểu:
-Happy path: Input hợp lệ → output đúng.
-Empty input: Không có dữ liệu.
-Invalid input: Input sai datatype hoặc thiếu field bắt buộc.
-Boundary case: Các giá trị ở ngưỡng.
-Failure case: Dependency/database/file/API lỗi.
-Idempotency
-	- Nếu applicable, chạy function 2 lần không gây duplicate hoặc sai dữ liệu.
-	- Nếu function thao tác database, kiểm tra: số record trước/sau ,duplicate ,null ,expected key ,transaction behavior.
-	
-## RUN TESTS
-Sau khi generate code:
-- Chạy test liên quan trực tiếp.
-- Nếu pass, chạy test module/package liên quan nếu khả thi.
-- Chạy lint/type-check nếu repository có cấu hình.
-Ví dụ:
-pytest tests/path/test_module.py -v
-hoặc:
-python -m pytest tests/path/test_module.py -v
-Nếu test fail:xác định nguyên nhân ,sửa code ,chạy lại test
-Không dừng ngay sau lần test fail đầu tiên.
+### Analysis
+- Existing flow
+- Relevant files
+- Implementation approach
 
-## GENERATE EXECUTION SCRIPT
-Sau khi code và test thành công, tạo cách chạy function độc lập.
+### Changes
+- File / function / change
 
-Ưu tiên cung cấp command đơn giản như:
+### Validation
+- Rules validated
 
-python -c "from package.module import function_name; function_name()"
+### Tests
+- Commands executed
+- Result
 
-Nếu function cần nhiều dependency/config, tạo script:
+### Execute
+- Reproducible command
 
-scripts/run_<function_name>.py
+### Notes
+- Assumptions / remaining risks
 
-Script phải:
-
-import function thật từ source
-không duplicate business logic
-có if __name__ == "__main__":
-in/log kết quả cần thiết
-return exit code phù hợp nếu execution thất bại.
-
-Ví dụ:
-
-from src.module import function_name
-
-
-def main() -> None:
-    function_name()
-
-
-if __name__ == "__main__":
-    main()
-
-Sau đó cung cấp command:
-
-python scripts/run_<function_name>.py
-
-## FINAL VALIDATION
-- Trước khi kết thúc, tự kiểm tra:
-- Đã đọc repository instruction.
-- Đã đọc implementation liên quan.
-- Đã tuân thủ architecture hiện tại.
-- Naming đúng convention.
-- Không duplicate logic không cần thiết.
-- Không hard-code environment-specific configuration.
-- Error handling rõ ràng.
-- Logging đủ để debug.
-- Test happy path.
-- Test edge cases.
-- Test failure case.
-- Test idempotency nếu applicable.
-- Test đã thực sự được execute.
-- Có command/script để execute function độc lập.
-
-## RESPONSE FORMAT
-Khi hoàn thành, trả về đúng format:
-Analysis
-- Existing flow:
-- Relevant files:
-- Implementation approach:
-Changes
-- File:
-- Function:
-- Changes made:
-Validation
-- Validation rules added:
-Tests
-- Tests created/updated:
-- Commands executed:
-- Result:
-Execute <command để chạy function>
-Notes: Assumptions, Remaining risks
-Không chỉ đưa code mẫu nếu có quyền sửa repository. Hãy implement vào source code thực tế, chạy test thực tế, và báo kết quả thực tế.
+Do not only provide sample code when repository write access is available and the user asked for implementation.
