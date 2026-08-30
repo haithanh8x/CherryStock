@@ -1,100 +1,97 @@
-# Project: CherryStock
-- “Read repository instructions first”
-- “Follow project conventions before editing”
-- StockTerm.md định nghia các thuật ngữ liên quan đến cổ phiếu, ví dụ: EOD, FA, Index, NetVol, NetVal, v.v.
-- \Datafile folder chứa các file dữ liệu từ các nguồn khác nhau về định dạng chuẩn để lưu vào DuckDB. Các file dữ liệu này có thể là CSV, Excel, JSON, v.v.
-- \Amibroker folder chứa các file dữ liệu từ Amibroker script, thực hiện explore, analysis, backtest và AFL
-- \calcEngine folder chứa các module tính toán các chỉ số composite index, net flow, v.v. từ dữ liệu raw stock EOD và FA
-- \Chart folder chứa các module vẽ biểu đồ từ dữ liệu raw stock EOD và FA
-- \CrawlStock folder chứa các module crawl dữ liệu từ các nguồn khác nhau, ví dụ: Vietstock, Cafef, FiinPro, v.v.
-- \DuckDB folder chứa các file dữ liệu DuckDB script, sql script này sẽ được thực thi để tạo ra các bảng dữ liệu trong DuckDB. Các bảng dữ liệu này sẽ được sử dụng bởi các module khác trong dự án.
-- \Orchestrator folder các script đặt lịch chạy, invoke các module khác trong dự án, ví dụ: crawl dữ liệu, tính toán composite index, v.v.
-- \Telegram folder chứa các module gửi thông báo, cảnh báo, v.v. qua Telegram
-- \Ults folder chứa các module tiện ích, ví dụ: DuckLib, Timing, DataValidation, v.v.
-- runTest.py là file test các module trong dự án, ví dụ: test crawl dữ liệu, test tính toán composite index, v.v.
-- run.py là file chính để chạy các module trong dự án, ví dụ: crawl dữ liệu, tính toán composite index, v.v.
- 
-# DuckDB connection 
-1. luôn sử dụng DuckDBManager.get_connection() và DuckDBManager.close_connection() để open và đóng kết nối với DuckDB. Không sử dụng trực tiếp DuckDB.connect() hoặc DuckDB.close() để tránh rò rỉ kết nối.
-2. viết sql query luôn viết rõ ràng tên các fields, tránh sử dụng * để select tất cả các fields
-3. sử dụng DuckLib.executeDuckSQL() để thực thi các câu lệnh SQL, không sử dụng trực tiếp DuckDB.execute() để tránh rò rỉ kết nối.
-4. sử dụng DuckLib.returnSQL() để thực thi các câu lệnh SQL và trả về kết quả, không sử dụng trực tiếp DuckDB.execute() để tránh rò rỉ kết nối.
+# CherryMon Architecture Constitution
 
-# Python
-1. Timing.get_nearest_working_date() Hàm này sẽ nhận vào một ngày và trả về ngày làm việc gần nhất (không phải thứ 7, chủ nhật hoặc ngày lễ). Nếu ngày được truyền vào là ngày làm việc, nó sẽ trả về chính ngày đó. Nếu không, nó sẽ tìm ngày làm việc gần nhất trước hoặc sau ngày đó.
-2. khi sử dụng data trong DuckDB cần tạo kết nối, sử dụng cấu trúc, theo ví dụ như sau
-  def function_name()
-    with DuckDBManager() as con:
-      relation = (
-        <API>
-      )
-      df = relation.df()   
+## Purpose
+File này định nghĩa các nguyên tắc kiến trúc ổn định của CherryStock/CherryMon. Chi tiết operational rule phải nằm trong domain instructions tương ứng để tránh instruction drift.
 
-# DuckDB CherryStock database
+Repository instructions luôn được đọc trước khi chỉnh sửa code.
 
-## Table naming convention
-- `raw_*`: bảng dữ liệu thô nạp từ nguồn crawl/Amibroker (EOD, intraday, FA, ...).
-- `cal_*`: bảng dữ liệu sau tính toán (composite index, trend, ...).
-- `dim_*`: bảng chiều (dimension), ví dụ lịch làm việc.
-- `vw_*`: view phục vụ truy vấn/dashboard.
-- `sys_*`: **bảng hệ thống phục vụ vận hành, monitoring và audit pipeline** (không phải dữ liệu chứng khoán), ví dụ `sys_data_quality_audit`. Bảng loại này là lịch sử kết quả kiểm tra, không phải source of truth của dữ liệu.
+## Project responsibilities
+- `src/Datafile` / data-loading modules: chuẩn hóa dữ liệu nguồn để nạp vào DuckDB.
+- `src/Amibroker`: Amibroker explore/analysis/backtest/AFL integration.
+- `src/calcEngine`: technical/composite/net-flow calculations.
+- `src/Chart`: chart preparation/rendering.
+- `src/CrawlStock`: external market-data ingestion.
+- `src/DuckDB`: DuckDB SQL/schema/view scripts.
+- `src/Orchestrator`: orchestration/scheduling/invocation.
+- `src/Telegram`: notification/alert integrations.
+- `src/Ults`: shared utilities such as DuckLib, Timing and DataValidation.
+- `run.py`: primary project execution/orchestration entry point.
+- `scripts/`: focused initialization, migration and standalone execution scripts.
+- `tests/`: automated validation.
 
-## Indicator column naming convention
-Áp dụng cho các bảng tính toán chỉ số thuộc nhóm `cal_*`, ví dụ `"CherryMon"."main"."cal_Trends"`.
+When the physical repository differs from this high-level map, follow the actual current structure and update architecture documentation if the difference is intentional.
 
-1. Column indicator phải tuân theo format:
-   `<INDICATOR><PERIOD>_<TIMEFRAME>`
-2. `INDICATOR` là tên viết tắt chuẩn của indicator và viết hoa, ví dụ:
-   - `MA` = Moving Average
-   - `EMA` = Exponential Moving Average
-   - `RSI` = Relative Strength Index
-3. `PERIOD` là số kỳ tính toán của indicator và đặt ngay sau tên indicator, không dùng dấu gạch dưới giữa indicator và period.
-4. `TIMEFRAME` là hậu tố viết hoa sau dấu `_`:
-   - `_D` = Daily
-   - `_W` = Weekly
-   - `_M` = Monthly
-5. Ví dụ chuẩn cho Moving Average:
-   - `MA20_D` = Moving Average period 20 trên timeframe Daily
-   - `MA50_D` = Moving Average period 50 trên timeframe Daily
-   - `MA100_D` = Moving Average period 100 trên timeframe Daily
-   - `MA200_D` = Moving Average period 200 trên timeframe Daily
-   - `MA20_W` = Moving Average period 20 trên timeframe Weekly
-   - `MA50_W` = Moving Average period 50 trên timeframe Weekly
-   - `MA100_W` = Moving Average period 100 trên timeframe Weekly
-   - `MA200_W` = Moving Average period 200 trên timeframe Weekly
-   - `MA20_M` = Moving Average period 20 trên timeframe Monthly
-   - `MA50_M` = Moving Average period 50 trên timeframe Monthly
-   - `MA100_M` = Moving Average period 100 trên timeframe Monthly
-   - `MA200_M` = Moving Average period 200 trên timeframe Monthly
-6. Ví dụ với indicator khác:
-   - `EMA20_D`, `EMA50_W`, `EMA100_M`
-   - `RSI14_D`, `RSI14_W`, `RSI14_M`
-7. Không sử dụng các format không thống nhất như `MA_D20`, `MA_20_D`, `Daily_MA20`, `ma20_d`.
-8. Khi thêm indicator mới vào các bảng `cal_*`, phải reuse convention này để đảm bảo schema nhất quán giữa Daily, Weekly và Monthly.
+## Dependency principles
+1. UI/chart code should consume prepared data contracts rather than embed complex database/business logic.
+2. Orchestration coordinates workflows; it should not duplicate domain calculations.
+3. Shared database access goes through project database utilities/repositories, never ad-hoc connection patterns.
+4. Validation is read-oriented and separate from persistence/orchestration side effects.
+5. Source-of-Truth objects must be explicit; downstream consumers should use the declared public view/contract instead of internal persistence tables when one exists.
+6. New cross-cutting architecture decisions should be captured in `docs/adr/`.
 
-## Danh sách bảng chính
-1. "CherryMon"."main"."raw_stock_eod" - Bảng chứa dữ liệu giá đóng cửa hàng ngày của các cổ phiếu
-2. "CherryMon"."main"."raw_stock_fa" - Bảng chứa dữ liệu cơ bản của các cổ phiếu
-3. "CherryMon"."main"."dimCalendar" - Bảng chứa thông tin lịch làm việc
-4. "CherryMon"."main"."raw_stock_index" - Bảng chứa dữ liệu chỉ số composite của các cổ phiếu
-5. "CherryMon"."main"."vw_ACCCNNTD_Price" - Bảng chứa dữ liệu hàng ngày của các cổ phiếu net dòng tiền và khối lượng
-  - AC_NetVol, AC_NetVal: khối lượng và gia trị ròng của các cổ phiếu trong ngày giao dịch chủ động (chủ động mua hoặc bán thể hiện mua đuổi hoặc bán bất chấp)
-  - NN_NetVol, NN_NetVal: khối lượng và giá trị ròng của các cổ phiếu trong ngày của giao dịch nhà đầu tư nước ngoài
-  - TD_NetVol, TD_NetVal: khối lượng và giá trị ròng của các cổ phiếu trong ngày của giao dịch tổ chức tự doanh
-  - CC_NetVol, CC_NetVal: khối lượng và giá trị ròng của các cổ phiếu trong ngày của giao dịch cung cầu
-6. "CherryMon"."main"."sys_data_quality_audit" - Bảng hệ thống (sys_*) lưu lịch sử kết quả kiểm tra chất lượng dữ liệu sau các lần chạy crawl/upsert. Bảng dùng để theo dõi trạng thái PASS/WARNING/FAIL, freshness, completeness, anomaly và các metrics phục vụ audit/dashboard. (Trước đây tên là `data_quality_audit`, đã rename sang `sys_data_quality_audit`.)
+## Domain instruction routing
+For detailed rules, use the domain owner file:
 
-# Data Quality Validation
-1. sử dụng `Ults.DataValidation.validate_data_quality()` để kiểm tra chất lượng dữ liệu sau các pipeline crawl/upsert khi dataset phù hợp với validation contract.
-2. `validate_data_quality()` là validation layer dạng read-only: không tự ý sửa, xóa hoặc insert vào dataset nguồn; function trả kết quả dạng dict gồm `status`, `table`, `metrics`, `errors`, `warnings`.
-3. kết quả validation cần được ghi log ngắn gọn để phục vụ theo dõi realtime/debug pipeline và persist vào `"CherryMon"."main"."sys_data_quality_audit"` để lưu lịch sử phân tích.
-4. việc persist audit phải tách khỏi core validation logic. Không thêm INSERT/UPDATE vào `validate_data_quality()`; sử dụng function/helper riêng hoặc orchestration layer để ghi `sys_data_quality_audit`.
-5. khi persist audit, ưu tiên lưu các metrics thường xuyên query thành column riêng và đồng thời giữ payload chi tiết trong JSON (`metrics`, `errors`, `warnings`) để không mất thông tin khi validation được mở rộng.
-6. pipeline phải persist kết quả validation cho cả PASS, WARNING và FAIL; không chỉ lưu các lần lỗi. Điều này cần thiết để xây dựng baseline và theo dõi xu hướng chất lượng dữ liệu theo thời gian.
-7. `WARNING` mặc định không chặn pipeline nhưng phải được log và persist. `FAIL` phải được log và persist trước khi orchestration quyết định raise exception/chặn bước tiếp theo.
-8. không dùng dữ liệu trong `sys_data_quality_audit` thay thế cho việc validation trực tiếp dataset nguồn. Audit table là lịch sử kết quả kiểm tra, không phải source of truth của dữ liệu chứng khoán.
-9. khi xác định ngày giao dịch kỳ vọng, ưu tiên logic lịch giao dịch hiện có của CherryStock (`dimCalendar`/helper phù hợp) thay vì chỉ dựa vào thứ Hai đến thứ Sáu.
-10. không hard-code đường dẫn DuckDB trong DataValidation hoặc audit persistence; luôn reuse connection do pipeline/orchestrator quản lý theo DuckDB connection convention của project.
-11. các pipeline Price, FA và dataset khác có thể có key/schema khác nhau; truyền `date_col`, `symbol_col`, `key_cols`, `required_cols` phù hợp thay vì duplicate implementation riêng cho từng dataset.
-12. dữ liệu audit phải hỗ trợ truy vết tối thiểu: thời điểm kiểm tra, pipeline/table được kiểm tra, expected date, max data date, final status, row/symbol metrics, duplicate/missing metrics, anomaly metrics, errors và warnings.
-13. cột indicator có NULL hợp lệ do rolling window `min_periods` (ví dụ MA20_W, MA50_W, MA20_M, MA50_M trong `cal_Trends`) không được đưa vào `required_cols` với ngưỡng 1%; dùng `optional_null_rate_cols` với `max_optional_null_rate` (mặc định 35%) — FAIL khi vượt ngưỡng lỏng, WARNING khi cột chưa tồn tại trong schema (DB cũ chưa migrate).
+- DuckDB / SQL / transactions / data quality → `../instructions/database.instructions.md`
+- Indicator Engine → `../instructions/indicators.instructions.md`
+- Charts → `../instructions/chart.instructions.md`
+- Crawlers → `../instructions/crawler.instructions.md`
+- Testing / execution validation → `../instructions/testing.instructions.md`
+
+Do not duplicate those rules here.
+
+## Naming principles
+DuckDB object prefixes:
+- `raw_*`: raw/source datasets.
+- `cal_*`: calculated/internal persistence datasets.
+- `dim_*`: dimensions/configuration/master data.
+- `vw_*`: public/query-oriented views.
+- `sys_*`: operational/audit/monitoring data, not market-data source of truth.
+
+Indicator output naming follows:
+
+```text
+<INDICATOR><PERIOD>_<TIMEFRAME>
+```
+
+where timeframe suffix is:
+- `_D` Daily
+- `_W` Weekly
+- `_M` Monthly
+
+Examples: `MA20_D`, `EMA50_W`, `RSI14_M`.
+
+## Key CherryMon data contracts
+Important objects include:
+- `"CherryMon"."main"."raw_stock_eod"`
+- `"CherryMon"."main"."raw_stock_fa"`
+- `"CherryMon"."main"."raw_stock_index"`
+- `"CherryMon"."main"."dimCalendar"`
+- `"CherryMon"."main"."vw_ACCCNNTD_Price"`
+- `"CherryMon"."main"."sys_data_quality_audit"`
+
+Indicator Engine contracts:
+- `dim_indicator`
+- `dim_indicator_component`
+- `dim_indicator_config`
+- `vw_Indicator_config` — configuration Single Source of Truth.
+- `cal_indicator_values` — internal long-format persistence.
+- `vw_Ticker_indicators` — public/calculated indicator Single Source of Truth.
+
+Refer to `.github/agents/DB_Metadata.md` and the indicator architecture documents for detailed schema.
+
+## Knowledge architecture
+CherryStock repository Markdown is the engineering knowledge Single Source of Truth.
+
+```text
+GitHub repository
+    ├── .github/               AI governance
+    ├── docs/                  architecture / ADR / development knowledge
+    ├── src/                   implementation
+    ├── tests/                 validation
+    └── scripts/               execution/migration utilities
+```
+
+VS Code and Obsidian must open the same local repository. Obsidian is a navigation/knowledge-graph interface, not a second documentation store.
+
+Start knowledge navigation from `docs/00_HOME.md`.
