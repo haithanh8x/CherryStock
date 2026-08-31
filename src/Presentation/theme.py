@@ -221,7 +221,12 @@ class _ThemeProxy(Mapping[str, Any]):
 
 
 THEME: Final[Mapping[str, Any]] = _ThemeProxy()
-AG_GRID_THEME: Final[str] = "quartz"
+
+
+def get_ag_grid_theme(name: str | None = None) -> str:
+    """Return the AG Grid base theme configured by the selected theme."""
+
+    return str(get_theme(name)["ag_grid_theme"])
 
 
 def with_alpha(color: str, alpha: float) -> str:
