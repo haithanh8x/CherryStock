@@ -1,6 +1,6 @@
 # CherryStock DuckDB MCP Server
 
-Read-only MCP V1 for the local CherryMon DuckDB.
+Read-only MCP V1 for the local CherryMon DuckDB. The server supports MCP Python SDK 1.x and 2.x during the SDK migration window.
 
 ## Safety contract
 
@@ -27,7 +27,7 @@ Read-only MCP V1 for the local CherryMon DuckDB.
 ```powershell
 cd C:\Github\CherryStock
 .\.venv\Scripts\Activate.ps1
-pip install -e ".[mcp,dev]"
+pip install -U -e ".[mcp,dev]"
 ```
 
 ## Run with stdio

@@ -110,14 +110,22 @@ This avoids a duplicate DB-access/MCP Source of Truth.
 
 MCP is an optional CherryStock capability declared in `pyproject.toml`.
 
+CherryStock MCP V1 supports both MCP Python SDK 1.x and 2.x during the SDK migration window:
+
+```text
+mcp[cli]>=1.27,<3
+```
+
+Install/update the local environment:
+
 ```powershell
-pip install -e ".[mcp,dev]"
+pip install -U -e ".[mcp,dev]"
 ```
 
 Verify:
 
 ```powershell
-python -c "import mcp; print('mcp import: OK')"
+python -c "import importlib.metadata as m; print('mcp:', m.version('mcp'))"
 python -c "import duckdb; print('duckdb:', duckdb.__version__)"
 ```
 
@@ -581,7 +589,7 @@ Expected:
 Install:
 
 ```powershell
-pip install -e ".[mcp,dev]"
+pip install -U -e ".[mcp,dev]"
 ```
 
 Tests:

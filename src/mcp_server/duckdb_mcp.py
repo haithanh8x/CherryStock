@@ -22,14 +22,39 @@ for _path in (_PROJECT_ROOT, _SRC_ROOT):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from mcp.server import MCPServer
+try:
+    # MCP Python SDK 2.x
+    from mcp.server import MCPServer
+
+    _MCP_SDK_V2 = True
+except ImportError:  # pragma: no cover - exercised on MCP SDK 1.x
+    # MCP Python SDK 1.x
+    from mcp.server.fastmcp import FastMCP as MCPServer
+
+    _MCP_SDK_V2 = False
 
 from .config import settings
 from .duckdb_service import DuckDBReadService
 from .security import clamp_query_limit, validate_readonly_sql
 
 
-mcp = MCPServer("cherrymon-duckdb")
+def _create_mcp_server() -> Any:
+    """Create an MCP server compatible with Python SDK 1.x and 2.x."""
+
+    if _MCP_SDK_V2:
+        return MCPServer("cherrymon-duckdb")
+
+    return MCPServer(
+        "cherrymon-duckdb",
+        host=settings.host,
+        port=settings.port,
+        streamable_http_path="/mcp",
+        stateless_http=True,
+        json_response=True,
+    )
+
+
+mcp = _create_mcp_server()
 _service = DuckDBReadService()
 
 
@@ -138,14 +163,24 @@ def main(argv: list[str] | None = None) -> None:
     if not 1 <= args.port <= 65535:
         raise ValueError("--port must be between 1 and 65535.")
 
-    mcp.run(
-        transport="streamable-http",
-        host=args.host,
-        port=args.port,
-        streamable_http_path="/mcp",
-        stateless_http=True,
-        json_response=True,
-    )
+    if _MCP_SDK_V2:
+        mcp.run(
+            transport="streamable-http",
+            host=args.host,
+            port=args.port,
+            streamable_http_path="/mcp",
+            stateless_http=True,
+            json_response=True,
+        )
+        return
+
+    # MCP SDK 1.x keeps HTTP configuration on FastMCP.settings.
+    mcp.settings.host = args.host
+    mcp.settings.port = args.port
+    mcp.settings.streamable_http_path = "/mcp"
+    mcp.settings.stateless_http = True
+    mcp.settings.json_response = True
+    mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":
