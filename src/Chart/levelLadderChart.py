@@ -180,16 +180,16 @@ def build_level_ladder_chart_options(
                 "type": "scatter",
                 "data": [
                     {
-                        "value": [-0.82, ladder.current_price],
+                        "value": [-0.72, ladder.current_price],
                         "name": current_name,
-                        "symbolSize": 1,
+                        "symbolSize": 2,
                     }
                 ],
                 "symbol": "circle",
-                "itemStyle": {"opacity": 0},
+                "itemStyle": {"color": current_color, "opacity": 0.001},
                 "label": {
                     "show": True,
-                    "position": "top",
+                    "position": "right",
                     "distance": 4,
                     "color": current_color,
                     "fontSize": 13,
@@ -197,7 +197,8 @@ def build_level_ladder_chart_options(
                     "formatter": "{b}",
                 },
                 "silent": True,
-                "z": 6,
+                "clip": False,
+                "z": 10,
             },
             {
                 "name": "Current Price",
