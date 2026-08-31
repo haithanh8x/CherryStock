@@ -1828,11 +1828,12 @@ def market_tab_content() -> None:
             with ui.row().classes("items-center gap-2"):
                 ui.button("Xuất Excel", icon="download").props("outline dense no-caps")
                 ui.button("Lưu bộ lọc", icon="bookmark_add").props("unelevated dense no-caps")
-        create_market_grid(
+        market_grid = create_market_grid(
             df=df,
             filter_configs=NiceGUI_grid_market_tb.filter_configs,
             field_configs=NiceGUI_grid_market_tb.field_configs,
         )
+        market_grid.classes("dashboard-data-grid")
 
 
 def portfolio_tab_content() -> None:
