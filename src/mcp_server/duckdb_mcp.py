@@ -1,184 +1,152 @@
-"""MCP server exposing read/write/DDL access to the local CherryMon DuckDB.
+"""Read-only MCP server for CherryStock's local DuckDB.
 
-Run standalone:
-    python -m src.mcp_server.duckdb_mcp
-or register in VS Code / Claude settings with:
-    command: <python>  args: [c:/Github/CherryStock/src/mcp_server/duckdb_mcp.py]
+V1 intentionally exposes no database write/DDL tool. All reads use the
+centralized CherryStock DuckDB access layer and domain tools prefer public
+vw_* contracts over internal persistence tables.
 
-Tools:
-- list_tables        : list tables/views in the database
-- describe_table     : column schema of a table
-- query              : run a SELECT/WITH query, return rows as JSON
-- execute            : run INSERT/UPDATE/DELETE/ALTER/CREATE ... (write or DDL)
-- table_stats        : row count + quick stats for a table
-
-Safety: `execute` requires explicit confirmation flag because it mutates data.
+Run:
+    python -m src.mcp_server.duckdb_mcp --transport stdio
+    python -m src.mcp_server.duckdb_mcp --transport http --port 8765
 """
 
 from __future__ import annotations
 
-import json
-import sys
+import argparse
 from pathlib import Path
+import sys
+from typing import Any
 
-# Allow direct script execution (python path/to/duckdb_mcp.py)
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _SRC_ROOT = Path(__file__).resolve().parents[1]
 for _path in (_PROJECT_ROOT, _SRC_ROOT):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server import MCPServer
 
-from cherrystock.config.settings import load_settings
-from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
+from .config import settings
+from .duckdb_service import DuckDBReadService
+from .security import clamp_query_limit, validate_readonly_sql
 
-settings = load_settings()
 
 mcp = MCPServer("cherrymon-duckdb")
-
-_READ_KEYWORDS = ("select", "with", "pragma", "show", "describe")
-_WRITE_KEYWORDS = (
-    "insert", "update", "delete", "alter", "create", "drop",
-    "truncate", "copy", "attach", "detach", "merge",
-)
-
-
-def _get_factory() -> DuckDBConnectionFactory:
-    return DuckDBConnectionFactory(
-        db_path=settings.local_db_path,
-        duckdb_env=settings.duckdb_env,
-        motherduck_token=settings.motherduck_token,
-    )
-
-
-def _classify(sql: str) -> str:
-    """Classify a SQL statement as 'read' or 'write' based on leading keyword."""
-    first_word = sql.lstrip().split(" ", 1)[0].lower().rstrip(";")
-    if first_word in _READ_KEYWORDS:
-        return "read"
-    if first_word in _WRITE_KEYWORDS:
-        return "write"
-    return "unknown"
+_service = DuckDBReadService()
 
 
 @mcp.tool()
-def list_tables() -> str:
-    """List all tables and views in the CherryMon DuckDB."""
-    factory = _get_factory()
-    with factory.create_reader() as con:
-        rows = con.execute(
-            """
-            SELECT table_schema, table_name, table_type
-            FROM information_schema.tables
-            WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
-            ORDER BY table_schema, table_name
-            """
-        ).fetchall()
-    return json.dumps(
-        [
-            {"schema": r[0], "name": r[1], "type": r[2]}
-            for r in rows
-        ],
-        ensure_ascii=False,
-        indent=2,
+def health_check() -> dict[str, Any]:
+    """Check that CherryStock DuckDB is reachable through a read-only connection."""
+
+    return _service.health_check()
+
+
+@mcp.tool()
+def list_relations() -> list[dict[str, Any]]:
+    """List tables and views in CherryStock main schema."""
+
+    return _service.list_relations()
+
+
+@mcp.tool()
+def describe_relation(relation_name: str) -> list[dict[str, Any]]:
+    """Describe columns for one CherryStock table or view."""
+
+    return _service.describe_relation(relation_name)
+
+
+@mcp.tool()
+def get_ticker_indicators(
+    ticker: str,
+    timeframe: str = "Daily",
+) -> dict[str, Any]:
+    """Get the latest indicators for a ticker from vw_Ticker_indicators."""
+
+    return _service.get_ticker_indicators(
+        ticker=ticker,
+        timeframe=timeframe,
     )
 
 
 @mcp.tool()
-def describe_table(table_name: str) -> str:
-    """Return the column schema of a table (name, type, nullable)."""
-    if not table_name.replace("_", "").isalnum():
-        raise ValueError(f"Invalid table name: {table_name!r}")
-    factory = _get_factory()
-    with factory.create_reader() as con:
-        rows = con.execute(
-            """
-            SELECT column_name, data_type, is_nullable
-            FROM information_schema.columns
-            WHERE table_name = ?
-            ORDER BY ordinal_position
-            """,
-            [table_name],
-        ).fetchall()
-    if not rows:
-        raise ValueError(f"Table not found: {table_name}")
-    return json.dumps(
-        [{"column": r[0], "type": r[1], "nullable": r[2]} for r in rows],
-        ensure_ascii=False,
-        indent=2,
+def get_indicator_history(
+    ticker: str,
+    timeframe: str = "Daily",
+    limit: int = 30,
+) -> dict[str, Any]:
+    """Get bounded indicator history from vw_Ticker_indicators."""
+
+    return _service.get_indicator_history(
+        ticker=ticker,
+        timeframe=timeframe,
+        limit=limit,
     )
 
 
 @mcp.tool()
-def query(sql: str, max_rows: int = 100) -> str:
-    """Execute a read-only SQL query (SELECT/WITH) and return rows as JSON.
+def get_indicator_config(indicator: str) -> dict[str, Any]:
+    """Get indicator configuration from vw_Indicator_config."""
 
-    Args:
-        sql: The SQL query. Must start with SELECT/WITH/SHOW/DESCRIBE.
-        max_rows: Maximum number of rows to return (default 100).
+    return _service.get_indicator_config(indicator)
+
+
+@mcp.tool()
+def query_readonly(sql: str, max_rows: int = 100) -> dict[str, Any]:
+    """Run one restricted SELECT/WITH query against CherryStock.
+
+    Prefer the domain-specific indicator/metadata tools when they satisfy
+    the request. This generic query tool blocks write/DDL, extensions,
+    attached databases, filesystem readers, external URLs, and multiple
+    statements.
     """
-    kind = _classify(sql)
-    if kind != "read":
-        raise ValueError(
-            f"query() only accepts read statements (SELECT/WITH). "
-            f"Got {kind}. Use execute() for writes."
-        )
-    factory = _get_factory()
-    with factory.create_reader() as con:
-        cursor = con.execute(sql)
-        columns = [d[0] for d in cursor.description]
-        rows = cursor.fetchmany(max_rows)
-    return json.dumps(
-        {
-            "columns": columns,
-            "row_count": len(rows),
-            "truncated": len(rows) == max_rows,
-            "rows": rows,
-        },
-        ensure_ascii=False,
-        default=str,
+
+    safe_sql = validate_readonly_sql(sql)
+    safe_limit = clamp_query_limit(max_rows, settings.max_query_rows)
+    return _service.execute_readonly_query(safe_sql, safe_limit)
+
+
+@mcp.tool()
+def table_stats(relation_name: str) -> dict[str, Any]:
+    """Return row count for one CherryStock table/view."""
+
+    return _service.table_stats(relation_name)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="CherryStock read-only DuckDB MCP server"
     )
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "http"),
+        default="stdio",
+        help="stdio for local hosts/IDEs; http for Streamable HTTP.",
+    )
+    parser.add_argument("--host", default=settings.host)
+    parser.add_argument("--port", type=int, default=settings.port)
+    return parser
 
 
-@mcp.tool()
-def execute(sql: str, confirm: bool = False) -> str:
-    """Execute a write/DDL statement (INSERT/UPDATE/DELETE/ALTER/CREATE/DROP).
+def main(argv: list[str] | None = None) -> None:
+    """Run the MCP server with stdio or localhost Streamable HTTP transport."""
 
-    Args:
-        sql: The SQL statement to execute.
-        confirm: Must be True to actually mutate the database.
-    """
-    kind = _classify(sql)
-    if kind != "write":
-        raise ValueError(
-            f"execute() only accepts write/DDL statements. Got {kind!r}. "
-            f"Use query() for reads."
-        )
-    if not confirm:
-        return (
-            "REFUSED: This statement modifies the database. "
-            "Re-call execute() with confirm=true to apply it.\n"
-            f"Statement: {sql}"
-        )
-    factory = _get_factory()
-    with factory.create_writer() as con:
-        con.execute(sql)
-    return json.dumps({"status": "ok", "statement": sql})
+    args = _build_parser().parse_args(argv)
 
+    if args.transport == "stdio":
+        mcp.run(transport="stdio")
+        return
 
-@mcp.tool()
-def table_stats(table_name: str) -> str:
-    """Return row count and basic stats for a table."""
-    if not table_name.replace("_", "").isalnum():
-        raise ValueError(f"Invalid table name: {table_name!r}")
-    factory = _get_factory()
-    with factory.create_reader() as con:
-        count = con.execute(
-            f'SELECT COUNT(*) FROM "{table_name}"'
-        ).fetchone()[0]
-    return json.dumps({"table": table_name, "row_count": count})
+    if not 1 <= args.port <= 65535:
+        raise ValueError("--port must be between 1 and 65535.")
+
+    mcp.run(
+        transport="streamable-http",
+        host=args.host,
+        port=args.port,
+        streamable_http_path="/mcp",
+        stateless_http=True,
+        json_response=True,
+    )
 
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    main()

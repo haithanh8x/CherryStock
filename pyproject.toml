@@ -63,6 +63,11 @@ ai = [
     "openrouter",
 ]
 
+# Model Context Protocol server
+mcp = [
+    "mcp[cli]>=2,<3",
+]
+
 # Development tools
 dev = [
     "pytest",

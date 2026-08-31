@@ -1,40 +1,55 @@
-# CherryMon DuckDB MCP Server
+# CherryStock DuckDB MCP Server
 
-MCP server cho phép AI agent select/update/alter trực tiếp trên local `CherryMon.duckdb`.
+Read-only MCP V1 for the local CherryMon DuckDB.
 
-## Tools
+## Safety contract
 
-| Tool | Mô tả |
-|---|---|
-| `list_tables()` | Liệt kê table/view trong DB |
-| `describe_table(table_name)` | Schema cột của table |
-| `query(sql, max_rows=100)` | Chỉ nhận SELECT/WITH (read-only connection) |
-| `execute(sql, confirm)` | INSERT/UPDATE/DELETE/ALTER/CREATE/DROP — bắt buộc `confirm=true` mới thực thi |
-| `table_stats(table_name)` | Số dòng của table |
+- All database access is read-only through CherryStock's centralized DuckDB layer.
+- No `execute`, INSERT, UPDATE, DELETE, DDL, ATTACH, COPY, extension loading, filesystem readers, or external URL readers are exposed.
+- Generic SQL is limited to a single `SELECT` / `WITH` statement and a maximum of 500 returned rows.
+- Indicator tools read the public SSOT views `main.vw_Ticker_indicators` and `main.vw_Indicator_config`.
 
-## Chạy server
+## MCP tools
+
+| Tool | Purpose |
+| --- | --- |
+| `health_check()` | Verify read-only DB access |
+| `list_relations()` | List `main` tables/views |
+| `describe_relation(relation_name)` | Inspect relation columns |
+| `get_ticker_indicators(ticker, timeframe)` | Latest D/W/M indicators |
+| `get_indicator_history(ticker, timeframe, limit)` | Bounded indicator history |
+| `get_indicator_config(indicator)` | Indicator configuration SSOT |
+| `query_readonly(sql, max_rows)` | Restricted analytical SQL |
+| `table_stats(relation_name)` | Relation row count |
+
+## Install
 
 ```powershell
-C:/Program1/Python/Python313/python.exe src/mcp_server/duckdb_mcp.py
+cd C:\Github\CherryStock
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[mcp,dev]"
 ```
 
-## Đăng ký trong VS Code (Copilot MCP)
+## Run with stdio
 
-Thêm vào `.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "cherrymon-duckdb": {
-      "command": "C:/Program1/Python/Python313/python.exe",
-      "args": ["c:/Github/CherryStock/src/mcp_server/duckdb_mcp.py"]
-    }
-  }
-}
+```powershell
+python -m src.mcp_server.duckdb_mcp --transport stdio
 ```
 
-## Lưu ý
+## Run with Streamable HTTP
 
-- Server dùng `DuckDBConnectionFactory` của project nên tôn trọng `LOCAL_DB_PATH` / MotherDuck config.
-- Read query dùng read-only connection; write dùng writer connection ngắn hạn — không giữ lock file DB.
-- DuckDB chỉ cho 1 process mở write connection: nếu agent đang chạy cùng lúc với run.py có thể gặp file-lock error.
+```powershell
+.\scripts\start_mcp_duckdb.ps1 -Transport http
+```
+
+Endpoint:
+
+```text
+http://127.0.0.1:8765/mcp
+```
+
+The default bind is localhost only. Do not change it to `0.0.0.0` unless a separate security design explicitly requires it.
+
+## Full runbook
+
+See `docs/runbook/MCP_DuckDB.md`.

@@ -25,6 +25,7 @@ When the request involves architecture, system design, solution design, componen
 - [[adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
 - [[../.github/instructions/database.instructions|Database Instructions]]
 - [[../.github/agents/DB_Metadata|DB Metadata]]
+- [[runbook/MCP_DuckDB|DuckDB MCP Runbook]]
 
 ### Technical Indicators
 - [[architecture/Indicator_Engine|Indicator Engine Architecture]]
@@ -62,6 +63,9 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
 - [[adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
 - [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
+
+## Runbooks
+- [[runbook/MCP_DuckDB|CherryStock Local DuckDB MCP]]
 
 ## Domain Knowledge
 - [[../.github/agents/Instructions/StockTerm|Stock Terms]]
