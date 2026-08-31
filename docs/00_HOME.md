@@ -28,12 +28,15 @@ When the request involves architecture, system design, solution design, componen
 ### Technical Indicators
 - [[architecture/Indicator_Engine|Indicator Engine Architecture]]
 - [[adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
+- [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 - [[../.github/instructions/indicators.instructions|Indicator Instructions]]
 - [[../.github/agents/Instructions/Indicator_Engine|Legacy Detailed Indicator Engine Reference]]
 
 ### Chart / Visualization
 - [[architecture/Chart_Architecture|Chart Architecture]]
+- [[architecture/theme|Theme Architecture]]
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
+- [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 - [[../.github/instructions/chart.instructions|Chart Instructions]]
 
 ### Crawlers / Data Ingestion
@@ -49,6 +52,7 @@ When the request involves architecture, system design, solution design, componen
 - [[architecture/Indicator_Engine|Indicator Engine]]
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
+- [[architecture/theme|Theme Architecture]]
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
 
 ## Architecture Decision Records
