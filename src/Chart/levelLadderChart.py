@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def _format_price(value: float) -> str:
-    return f"{value:,.0f}"
+    return f"{value:,.1f}"
 
 
 def _level_label(level: "RankedLevel") -> str:
