@@ -1829,7 +1829,9 @@ def overview_tab_content() -> None:
 
 def market_tab_content() -> None:
     df = view_to_dataframe("vw_Ticker", condition="Status = 'Y'")
-    with ui.card().classes(card_classes("p-4 w-full")):
+    with ui.card().classes(
+        card_classes("p-4 w-full dashboard-data-grid-card")
+    ):
         with ui.row().classes("w-full items-center justify-between gap-3 mb-3"):
             card_header("Stock Screener", "Lọc và so sánh cổ phiếu Việt Nam", icon="filter_alt")
             with ui.row().classes("items-center gap-2"):

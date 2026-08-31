@@ -277,6 +277,11 @@ def build_nicegui_css(theme: ThemeTokens | None = None) -> str:
             backdrop-filter: blur(12px);
         }}
 
+        .dashboard-data-grid-card {{
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }}
+
         .dashboard-card:hover {{
             border-color: {tokens['hover_border']};
         }}
