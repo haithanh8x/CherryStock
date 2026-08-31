@@ -38,6 +38,15 @@ Output should define:
 - Domain calculations should be reused rather than recreated for a chart.
 - Prefer stable views/services as chart data sources.
 - Keep reusable components ticker-agnostic unless a domain requirement explicitly prevents it.
+- Presentation colors must use the centralized theme Source of Truth instead of chart-local app color constants.
+
+## Presentation Theme Boundary
+
+`src/Presentation/theme.py` owns the app-wide visual tokens consumed by ECharts, lightweight_charts, NiceGUI and AG Grid.
+
+Chart modules may own geometry, labels, interactions and explicit caller-provided color overrides, but their default application colors must resolve from the centralized theme.
+
+See [[theme|Theme Architecture]] and [[../adr/ADR-003-centralized-theme-system|ADR-003]].
 
 Implementation policy: [[../../.github/instructions/chart.instructions|Chart Instructions]].
 

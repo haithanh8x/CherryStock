@@ -49,7 +49,10 @@ Avoid:
 - complex SQL + business transformation + rendering in one function;
 - hard-coded ticker-specific behavior;
 - chart-specific copies of domain calculations;
-- hidden assumptions about order or units.
+- hidden assumptions about order or units;
+- hard-coded application theme colors when a semantic token exists in `src/Presentation/theme.py`.
+
+Presentation theme defaults MUST resolve from the centralized Theme System documented in `docs/architecture/theme.md`. Explicit caller-provided series colors remain allowed when color is part of the chart input contract.
 
 ## Validation
 Test at least:

@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+try:
+    from Presentation.theme import get_theme
+except ModuleNotFoundError:
+    from src.Presentation.theme import get_theme
+
 if TYPE_CHECKING:
     try:
         from calcEngine.levelLadder import LevelLadderResult, RankedLevel
@@ -53,13 +58,14 @@ def ladder_rows(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
 
 
 def empty_level_ladder_chart_options(message: str = "Chưa có dữ liệu R/S") -> dict[str, Any]:
+    theme = get_theme()
     return {
         "backgroundColor": "transparent",
         "title": {
             "text": message,
             "left": "center",
             "top": "middle",
-            "textStyle": {"color": "#8fa3bd", "fontSize": 14, "fontWeight": "normal"},
+            "textStyle": {"color": theme["muted"], "fontSize": 14, "fontWeight": "normal"},
         },
         "xAxis": {"show": False},
         "yAxis": {"show": False},
@@ -70,14 +76,22 @@ def empty_level_ladder_chart_options(message: str = "Chưa có dữ liệu R/S")
 def build_level_ladder_chart_options(
     ladder: "LevelLadderResult",
     *,
-    support_color: str = "#22c55e",
-    resistance_color: str = "#ef4444",
-    current_color: str = "#f59e0b",
-    text_color: str = "#e5edf7",
-    muted_color: str = "#8fa3bd",
-    grid_color: str = "#263750",
+    support_color: str | None = None,
+    resistance_color: str | None = None,
+    current_color: str | None = None,
+    text_color: str | None = None,
+    muted_color: str | None = None,
+    grid_color: str | None = None,
 ) -> dict[str, Any]:
     """Build ECharts options from a chart-ready LevelLadderResult only."""
+    theme = get_theme()
+    support_color = support_color or theme["positive"]
+    resistance_color = resistance_color or theme["negative"]
+    current_color = current_color or theme["warning"]
+    text_color = text_color or theme["text"]
+    muted_color = muted_color or theme["muted"]
+    grid_color = grid_color or theme["border"]
+
     ranked = [*ladder.support_levels, *ladder.resistance_levels]
     if not ranked:
         return empty_level_ladder_chart_options("Không có MA level V1 hợp lệ")
@@ -113,7 +127,7 @@ def build_level_ladder_chart_options(
         "tooltip": {
             "trigger": "item",
             "formatter": "{b}",
-            "backgroundColor": "#111827",
+            "backgroundColor": theme["tooltip_background"],
             "borderColor": grid_color,
             "textStyle": {"color": text_color},
         },
@@ -195,7 +209,7 @@ def build_level_ladder_chart_options(
                         "color": current_color,
                         "fontSize": 13,
                         "fontWeight": "bold",
-                        "backgroundColor": "#0f1b2d",
+                        "backgroundColor": theme["current_label_background"],
                         "padding": [2, 6],
                         "borderRadius": 3,
                     },
