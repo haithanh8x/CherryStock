@@ -31,7 +31,14 @@ importlib.reload(chart_plot)
 from calcEngine.levelLadder import build_level_ladder
 import Chart.levelLadderChart as level_ladder_chart
 importlib.reload(level_ladder_chart)
-from Ults.lstPara import CHART_START_DATE, IFRAME_HEIGHT, THEME, TIMEFRAME_OPTIONS
+from Ults.lstPara import CHART_START_DATE, IFRAME_HEIGHT, TIMEFRAME_OPTIONS
+from Presentation.theme import (
+    AG_GRID_THEME,
+    THEME,
+    build_nicegui_css,
+    is_dark_theme,
+    with_alpha,
+)
 
 
 CASHFLOW_UI_BUILD = "cashflow-tooltip-v3-20260801"
@@ -476,7 +483,7 @@ def create_watchlist_grid() -> ui.aggrid:
         "headerHeight": 36,
         "rowHeight": 38,
     }
-    return ui.aggrid(options, theme="quartz", auto_size_columns=False).classes("w-full h-[350px]")
+    return ui.aggrid(options, theme=AG_GRID_THEME, auto_size_columns=False).classes("w-full h-[350px]")
 
 
 def create_portfolio_grid() -> ui.aggrid:
@@ -502,7 +509,7 @@ def create_portfolio_grid() -> ui.aggrid:
         "rowData": PORTFOLIO_ROWS,
         "animateRows": True,
     }
-    return ui.aggrid(options, theme="quartz", auto_size_columns=False).classes(
+    return ui.aggrid(options, theme=AG_GRID_THEME, auto_size_columns=False).classes(
         "w-full h-[390px] dashboard-data-grid"
     )
 
@@ -625,10 +632,10 @@ def build_investor_cashflow_chart(
     )
 
     series_config = (
-        ("Tổ chức", "institutional", "#38bdf8"),
-        ("Cá nhân", "individual", "#f59e0b"),
-        ("Nước ngoài", "foreign_flow", "#22c55e"),
-        ("Tự doanh", "proprietary", "#ef4444"),
+        ("Tổ chức", "institutional", THEME["primary"]),
+        ("Cá nhân", "individual", THEME["warning"]),
+        ("Nước ngoài", "foreign_flow", THEME["positive"]),
+        ("Tự doanh", "proprietary", THEME["negative"]),
     )
 
     created_lines = []
@@ -654,7 +661,7 @@ def build_investor_cashflow_chart(
             if ({zero_anchor.id} && {zero_anchor.id}.series) {{
                 {zero_anchor.id}.series.createPriceLine({{
                     price: 0,
-                    color: 'rgba(143, 163, 189, 0.24)',
+                    color: '{with_alpha(THEME["muted"], 0.24)}',
                     lineWidth: 1,
                     lineStyle: 2,
                     axisLabelVisible: false,
@@ -679,12 +686,12 @@ def build_investor_cashflow_chart(
                 textColor: '{THEME["muted"]}'
             }},
             grid: {{
-                vertLines: {{color: 'rgba(38, 55, 80, 0.35)'}},
-                horzLines: {{color: 'rgba(38, 55, 80, 0.50)'}}
+                vertLines: {{color: '{with_alpha(THEME["border"], 0.35)}'}},
+                horzLines: {{color: '{with_alpha(THEME["border"], 0.50)}'}}
             }},
             crosshair: {{
-                vertLine: {{color: 'rgba(143, 163, 189, 0.55)', width: 1, style: 2}},
-                horzLine: {{color: 'rgba(143, 163, 189, 0.35)', width: 1, style: 2}}
+                vertLine: {{color: '{with_alpha(THEME["muted"], 0.55)}', width: 1, style: 2}},
+                horzLine: {{color: '{with_alpha(THEME["muted"], 0.35)}', width: 1, style: 2}}
             }},
             rightPriceScale: {{
                 borderColor: '{THEME["border"]}',
@@ -749,7 +756,7 @@ def build_investor_cashflow_chart(
                     crosshairMarkerRadius: 5,
                     crosshairMarkerBorderWidth: 2,
                     crosshairMarkerBorderColor: item.color,
-                    crosshairMarkerBackgroundColor: '#FFFFFF'
+                    crosshairMarkerBackgroundColor: '{THEME["chart_neutral"]}'
                 }});
             }});
 
@@ -767,11 +774,11 @@ def build_investor_cashflow_chart(
                     display: 'none',
                     minWidth: '210px',
                     padding: '10px 12px',
-                    border: '1px solid rgba(143, 163, 189, 0.42)',
+                    border: '1px solid {with_alpha(THEME["muted"], 0.42)}',
                     borderRadius: '8px',
-                    background: 'rgba(7, 17, 31, 0.97)',
-                    boxShadow: '0 8px 28px rgba(0, 0, 0, 0.38)',
-                    color: '#E5EDF7',
+                    background: '{with_alpha(THEME["background"], 0.97)}',
+                    boxShadow: '0 8px 28px {with_alpha(THEME["background"], 0.38)}',
+                    color: '{THEME["text"]}',
                     fontFamily: 'Segoe UI, Arial, sans-serif',
                     fontSize: '12px',
                     lineHeight: '1.4',
@@ -846,12 +853,12 @@ def build_investor_cashflow_chart(
                     const value = readValue(param, item.series);
                     if (Number.isFinite(value)) hasAnyValue = true;
                     const valueColor = !Number.isFinite(value)
-                        ? '#8FA3BD'
-                        : (value > 0 ? '#22C55E' : (value < 0 ? '#EF4444' : '#E5EDF7'));
+                        ? '{THEME["muted"]}'
+                        : (value > 0 ? '{THEME["positive"]}' : (value < 0 ? '{THEME["negative"]}' : '{THEME["text"]}'));
 
                     return '<div style="display:flex;align-items:center;justify-content:space-between;'
                         + 'gap:18px;margin-top:5px;">'
-                        + '<span style="display:inline-flex;align-items:center;gap:7px;color:#B7C4D6;">'
+                        + '<span style="display:inline-flex;align-items:center;gap:7px;color:{THEME["muted"]};">'
                         + '<span style="width:8px;height:8px;border-radius:50%;background:'
                         + item.color + ';display:inline-block;"></span>'
                         + item.label + '</span>'
@@ -864,8 +871,8 @@ def build_investor_cashflow_chart(
                     return;
                 }}
 
-                tooltip.innerHTML = '<div style="font-weight:700;color:#FFFFFF;'
-                    + 'padding-bottom:5px;border-bottom:1px solid rgba(143,163,189,0.20);">'
+                tooltip.innerHTML = '<div style="font-weight:700;color:{THEME["text"]};'
+                    + 'padding-bottom:5px;border-bottom:1px solid {with_alpha(THEME["muted"], 0.20)};">'
                     + formatDateOnly(param.time) + '</div>' + rows;
                 tooltip.style.display = 'block';
             }});
@@ -1633,15 +1640,15 @@ def operations_tab_content() -> None:
 
 def overview_tab_content() -> None:
     symbol_sources = {
-        "remaining_vnindex": {"symbol": "VNINDEX_NOT_VIN", "source": "custom", "color": "#A0AEC0", "label_name": "Remaining VNINDEX", "target": "main"},
-        "vnindex": {"symbol": "VNINDEX", "source": "index", "color": "#03FD10", "label_name": "VNINDEX", "target": "main"},
-        "btc": {"symbol": "BTC-USD", "source": "other", "color": "#F7931A", "label_name": "BTC-USD", "target": "main"},
-        "spx": {"symbol": "^SPX", "source": "other", "color": "#3182CE", "label_name": "SPX", "target": "main"},
-        "ndx": {"symbol": "^NDX", "source": "other", "color": "#00B5D8", "label_name": "NDX", "target": "main"},
-        "gcz": {"symbol": "GC=F", "source": "other", "color": "#ECC94B", "label_name": "Gold", "target": "main"},
-        "lcoz": {"symbol": "^LCOZ", "source": "other", "color": "#E53E3E", "label_name": "Oil", "target": "main"},
-        "dxy": {"symbol": "DX-Y.NYB", "source": "other", "color": "#A0AEC0", "label_name": "DXY", "target": "sub"},
-        "VND=X": {"symbol": "VND=X", "source": "other", "color": "#FFAA00", "label_name": "USD/VND", "target": "sub"},
+        "remaining_vnindex": {"symbol": "VNINDEX_NOT_VIN", "source": "custom", "color": THEME["series_remaining_vnindex"], "label_name": "Remaining VNINDEX", "target": "main"},
+        "vnindex": {"symbol": "VNINDEX", "source": "index", "color": THEME["series_vnindex"], "label_name": "VNINDEX", "target": "main"},
+        "btc": {"symbol": "BTC-USD", "source": "other", "color": THEME["series_btc"], "label_name": "BTC-USD", "target": "main"},
+        "spx": {"symbol": "^SPX", "source": "other", "color": THEME["series_spx"], "label_name": "SPX", "target": "main"},
+        "ndx": {"symbol": "^NDX", "source": "other", "color": THEME["series_ndx"], "label_name": "NDX", "target": "main"},
+        "gcz": {"symbol": "GC=F", "source": "other", "color": THEME["series_gold"], "label_name": "Gold", "target": "main"},
+        "lcoz": {"symbol": "^LCOZ", "source": "other", "color": THEME["series_oil"], "label_name": "Oil", "target": "main"},
+        "dxy": {"symbol": "DX-Y.NYB", "source": "other", "color": THEME["series_remaining_vnindex"], "label_name": "DXY", "target": "sub"},
+        "VND=X": {"symbol": "VND=X", "source": "other", "color": THEME["series_usdvnd"], "label_name": "USD/VND", "target": "sub"},
     }
 
     with ui.element("div").classes("grid grid-cols-2 lg:grid-cols-5 gap-3 w-full"):
@@ -1798,8 +1805,8 @@ def overview_tab_content() -> None:
 
                 if chart is None:
                     cashflow_container.set_content(
-                        '<div style="height:500px;display:flex;align-items:center;'
-                        'justify-content:center;color:#8fa3bd;">'
+                        f'<div style="height:500px;display:flex;align-items:center;'
+                        f'justify-content:center;color:{THEME["muted"]};">'
                         'Không có dữ liệu dòng tiền</div>'
                     )
                 else:
@@ -1972,7 +1979,7 @@ def rs_tab_content() -> None:
                     "headerHeight": 36,
                     "rowHeight": 38,
                 },
-                theme="quartz",
+                theme=AG_GRID_THEME,
                 auto_size_columns=False,
             ).classes("w-full h-[620px] dashboard-data-grid")
 
@@ -2024,15 +2031,7 @@ def rs_tab_content() -> None:
 
         ladder_chart.options.clear()
         ladder_chart.options.update(
-            level_ladder_chart.build_level_ladder_chart_options(
-                result,
-                support_color=THEME["positive"],
-                resistance_color=THEME["negative"],
-                current_color=THEME["warning"],
-                text_color=THEME["text"],
-                muted_color=THEME["muted"],
-                grid_color=THEME["border"],
-            )
+            level_ladder_chart.build_level_ladder_chart_options(result)
         )
         ladder_chart.update()
 
@@ -2052,38 +2051,14 @@ def rs_tab_content() -> None:
 # =============================================================================
 
 def build_page() -> None:
-    ui.colors(primary=THEME["primary"])
+    ui.colors(
+        primary=THEME["primary"],
+        positive=THEME["positive"],
+        negative=THEME["negative"],
+        warning=THEME["warning"],
+    )
     ui.add_head_html('<meta name="viewport" content="width=device-width, initial-scale=1">')
-    ui.add_css(f"""
-        :root {{ --q-primary: {THEME['primary']}; }}
-        body {{ background: {THEME['background']}; color: {THEME['text']}; }}
-        .q-page, .q-layout, .nicegui-content {{ background: {THEME['background']}; }}
-        .nicegui-content {{ padding: 0 !important; }}
-        .dashboard-card {{ overflow: hidden; backdrop-filter: blur(12px); }}
-        .dashboard-card:hover {{ border-color: #36506f; }}
-        .metric-card {{ min-height: 112px; }}
-        .q-tab {{ min-height: 46px; padding: 0 16px; }}
-        .q-tab--active {{ background: {THEME['surface_alt']}; border-radius: 10px; }}
-        .q-field--outlined .q-field__control:before {{ border-color: {THEME['border']}; }}
-        .q-field--outlined:hover .q-field__control:before {{ border-color: #3c5878; }}
-        .ag-root-wrapper {{ border-color: {THEME['border']} !important; border-radius: 12px !important; }}
-        .dashboard-data-grid {{
-            --ag-background-color: {THEME['surface']};
-            --ag-foreground-color: {THEME['text']};
-            --ag-header-background-color: {THEME['surface_alt']};
-            --ag-header-foreground-color: {THEME['text']};
-            --ag-odd-row-background-color: {THEME['surface_alt']};
-            --ag-row-hover-color: #1b2a3f;
-            --ag-border-color: {THEME['border']};
-            --ag-secondary-border-color: {THEME['border']};
-        }}
-        .timeframe-toggle .q-btn {{ min-width: 58px; }}
-        .app-shell {{ max-width: 2200px; margin: 0 auto; }}
-        @media (max-width: 700px) {{
-            .metric-card {{ min-height: 104px; }}
-            .timeframe-toggle .q-btn {{ min-width: 48px; padding-left: 8px; padding-right: 8px; }}
-        }}
-    """)
+    ui.add_css(build_nicegui_css())
 
     with ui.left_drawer(value=False).props("width=260 breakpoint=1024").classes(
         f"bg-[{THEME['surface']}] border-r border-[{THEME['border']}] p-3"
@@ -2122,7 +2097,9 @@ def build_page() -> None:
             ).classes("hidden md:flex w-64 xl:w-80")
             ui.button(icon="refresh", on_click=lambda: ui.notify("Đã làm mới dữ liệu")).props("flat round")
             ui.button(icon="notifications").props("flat round")
-            ui.avatar("CS").classes(f"bg-[{THEME['primary']}] text-black font-bold")
+            ui.avatar("CS").classes(
+                f"bg-[{THEME['primary']}] text-[{THEME['on_primary']}] font-bold"
+            )
 
     with ui.column().classes("app-shell w-full px-3 md:px-5 py-4 gap-4"):
         with ui.row().classes("w-full items-end justify-between gap-3"):
@@ -2166,6 +2143,6 @@ ui.run(
     host="0.0.0.0",
     port=8081,
     title="CherryStock Financial Terminal",
-    dark=True,
+    dark=is_dark_theme(),
     reload=True,
 )
