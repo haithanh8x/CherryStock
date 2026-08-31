@@ -183,8 +183,8 @@ def build_level_ladder_chart_options(
                 "itemStyle": {"color": current_color},
                 "label": {
                     "show": True,
-                    "position": "left",
-                    "distance": 14,
+                    "position": "top",
+                    "distance": 8,
                     "color": current_color,
                     "fontSize": 13,
                     "fontWeight": "bold",
