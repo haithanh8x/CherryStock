@@ -1868,6 +1868,26 @@ def rs_tab_content() -> None:
                     "R1/S1 = level gần giá hiện tại nhất; Strength là độ mạnh độc lập."
                 ).classes(f"text-xs text-[{THEME['muted']}] mt-1")
 
+            with ui.element("div").classes(
+                "rounded-xl border px-4 py-3 min-w-[360px] "
+                f"bg-[{THEME['surface_alt']}] border-[{THEME['border']}]"
+            ):
+                with ui.row().classes("items-center gap-3 no-wrap"):
+                    ui.icon("balance").classes(f"text-xl text-[{THEME['primary']}] shrink-0")
+                    with ui.column().classes("gap-0 shrink-0"):
+                        ui.label("Reward / Risk").classes(
+                            f"text-xs uppercase tracking-wider text-[{THEME['muted']}]"
+                        )
+                        metric_values["rr"] = ui.label("—").classes("text-2xl font-bold")
+                    ui.separator().props("vertical").classes(
+                        f"h-10 bg-[{THEME['border']}]"
+                    )
+                    ui.label(
+                        "Upside tới R1 / downside tới S1. >1 nghĩa là upside lớn hơn downside."
+                    ).classes(
+                        f"text-xs text-[{THEME['muted']}] leading-snug max-w-[210px]"
+                    )
+
             ticker_input = ui.input(
                 label="Ticker",
                 value="MWG",
@@ -1891,23 +1911,9 @@ def rs_tab_content() -> None:
             refresh_button = ui.button(
                 "Refresh",
                 icon="refresh",
-            ).props("unelevated dense no-caps")
+            ).props("unelevated no-caps").classes("h-10 px-4")
 
     metric_values: dict[str, Any] = {}
-    with ui.element("div").classes("grid grid-cols-2 lg:grid-cols-4 gap-3 w-full"):
-        for key, title, icon in (
-            ("current", "Current Price", "paid"),
-            ("r1", "R1 gần nhất", "north"),
-            ("s1", "S1 gần nhất", "south"),
-            ("rr", "Reward / Risk", "balance"),
-        ):
-            with ui.card().classes(card_classes("p-4")):
-                with ui.row().classes("items-center gap-2"):
-                    ui.icon(icon).classes(f"text-[{THEME['primary']}]")
-                    ui.label(title).classes(
-                        f"text-xs uppercase tracking-wider text-[{THEME['muted']}]"
-                    )
-                metric_values[key] = ui.label("—").classes("text-xl font-bold mt-2")
 
     with ui.element("div").classes("grid grid-cols-1 xl:grid-cols-12 gap-4 w-full"):
         with ui.card().classes(card_classes("p-4 xl:col-span-4")):
@@ -1967,11 +1973,10 @@ def rs_tab_content() -> None:
                 },
                 theme="quartz",
                 auto_size_columns=False,
-            ).classes("w-full h-[620px]")
+            ).classes("w-full h-[620px] rs-level-grid")
 
     def clear_output(message: str) -> None:
-        for label in metric_values.values():
-            label.set_text("—")
+        metric_values["rr"].set_text("—")
         ladder_chart.options.clear()
         ladder_chart.options.update(level_ladder_chart.empty_level_ladder_chart_options(message))
         ladder_chart.update()
@@ -2009,24 +2014,6 @@ def rs_tab_content() -> None:
             clear_output("Không thể build R/S Ladder")
             ui.notify(f"R/S error: {exc}", type="negative", timeout=8000)
             return
-
-        metric_values["current"].set_text(f"{result.current_price:,.1f}")
-
-        if result.nearest_resistance is not None:
-            r1 = result.nearest_resistance
-            metric_values["r1"].set_text(
-                f"{r1.price:,.1f}  (+{r1.distance_pct:.2f}%)"
-            )
-        else:
-            metric_values["r1"].set_text("—")
-
-        if result.nearest_support is not None:
-            s1 = result.nearest_support
-            metric_values["s1"].set_text(
-                f"{s1.price:,.1f}  ({s1.distance_pct:.2f}%)"
-            )
-        else:
-            metric_values["s1"].set_text("—")
 
         metric_values["rr"].set_text(
             f"{result.risk_reward_ratio:.2f}"
@@ -2079,6 +2066,16 @@ def build_page() -> None:
         .q-field--outlined .q-field__control:before {{ border-color: {THEME['border']}; }}
         .q-field--outlined:hover .q-field__control:before {{ border-color: #3c5878; }}
         .ag-root-wrapper {{ border-color: {THEME['border']} !important; border-radius: 12px !important; }}
+        .rs-level-grid {{
+            --ag-background-color: {THEME['surface']};
+            --ag-foreground-color: {THEME['text']};
+            --ag-header-background-color: {THEME['surface_alt']};
+            --ag-header-foreground-color: {THEME['text']};
+            --ag-odd-row-background-color: {THEME['surface_alt']};
+            --ag-row-hover-color: #1b2a3f;
+            --ag-border-color: {THEME['border']};
+            --ag-secondary-border-color: {THEME['border']};
+        }}
         .timeframe-toggle .q-btn {{ min-width: 58px; }}
         .app-shell {{ max-width: 2200px; margin: 0 auto; }}
         @media (max-width: 700px) {{
