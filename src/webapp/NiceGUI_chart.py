@@ -1913,7 +1913,7 @@ def rs_tab_content() -> None:
                 metric_values[key] = ui.label("—").classes("text-xl font-bold mt-2")
 
     with ui.element("div").classes("grid grid-cols-1 xl:grid-cols-12 gap-4 w-full"):
-        with ui.card().classes(card_classes("p-4 xl:col-span-8")):
+        with ui.card().classes(card_classes("p-4 xl:col-span-4")):
             card_header(
                 "R/S Price Ladder",
                 "Khoảng cách dọc phản ánh đúng khoảng cách giá thực tế",
@@ -1923,7 +1923,7 @@ def rs_tab_content() -> None:
                 empty_level_ladder_chart_options()
             ).classes("w-full h-[620px]")
 
-        with ui.card().classes(card_classes("p-4 xl:col-span-4")):
+        with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Level Details",
                 "Source, timeframe, distance và strength",
