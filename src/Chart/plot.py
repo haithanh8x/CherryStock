@@ -8,6 +8,10 @@ from sympy import plot
 from Ults.DuckLib import DuckDBManager
 from DuckDB import Data
 from Ults.lstPara import CHART_START_DATE, IFRAME_HEIGHT, IFRAME_WIDTH, PRICE_SCALE_MIN_WIDTH
+try:
+    from Presentation.theme import THEME, with_alpha
+except ModuleNotFoundError:
+    from src.Presentation.theme import THEME, with_alpha
 
 
 def _patched_jupyter_chart_load(self):
@@ -40,7 +44,7 @@ def build_chart_iframe_html(
     """Build responsive iframe HTML for embedding a lightweight chart."""
     html_source = getattr(chart, "_html", None)
     if not html_source:
-        return '<div style="padding:12px;color:#888;">Chart is not ready yet.</div>'
+        return f'<div style="padding:12px;color:{THEME["muted"]};">Chart is not ready yet.</div>'
 
     if '<meta charset=' not in html_source.lower():
         if '<head>' in html_source.lower():
@@ -172,14 +176,17 @@ def init_chart(
     height: int = IFRAME_HEIGHT,
     inner_width: float = 1,
     inner_height: float = 1,
-    background_color: str = "#121314",
-    text_color: str = "#FFFFFF",
+    background_color: str | None = None,
+    text_color: str | None = None,
     legend_visible=True
 ) -> JupyterChart:
     """
     Khởi tạo và cấu hình giao diện chung cho JupyterChart.
     Chưa gọi chart.load().
     """
+    background_color = background_color or THEME["background"]
+    text_color = text_color or THEME["text"]
+
     chart = JupyterChart(
         width=width,
         height=height,
@@ -197,7 +204,7 @@ def init_chart(
         ohlc=False,
         percent=False,
         lines=True,
-        color="#FFFFFF",
+        color=THEME["text"],
         font_size=13,
         font_family="Arial",
     )
@@ -232,7 +239,7 @@ def add_line(
     chart: JupyterChart,
     data: pd.DataFrame,
     name: str = "Y",
-    color: str = "#FFFFFF",
+    color: str | None = None,
     width: int = 1,
     price_line: bool = False,
     price_label: bool = False,
@@ -241,11 +248,12 @@ def add_line(
     hide_data: bool = False,
 ):
     """Tạo line, chuẩn hóa dữ liệu và gán vào chart."""
+    resolved_color = color or THEME["chart_neutral"]
     line = _create_line_with_data(
         chart,
         data,
         name=name,
-        color=color,
+        color=resolved_color,
         width=width,
         price_line=price_line,
         price_label=price_label,
@@ -325,13 +333,13 @@ def init_subchart(
     scale_candles_only: bool = False,
     sync_crosshairs_only: bool = False,
     toolbox: bool = False,
-    background_color: str = "#0F1820",
-    text_color: str = "#FFAA00",
+    background_color: str | None = None,
+    text_color: str | None = None,
     legend_visible: bool = True,
-    legend_color: str = "#FFFFFF",
+    legend_color: str | None = None,
     legend_font_size: int = 13,
     legend_font_family: str = "Arial",
-    border_color: Optional[str] = "#FFAA00",
+    border_color: Optional[str] = None,
     border_width: int = 0,
 ):
     """
@@ -340,6 +348,10 @@ def init_subchart(
     - layout
     - border wrapper (tuỳ chọn)
     """
+    background_color = background_color or THEME["surface"]
+    text_color = text_color or THEME["muted"]
+    legend_color = legend_color or THEME["text"]
+
     subchart = create_subchart(
         chart=chart,
         position=position,
@@ -378,7 +390,7 @@ def subchart_add_line(
     subchart,
     data: pd.DataFrame,
     name: str = "Y",
-    color: str = "#FFFFFF",
+    color: str | None = None,
     width: int = 1,
     price_line: bool = False,
     price_label: bool = False,
@@ -390,7 +402,7 @@ def subchart_add_line(
         subchart,
         data,
         name=name,
-        color=color,
+        color=color or THEME["chart_neutral"],
         width=width,
         price_line=price_line,
         price_label=price_label,
@@ -532,7 +544,7 @@ def load_chart(
                 legendDiv.style.alignItems = 'center';
                 legendDiv.style.gap = '8px 12px';
                 legendDiv.style.fontSize = '12px';
-                legendDiv.style.color = '#FFFFFF';
+                legendDiv.style.color = '{THEME["text"]}';
                 legendDiv.style.pointerEvents = 'auto';
                 handler.wrapper.appendChild(legendDiv);
             }}
@@ -573,14 +585,14 @@ def load_chart(
                     }} catch (err) {{
                         // Fallback for chart versions without visible option.
                         const fallbackColor = hidden
-                            ? __copilot_fadeColor(item.solid || '#FFFFFF', 0.08)
-                            : (isFaded ? __copilot_fadeColor(item.solid || '#FFFFFF', 0.2) : (item.solid || '#FFFFFF'));
+                            ? __copilot_fadeColor(item.solid || '{THEME["chart_neutral"]}', 0.08)
+                            : (isFaded ? __copilot_fadeColor(item.solid || '{THEME["chart_neutral"]}', 0.2) : (item.solid || '{THEME["chart_neutral"]}'));
                         item.series.applyOptions({{ color: fallbackColor }});
                     }}
 
                     if (!hidden) {{
                         item.series.applyOptions({{
-                            color: isFaded ? __copilot_fadeColor(item.solid || '#FFFFFF', 0.2) : (item.solid || '#FFFFFF'),
+                            color: isFaded ? __copilot_fadeColor(item.solid || '{THEME["chart_neutral"]}', 0.2) : (item.solid || '{THEME["chart_neutral"]}'),
                             lineWidth: isSelected
                                 ? Math.max(2, (item.__copilotOriginalLineWidth || 2) + 1)
                                 : (item.__copilotOriginalLineWidth || 2),
@@ -590,15 +602,15 @@ def load_chart(
                     if (item.__copilotLegendEye) {{
                         item.__copilotLegendEye.textContent = hidden ? '🔓' : '🔒';
                         item.__copilotLegendEye.style.opacity = '1';
-                        item.__copilotLegendEye.style.color = hidden ? '#9AA4B2' : '#FFFFFF';
-                        item.__copilotLegendEye.style.background = hidden ? '#2A2F36' : 'transparent';
+                        item.__copilotLegendEye.style.color = hidden ? '{THEME["chart_hidden"]}' : '{THEME["chart_neutral"]}';
+                        item.__copilotLegendEye.style.background = hidden ? '{THEME["chart_selection_background"]}' : 'transparent';
                         item.__copilotLegendEye.title = hidden ? 'Bật line' : 'Tắt line';
                     }}
 
                     if (item.__copilotLegendRow) {{
                         item.__copilotLegendRow.style.opacity = '1';
-                        item.__copilotLegendRow.style.background = isSelected ? '#2A2F36' : 'transparent';
-                        item.__copilotLegendRow.style.outline = isSelected ? '1px solid #9AA4B2' : 'none';
+                        item.__copilotLegendRow.style.background = isSelected ? '{THEME["chart_selection_background"]}' : 'transparent';
+                        item.__copilotLegendRow.style.outline = isSelected ? '1px solid {THEME["chart_hidden"]}' : 'none';
                         item.__copilotLegendRow.style.borderRadius = '6px';
                         item.__copilotLegendRow.style.padding = '2px 6px';
                         item.__copilotLegendRow.style.filter = 'none';
@@ -607,7 +619,7 @@ def load_chart(
 
                     if (item.__copilotLegendLabel) {{
                         item.__copilotLegendLabel.style.fontWeight = '600';
-                        item.__copilotLegendLabel.style.color = hidden ? '#A7B0BD' : '#FFFFFF';
+                        item.__copilotLegendLabel.style.color = hidden ? '{THEME["muted"]}' : '{THEME["chart_neutral"]}';
                         item.__copilotLegendLabel.style.textShadow = 'none';
                         item.__copilotLegendLabel.style.webkitTextStroke = '0';
                         item.__copilotLegendLabel.style.filter = 'none';
@@ -654,7 +666,7 @@ def load_chart(
 
                 const dot = document.createElement('span');
                 dot.textContent = '◼';
-                dot.style.color = item.solid || '#FFFFFF';
+                dot.style.color = item.solid || '{THEME["chart_neutral"]}';
                 dot.style.cursor = 'pointer';
                 dot.style.display = 'inline-flex';
                 dot.style.alignItems = 'center';
@@ -662,7 +674,7 @@ def load_chart(
                 dot.style.width = '14px';
                 dot.style.height = '14px';
                 dot.style.borderRadius = '50%';
-                dot.style.background = 'rgba(255,255,255,0.08)';
+                dot.style.background = '{with_alpha(THEME["chart_neutral"], 0.08)}';
                 dot.style.userSelect = 'none';
 
                 const label = document.createElement('span');
@@ -912,7 +924,7 @@ def draw_comparision_main_sub(
             "vnindex": {
                 "symbol": "VNINDEX",
                 "source": "index",
-                "color": "#03FD10",
+                "color": THEME["series_vnindex"],
                 "label_name": "VNINDEX",
                 "target": "main",
             },
@@ -933,7 +945,7 @@ def draw_comparision_main_sub(
 
     for key, config in symbol_sources.items():
         target = config.get("target", "main")
-        color = config.get("color", "#FFFFFF")
+        color = config.get("color", THEME["chart_neutral"])
         label_name = config.get("label_name") or config.get("symbol") or key
 
         if target == "main":
@@ -993,7 +1005,7 @@ def draw_ticker_above_MA(
         chart=chart,
         data=vnindex_df,
         name="Close",
-        color="#0080FF",
+        color=THEME["series_vnindex"],
         label_name="VNINDEX",
         price_scale_id="left",
         width=3,
@@ -1002,14 +1014,14 @@ def draw_ticker_above_MA(
         chart=chart,
         data=breadth_df,
         name="TickerAboveMA20",
-        color="#00FF0D",
+        color=THEME["series_ma20"],
         label_name="Ticker > MA20",
     )
     add_line(
         chart=chart,
         data=breadth_df,
         name="TickerAboveMA50",
-        color="#A6FCB8",
+        color=THEME["series_ma50"],
         label_name="Ticker > MA50",
         hide_data=True,
     )
@@ -1017,7 +1029,7 @@ def draw_ticker_above_MA(
         chart=chart,
         data=breadth_df,
         name="TickerAboveMA100",
-        color="#FC8B8B",
+        color=THEME["series_ma100"],
         label_name="Ticker > MA100",
         hide_data=True,
     )
@@ -1025,7 +1037,7 @@ def draw_ticker_above_MA(
         chart=chart,
         data=breadth_df,
         name="TickerAboveMA200",
-        color="#FD0303",
+        color=THEME["series_ma200"],
         label_name="Ticker > MA200",
     )
 
