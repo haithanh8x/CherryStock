@@ -33,9 +33,9 @@ import Chart.levelLadderChart as level_ladder_chart
 importlib.reload(level_ladder_chart)
 from Ults.lstPara import CHART_START_DATE, IFRAME_HEIGHT, TIMEFRAME_OPTIONS
 from Presentation.theme import (
-    AG_GRID_THEME,
     THEME,
     build_nicegui_css,
+    get_ag_grid_theme,
     is_dark_theme,
     with_alpha,
 )
@@ -483,7 +483,7 @@ def create_watchlist_grid() -> ui.aggrid:
         "headerHeight": 36,
         "rowHeight": 38,
     }
-    return ui.aggrid(options, theme=AG_GRID_THEME, auto_size_columns=False).classes("w-full h-[350px]")
+    return ui.aggrid(options, theme=get_ag_grid_theme(), auto_size_columns=False).classes("w-full h-[350px]")
 
 
 def create_portfolio_grid() -> ui.aggrid:
@@ -509,7 +509,7 @@ def create_portfolio_grid() -> ui.aggrid:
         "rowData": PORTFOLIO_ROWS,
         "animateRows": True,
     }
-    return ui.aggrid(options, theme=AG_GRID_THEME, auto_size_columns=False).classes(
+    return ui.aggrid(options, theme=get_ag_grid_theme(), auto_size_columns=False).classes(
         "w-full h-[390px] dashboard-data-grid"
     )
 
@@ -1979,7 +1979,7 @@ def rs_tab_content() -> None:
                     "headerHeight": 36,
                     "rowHeight": 38,
                 },
-                theme=AG_GRID_THEME,
+                theme=get_ag_grid_theme(),
                 auto_size_columns=False,
             ).classes("w-full h-[620px] dashboard-data-grid")
 
