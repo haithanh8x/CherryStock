@@ -9,6 +9,7 @@ from .theme import (
     get_theme_name,
     is_dark_theme,
     set_theme,
+    with_alpha,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "get_theme_name",
     "is_dark_theme",
     "set_theme",
+    "with_alpha",
 ]
