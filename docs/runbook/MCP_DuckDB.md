@@ -254,10 +254,27 @@ output:
   latest row for the requested ticker/timeframe
 ```
 
-The implementation follows CherryStock indicator naming:
-- Daily: `*_D`
-- Weekly: `*_W`
-- Monthly: `*_M`
+`vw_Ticker_indicators` is a long-form calculated-value contract with the core columns:
+
+```text
+Ticker
+Date
+ConfigId
+ComponentCode
+Value
+```
+
+Timeframe, config code, indicator code and component state come from
+`vw_Indicator_config`.
+
+`get_ticker_indicators` joins the two SSOT views on:
+
+```text
+ConfigId + ComponentCode
+```
+
+It filters the requested timeframe and active config/indicator/component rows,
+then returns the latest value for every active config/component.
 
 Example:
 
@@ -265,7 +282,7 @@ Example:
 get_ticker_indicators("MWG", "Daily")
 ```
 
-Expected: only key columns plus Daily (`*_D`) indicator columns.
+Expected: one latest row per active Daily config/component, including `ConfigCode`, `IndicatorCode`, `Timeframe`, `ComponentCode`, `Value` and `Parameters`.
 
 ---
 
@@ -304,7 +321,7 @@ python -m pytest tests/mcp/test_indicator_tools.py -v
 
 Expected:
 - latest MWG Daily record selected;
-- Daily response excludes Weekly columns;
+- Daily response contains only Daily configuration rows;
 - Weekly history is ordered latest-first;
 - RSI config returns D/W/M rows;
 - invalid timeframe is rejected.

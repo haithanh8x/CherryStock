@@ -20,5 +20,5 @@ def test_table_stats_returns_relation_row_count(mcp_test_db):
     assert result == {
         "schema": "main",
         "relation": "vw_Ticker_indicators",
-        "row_count": 3,
+        "row_count": 7,
     }

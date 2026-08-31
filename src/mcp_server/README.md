@@ -7,7 +7,7 @@ Read-only MCP V1 for the local CherryMon DuckDB.
 - All database access is read-only through CherryStock's centralized DuckDB layer.
 - No `execute`, INSERT, UPDATE, DELETE, DDL, ATTACH, COPY, extension loading, filesystem readers, or external URL readers are exposed.
 - Generic SQL is limited to a single `SELECT` / `WITH` statement and a maximum of 500 returned rows.
-- Indicator tools read the public SSOT views `main.vw_Ticker_indicators` and `main.vw_Indicator_config`.
+- Indicator tools join the long-form public SSOT views `main.vw_Ticker_indicators` and `main.vw_Indicator_config` by `ConfigId + ComponentCode`.
 
 ## MCP tools
 

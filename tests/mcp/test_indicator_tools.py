@@ -12,11 +12,17 @@ def test_get_latest_mwg_daily_indicators(mcp_test_db):
 
     assert result["ticker"] == "MWG"
     assert result["timeframe"] == "Daily"
-    assert result["row_count"] == 1
-    assert result["latest"]["Date"] == "2026-08-29"
-    assert result["latest"]["MA20_D"] == pytest.approx(75.4)
-    assert result["latest"]["RSI14_D"] == pytest.approx(56.3)
-    assert "MA20_W" not in result["latest"]
+    assert result["as_of_date"] == "2026-08-29"
+    assert result["row_count"] == 2
+    assert {row["IndicatorCode"] for row in result["rows"]} == {"MA", "RSI"}
+    assert {row["Timeframe"] for row in result["rows"]} == {"Daily"}
+
+    values = {
+        row["ConfigCode"]: row["Value"]
+        for row in result["rows"]
+    }
+    assert values["MA20_D"] == pytest.approx(75.4)
+    assert values["RSI14_D"] == pytest.approx(56.3)
 
 
 def test_get_weekly_indicator_history_is_bounded(mcp_test_db):
@@ -27,10 +33,10 @@ def test_get_weekly_indicator_history_is_bounded(mcp_test_db):
     assert result["row_count"] == 2
     assert [row["Date"] for row in result["rows"]] == [
         "2026-08-29",
-        "2026-08-28",
+        "2026-08-22",
     ]
-    assert "MA20_W" in result["rows"][0]
-    assert "MA20_D" not in result["rows"][0]
+    assert {row["ConfigCode"] for row in result["rows"]} == {"RSI14_W"}
+    assert {row["Timeframe"] for row in result["rows"]} == {"Weekly"}
 
 
 def test_get_indicator_config_reads_configuration_ssot(mcp_test_db):

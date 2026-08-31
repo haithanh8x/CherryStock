@@ -22,21 +22,22 @@ def mcp_test_db(tmp_path, monkeypatch):
             CREATE TABLE ticker_indicator_source (
                 Ticker VARCHAR NOT NULL,
                 Date DATE NOT NULL,
-                MA20_D DOUBLE,
-                RSI14_D DOUBLE,
-                MA20_W DOUBLE,
-                RSI14_W DOUBLE,
-                MA20_M DOUBLE,
-                RSI14_M DOUBLE
+                ConfigId BIGINT NOT NULL,
+                ComponentCode VARCHAR NOT NULL,
+                Value DOUBLE
             )
             """
         )
         connection.execute(
             """
             INSERT INTO ticker_indicator_source VALUES
-                ('MWG', DATE '2026-08-28', 75.1, 55.2, 73.4, 58.1, 70.0, 60.0),
-                ('MWG', DATE '2026-08-29', 75.4, 56.3, 73.6, 58.5, 70.2, 60.4),
-                ('FPT', DATE '2026-08-29', 110.0, 52.0, 108.0, 54.0, 100.0, 57.0)
+                ('MWG', DATE '2026-08-28', 1, 'VALUE', 55.2),
+                ('MWG', DATE '2026-08-29', 1, 'VALUE', 56.3),
+                ('MWG', DATE '2026-08-22', 2, 'VALUE', 57.5),
+                ('MWG', DATE '2026-08-29', 2, 'VALUE', 58.5),
+                ('MWG', DATE '2026-08-28', 4, 'VALUE', 75.1),
+                ('MWG', DATE '2026-08-29', 4, 'VALUE', 75.4),
+                ('FPT', DATE '2026-08-29', 1, 'VALUE', 52.0)
             """
         )
         connection.execute(
@@ -45,12 +46,9 @@ def mcp_test_db(tmp_path, monkeypatch):
             SELECT
                 Ticker,
                 Date,
-                MA20_D,
-                RSI14_D,
-                MA20_W,
-                RSI14_W,
-                MA20_M,
-                RSI14_M
+                ConfigId,
+                ComponentCode,
+                Value
             FROM ticker_indicator_source
             """
         )
@@ -58,35 +56,40 @@ def mcp_test_db(tmp_path, monkeypatch):
         connection.execute(
             """
             CREATE TABLE indicator_config_source (
-                IndicatorCode VARCHAR NOT NULL,
-                IndicatorName VARCHAR NOT NULL,
+                ConfigId BIGINT NOT NULL,
                 ConfigCode VARCHAR NOT NULL,
+                IndicatorCode VARCHAR NOT NULL,
                 Timeframe VARCHAR NOT NULL,
-                ComponentCode VARCHAR NOT NULL,
                 Parameters JSON NOT NULL,
-                IsEnabled BOOLEAN NOT NULL
+                ConfigIsEnabled BOOLEAN NOT NULL,
+                IndicatorIsActive BOOLEAN NOT NULL,
+                ComponentCode VARCHAR NOT NULL,
+                ComponentIsActive BOOLEAN
             )
             """
         )
         connection.execute(
             """
             INSERT INTO indicator_config_source VALUES
-                ('RSI', 'Relative Strength Index', 'RSI14_D', 'Daily', 'RSI', '{"length":14}', true),
-                ('RSI', 'Relative Strength Index', 'RSI14_W', 'Weekly', 'RSI', '{"length":14}', true),
-                ('RSI', 'Relative Strength Index', 'RSI14_M', 'Monthly', 'RSI', '{"length":14}', true)
+                (1, 'RSI14_D', 'RSI', 'Daily', '{"length":14}', true, true, 'VALUE', true),
+                (2, 'RSI14_W', 'RSI', 'Weekly', '{"length":14}', true, true, 'VALUE', true),
+                (3, 'RSI14_M', 'RSI', 'Monthly', '{"length":14}', true, true, 'VALUE', true),
+                (4, 'MA20_D', 'MA', 'Daily', '{"length":20}', true, true, 'VALUE', true)
             """
         )
         connection.execute(
             """
             CREATE VIEW vw_Indicator_config AS
             SELECT
-                IndicatorCode,
-                IndicatorName,
+                ConfigId,
                 ConfigCode,
+                IndicatorCode,
                 Timeframe,
-                ComponentCode,
                 Parameters,
-                IsEnabled
+                ConfigIsEnabled,
+                IndicatorIsActive,
+                ComponentCode,
+                ComponentIsActive
             FROM indicator_config_source
             """
         )

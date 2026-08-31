@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import sys
 from contextlib import contextmanager
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
-import sys
 from typing import Any, Iterator
 
 _SRC_ROOT = Path(__file__).resolve().parents[1]
@@ -20,11 +20,31 @@ MAIN_SCHEMA = "main"
 INDICATOR_VALUES_VIEW = "vw_Ticker_indicators"
 INDICATOR_CONFIG_VIEW = "vw_Indicator_config"
 
-_TIMEFRAME_SUFFIX = {
-    "daily": "_D",
-    "weekly": "_W",
-    "monthly": "_M",
+_TIMEFRAMES = {
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
 }
+
+_VALUE_VIEW_REQUIRED_COLUMNS = (
+    "Ticker",
+    "Date",
+    "ConfigId",
+    "ComponentCode",
+    "Value",
+)
+
+_CONFIG_VIEW_REQUIRED_COLUMNS = (
+    "ConfigId",
+    "ConfigCode",
+    "IndicatorCode",
+    "Timeframe",
+    "Parameters",
+    "ConfigIsEnabled",
+    "IndicatorIsActive",
+    "ComponentCode",
+    "ComponentIsActive",
+)
 
 
 def _quote_identifier(identifier: str) -> str:
@@ -41,29 +61,28 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
-def _rows_as_dicts(cursor: Any, rows: list[tuple[Any, ...]] | None = None) -> list[dict[str, Any]]:
+def _rows_as_dicts(
+    cursor: Any,
+    rows: list[tuple[Any, ...]] | None = None,
+) -> list[dict[str, Any]]:
     description = cursor.description or []
     columns = [item[0] for item in description]
     source_rows = rows if rows is not None else cursor.fetchall()
     return [
-        {column: _json_safe(value) for column, value in zip(columns, row, strict=True)}
+        {
+            column: _json_safe(value)
+            for column, value in zip(columns, row, strict=True)
+        }
         for row in source_rows
     ]
 
 
-def _resolve_column(columns: list[str], expected: str) -> str | None:
-    expected_lower = expected.lower()
-    return next((column for column in columns if column.lower() == expected_lower), None)
-
-
-def _normalize_timeframe(timeframe: str) -> tuple[str, str]:
+def _normalize_timeframe(timeframe: str) -> str:
     normalized = (timeframe or "").strip().lower()
-    suffix = _TIMEFRAME_SUFFIX.get(normalized)
-    if suffix is None:
-        raise ValueError(
-            "timeframe must be one of: Daily, Weekly, Monthly."
-        )
-    return normalized.capitalize(), suffix
+    canonical = _TIMEFRAMES.get(normalized)
+    if canonical is None:
+        raise ValueError("timeframe must be one of: Daily, Weekly, Monthly.")
+    return canonical
 
 
 class DuckDBReadService:
@@ -149,6 +168,33 @@ class DuckDBReadService:
         ).fetchall()
         return [str(row[0]) for row in rows]
 
+    def _require_columns(
+        self,
+        connection: Any,
+        relation_name: str,
+        required_columns: tuple[str, ...],
+    ) -> tuple[str, dict[str, str]]:
+        actual_name = self._resolve_relation(connection, relation_name)
+        available = self._columns(connection, actual_name)
+        by_lower = {column.lower(): column for column in available}
+
+        missing = [
+            column
+            for column in required_columns
+            if column.lower() not in by_lower
+        ]
+        if missing:
+            raise ValueError(
+                f"main.{actual_name} is missing required columns: {missing}. "
+                f"Available={available}"
+            )
+
+        resolved = {
+            column: by_lower[column.lower()]
+            for column in required_columns
+        }
+        return actual_name, resolved
+
     def describe_relation(self, relation_name: str) -> list[dict[str, Any]]:
         """Return column metadata for one table/view in main schema."""
 
@@ -170,36 +216,40 @@ class DuckDBReadService:
             )
             return _rows_as_dicts(cursor)
 
-    def _indicator_columns(
+    def _indicator_query_context(
         self,
         connection: Any,
-        *,
-        timeframe: str,
-    ) -> tuple[str, str, str, list[str]]:
-        actual_view = self._resolve_relation(connection, INDICATOR_VALUES_VIEW)
-        columns = self._columns(connection, actual_view)
-        ticker_column = _resolve_column(columns, "Ticker")
-        date_column = _resolve_column(columns, "Date")
-        normalized_timeframe, suffix = _normalize_timeframe(timeframe)
+    ) -> tuple[str, str, dict[str, str], dict[str, str]]:
+        value_view, value_columns = self._require_columns(
+            connection,
+            INDICATOR_VALUES_VIEW,
+            _VALUE_VIEW_REQUIRED_COLUMNS,
+        )
+        config_view, config_columns = self._require_columns(
+            connection,
+            INDICATOR_CONFIG_VIEW,
+            _CONFIG_VIEW_REQUIRED_COLUMNS,
+        )
+        return value_view, config_view, value_columns, config_columns
 
-        if ticker_column is None or date_column is None:
-            raise ValueError(
-                f"main.{actual_view} must expose Ticker and Date columns."
+    def _indicator_select_list(
+        self,
+        value_columns: dict[str, str],
+        config_columns: dict[str, str],
+    ) -> str:
+        return ", ".join(
+            (
+                f'val.{_quote_identifier(value_columns["Ticker"])} AS "Ticker"',
+                f'val.{_quote_identifier(value_columns["Date"])} AS "Date"',
+                f'cfg.{_quote_identifier(config_columns["ConfigId"])} AS "ConfigId"',
+                f'cfg.{_quote_identifier(config_columns["ConfigCode"])} AS "ConfigCode"',
+                f'cfg.{_quote_identifier(config_columns["IndicatorCode"])} AS "IndicatorCode"',
+                f'cfg.{_quote_identifier(config_columns["Timeframe"])} AS "Timeframe"',
+                f'cfg.{_quote_identifier(config_columns["ComponentCode"])} AS "ComponentCode"',
+                f'val.{_quote_identifier(value_columns["Value"])} AS "Value"',
+                f'cfg.{_quote_identifier(config_columns["Parameters"])} AS "Parameters"',
             )
-
-        value_columns = [
-            column
-            for column in columns
-            if column.upper().endswith(suffix)
-            and column not in {ticker_column, date_column}
-        ]
-        if not value_columns:
-            raise ValueError(
-                f"main.{actual_view} has no {normalized_timeframe} indicator columns "
-                f"using the {suffix} naming convention."
-            )
-
-        return actual_view, ticker_column, date_column, value_columns
+        )
 
     def get_indicator_history(
         self,
@@ -207,40 +257,63 @@ class DuckDBReadService:
         timeframe: str = "Daily",
         limit: int = 30,
     ) -> dict[str, Any]:
-        """Return bounded indicator history from the calculated-value SSOT."""
+        """Return bounded long-form indicator history for one ticker/timeframe."""
 
         requested_ticker = (ticker or "").strip().upper()
         if not requested_ticker:
             raise ValueError("ticker must be provided.")
-        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
+        canonical_timeframe = _normalize_timeframe(timeframe)
+        if (
+            isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or not 1 <= limit <= 200
+        ):
             raise ValueError("limit must be an integer between 1 and 200.")
 
         with self.connection() as connection:
             (
-                actual_view,
-                ticker_column,
-                date_column,
+                value_view,
+                config_view,
                 value_columns,
-            ) = self._indicator_columns(connection, timeframe=timeframe)
-            normalized_timeframe, _ = _normalize_timeframe(timeframe)
-            selected_columns = [ticker_column, date_column, *value_columns]
-            select_list = ", ".join(_quote_identifier(column) for column in selected_columns)
+                config_columns,
+            ) = self._indicator_query_context(connection)
 
+            select_list = self._indicator_select_list(
+                value_columns,
+                config_columns,
+            )
             cursor = connection.execute(
                 f"""
                 SELECT {select_list}
-                FROM {_quote_identifier(MAIN_SCHEMA)}.{_quote_identifier(actual_view)}
-                WHERE {_quote_identifier(ticker_column)} = ?
-                ORDER BY {_quote_identifier(date_column)} DESC
+                FROM {_quote_identifier(MAIN_SCHEMA)}.{_quote_identifier(value_view)} val
+                INNER JOIN {_quote_identifier(MAIN_SCHEMA)}.{_quote_identifier(config_view)} cfg
+                    ON cfg.{_quote_identifier(config_columns["ConfigId"])}
+                       = val.{_quote_identifier(value_columns["ConfigId"])}
+                   AND cfg.{_quote_identifier(config_columns["ComponentCode"])}
+                       = val.{_quote_identifier(value_columns["ComponentCode"])}
+                WHERE val.{_quote_identifier(value_columns["Ticker"])} = ?
+                  AND cfg.{_quote_identifier(config_columns["Timeframe"])} = ?
+                  AND cfg.{_quote_identifier(config_columns["ConfigIsEnabled"])} = TRUE
+                  AND cfg.{_quote_identifier(config_columns["IndicatorIsActive"])} = TRUE
+                  AND COALESCE(
+                        cfg.{_quote_identifier(config_columns["ComponentIsActive"])},
+                        TRUE
+                      ) = TRUE
+                  AND val.{_quote_identifier(value_columns["Value"])} IS NOT NULL
+                ORDER BY
+                    val.{_quote_identifier(value_columns["Date"])} DESC,
+                    cfg.{_quote_identifier(config_columns["IndicatorCode"])},
+                    cfg.{_quote_identifier(config_columns["ConfigCode"])},
+                    cfg.{_quote_identifier(config_columns["ComponentCode"])}
                 LIMIT ?
                 """,
-                [requested_ticker, limit],
+                [requested_ticker, canonical_timeframe, limit],
             )
             rows = _rows_as_dicts(cursor)
 
         return {
             "ticker": requested_ticker,
-            "timeframe": normalized_timeframe,
+            "timeframe": canonical_timeframe,
             "row_count": len(rows),
             "rows": rows,
         }
@@ -250,15 +323,85 @@ class DuckDBReadService:
         ticker: str,
         timeframe: str = "Daily",
     ) -> dict[str, Any]:
-        """Return the latest technical indicators for one ticker/timeframe."""
+        """Return the latest value per active config/component for a ticker."""
 
-        result = self.get_indicator_history(
-            ticker=ticker,
-            timeframe=timeframe,
-            limit=1,
+        requested_ticker = (ticker or "").strip().upper()
+        if not requested_ticker:
+            raise ValueError("ticker must be provided.")
+        canonical_timeframe = _normalize_timeframe(timeframe)
+
+        with self.connection() as connection:
+            (
+                value_view,
+                config_view,
+                value_columns,
+                config_columns,
+            ) = self._indicator_query_context(connection)
+
+            select_list = self._indicator_select_list(
+                value_columns,
+                config_columns,
+            )
+            cursor = connection.execute(
+                f"""
+                WITH ranked AS (
+                    SELECT
+                        {select_list},
+                        ROW_NUMBER() OVER (
+                            PARTITION BY
+                                val.{_quote_identifier(value_columns["ConfigId"])},
+                                val.{_quote_identifier(value_columns["ComponentCode"])}
+                            ORDER BY
+                                val.{_quote_identifier(value_columns["Date"])} DESC
+                        ) AS "_mcp_rank"
+                    FROM {_quote_identifier(MAIN_SCHEMA)}.{_quote_identifier(value_view)} val
+                    INNER JOIN {_quote_identifier(MAIN_SCHEMA)}.{_quote_identifier(config_view)} cfg
+                        ON cfg.{_quote_identifier(config_columns["ConfigId"])}
+                           = val.{_quote_identifier(value_columns["ConfigId"])}
+                       AND cfg.{_quote_identifier(config_columns["ComponentCode"])}
+                           = val.{_quote_identifier(value_columns["ComponentCode"])}
+                    WHERE val.{_quote_identifier(value_columns["Ticker"])} = ?
+                      AND cfg.{_quote_identifier(config_columns["Timeframe"])} = ?
+                      AND cfg.{_quote_identifier(config_columns["ConfigIsEnabled"])} = TRUE
+                      AND cfg.{_quote_identifier(config_columns["IndicatorIsActive"])} = TRUE
+                      AND COALESCE(
+                            cfg.{_quote_identifier(config_columns["ComponentIsActive"])},
+                            TRUE
+                          ) = TRUE
+                      AND val.{_quote_identifier(value_columns["Value"])} IS NOT NULL
+                )
+                SELECT
+                    "Ticker",
+                    "Date",
+                    "ConfigId",
+                    "ConfigCode",
+                    "IndicatorCode",
+                    "Timeframe",
+                    "ComponentCode",
+                    "Value",
+                    "Parameters"
+                FROM ranked
+                WHERE "_mcp_rank" = 1
+                ORDER BY
+                    "IndicatorCode",
+                    "ConfigCode",
+                    "ComponentCode"
+                """,
+                [requested_ticker, canonical_timeframe],
+            )
+            rows = _rows_as_dicts(cursor)
+
+        as_of_date = max(
+            (row["Date"] for row in rows if row.get("Date") is not None),
+            default=None,
         )
-        result["latest"] = result["rows"][0] if result["rows"] else None
-        return result
+        return {
+            "ticker": requested_ticker,
+            "timeframe": canonical_timeframe,
+            "as_of_date": as_of_date,
+            "row_count": len(rows),
+            "rows": rows,
+        }
 
     def get_indicator_config(self, indicator: str) -> dict[str, Any]:
         """Return configuration rows from the indicator configuration SSOT."""
@@ -268,32 +411,25 @@ class DuckDBReadService:
             raise ValueError("indicator must be provided.")
 
         with self.connection() as connection:
-            actual_view = self._resolve_relation(connection, INDICATOR_CONFIG_VIEW)
-            columns = self._columns(connection, actual_view)
-            indicator_column = _resolve_column(columns, "IndicatorCode")
-            if indicator_column is None:
-                raise ValueError(
-                    f"main.{actual_view} must expose IndicatorCode."
-                )
-
-            select_list = ", ".join(_quote_identifier(column) for column in columns)
-            order_columns = [
-                column
-                for expected in ("Timeframe", "ConfigCode", "ComponentCode")
-                if (column := _resolve_column(columns, expected)) is not None
-            ]
-            order_clause = ""
-            if order_columns:
-                order_clause = " ORDER BY " + ", ".join(
-                    _quote_identifier(column) for column in order_columns
-                )
+            actual_view, columns = self._require_columns(
+                connection,
+                INDICATOR_CONFIG_VIEW,
+                _CONFIG_VIEW_REQUIRED_COLUMNS,
+            )
+            select_list = ", ".join(
+                _quote_identifier(columns[column])
+                for column in _CONFIG_VIEW_REQUIRED_COLUMNS
+            )
 
             cursor = connection.execute(
                 f"""
                 SELECT {select_list}
                 FROM {_quote_identifier(MAIN_SCHEMA)}.{_quote_identifier(actual_view)}
-                WHERE upper({_quote_identifier(indicator_column)}) = ?
-                {order_clause}
+                WHERE upper({_quote_identifier(columns["IndicatorCode"])}) = ?
+                ORDER BY
+                    {_quote_identifier(columns["Timeframe"])},
+                    {_quote_identifier(columns["ConfigCode"])},
+                    {_quote_identifier(columns["ComponentCode"])}
                 """,
                 [indicator_code],
             )
@@ -306,7 +442,7 @@ class DuckDBReadService:
         }
 
     def table_stats(self, relation_name: str) -> dict[str, Any]:
-        """Return a bounded, read-only row-count statistic for a relation."""
+        """Return a read-only row-count statistic for a relation."""
 
         with self.connection() as connection:
             actual_name = self._resolve_relation(connection, relation_name)
@@ -323,7 +459,11 @@ class DuckDBReadService:
             "row_count": int(row[0]) if row else 0,
         }
 
-    def execute_readonly_query(self, sql: str, max_rows: int) -> dict[str, Any]:
+    def execute_readonly_query(
+        self,
+        sql: str,
+        max_rows: int,
+    ) -> dict[str, Any]:
         """Execute already-validated SQL and return at most max_rows records."""
 
         with self.connection() as connection:

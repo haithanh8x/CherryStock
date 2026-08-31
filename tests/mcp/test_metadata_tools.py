@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 mcp_package = pytest.importorskip("mcp")
-from mcp import Client
+Client = mcp_package.Client
 
 from src.mcp_server.duckdb_mcp import mcp
 from src.mcp_server.duckdb_service import DuckDBReadService
@@ -22,8 +22,13 @@ def test_list_and_describe_indicator_views(mcp_test_db):
 
     columns = service.describe_relation("vw_Ticker_indicators")
     column_names = [item["column_name"] for item in columns]
-    assert column_names[:2] == ["Ticker", "Date"]
-    assert "RSI14_D" in column_names
+    assert column_names == [
+        "Ticker",
+        "Date",
+        "ConfigId",
+        "ComponentCode",
+        "Value",
+    ]
 
 
 def test_describe_unknown_relation_is_controlled(mcp_test_db):
