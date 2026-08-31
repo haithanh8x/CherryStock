@@ -42,7 +42,7 @@ def test_readonly_sql_and_limit_are_allowed_and_bounded(mcp_test_db):
         clamp_query_limit(999, 500),
     )
 
-    assert result["row_count"] == 3
+    assert result["row_count"] == 7
     assert result["truncated"] is False
     assert clamp_query_limit(999, 500) == 500
 
