@@ -28,7 +28,6 @@ When the request involves architecture, system design, solution design, componen
 ### Technical Indicators
 - [[architecture/Indicator_Engine|Indicator Engine Architecture]]
 - [[adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
-- [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 - [[../.github/instructions/indicators.instructions|Indicator Instructions]]
 - [[../.github/agents/Instructions/Indicator_Engine|Legacy Detailed Indicator Engine Reference]]
 
@@ -58,6 +57,7 @@ When the request involves architecture, system design, solution design, componen
 ## Architecture Decision Records
 - [[adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
 - [[adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
+- [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 
 ## Domain Knowledge
 - [[../.github/agents/Instructions/StockTerm|Stock Terms]]
