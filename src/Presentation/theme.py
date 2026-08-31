@@ -224,6 +224,18 @@ THEME: Final[Mapping[str, Any]] = _ThemeProxy()
 AG_GRID_THEME: Final[str] = "quartz"
 
 
+def with_alpha(color: str, alpha: float) -> str:
+    """Convert a #RRGGBB color to an rgba() string with *alpha*."""
+
+    value = color.lstrip("#")
+    if len(value) != 6:
+        raise ValueError(f"Expected #RRGGBB color, got {color!r}")
+    if not 0 <= alpha <= 1:
+        raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
+    red, green, blue = (int(value[index:index + 2], 16) for index in (0, 2, 4))
+    return f"rgba({red}, {green}, {blue}, {alpha:g})"
+
+
 def build_nicegui_css(theme: ThemeTokens | None = None) -> str:
     """Build global NiceGUI/Quasar/AG Grid CSS from semantic theme tokens."""
 
