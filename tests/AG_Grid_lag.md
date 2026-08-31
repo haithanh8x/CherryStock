@@ -1,132 +1,96 @@
-# AG Grid Lag — Fix duy nhất: backdrop-filter
+# AG Grid Lag — Fix duy nhất: QTabPanels swipeable
 
 ## 1. Mục tiêu
 
-Tài liệu này chỉ xử lý một nguyên nhân duy nhất:
+Scenario trước đã hoàn tất:
 
-**backdrop-filter: blur(12px) trên card chứa AG Grid có thể làm browser repaint/composite nặng khi resize column.**
+~~~text
+Backdrop-filter: FAIL
+No significant improvement
+Action: REVERT
+~~~
 
-Không phân tích hoặc sửa bất kỳ nguyên nhân nào khác.
+Không test lại backdrop-filter trong task này.
 
-Không sửa:
+Tài liệu này chỉ kiểm tra một nguyên nhân duy nhất:
 
-- QTabPanels swipeable
-- mouse/pointer event blocker
-- persistence timer
-- Columns Tool Panel
-- floatingFilter
-- animateRows
-- AG Grid version
-- NiceGUI version
+**QTabPanels đang bật swipeable và có thể xử lý horizontal gesture cùng lúc với AG Grid column resize.**
 
-Nếu fix backdrop-filter không cải thiện rõ rệt: **REVERT và STOP**.
+Nếu bỏ swipeable không cải thiện rõ rệt:
 
-Không tự chuyển sang giả thuyết khác.
+~~~text
+REVERT
+STOP
+~~~
+
+Không tự chuyển sang nguyên nhân tiếp theo.
 
 ---
 
 # 2. Phạm vi code
 
-Chỉ được sửa hai file:
+Chỉ được sửa:
 
 ~~~text
-src/Presentation/theme.py
 src/webapp/NiceGUI_chart.py
 ~~~
 
-Không sửa src/webapp/NiceGUI_grid.py.
+Không sửa:
+
+~~~text
+src/webapp/NiceGUI_grid.py
+src/Presentation/theme.py
+src/webapp/NiceGUI_grid_market_tb.py
+~~~
+
+Không thay đổi AG Grid config.
 
 ---
 
-# 3. Nguyên nhân đang kiểm tra
+# 3. Giả thuyết duy nhất
 
 Trong:
 
 ~~~text
-src/Presentation/theme.py
+src/webapp/NiceGUI_chart.py
 ~~~
 
-hiện có:
+main tab panels hiện có dạng:
 
-~~~css
-.dashboard-card {
-    overflow: hidden;
-    backdrop-filter: blur(12px);
-}
+~~~python
+with ui.tab_panels(tabs, value="overview").classes(
+    "w-full bg-transparent p-0"
+).props("animated keep-alive swipeable"):
 ~~~
 
-Stock Screener được render trong card dùng dashboard-card.
-
-Khi resize column:
+Property:
 
 ~~~text
-pointermove
-→ AG Grid đổi width
-→ browser layout lại header/cells
-→ repaint
-→ composite
-→ backdrop-filter blur phải composite lại vùng card lớn
+swipeable
 ~~~
 
-Giả thuyết duy nhất:
+cho phép Quasar QTabPanels nhận horizontal swipe gesture.
 
-**Bỏ blur riêng khỏi card chứa Stock Screener sẽ làm column resize mượt hơn.**
+AG Grid column resize cũng là horizontal pointer drag.
+
+Interaction path có thể là:
+
+~~~text
+pointerdown
+→ pointermove
+→ AG Grid resize
+→ parent QTabPanels swipe gesture processing
+→ extra event handling
+→ frame drop / drag lag
+~~~
+
+Giả thuyết:
+
+**Bỏ swipeable khỏi QTabPanels sẽ làm column resize mượt hơn.**
 
 ---
 
-# 4. Thực hiện fix
-
-## Bước 1 — thêm class no-blur cho data grid
-
-Mở:
-
-~~~text
-src/Presentation/theme.py
-~~~
-
-Trong build_nicegui_css(), ngay sau:
-
-~~~css
-.dashboard-card {
-    overflow: hidden;
-    backdrop-filter: blur(12px);
-}
-~~~
-
-thêm:
-
-~~~css
-.dashboard-data-grid-card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-}
-~~~
-
-Kết quả:
-
-~~~css
-.dashboard-card {
-    overflow: hidden;
-    backdrop-filter: blur(12px);
-}
-
-.dashboard-data-grid-card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-}
-~~~
-
-Không xóa blur khỏi dashboard-card.
-
-Lý do:
-
-- các card khác giữ visual hiện tại;
-- chỉ card chứa grid bỏ blur;
-- thay đổi nhỏ và dễ rollback.
-
----
-
-## Bước 2 — áp class cho Stock Screener
+# 4. Thay đổi duy nhất cần thực hiện
 
 Mở:
 
@@ -137,79 +101,107 @@ src/webapp/NiceGUI_chart.py
 Tìm:
 
 ~~~python
-def market_tab_content() -> None:
-~~~
-
-Tìm dòng:
-
-~~~python
-with ui.card().classes(card_classes("p-4 w-full")):
+.props("animated keep-alive swipeable")
 ~~~
 
 Đổi thành:
 
 ~~~python
-with ui.card().classes(
-    card_classes("p-4 w-full dashboard-data-grid-card")
-):
+.props("animated keep-alive")
 ~~~
 
-Chỉ áp class này cho Stock Screener.
+Không sửa gì khác.
 
-Không thêm class vào:
+Expected diff:
 
-- Overview
-- Portfolio
-- R/S
-- metric cards
-- chart cards khác
+~~~diff
+-.props("animated keep-alive swipeable")
++.props("animated keep-alive")
+~~~
 
 ---
 
-# 5. Dừng sửa code
+# 5. Không sửa các event blocker
 
-Sau hai thay đổi trên, không sửa gì thêm.
+Trong scenario này phải giữ nguyên:
 
-Đặc biệt không:
+~~~text
+_stop_parent_swipe()
+_install_global_tab_swipe_blocker()
+~~~
 
-- bỏ swipeable
-- sửa _stop_parent_swipe()
-- sửa _install_global_tab_swipe_blocker()
-- tắt ui.timer(1.5, persist_state)
+Lý do:
+
+Task này chỉ isolate:
+
+~~~text
+swipeable
+~~~
+
+Không được đồng thời remove blocker.
+
+Nếu thay cả swipeable và blocker cùng lúc thì không xác định được nguyên nhân nào tạo improvement.
+
+---
+
+# 6. Không làm thêm tối ưu khác
+
+Không:
+
+- sửa backdrop-filter
+- remove local pointer blocker
+- remove global tab blocker
+- tắt persistence timer
 - tắt floatingFilter
 - tắt animateRows
 - đóng Columns Tool Panel
-- sửa width/flex
-- refactor AG Grid
+- sửa flex
+- sửa width
+- đổi AG Grid version
+- đổi NiceGUI version
+- refactor grid
 
-Task này chỉ kiểm tra backdrop-filter.
+Sau khi remove swipeable:
+
+~~~text
+STOP EDITING
+~~~
+
+Chuyển sang test.
 
 ---
 
-# 6. Kiểm tra diff
+# 7. Kiểm tra diff trước khi chạy
 
 Chạy:
 
 ~~~powershell
 cd C:\Github\CherryStock
-git diff -- src/Presentation/theme.py src/webapp/NiceGUI_chart.py
+
+git diff -- src/webapp/NiceGUI_chart.py
 ~~~
 
 Expected chỉ có:
 
-1. thêm dashboard-data-grid-card
-2. thêm class đó vào Stock Screener card
+~~~diff
+-.props("animated keep-alive swipeable")
++.props("animated keep-alive")
+~~~
 
-Nếu có thay đổi khác, rollback thay đổi khác trước khi test.
+Nếu có thay đổi khác trong file:
+
+- không được tự rollback code của user;
+- chỉ xác nhận thay đổi của task này là đúng một dòng;
+- không sửa unrelated changes.
 
 ---
 
-# 7. Automated test
+# 8. Automated test
 
-Chạy:
+Chạy test UI/theme liên quan tối thiểu:
 
 ~~~powershell
-python -m pytest tests/test_theme.py -v
+python -m pytest tests/test_theme.py tests/test_rs_ladder.py -v
 ~~~
 
 Expected:
@@ -218,14 +210,24 @@ Expected:
 PASS
 ~~~
 
-Nếu FAIL do thay đổi này:
+Nếu FAIL:
 
-- sửa lỗi trong đúng hai file trên;
-- chưa được chạy sang giả thuyết khác.
+1. đọc exact error;
+2. nếu lỗi do thay đổi swipeable: cho phép sửa tối đa một lần;
+3. rerun focused test;
+4. nếu vẫn FAIL:
+
+~~~text
+VERDICT: BLOCKED / REGRESSION
+ACTION: REVERT
+STOP
+~~~
+
+Không đổi sang nguyên nhân khác.
 
 ---
 
-# 8. Chạy CherryStock
+# 9. Chạy CherryStock
 
 Chạy:
 
@@ -239,25 +241,25 @@ Mở:
 http://localhost:8081
 ~~~
 
-Vào tab:
-
-~~~text
-Screener
-~~~
-
 Hard refresh:
 
 ~~~text
 Ctrl + F5
 ~~~
 
+Vào:
+
+~~~text
+Screener
+~~~
+
+Đợi grid load ổn định.
+
 ---
 
-# 9. Manual test
+# 10. Manual Test A — normal column resize
 
-## Test A — resize column bình thường
-
-Dùng một column như:
+Chọn một cột ở giữa viewport, ví dụ:
 
 ~~~text
 Company Name
@@ -271,35 +273,41 @@ Industry
 
 Thực hiện:
 
-1. đặt chuột vào divider bên phải header
-2. kéo sang trái
-3. kéo sang phải
-4. kéo qua lại liên tục khoảng 5 giây
-5. lặp lại 3 lần
+1. đặt chuột vào divider của column header;
+2. kéo sang trái;
+3. kéo sang phải;
+4. kéo liên tục khoảng 5 giây;
+5. thả chuột;
+6. lặp lại 3 lần.
 
-Chỉ trả lời câu hỏi:
+Câu hỏi duy nhất:
 
-**Resize có mượt hơn rõ rệt so với trước fix không?**
-
----
-
-## Test B — resize nhanh
-
-1. kéo divider nhanh trái/phải
-2. thực hiện khoảng 5 giây
-3. lặp lại 3 lần
-
-PASS nếu:
-
-- width bám theo con trỏ tốt hơn
-- giảm giật nhìn thấy bằng mắt
-- không có lỗi visual mới
+~~~text
+Resize có mượt hơn rõ rệt không?
+~~~
 
 ---
 
-## Test C — resize Ticker
+# 11. Manual Test B — fast resize
 
-Resize column:
+Thực hiện:
+
+1. kéo divider trái/phải nhanh;
+2. liên tục khoảng 5 giây;
+3. lặp lại 3 lần.
+
+PASS performance nếu:
+
+- column width bám pointer tốt hơn;
+- giảm giật rõ;
+- giảm delay khi đổi hướng kéo;
+- không có visual glitch.
+
+---
+
+# 12. Manual Test C — pinned Ticker
+
+Resize:
 
 ~~~text
 Ticker
@@ -307,39 +315,66 @@ Ticker
 
 Expected:
 
-- resize hoạt động
-- pinned state giữ nguyên
-- header và cells align
+- resize hoạt động;
+- pinned state giữ nguyên;
+- header và cells align;
+- không đổi tab.
 
 ---
 
-## Test D — horizontal scroll
+# 13. Manual Test D — horizontal scrollbar
 
-Kéo horizontal scrollbar.
+Kéo horizontal scrollbar của AG Grid.
 
 Expected:
 
-- scroll bình thường
-- không xuất hiện vùng trắng
-- không xuất hiện vùng transparent bất thường
+- scrollbar drag bình thường;
+- tab không tự chuyển;
+- grid không mất interaction;
+- không có console error.
 
 ---
 
-## Test E — visual
+# 14. Manual Test E — tab click navigation
 
-Kiểm tra Stock Screener:
+Click lần lượt:
 
-- background đúng
-- border đúng
-- text đúng
-- grid đúng theme
-- layout không thay đổi
+~~~text
+Overview
+Screener
+Portfolio
+R/S
+Operations
+~~~
 
-Không yêu cầu Stock Screener giữ hiệu ứng glass blur.
+Expected:
+
+- click tab vẫn hoạt động;
+- tab transition vẫn hoạt động;
+- keep-alive vẫn hoạt động;
+- Screener state không reset bất thường.
 
 ---
 
-# 10. Kết luận
+# 15. Manual Test F — kiểm tra hành vi swipe
+
+Sau khi bỏ swipeable:
+
+Expected:
+
+~~~text
+click tab navigation: PASS
+mouse drag trong grid: không đổi tab
+horizontal scrollbar: không đổi tab
+~~~
+
+Không yêu cầu swipe ngang giữa các tab tiếp tục hoạt động.
+
+Đây là intentional behavior của experiment.
+
+---
+
+# 16. Performance verdict
 
 Chỉ có ba verdict hợp lệ.
 
@@ -347,21 +382,23 @@ Chỉ có ba verdict hợp lệ.
 
 Chọn PASS khi:
 
-- resize mượt hơn rõ rệt
-- improvement lặp lại được ít nhất 3 lần
-- test_theme.py PASS
-- không có visual regression
+- resize mượt hơn rõ rệt;
+- improvement lặp lại ít nhất 3 lần;
+- không đổi tab ngoài ý muốn;
+- automated tests PASS;
+- click tab vẫn hoạt động.
 
 Action:
 
 ~~~text
 KEEP FIX
+STOP
 ~~~
 
 Kết luận:
 
 ~~~text
-backdrop-filter is a confirmed performance contributor
+QTabPanels swipeable is a confirmed AG Grid resize performance contributor.
 ~~~
 
 ---
@@ -370,9 +407,9 @@ backdrop-filter is a confirmed performance contributor
 
 Chọn FAIL khi:
 
-- resize gần như không thay đổi
-- improvement không rõ
-- lag vẫn như trước
+- resize gần như giống trước;
+- lag vẫn rõ;
+- improvement không đáng kể.
 
 Action:
 
@@ -381,7 +418,7 @@ REVERT FIX
 STOP
 ~~~
 
-Không thử nguyên nhân khác.
+Không test event blockers trong task này.
 
 ---
 
@@ -389,81 +426,100 @@ Không thử nguyên nhân khác.
 
 Chọn REGRESSION khi:
 
-- resize có thể mượt hơn
-- nhưng UI/theme/layout bị lỗi
+- resize cải thiện;
+- nhưng tab/navigation/grid interaction bị lỗi không chấp nhận được.
 
 Action:
 
-- chỉ sửa cách scope CSS no-blur
-- không chuyển sang nguyên nhân khác
+~~~text
+REVERT FIX
+STOP
+~~~
+
+Không tự thiết kế workaround mới.
 
 ---
 
-# 11. Nếu PASS — commit
+# 17. Nếu PASS — commit
 
-Chạy:
+Kiểm tra:
 
 ~~~powershell
-git status
-git diff
+git diff -- src/webapp/NiceGUI_chart.py
 ~~~
 
-Expected chỉ có:
+Chỉ stage file này:
+
+~~~powershell
+git add src/webapp/NiceGUI_chart.py
+git commit -m "perf(ui): disable swipeable main tab panels"
+~~~
+
+Sau commit:
 
 ~~~text
-src/Presentation/theme.py
-src/webapp/NiceGUI_chart.py
+STOP
 ~~~
 
-Commit:
-
-~~~powershell
-git add src/Presentation/theme.py src/webapp/NiceGUI_chart.py
-git commit -m "perf(grid): disable backdrop blur for stock screener"
-~~~
+Không tiếp tục optimize AG Grid.
 
 ---
 
-# 12. Nếu FAIL — rollback
+# 18. Nếu FAIL hoặc REGRESSION — revert đúng thay đổi này
 
-Chạy:
+Nếu working tree không có unrelated edit trong cùng dòng/file, có thể dùng:
 
 ~~~powershell
-git restore src/Presentation/theme.py
 git restore src/webapp/NiceGUI_chart.py
-git status
 ~~~
 
-Sau đó dừng.
+Nếu file đang có unrelated local changes:
 
-Không mở rộng task.
+- không dùng git restore toàn file;
+- chỉ đổi đúng property trở lại:
+
+~~~python
+.props("animated keep-alive swipeable")
+~~~
+
+Sau đó:
+
+~~~text
+STOP
+~~~
 
 ---
 
-# 13. Output bắt buộc cho GLM 5.3 Flash
+# 19. Output bắt buộc cho GLM 5.3 Flash
 
-Chỉ trả đúng format này.
+Chỉ trả format sau:
 
 ~~~text
-AG Grid Backdrop Filter Test
-============================
+AG Grid Swipeable Test
+======================
+
+Previous scenario
+-----------------
+Backdrop-filter: FAIL
 
 Code change
 -----------
-dashboard-data-grid-card added: YES/NO
-Stock Screener uses class: YES/NO
+swipeable removed: YES/NO
+Other AG Grid changes: YES/NO
 
 Automated
 ---------
-tests/test_theme.py: PASS/FAIL
+test_theme.py: PASS/FAIL
+test_rs_ladder.py: PASS/FAIL
 
 Manual
 ------
 Normal resize: PASS/FAIL
 Fast resize: PASS/FAIL
 Ticker resize: PASS/FAIL
-Horizontal scroll: PASS/FAIL
-Visual regression: PASS/FAIL
+Horizontal scrollbar: PASS/FAIL
+Tab click navigation: PASS/FAIL
+Unexpected tab switch: YES/NO
 
 Performance
 -----------
@@ -472,38 +528,82 @@ After: SMOOTHER / SAME / WORSE
 
 Verdict
 -------
-PASS / FAIL / REGRESSION
+PASS / FAIL / REGRESSION / BLOCKED
 
 Action
 ------
-KEEP FIX / REVERT FIX
+KEEP FIX / REVERT FIX / STOP
 ~~~
 
-Không thêm reasoning dài.
+Không thêm hypothesis mới.
 
-Không đề xuất nguyên nhân tiếp theo.
+Không sửa event blocker.
 
-Không sửa file khác.
+Không sửa persistence.
+
+Không reasoning tiếp sau verdict.
 
 ---
 
-# 14. Definition of Done
+# 20. Anti-loop instruction
+
+Sau khi có:
+
+~~~text
+PASS
+FAIL
+REGRESSION
+BLOCKED
+~~~
+
+thì task đã kết thúc.
+
+Không được:
+
+~~~text
+FAIL swipeable
+→ test blocker
+→ test timer
+→ test floatingFilter
+~~~
+
+Phải:
+
+~~~text
+FAIL swipeable
+→ REVERT
+→ STOP
+~~~
+
+Scenario tiếp theo chỉ được thực hiện bằng task/test-plan riêng.
+
+---
+
+# 21. Definition of Done
 
 ## DONE — PASS
 
-- dashboard-data-grid-card đã được thêm
-- chỉ Stock Screener dùng class này
-- tests/test_theme.py PASS
-- resize mượt hơn rõ
-- không regression
-- fix được commit
+- swipeable đã được remove;
+- automated tests PASS;
+- resize mượt hơn rõ;
+- tab click navigation PASS;
+- không unexpected tab switch;
+- fix được giữ/commit;
+- STOP.
 
 ## DONE — FAIL
 
-- backdrop-filter đã được test
-- không cải thiện rõ
-- experiment đã revert
-- report FAIL
-- task dừng
+- swipeable đã được test;
+- không cải thiện đáng kể;
+- change đã revert;
+- report FAIL;
+- STOP.
+
+## DONE — REGRESSION/BLOCKED
+
+- exact issue đã được ghi;
+- change đã revert nếu cần;
+- không mở rộng scope;
+- STOP.
 
 **Không có bước tiếp theo trong tài liệu này.**
