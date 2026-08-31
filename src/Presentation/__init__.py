@@ -1,10 +1,10 @@
 """Shared presentation-layer configuration for CherryStock."""
 
 from .theme import (
-    AG_GRID_THEME,
     THEME,
     available_themes,
     build_nicegui_css,
+    get_ag_grid_theme,
     get_theme,
     get_theme_name,
     is_dark_theme,
@@ -13,10 +13,10 @@ from .theme import (
 )
 
 __all__ = [
-    "AG_GRID_THEME",
     "THEME",
     "available_themes",
     "build_nicegui_css",
+    "get_ag_grid_theme",
     "get_theme",
     "get_theme_name",
     "is_dark_theme",
