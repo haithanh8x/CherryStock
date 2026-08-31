@@ -13,9 +13,9 @@ import pandas as pd
 from nicegui import ui
 
 try:
-    from Presentation.theme import AG_GRID_THEME, THEME
+    from Presentation.theme import THEME, get_ag_grid_theme
 except ModuleNotFoundError:
-    from src.Presentation.theme import AG_GRID_THEME, THEME
+    from src.Presentation.theme import THEME, get_ag_grid_theme
 
 
 GridOptions = dict[str, Any]
@@ -903,7 +903,7 @@ def create_market_grid(
 
     grid = ui.aggrid(
         grid_options,
-        theme=AG_GRID_THEME,
+        theme=get_ag_grid_theme(),
         auto_size_columns=False,
         modules="enterprise",
     ).classes(f"w-full h-[{grid_height}]")
