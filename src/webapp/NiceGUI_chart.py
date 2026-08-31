@@ -1856,6 +1856,8 @@ def rs_tab_content() -> None:
     Data acquisition and business calculation belong to calcEngine.levelLadder;
     this function only composes controls, metrics, chart and table.
     """
+    metric_values: dict[str, Any] = {}
+
     with ui.card().classes(card_classes("p-4 w-full")):
         with ui.row().classes("w-full items-end gap-3 flex-wrap"):
             with ui.column().classes("gap-0 mr-auto min-w-[260px]"):
@@ -1912,8 +1914,6 @@ def rs_tab_content() -> None:
                 "Refresh",
                 icon="refresh",
             ).props("unelevated no-caps").classes("h-10 px-4")
-
-    metric_values: dict[str, Any] = {}
 
     with ui.element("div").classes("grid grid-cols-1 xl:grid-cols-12 gap-4 w-full"):
         with ui.card().classes(card_classes("p-4 xl:col-span-4")):
