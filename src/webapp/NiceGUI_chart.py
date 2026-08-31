@@ -1939,7 +1939,7 @@ def rs_tab_content() -> None:
                             "headerName": "Price",
                             "field": "price",
                             "width": 105,
-                            ":valueFormatter": "params => Number(params.value).toLocaleString('vi-VN')",
+                            ":valueFormatter": "params => Number(params.value).toLocaleString('vi-VN', {minimumFractionDigits: 1, maximumFractionDigits: 1})",
                         },
                         {
                             "headerName": "Dist %",
@@ -2010,12 +2010,12 @@ def rs_tab_content() -> None:
             ui.notify(f"R/S error: {exc}", type="negative", timeout=8000)
             return
 
-        metric_values["current"].set_text(f"{result.current_price:,.0f}")
+        metric_values["current"].set_text(f"{result.current_price:,.1f}")
 
         if result.nearest_resistance is not None:
             r1 = result.nearest_resistance
             metric_values["r1"].set_text(
-                f"{r1.price:,.0f}  (+{r1.distance_pct:.2f}%)"
+                f"{r1.price:,.1f}  (+{r1.distance_pct:.2f}%)"
             )
         else:
             metric_values["r1"].set_text("—")
@@ -2023,7 +2023,7 @@ def rs_tab_content() -> None:
         if result.nearest_support is not None:
             s1 = result.nearest_support
             metric_values["s1"].set_text(
-                f"{s1.price:,.0f}  ({s1.distance_pct:.2f}%)"
+                f"{s1.price:,.1f}  ({s1.distance_pct:.2f}%)"
             )
         else:
             metric_values["s1"].set_text("—")
