@@ -67,6 +67,12 @@ When the request involves architecture, system design, solution design, componen
 ## Reference
 - [[../.github/agents/DB_Metadata|DB Metadata]]
 
+## Backlog
+- [[backlog/README|Backlog Guide]]
+- [[backlog/Architecture_Backlog|Architecture Backlog]]
+
+Backlog documents record planned work and technical debt only. They are not the Source of Truth for current runtime behavior.
+
 ## Development
 - [[development/Development_Workflow|Development Workflow]]
 
@@ -80,6 +86,7 @@ When the request involves architecture, system design, solution design, componen
 | Domain execution rules | `.github/instructions/*.instructions.md` | MUST/MUST NOT rules for implementation |
 | System architecture | `docs/architecture/**` | How the system works |
 | Architecture decisions | `docs/adr/**` | Why important decisions were made |
+| Engineering backlog | `docs/backlog/**` | Planned work, technical debt and migration tracking |
 | Domain/reference knowledge | linked docs / legacy references | Terms, metadata and supporting knowledge |
 | Implementation | `src/**` | Runtime source code |
 | Validation | `tests/**` | Automated verification |
@@ -91,6 +98,7 @@ When the request involves architecture, system design, solution design, componen
 - `docs/**` is the engineering knowledge base and primary research surface for architecture/design.
 - `docs/architecture/**` describes how the system works.
 - `docs/adr/**` records why important architecture decisions were made.
+- `docs/backlog/**` records planned work and technical debt; it must not be treated as implemented architecture.
 - `docs/00_HOME.md` is the routing index, not a duplicate of detailed documentation.
 - Design agents should load only relevant documents, then verify assumptions against existing source code.
 - When documentation and implementation conflict, explicitly report the conflict; do not silently invent a rule.
