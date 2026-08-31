@@ -18,6 +18,10 @@ from pathlib import Path
 
 from dateutil.relativedelta import relativedelta
 from cherrystock.config.settings import settings
+try:
+    from Presentation.theme import THEME
+except ModuleNotFoundError:
+    from src.Presentation.theme import THEME
 
 # --- TICKER CONFIGURATION ---
 # Full ticker list preserved for future reference
@@ -91,15 +95,5 @@ TIMEFRAME_OPTIONS = {
     "weekly": "Tuần",
     "monthly": "Tháng",
 }
-THEME = {
-    "background": "#07111f",
-    "surface": "#0f1b2d",
-    "surface_alt": "#14233a",
-    "border": "#263750",
-    "text": "#e5edf7",
-    "muted": "#8fa3bd",
-    "primary": "#38bdf8",
-    "positive": "#22c55e",
-    "negative": "#ef4444",
-    "warning": "#f59e0b",
-}
+# Backward-compatible alias. New presentation code should import THEME from
+# Presentation.theme directly. The visual Source of Truth no longer lives here.
