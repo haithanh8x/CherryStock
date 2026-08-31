@@ -29,11 +29,8 @@ from Ults.DuckLib import DuckDBManager
 import Chart.plot as chart_plot
 importlib.reload(chart_plot)
 from calcEngine.levelLadder import build_level_ladder
-from Chart.levelLadderChart import (
-    build_level_ladder_chart_options,
-    empty_level_ladder_chart_options,
-    ladder_rows,
-)
+import Chart.levelLadderChart as level_ladder_chart
+importlib.reload(level_ladder_chart)
 from Ults.lstPara import CHART_START_DATE, IFRAME_HEIGHT, THEME, TIMEFRAME_OPTIONS
 
 
@@ -1920,7 +1917,7 @@ def rs_tab_content() -> None:
                 icon="stacked_line_chart",
             )
             ladder_chart = ui.echart(
-                empty_level_ladder_chart_options()
+                level_ladder_chart.empty_level_ladder_chart_options()
             ).classes("w-full h-[620px]")
 
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
@@ -1976,7 +1973,7 @@ def rs_tab_content() -> None:
         for label in metric_values.values():
             label.set_text("—")
         ladder_chart.options.clear()
-        ladder_chart.options.update(empty_level_ladder_chart_options(message))
+        ladder_chart.options.update(level_ladder_chart.empty_level_ladder_chart_options(message))
         ladder_chart.update()
         level_grid.options["rowData"] = []
         level_grid.update()
@@ -2039,7 +2036,7 @@ def rs_tab_content() -> None:
 
         ladder_chart.options.clear()
         ladder_chart.options.update(
-            build_level_ladder_chart_options(
+            level_ladder_chart.build_level_ladder_chart_options(
                 result,
                 support_color=THEME["positive"],
                 resistance_color=THEME["negative"],
@@ -2051,7 +2048,7 @@ def rs_tab_content() -> None:
         )
         ladder_chart.update()
 
-        level_grid.options["rowData"] = ladder_rows(result)
+        level_grid.options["rowData"] = level_ladder_chart.ladder_rows(result)
         level_grid.update()
 
         ui.notify(
@@ -2172,5 +2169,5 @@ ui.run(
     port=8081,
     title="CherryStock Financial Terminal",
     dark=True,
-    reload=False,
+    reload=True,
 )
