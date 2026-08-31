@@ -176,20 +176,36 @@ def build_level_ladder_chart_options(
                 },
             },
             {
-                "name": "Current Price",
+                "name": "Current Price Label",
                 "type": "scatter",
-                "data": [{"value": [0, ladder.current_price], "name": current_name, "symbolSize": 28}],
-                "symbol": "diamond",
-                "itemStyle": {"color": current_color},
+                "data": [
+                    {
+                        "value": [-0.82, ladder.current_price],
+                        "name": current_name,
+                        "symbolSize": 1,
+                    }
+                ],
+                "symbol": "circle",
+                "itemStyle": {"opacity": 0},
                 "label": {
                     "show": True,
-                    "position": "left",
-                    "distance": 16,
+                    "position": "top",
+                    "distance": 4,
                     "color": current_color,
                     "fontSize": 13,
                     "fontWeight": "bold",
                     "formatter": "{b}",
                 },
+                "silent": True,
+                "z": 6,
+            },
+            {
+                "name": "Current Price",
+                "type": "scatter",
+                "data": [{"value": [0, ladder.current_price], "symbolSize": 28}],
+                "symbol": "diamond",
+                "itemStyle": {"color": current_color},
+                "label": {"show": False},
                 "markLine": {
                     "silent": True,
                     "symbol": "none",
@@ -197,6 +213,7 @@ def build_level_ladder_chart_options(
                     "data": [{"yAxis": ladder.current_price}],
                     "label": {"show": False},
                 },
+                "z": 5,
             },
         ],
     }
