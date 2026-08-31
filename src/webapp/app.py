@@ -67,7 +67,7 @@ def build_chart_page() -> str:
         <meta charset=\"UTF-8\" />
         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
         <title>CherryStock Chart</title>
-        <style>body {{ margin: 0; padding: 12px; background: #111; color: #fff; font-family: Arial, sans-serif; }} </style>
+        <style>body {{ margin: 0; padding: 12px; background: {THEME['background']}; color: {THEME['text']}; font-family: Arial, sans-serif; }} </style>
         </head>
         <body>
         <h2>CherryStock</h2>
