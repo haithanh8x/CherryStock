@@ -7,11 +7,13 @@ Mục tiêu: implement thay đổi đúng business requirement, tuân thủ arch
 ## Instruction priority
 Trước khi sửa code hoặc thiết kế, đọc instructions theo thứ tự:
 
-1. `.github/copilot-instructions.md` — global engineering governance.
-2. `.github/agents/CherryMon.agent.md` — architecture constitution.
-3. Intent-specific agent nếu có, ví dụ `.github/agents/SolutionArchitect.agent.md` cho architecture/design work.
-4. Matching `.github/instructions/*.instructions.md` — domain-specific policy.
-5. `docs/00_HOME.md` và related architecture/specification/ADR documents under `docs/`.
+1. .github/copilot-instructions.md — global engineering governance.
+2. .github/agents/CherryMon.agent.md — architecture constitution.
+3. Intent-specific agent nếu có:
+   - .github/agents/SolutionArchitect.agent.md cho architecture/design.
+   - .github/agents/TestEngineer.agent.md cho test design, validation runbook, reproduce bug, performance test hoặc execution verification.
+4. Matching .github/instructions/*.instructions.md — domain-specific policy.
+5. docs/00_HOME.md và related architecture/specification/ADR documents under docs/.
 6. Existing implementation và tests.
 7. User requirement, trừ khi user chủ động yêu cầu thay đổi architecture/policy.
 
@@ -22,37 +24,51 @@ Nếu có conflict giữa instructions, phải nêu conflict và ưu tiên rule 
 ### Design / Architecture
 For architecture, system design, solution design, component design, technical design, data model, workflow design, integration design, architecture refactor, migration design or similar requests:
 
-MUST follow `.github/agents/SolutionArchitect.agent.md` before proposing the design.
+MUST follow .github/agents/SolutionArchitect.agent.md before proposing the design.
 
-Design requests MUST use `docs/00_HOME.md` as the knowledge routing entry point and inspect relevant architecture documents, ADRs, domain references and existing source before finalizing a proposal.
+Design requests MUST use docs/00_HOME.md as the knowledge routing entry point and inspect relevant architecture documents, ADRs, domain references and existing source before finalizing a proposal.
 
 Do not design from the user prompt alone when repository context is available.
+
+### Testing / Validation
+For test case design, regression test, test plan/runbook, pytest design, reproduce bug, local cross-check, UI/performance test, acceptance test or execution verification:
+
+MUST follow .github/agents/TestEngineer.agent.md and .github/instructions/testing.instructions.md.
+
+Testing tasks MUST be finite and bounded:
+- one objective at a time;
+- one active hypothesis at a time;
+- explicit retry budget;
+- explicit PASS / FAIL / BLOCKED / REGRESSION;
+- explicit KEEP / REVERT / STOP action;
+- no automatic transition to another hypothesis after a terminal verdict.
 
 ### Implementation
 For implementation requests, use the normal engineering workflow below and matching domain instructions. If implementation follows an approved architecture design, preserve the approved contracts and update docs/ADR when the implementation changes them.
 
 ## Domain routing
-- Database / DuckDB / SQL / transaction / data quality → `.github/instructions/database.instructions.md`
-- Technical indicators / indicator metadata / refresh engine → `.github/instructions/indicators.instructions.md`
-- Chart / visualization / UI chart contracts → `.github/instructions/chart.instructions.md`
-- Crawlers / ingestion / external data sources → `.github/instructions/crawler.instructions.md`
-- Tests / validation / execution verification → `.github/instructions/testing.instructions.md`
+- Database / DuckDB / SQL / transaction / data quality → .github/instructions/database.instructions.md
+- Technical indicators / indicator metadata / refresh engine → .github/instructions/indicators.instructions.md
+- Chart / visualization / UI chart contracts → .github/instructions/chart.instructions.md
+- Crawlers / ingestion / external data sources → .github/instructions/crawler.instructions.md
+- Tests / validation / execution verification → .github/instructions/testing.instructions.md + .github/agents/TestEngineer.agent.md
 
 Knowledge routing starts at:
-- `docs/00_HOME.md`
+- docs/00_HOME.md
 
-Related legacy/domain knowledge currently referenced by the knowledge map may still reside under `.github/agents/**` until migrated to `docs/**`.
+Related legacy/domain knowledge currently referenced by the knowledge map may still reside under .github/agents/** until migrated to docs/**.
 
 ## Required workflow
 Before implementation:
 1. Identify affected domain(s).
-2. Read `CherryMon.agent.md`.
-3. If the request is design/architecture, route through `SolutionArchitect.agent.md` first.
-4. Read matching domain instruction(s).
-5. Read `docs/00_HOME.md` and related architecture/specification/ADR documents.
-6. Inspect existing implementation and similar patterns.
-7. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
-8. Propose the smallest compatible change.
+2. Read CherryMon.agent.md.
+3. If the request is design/architecture, route through SolutionArchitect.agent.md first.
+4. If the request is test design/execution, route through TestEngineer.agent.md first.
+5. Read matching domain instruction(s).
+6. Read docs/00_HOME.md and related architecture/specification/ADR documents.
+7. Inspect existing implementation and similar patterns.
+8. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
+9. Propose the smallest compatible change.
 
 During implementation:
 - Reuse existing utilities/services/repositories before creating abstractions.
@@ -61,25 +77,38 @@ During implementation:
 - Do not hard-code credentials, environment-specific paths or configuration that already has a config source.
 - Do not rename/remove public interfaces unless required.
 - Avoid database/API calls in loops when batching is possible.
-- Use explicit SQL columns; avoid `SELECT *`.
+- Use explicit SQL columns; avoid SELECT *.
 - Add type hints/docstrings where consistent with the codebase.
-- Do not use broad exception swallowing such as `except Exception: pass`.
+- Do not use broad exception swallowing such as except Exception: pass.
+
+## Anti-loop execution governance
+These rules apply to any AI/local-agent execution, not only tests:
+
+1. Define one current objective before making changes.
+2. Do not repeat the same analysis, file read, command or edit unless new evidence justifies it.
+3. Never rerun the same failing command unchanged.
+4. Default maximum two repair attempts for the same defect unless the user explicitly requests deeper investigation.
+5. If two materially equivalent attempts fail, classify BLOCKED/FAIL and stop.
+6. Do not broaden scope opportunistically.
+7. A terminal verdict ends the current execution path.
+8. A new hypothesis requires a new explicit task or a runbook that explicitly authorizes the next step.
 
 ## Change policy
 - Prefer small, targeted, backward-compatible changes.
 - Preserve existing naming conventions and module responsibilities.
-- New architecture decisions that affect multiple modules should be recorded under `docs/adr/`.
-- Instructions define **how AI/developers must work**; architecture docs define **how the system works**.
+- New architecture decisions that affect multiple modules should be recorded under docs/adr/.
+- Instructions define how AI/developers must work; architecture docs define how the system works.
 - GitHub repository Markdown is the Single Source of Truth. Obsidian and VS Code must read the same files from the local Git checkout; do not maintain duplicated documentation copies.
-- Architecture/design changes must update the relevant `docs/**` document or ADR when the approved system contract changes.
+- Architecture/design changes must update the relevant docs/** document or ADR when the approved system contract changes.
 
 ## Validation and testing
-Every code change must be validated using `.github/instructions/testing.instructions.md`.
+Every code change must be validated using .github/instructions/testing.instructions.md.
+For focused test-design or execution work, also use .github/agents/TestEngineer.agent.md.
 At minimum, test relevant happy path, empty/invalid input, boundary/failure behavior and idempotency when applicable.
 Run a relevant test or real execution before claiming success. If execution is impossible, state exactly what remains unverified.
 
 ## Execution
-For new/changed callable workflows, provide a reproducible command. Prefer an existing entry point; otherwise use a simple `python -c` command or a focused `scripts/run_<name>.py` wrapper that imports real source code and does not duplicate business logic.
+For new/changed callable workflows, provide a reproducible command. Prefer an existing entry point; otherwise use a simple python -c command or a focused scripts/run_<name>.py wrapper that imports real source code and does not duplicate business logic.
 
 ## Final response format
 For implementation work use this concise structure:
@@ -105,6 +134,7 @@ For implementation work use this concise structure:
 ### Notes
 - Assumptions / remaining risks
 
-For design/architecture work, use the output contract defined by `.github/agents/SolutionArchitect.agent.md`.
+For design/architecture work, use the output contract defined by .github/agents/SolutionArchitect.agent.md.
+For test-design/execution work, use the output contract defined by .github/agents/TestEngineer.agent.md.
 
 Do not only provide sample code when repository write access is available and the user asked for implementation.
