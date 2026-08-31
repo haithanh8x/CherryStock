@@ -1,5 +1,7 @@
 # Support / Resistance Level Ladder Architecture
 
+> Theme integration: R/S chart presentation defaults consume the centralized tokens defined in [[theme|Theme Architecture]]. Support, resistance, current-price, text, tooltip and grid colors are presentation concerns and are not part of the ladder business contract.
+
 ## 1. Purpose
 
 Tài liệu này định nghĩa kiến trúc cho **Chart 2 – Support / Resistance Level Ladder (RS Ladder)** của CherryStock.
