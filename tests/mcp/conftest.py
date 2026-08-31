@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.Ults.DuckLib import DuckDBManager
-from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
+from Ults.DuckLib import DuckDBManager
+from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 
 
 @pytest.fixture()
