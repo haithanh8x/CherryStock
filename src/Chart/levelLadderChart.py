@@ -183,8 +183,8 @@ def build_level_ladder_chart_options(
                 "itemStyle": {"color": current_color},
                 "label": {
                     "show": True,
-                    "position": "top",
-                    "distance": 8,
+                    "position": "left",
+                    "distance": 16,
                     "color": current_color,
                     "fontSize": 13,
                     "fontWeight": "bold",
@@ -193,7 +193,7 @@ def build_level_ladder_chart_options(
                 "markLine": {
                     "silent": True,
                     "symbol": "none",
-                    "lineStyle": {"color": current_color, "width": 1.5, "type": "dashed"},
+                    "lineStyle": {"color": current_color, "width": 1, "type": "dashed"},
                     "data": [{"yAxis": ladder.current_price}],
                     "label": {"show": False},
                 },
