@@ -2,21 +2,22 @@
 
 This page is the canonical knowledge-routing entry point for CherryStock. Open the repository root as an Obsidian Vault and start navigation here.
 
-AI agents MUST use this page to discover relevant engineering knowledge before architecture/design work. Do not scan every document blindly; follow the smallest relevant path below.
+AI agents MUST use this page to discover relevant engineering knowledge before architecture/design/test work. Do not scan every document blindly; follow the smallest relevant path below.
 
 ## AI Governance
 - [[../.github/copilot-instructions|Copilot Instructions]]
 - [[../.github/agents/CherryMon.agent|CherryMon Architecture Constitution]]
 - [[../.github/agents/SolutionArchitect.agent|Solution Architect Agent]]
+- [[../.github/agents/TestEngineer.agent|Test Engineer Agent]]
 
 ## Design / Architecture Routing
 
 When the request involves architecture, system design, solution design, component design, technical design, data model, workflow, integration, migration or architecture refactor:
 
-1. Read `../.github/agents/SolutionArchitect.agent.md`.
+1. Read ../.github/agents/SolutionArchitect.agent.md.
 2. Identify affected domain(s).
 3. Follow the related Architecture / ADR / Domain Knowledge links below.
-4. Read matching `.github/instructions/*.instructions.md`.
+4. Read matching .github/instructions/*.instructions.md.
 5. Inspect current implementation and tests before finalizing the design.
 
 ### Data / DuckDB
@@ -43,8 +44,11 @@ When the request involves architecture, system design, solution design, componen
 - [[architecture/Data_Architecture|Data Architecture]]
 
 ### Testing / Validation
+- [[../.github/agents/TestEngineer.agent|Test Engineer Agent]]
 - [[../.github/instructions/testing.instructions|Testing Instructions]]
 - [[development/Development_Workflow|Development Workflow]]
+
+Testing requests should use the Test Engineer Agent first, then the testing instructions. Test execution must be bounded: one objective/hypothesis at a time, finite retry budget, explicit terminal verdict, and STOP after the objective is decided.
 
 ## Architecture
 - [[architecture/Second_Brain|Second Brain Architecture]]
@@ -80,26 +84,28 @@ Backlog documents record planned work and technical debt only. They are not the 
 
 | Area | Owner | Purpose |
 |---|---|---|
-| Global AI governance | `.github/copilot-instructions.md` | Repository-wide AI/developer behavior |
-| Architecture constitution | `.github/agents/CherryMon.agent.md` | Stable CherryStock architecture principles |
-| Design workflow | `.github/agents/SolutionArchitect.agent.md` | How AI researches and produces architecture/design |
-| Domain execution rules | `.github/instructions/*.instructions.md` | MUST/MUST NOT rules for implementation |
-| System architecture | `docs/architecture/**` | How the system works |
-| Architecture decisions | `docs/adr/**` | Why important decisions were made |
-| Engineering backlog | `docs/backlog/**` | Planned work, technical debt and migration tracking |
+| Global AI governance | .github/copilot-instructions.md | Repository-wide AI/developer behavior |
+| Architecture constitution | .github/agents/CherryMon.agent.md | Stable CherryStock architecture principles |
+| Design workflow | .github/agents/SolutionArchitect.agent.md | How AI researches and produces architecture/design |
+| Test workflow | .github/agents/TestEngineer.agent.md | How AI designs/executes focused tests and terminates bounded investigations |
+| Domain execution rules | .github/instructions/*.instructions.md | MUST/MUST NOT rules for implementation |
+| System architecture | docs/architecture/** | How the system works |
+| Architecture decisions | docs/adr/** | Why important decisions were made |
+| Engineering backlog | docs/backlog/** | Planned work, technical debt and migration tracking |
 | Domain/reference knowledge | linked docs / legacy references | Terms, metadata and supporting knowledge |
-| Implementation | `src/**` | Runtime source code |
-| Validation | `tests/**` | Automated verification |
+| Implementation | src/** | Runtime source code |
+| Validation | tests/** | Automated verification and focused execution runbooks |
 
 ## Knowledge Rules
 - GitHub repository Markdown is the Single Source of Truth.
 - VS Code and Obsidian read the same local files.
-- `.github/**` defines AI/developer governance.
-- `docs/**` is the engineering knowledge base and primary research surface for architecture/design.
-- `docs/architecture/**` describes how the system works.
-- `docs/adr/**` records why important architecture decisions were made.
-- `docs/backlog/**` records planned work and technical debt; it must not be treated as implemented architecture.
-- `docs/00_HOME.md` is the routing index, not a duplicate of detailed documentation.
+- .github/** defines AI/developer governance.
+- docs/** is the engineering knowledge base and primary research surface for architecture/design.
+- docs/architecture/** describes how the system works.
+- docs/adr/** records why important architecture decisions were made.
+- docs/backlog/** records planned work and technical debt; it must not be treated as implemented architecture.
+- docs/00_HOME.md is the routing index, not a duplicate of detailed documentation.
 - Design agents should load only relevant documents, then verify assumptions against existing source code.
+- Test agents should load only the production code, domain rules and nearest tests required for the current objective.
 - When documentation and implementation conflict, explicitly report the conflict; do not silently invent a rule.
-- Implementation remains in `src/**`, validation in `tests/**`, and focused operational scripts in `scripts/**`.
+- Implementation remains in src/**, validation in tests/**, and focused operational scripts in scripts/**.
