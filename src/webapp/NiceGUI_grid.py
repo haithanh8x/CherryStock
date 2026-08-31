@@ -374,29 +374,6 @@ def _create_grouped_column_defs(
     ]
 
 
-def _stop_parent_swipe(element: Any) -> None:
-    """Không cho gesture trong AG Grid nổi lên QTabPanels swipe handler."""
-    swipe_events = (
-        "touchstart",
-        "touchmove",
-        "touchend",
-        "touchcancel",
-        "mousedown",
-        "mousemove",
-        "mouseup",
-        "mouseleave",
-        "pointerdown",
-        "pointermove",
-        "pointerup",
-        "pointercancel",
-    )
-    for event_name in swipe_events:
-        element.on(
-            event_name,
-            js_handler="(event) => event.stopPropagation()",
-        )
-
-
 def _install_global_tab_swipe_blocker() -> None:
     """Chặn swipe navigation của QTabPanels nhưng giữ hành vi của child."""
     ui.add_head_html(
@@ -907,7 +884,6 @@ def create_market_grid(
         auto_size_columns=False,
         modules="enterprise",
     ).classes(f"w-full h-[{grid_height}]")
-    _stop_parent_swipe(grid)
 
     runtime_state: dict[str, Any] = {
         "session_id": None,
