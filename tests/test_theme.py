@@ -38,3 +38,12 @@ def test_nicegui_css_uses_active_theme_tokens() -> None:
 
 def test_light_theme_disables_dark_mode() -> None:
     assert theme.is_dark_theme("cherry_light") is False
+
+
+def test_ag_grid_theme_follows_selected_theme() -> None:
+    assert theme.get_ag_grid_theme("cherry_dark") == "quartz"
+    assert theme.get_ag_grid_theme("cherry_light") == "quartz"
+
+
+def test_with_alpha_builds_rgba() -> None:
+    assert theme.with_alpha("#07111f", 0.5) == "rgba(7, 17, 31, 0.5)"
