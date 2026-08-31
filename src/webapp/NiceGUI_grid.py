@@ -12,6 +12,11 @@ from typing import Any, Callable
 import pandas as pd
 from nicegui import ui
 
+try:
+    from Presentation.theme import AG_GRID_THEME, THEME
+except ModuleNotFoundError:
+    from src.Presentation.theme import AG_GRID_THEME, THEME
+
 
 GridOptions = dict[str, Any]
 FieldConfig = Mapping[str, Any]
@@ -813,7 +818,7 @@ def create_market_grid(
             ui.label("Lưu bộ lọc").classes("text-lg font-semibold")
             ui.label(
                 "Lưu các selector và filter đang đặt trực tiếp trên AG Grid."
-            ).classes("text-xs text-gray-500")
+            ).classes(f"text-xs text-[{THEME['muted']}]")
             filter_name_input = ui.input(
                 label="Tên bộ lọc",
                 placeholder="Ví dụ: VN30 ROE cao",
@@ -832,7 +837,7 @@ def create_market_grid(
             ui.label("Lưu bộ hiển thị").classes("text-lg font-semibold")
             ui.label(
                 "Lưu cột, thứ tự, độ rộng, pin, row groups, values và pivot."
-            ).classes("text-xs text-gray-500")
+            ).classes(f"text-xs text-[{THEME['muted']}]")
             view_name_input = ui.input(
                 label="Tên view",
                 placeholder="Ví dụ: FA cơ bản / Pivot theo ngành",
@@ -898,7 +903,7 @@ def create_market_grid(
 
     grid = ui.aggrid(
         grid_options,
-        theme="quartz",
+        theme=AG_GRID_THEME,
         auto_size_columns=False,
         modules="enterprise",
     ).classes(f"w-full h-[{grid_height}]")
