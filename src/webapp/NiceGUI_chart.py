@@ -502,7 +502,9 @@ def create_portfolio_grid() -> ui.aggrid:
         "rowData": PORTFOLIO_ROWS,
         "animateRows": True,
     }
-    return ui.aggrid(options, theme="quartz", auto_size_columns=False).classes("w-full h-[390px]")
+    return ui.aggrid(options, theme="quartz", auto_size_columns=False).classes(
+        "w-full h-[390px] dashboard-data-grid"
+    )
 
 
 
@@ -1858,62 +1860,61 @@ def rs_tab_content() -> None:
     """
     metric_values: dict[str, Any] = {}
 
-    with ui.card().classes(card_classes("p-4 w-full")):
-        with ui.row().classes("w-full items-end gap-3 flex-wrap"):
-            with ui.column().classes("gap-0 mr-auto min-w-[260px]"):
-                card_header(
-                    "Support / Resistance Ladder",
-                    "V1: MA20 / MA50 / MA100 / MA200 trên D / W / M",
-                    icon="vertical_align_center",
+    with ui.element("div").classes("grid grid-cols-1 xl:grid-cols-12 gap-4 w-full"):
+        with ui.card().classes(card_classes("p-4 xl:col-span-8")):
+            card_header(
+                "Support / Resistance Ladder",
+                "V1: MA20 / MA50 / MA100 / MA200 trên D / W / M",
+                icon="vertical_align_center",
+            )
+            ui.label(
+                "R1/S1 = level gần giá hiện tại nhất; Strength là độ mạnh độc lập."
+            ).classes(f"text-xs text-[{THEME['muted']}] mt-1")
+
+            with ui.row().classes("w-full items-end gap-3 flex-wrap mt-4"):
+                ticker_input = ui.input(
+                    label="Ticker",
+                    value="MWG",
+                    placeholder="MWG",
+                ).props("outlined dense clearable").classes("w-32 uppercase")
+
+                as_of_input = ui.input(
+                    label="As of date",
+                    placeholder="YYYY-MM-DD",
+                ).props("outlined dense clearable type=date").classes("w-44")
+
+                cluster_input = ui.number(
+                    label="Cluster %",
+                    value=1.0,
+                    min=0.1,
+                    max=5.0,
+                    step=0.1,
+                    format="%.1f",
+                ).props("outlined dense").classes("w-32")
+
+                refresh_button = ui.button(
+                    "Refresh",
+                    icon="refresh",
+                ).props("unelevated no-caps").classes("h-10 px-4")
+
+        with ui.card().classes(card_classes("p-4 xl:col-span-4")):
+            card_header(
+                "Reward / Risk",
+                "Structural R/R theo R1 và S1",
+                icon="balance",
+            )
+            with ui.row().classes("w-full items-center gap-4 mt-4 no-wrap"):
+                metric_values["rr"] = ui.label("—").classes(
+                    f"text-3xl font-bold text-[{THEME['text']}] shrink-0"
+                )
+                ui.separator().props("vertical").classes(
+                    f"h-12 bg-[{THEME['border']}]"
                 )
                 ui.label(
-                    "R1/S1 = level gần giá hiện tại nhất; Strength là độ mạnh độc lập."
-                ).classes(f"text-xs text-[{THEME['muted']}] mt-1")
-
-            with ui.element("div").classes(
-                "rounded-xl border px-4 py-3 min-w-[360px] "
-                f"bg-[{THEME['surface_alt']}] border-[{THEME['border']}]"
-            ):
-                with ui.row().classes("items-center gap-3 no-wrap"):
-                    ui.icon("balance").classes(f"text-xl text-[{THEME['primary']}] shrink-0")
-                    with ui.column().classes("gap-0 shrink-0"):
-                        ui.label("Reward / Risk").classes(
-                            f"text-xs uppercase tracking-wider text-[{THEME['muted']}]"
-                        )
-                        metric_values["rr"] = ui.label("—").classes("text-2xl font-bold")
-                    ui.separator().props("vertical").classes(
-                        f"h-10 bg-[{THEME['border']}]"
-                    )
-                    ui.label(
-                        "Upside tới R1 / downside tới S1. >1 nghĩa là upside lớn hơn downside."
-                    ).classes(
-                        f"text-xs text-[{THEME['muted']}] leading-snug max-w-[210px]"
-                    )
-
-            ticker_input = ui.input(
-                label="Ticker",
-                value="MWG",
-                placeholder="MWG",
-            ).props("outlined dense clearable").classes("w-32 uppercase")
-
-            as_of_input = ui.input(
-                label="As of date",
-                placeholder="YYYY-MM-DD",
-            ).props("outlined dense clearable type=date").classes("w-44")
-
-            cluster_input = ui.number(
-                label="Cluster %",
-                value=1.0,
-                min=0.1,
-                max=5.0,
-                step=0.1,
-                format="%.1f",
-            ).props("outlined dense").classes("w-32")
-
-            refresh_button = ui.button(
-                "Refresh",
-                icon="refresh",
-            ).props("unelevated no-caps").classes("h-10 px-4")
+                    "Upside tới R1 / downside tới S1. >1 nghĩa là upside lớn hơn downside."
+                ).classes(
+                    f"text-xs text-[{THEME['muted']}] leading-snug"
+                )
 
     with ui.element("div").classes("grid grid-cols-1 xl:grid-cols-12 gap-4 w-full"):
         with ui.card().classes(card_classes("p-4 xl:col-span-4")):
@@ -1940,7 +1941,6 @@ def rs_tab_content() -> None:
                     },
                     "columnDefs": [
                         {"headerName": "Rank", "field": "rank", "width": 72},
-                        {"headerName": "Type", "field": "type", "width": 105},
                         {
                             "headerName": "Price",
                             "field": "price",
@@ -1973,7 +1973,7 @@ def rs_tab_content() -> None:
                 },
                 theme="quartz",
                 auto_size_columns=False,
-            ).classes("w-full h-[620px] rs-level-grid")
+            ).classes("w-full h-[620px] dashboard-data-grid")
 
     def clear_output(message: str) -> None:
         metric_values["rr"].set_text("—")
@@ -2066,7 +2066,7 @@ def build_page() -> None:
         .q-field--outlined .q-field__control:before {{ border-color: {THEME['border']}; }}
         .q-field--outlined:hover .q-field__control:before {{ border-color: #3c5878; }}
         .ag-root-wrapper {{ border-color: {THEME['border']} !important; border-radius: 12px !important; }}
-        .rs-level-grid {{
+        .dashboard-data-grid {{
             --ag-background-color: {THEME['surface']};
             --ag-foreground-color: {THEME['text']};
             --ag-header-background-color: {THEME['surface_alt']};
