@@ -33,9 +33,17 @@ except ImportError:  # pragma: no cover - exercised on MCP SDK 1.x
 
     _MCP_SDK_V2 = False
 
-from .config import settings
-from .duckdb_service import DuckDBReadService
-from .security import clamp_query_limit, validate_readonly_sql
+try:
+    # Package execution (python -m src.mcp_server.duckdb_mcp)
+    from .config import settings
+    from .duckdb_service import DuckDBReadService
+    from .security import clamp_query_limit, validate_readonly_sql
+except ImportError:
+    # Direct script execution (python path/to/duckdb_mcp.py) has no parent
+    # package, so relative imports fail; fall back to absolute imports.
+    from mcp_server.config import settings
+    from mcp_server.duckdb_service import DuckDBReadService
+    from mcp_server.security import clamp_query_limit, validate_readonly_sql
 
 
 def _create_mcp_server() -> Any:

@@ -2126,7 +2126,7 @@ def build_page() -> None:
 
         with ui.tab_panels(tabs, value="overview").classes(
             "w-full bg-transparent p-0"
-        ).props("animated keep-alive"):
+        ).props("animated keep-alive swipeable"):
             with ui.tab_panel("overview").classes("p-0 gap-4"):
                 overview_tab_content()
             with ui.tab_panel("market").classes("p-0"):
