@@ -19,6 +19,8 @@ class IndicatorRepository:
                 ComponentName VARCHAR NOT NULL,
                 OutputPrefix VARCHAR,
                 SortOrder INTEGER,
+                ValueSemantic VARCHAR,
+                Unit VARCHAR,
                 IsPrimary BOOLEAN NOT NULL DEFAULT FALSE,
                 IsActive BOOLEAN NOT NULL DEFAULT TRUE,
                 PRIMARY KEY (IndicatorCode, ComponentCode)
