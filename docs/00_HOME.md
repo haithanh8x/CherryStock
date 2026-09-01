@@ -29,11 +29,11 @@ When the request involves architecture, system design, solution design, componen
 
 ### Generated Database Context
 - [[reference/DB_Metadata|DB Metadata]]
-- `reference/dim_indicator.parquet`
-- `reference/dim_indicator_component.parquet`
-- `reference/dim_indicator_config.parquet`
+- `reference/dim_indicator.csv`
+- `reference/dim_indicator_component.csv`
+- `reference/dim_indicator_config.csv`
 
-Read the Markdown file for structure, then the Parquet snapshots for current indicator metadata/configuration values. The four files are refreshed together by `exportDuckDB_metadata()`.
+Read the Markdown file for structure, then the CSV snapshots for current indicator metadata/configuration values. The four files are refreshed together by `exportDuckDB_metadata()`.
 
 ### Technical Indicators
 - [[architecture/Indicator_Engine|Indicator Engine Architecture]]
