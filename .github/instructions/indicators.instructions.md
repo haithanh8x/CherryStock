@@ -16,6 +16,15 @@ This file owns operational rules for onboarding, calculating and validating tech
 
 Downstream code should not read `cal_indicator_values` directly when `vw_Ticker_indicators` satisfies the use case.
 
+## Generated configuration context
+Before analyzing or changing indicator metadata, use the generated reference set:
+- `docs/reference/DB_Metadata.md` for table/view structure and column contracts;
+- `docs/reference/dim_indicator.parquet` for master definitions;
+- `docs/reference/dim_indicator_component.parquet` for output components;
+- `docs/reference/dim_indicator_config.parquet` for active executable configurations.
+
+Load structure first, then current Parquet values. Join the dimension snapshots by `IndicatorCode`; do not treat the Markdown schema as evidence of current row values.
+
 ## Naming
 Indicator output convention:
 
