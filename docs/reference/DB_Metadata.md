@@ -7,6 +7,19 @@
 - Schema count: 1
 - Table/view count: 34
 
+## AI context loading guide
+
+Use this generated reference set in the following order:
+
+1. Read `DB_Metadata.md` for database objects, columns, types, nullability and defaults.
+2. Read `dim_indicator.parquet` for indicator master definitions and runtime/library mappings.
+3. Read `dim_indicator_component.parquet` for multi-output component contracts.
+4. Read `dim_indicator_config.parquet` for executable parameter/timeframe configurations.
+5. Join the three snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.
+
+The Parquet files contain current dimension rows from the same export run. Do not infer current configuration values from the Markdown schema alone. Run `Ults.DuckLib.exportDuckDB_metadata()` to refresh all four files together.
+
+
 ## Schemas
 
 - `main`
