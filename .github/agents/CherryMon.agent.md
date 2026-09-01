@@ -78,7 +78,7 @@ Indicator Engine contracts:
 - `cal_indicator_values` — internal long-format persistence.
 - `vw_Ticker_indicators` — public/calculated indicator Single Source of Truth.
 
-Refer to `.github/agents/DB_Metadata.md` and the indicator architecture documents for detailed schema.
+For current database context, read `docs/reference/DB_Metadata.md` first for schema, then load `docs/reference/dim_indicator.parquet`, `docs/reference/dim_indicator_component.parquet` and `docs/reference/dim_indicator_config.parquet` for actual indicator dimension values. Join the snapshots by `IndicatorCode`; use the indicator architecture documents for behavioral rules.
 
 ## Knowledge architecture
 CherryStock repository Markdown is the engineering knowledge Single Source of Truth.
