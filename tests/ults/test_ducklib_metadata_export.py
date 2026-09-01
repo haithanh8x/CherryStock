@@ -4,7 +4,7 @@ from Ults.DuckLib import DuckDBManager, exportDuckDB_metadata
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 
 
-def test_export_duckdb_metadata_writes_indicator_parquet_snapshots(
+def test_export_duckdb_metadata_writes_indicator_csv_snapshots(
     tmp_path, monkeypatch
 ):
     """Export all indicator dimensions and safely replace snapshots on rerun."""
@@ -56,22 +56,22 @@ def test_export_duckdb_metadata_writes_indicator_parquet_snapshots(
 
         assert result_path == output_path
         expected_files = {
-            "dim_indicator.parquet",
-            "dim_indicator_component.parquet",
-            "dim_indicator_config.parquet",
+            "dim_indicator.csv",
+            "dim_indicator_component.csv",
+            "dim_indicator_config.csv",
         }
         assert expected_files == {
-            path.name for path in output_path.parent.glob("*.parquet")
+            path.name for path in output_path.parent.glob("*.csv")
         }
 
         with factory.reader() as connection:
             assert connection.execute(
-                "SELECT IndicatorCode FROM read_parquet(?)",
-                [str(output_path.parent / "dim_indicator.parquet")],
+                "SELECT IndicatorCode FROM read_csv_auto(?)",
+                [str(output_path.parent / "dim_indicator.csv")],
             ).fetchall() == [("RSI",)]
             assert connection.execute(
-                "SELECT ConfigCode FROM read_parquet(?)",
-                [str(output_path.parent / "dim_indicator_config.parquet")],
+                "SELECT ConfigCode FROM read_csv_auto(?)",
+                [str(output_path.parent / "dim_indicator_config.csv")],
             ).fetchall() == [("RSI14_D",)]
 
         with factory.writer() as connection:
@@ -86,16 +86,16 @@ def test_export_duckdb_metadata_writes_indicator_parquet_snapshots(
 
         with factory.reader() as connection:
             assert connection.execute(
-                "SELECT ConfigCode FROM read_parquet(?) ORDER BY ConfigId",
-                [str(output_path.parent / "dim_indicator_config.parquet")],
+                "SELECT ConfigCode FROM read_csv_auto(?) ORDER BY ConfigId",
+                [str(output_path.parent / "dim_indicator_config.csv")],
             ).fetchall() == [("RSI14_D",), ("RSI14_W",)]
 
         metadata = output_path.read_text(encoding="utf-8")
         assert "## AI context loading guide" in metadata
         assert "## Indicator metadata snapshots" in metadata
-        assert "`dim_indicator.parquet`" in metadata
-        assert "`dim_indicator_component.parquet`" in metadata
-        assert "`dim_indicator_config.parquet`" in metadata
+        assert "`dim_indicator.csv`" in metadata
+        assert "`dim_indicator_component.csv`" in metadata
+        assert "`dim_indicator_config.csv`" in metadata
     finally:
         DuckDBManager.close_connection()
         DuckDBManager._factory = previous_factory
