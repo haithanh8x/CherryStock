@@ -41,11 +41,11 @@ Rules:
 
 ## Generated database context for AI
 - `docs/reference/DB_Metadata.md`: generated database object/column/type/nullability/default reference.
-- `docs/reference/dim_indicator.parquet`: current indicator master definitions.
-- `docs/reference/dim_indicator_component.parquet`: current indicator output-component mappings.
-- `docs/reference/dim_indicator_config.parquet`: current executable parameter/timeframe configurations.
+- `docs/reference/dim_indicator.csv`: current indicator master definitions.
+- `docs/reference/dim_indicator_component.csv`: current indicator output-component mappings.
+- `docs/reference/dim_indicator_config.csv`: current executable parameter/timeframe configurations.
 
-For database or indicator work, AI agents must read `DB_Metadata.md` first for structure, then load the relevant Parquet snapshots for current dimension values. Join the snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.
+For database or indicator work, AI agents must read `DB_Metadata.md` first for structure, then load the relevant CSV snapshots for current dimension values. Join the snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.
 
 These four files are one generated reference set produced by `Ults.DuckLib.exportDuckDB_metadata()`. Do not infer current dimension values from the Markdown schema alone.
 
