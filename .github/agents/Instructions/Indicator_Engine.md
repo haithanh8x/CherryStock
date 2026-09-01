@@ -1037,6 +1037,8 @@ SELECT
     comp.ComponentName,
     comp.OutputPrefix,
     comp.SortOrder,
+    comp.ValueSemantic,
+    comp.Unit,
     comp.IsPrimary,
     comp.IsActive                    AS ComponentIsActive
 FROM "CherryMon"."main"."dim_indicator_config" cfg

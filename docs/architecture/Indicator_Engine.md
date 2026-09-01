@@ -52,3 +52,40 @@ The long-form content should be progressively migrated here when it is edited ne
 - [[../../.github/instructions/indicators.instructions|Indicator Instructions]]
 - [[../adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
 - [[../00_HOME|Knowledge Home]]
+
+---
+
+## Component Value Semantics
+
+Downstream domains may need to know whether an indicator component represents a price, oscillator, ratio or volatility distance without hard-coding indicator names.
+
+`dim_indicator_component` therefore exposes generic semantic metadata:
+
+```text
+ValueSemantic
+Unit
+```
+
+Initial values used by R/S V2.0:
+
+| Indicator | Component | ValueSemantic | Unit |
+|---|---|---|---|
+| MA | VALUE | PRICE_LEVEL | PRICE |
+| BB | LOWER | PRICE_LEVEL | PRICE |
+| BB | MIDDLE | PRICE_LEVEL | PRICE |
+| BB | UPPER | PRICE_LEVEL | PRICE |
+| BB | WIDTH | VOLATILITY | PERCENT |
+| BB | PERCENT | RATIO | RATIO |
+| RSI | VALUE | OSCILLATOR | INDEX |
+| ATR | VALUE | VOLATILITY_DISTANCE | PRICE |
+
+These are generic Indicator Engine semantics, not R/S-specific configuration.
+
+The public configuration SSOT `vw_Indicator_config` must expose both fields so downstream consumers do not need to join internal dimension tables directly.
+
+Migration for existing CherryMon databases:
+
+```text
+src/DuckDB/sql/rs_v2_0_indicator_semantics.sql
+```
+

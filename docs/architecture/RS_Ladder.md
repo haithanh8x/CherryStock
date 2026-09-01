@@ -1596,3 +1596,238 @@ Lý do: implementation này áp dụng các ADR/architecture decision đã có:
 - calculation và rendering tách biệt.
 
 Không tạo persistence model, database schema hay Source of Truth mới.
+
+---
+
+# 30. V2.0 Implementation Contract
+
+V2.0 upgrades the MA-only implementation into a source-provider architecture while preserving the existing R/S downstream pipeline.
+
+## 30.1 Default V2.0 Sources
+
+```text
+LEVEL
+├── MA
+│   └── TREND_AVERAGE
+└── BB
+    ├── LOWER
+    ├── MIDDLE
+    └── UPPER
+        └── VOLATILITY_BAND
+
+CONFIRMATION
+└── RSI
+    └── MOMENTUM_CONFIRMATION
+```
+
+Default runtime:
+
+```python
+build_level_ladder(
+    ticker,
+    enabled_sources=None,
+)
+```
+
+resolves all registered V2.0 sources:
+
+```text
+MA + BB + RSI
+```
+
+Callers may still request a subset explicitly, for example:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("MA",),
+)
+```
+
+for MA-only regression comparison.
+
+## 30.2 Indicator Provider Boundary
+
+`vw_Ticker_indicators` and `vw_Indicator_config` are **inputs** to Indicator Providers.
+
+```text
+Indicator Engine
+      │
+      ▼
+cal_indicator_values
+      │
+      ▼
+vw_Ticker_indicators       ← calculated-value SSOT
+vw_Indicator_config        ← metadata/config SSOT
+      │
+      │ READ
+      ▼
+Indicator Providers
+      ├── MA Provider
+      ├── BB Provider
+      └── RSI Provider
+      │
+      ▼
+Canonical R/S Contracts
+      ├── LevelCandidate[]       ← MA / BB
+      └── ConfirmationContext[]  ← RSI
+      │
+      ▼
+R/S Domain
+```
+
+Indicator Providers are code adapters, not DuckDB objects.
+
+They translate generic indicator values into R/S semantics and must not:
+
+- calculate the indicator again;
+- cluster levels;
+- classify Support/Resistance;
+- rank S/R levels;
+- hard-code Strength weights.
+
+## 30.3 Source Role and Value Semantic
+
+Only the following combination may enter price normalization/clustering:
+
+```text
+SourceRole = LEVEL
+AND
+ValueSemantic = PRICE_LEVEL
+```
+
+V2.0 semantic contract:
+
+| Indicator | Component | SourceRole | SourceFamily | ValueSemantic |
+|---|---|---|---|---|
+| MA | VALUE | LEVEL | TREND_AVERAGE | PRICE_LEVEL |
+| BB | LOWER | LEVEL | VOLATILITY_BAND | PRICE_LEVEL |
+| BB | MIDDLE | LEVEL | VOLATILITY_BAND | PRICE_LEVEL |
+| BB | UPPER | LEVEL | VOLATILITY_BAND | PRICE_LEVEL |
+| BB | WIDTH | not a LEVEL | — | VOLATILITY |
+| BB | PERCENT | not a LEVEL | — | RATIO |
+| RSI | VALUE | CONFIRMATION | MOMENTUM_CONFIRMATION | OSCILLATOR |
+
+R/S-specific role/family stays in the R/S domain. Generic `ValueSemantic` and `Unit` live in Indicator Engine component metadata.
+
+## 30.4 Family-based Confluence
+
+V1 confluence used raw `source_count`.
+
+V2.0 preserves `source_count` for lineage, but Strength confluence uses:
+
+```text
+source_family_count
+```
+
+with saturation.
+
+Example:
+
+```text
+MA20_D + MA50_D + MA100_D + MA200_D
+→ source_count = 4
+→ source_family_count = 1
+```
+
+while:
+
+```text
+MA50_D + BB_LOWER_D
+→ source_count = 2
+→ source_family_count = 2
+```
+
+This prevents multiple correlated configurations from being treated as independent evidence.
+
+## 30.5 RSI Confirmation
+
+RSI does not create a price level.
+
+It may change `strength_score` only.
+
+```text
+Support zone
++ lower RSI
+→ stronger support confirmation
+
+Resistance zone
++ higher RSI
+→ stronger resistance confirmation
+```
+
+Invariant:
+
+```text
+RSI confirmation MUST NOT change S1/R1 proximity rank.
+```
+
+## 30.6 DuckDB Migration Dependency
+
+Existing databases must run:
+
+```text
+src/DuckDB/sql/rs_v2_0_indicator_semantics.sql
+```
+
+before using V2.0 default runtime.
+
+The migration:
+
+1. adds `ValueSemantic` and `Unit` to `dim_indicator_component`;
+2. populates semantics for MA, BB, RSI and ATR;
+3. recreates `vw_Indicator_config` with both semantic columns.
+
+ATR is included in the migration because it is already onboarded and will be used as V2.1 `CONTEXT`; ATR is **not consumed by V2.0 R/S**.
+
+After running the migration, regenerate:
+
+```text
+docs/reference/DB_Metadata.md
+docs/reference/dim_indicator.csv
+docs/reference/dim_indicator_component.csv
+docs/reference/dim_indicator_config.csv
+```
+
+using the existing DuckDB metadata export workflow.
+
+## 30.7 V2.0 Physical Implementation
+
+```text
+src/calcEngine/levelLadder.py
+    ConfirmationContext
+    load_ma_level_candidates()
+    load_bb_level_candidates()
+    load_rsi_confirmation_contexts()
+    _source_provider_registry()
+    family-aware normalize / cluster / strength
+
+src/Chart/levelLadderChart.py
+    source-family explainability
+
+src/webapp/NiceGUI_chart.py
+    V2.0 MA + BB + RSI presentation
+
+src/DuckDB/sql/rs_v2_0_indicator_semantics.sql
+    explicit manual DuckDB migration
+
+scripts/seed_dim_indicator_component.py
+    fresh-environment semantic seeding
+```
+
+## 30.8 V2.0 Acceptance Criteria
+
+V2.0 is complete when:
+
+1. MA-only request still builds a deterministic ladder.
+2. Default request includes MA + BB level providers and RSI confirmation.
+3. BB LOWER/MIDDLE/UPPER can create `LevelCandidate`.
+4. BB WIDTH/PERCENT never enter the price-level pipeline.
+5. RSI never creates `LevelCandidate`.
+6. `LEVEL` with non-`PRICE_LEVEL` semantic fails clearly.
+7. Multiple same-family sources count as one family for confluence.
+8. RSI may alter Strength but cannot alter proximity rank.
+9. Public Indicator Engine SSOT remains the only technical-indicator read path.
+10. Focused automated tests pass.
+11. Production DuckDB migration and real-data cross-check pass before rollout.
+

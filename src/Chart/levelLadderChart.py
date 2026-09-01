@@ -50,6 +50,8 @@ def ladder_rows(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
                 "distance_pct": round(level.distance_pct, 2),
                 "strength": round(level.strength_score, 1),
                 "source_count": level.source_count,
+                "source_family_count": level.source_family_count,
+                "families": ", ".join(sorted({source.source_family for source in level.sources})),
                 "timeframes": "/".join(timeframes),
                 "sources": ", ".join(source.source_code for source in level.sources),
             }
@@ -94,7 +96,7 @@ def build_level_ladder_chart_options(
 
     ranked = [*ladder.support_levels, *ladder.resistance_levels]
     if not ranked:
-        return empty_level_ladder_chart_options("Không có MA level V1 hợp lệ")
+        return empty_level_ladder_chart_options("Không có R/S V2.0 level hợp lệ")
 
     prices = [level.price for level in ranked] + [ladder.current_price]
     min_price, max_price = min(prices), max(prices)
@@ -107,7 +109,7 @@ def build_level_ladder_chart_options(
         {
             "value": [0, level.price],
             "name": _level_label(level),
-            "symbolSize": max(16, min(32, 14 + level.source_count * 3)),
+            "symbolSize": max(16, min(32, 14 + level.source_family_count * 4)),
         }
         for level in ladder.support_levels
     ]
@@ -115,7 +117,7 @@ def build_level_ladder_chart_options(
         {
             "value": [0, level.price],
             "name": _level_label(level),
-            "symbolSize": max(16, min(32, 14 + level.source_count * 3)),
+            "symbolSize": max(16, min(32, 14 + level.source_family_count * 4)),
         }
         for level in ladder.resistance_levels
     ]
