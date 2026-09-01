@@ -1,7 +1,8 @@
 """Seed ``dim_indicator_component`` for active indicators in ``dim_indicator``.
 
-Single-output indicators get a ``VALUE`` component; multi-output indicators
-(BB) get their normalized component mapping per Indicator_Engine.md section 4.3.
+Single-output indicators get a ``VALUE`` component; known multi-output
+indicators get normalized component mappings. V2.0 also seeds generic
+ValueSemantic/Unit metadata used by downstream R/S providers.
 
 Idempotent: rerunning updates existing keys, no duplicates.
 
@@ -46,8 +47,22 @@ MULTI_OUTPUT_COMPONENTS: dict[str, list[tuple[str, str, str | None, int, bool]]]
     ],
 }
 
+# Generic component semantics. Keep R/S-specific role/family outside Indicator Engine.
+COMPONENT_SEMANTICS: dict[tuple[str, str], tuple[str, str]] = {
+    ("MA", "VALUE"): ("PRICE_LEVEL", "PRICE"),
+    ("BB", "LOWER"): ("PRICE_LEVEL", "PRICE"),
+    ("BB", "MIDDLE"): ("PRICE_LEVEL", "PRICE"),
+    ("BB", "UPPER"): ("PRICE_LEVEL", "PRICE"),
+    ("BB", "WIDTH"): ("VOLATILITY", "PERCENT"),
+    ("BB", "PERCENT"): ("RATIO", "RATIO"),
+    ("RSI", "VALUE"): ("OSCILLATOR", "INDEX"),
+    ("ATR", "VALUE"): ("VOLATILITY_DISTANCE", "PRICE"),
+}
 
-def build_component_rows() -> list[tuple[str, str, str, str | None, int, bool]]:
+
+def build_component_rows() -> list[
+    tuple[str, str, str, str | None, int, bool, str | None, str | None]
+]:
     """Build component rows for every active indicator in dim_indicator."""
     con = DuckDBManager.get_connection(read_only=True)
     try:
@@ -63,14 +78,33 @@ def build_component_rows() -> list[tuple[str, str, str, str | None, int, bool]]:
     if not active_codes:
         raise ValueError("Không có indicator nào IsActive=TRUE trong dim_indicator.")
 
-    rows: list[tuple[str, str, str, str | None, int, bool]] = []
+    rows: list[
+        tuple[str, str, str, str | None, int, bool, str | None, str | None]
+    ] = []
     for code in active_codes:
         components = MULTI_OUTPUT_COMPONENTS.get(code)
         if components is None:
-            rows.append((code, "VALUE", f"{code} Value", None, 1, True))
+            semantic, unit = COMPONENT_SEMANTICS.get((code, "VALUE"), (None, None))
+            rows.append(
+                (code, "VALUE", f"{code} Value", None, 1, True, semantic, unit)
+            )
         else:
             for comp_code, comp_name, prefix, order, is_primary in components:
-                rows.append((code, comp_code, comp_name, prefix, order, is_primary))
+                semantic, unit = COMPONENT_SEMANTICS.get(
+                    (code, comp_code), (None, None)
+                )
+                rows.append(
+                    (
+                        code,
+                        comp_code,
+                        comp_name,
+                        prefix,
+                        order,
+                        is_primary,
+                        semantic,
+                        unit,
+                    )
+                )
 
     return rows
 
@@ -87,6 +121,8 @@ def upsert_dim_indicator_component(rows: list[tuple]) -> int:
                 ComponentName       VARCHAR NOT NULL,
                 OutputPrefix        VARCHAR,
                 SortOrder           INTEGER,
+                ValueSemantic       VARCHAR,
+                Unit                VARCHAR,
                 IsPrimary           BOOLEAN NOT NULL DEFAULT FALSE,
                 IsActive            BOOLEAN NOT NULL DEFAULT TRUE,
                 PRIMARY KEY (IndicatorCode, ComponentCode)
@@ -98,14 +134,17 @@ def upsert_dim_indicator_component(rows: list[tuple]) -> int:
             f"""
             INSERT INTO {DIM_COMPONENT} (
                 IndicatorCode, ComponentCode, ComponentName,
-                OutputPrefix, SortOrder, IsPrimary, IsActive
+                OutputPrefix, SortOrder, IsPrimary,
+                ValueSemantic, Unit, IsActive
             )
-            VALUES (?, ?, ?, ?, ?, ?, TRUE)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
             ON CONFLICT (IndicatorCode, ComponentCode) DO UPDATE SET
                 ComponentName = EXCLUDED.ComponentName,
                 OutputPrefix = EXCLUDED.OutputPrefix,
                 SortOrder = EXCLUDED.SortOrder,
                 IsPrimary = EXCLUDED.IsPrimary,
+                ValueSemantic = COALESCE(EXCLUDED.ValueSemantic, ValueSemantic),
+                Unit = COALESCE(EXCLUDED.Unit, Unit),
                 IsActive = TRUE
             """,
             rows,
