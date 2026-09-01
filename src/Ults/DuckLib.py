@@ -9,6 +9,23 @@ from cherrystock.config.settings import settings
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 
 
+_INDICATOR_METADATA_EXPORTS: tuple[tuple[str, str], ...] = (
+    ("dim_indicator", "dim_indicator.parquet"),
+    ("dim_indicator_component", "dim_indicator_component.parquet"),
+    ("dim_indicator_config", "dim_indicator_config.parquet"),
+)
+
+
+def _quote_identifier(value: str) -> str:
+    """Return a safely quoted DuckDB identifier."""
+    return '"' + value.replace('"', '""') + '"'
+
+
+def _quote_sql_literal(value: str) -> str:
+    """Return a safely quoted DuckDB string literal."""
+    return "'" + value.replace("'", "''") + "'"
+
+
 class DuckDBManager:
     """Compatibility facade around connection factory based DuckDB access."""
 
@@ -130,7 +147,7 @@ def exportDuckDB_metadata(
     db_path: str | os.PathLike[str] | None = None,
     output_path: str | os.PathLike[str] | None = None,
 ) -> Path:
-    """Export DuckDB schema metadata to ``docs/reference/DB_Metadata.md`` by default."""
+    """Export schema documentation and indicator dimension snapshots.\n\n    The default output set is written to ``docs/reference`` and contains\n    ``DB_Metadata.md`` plus one Parquet file for each indicator dimension.\n    """
     source_db = Path(db_path).expanduser() if db_path else settings.local_db_path.expanduser()
     target_path = (
         Path(output_path).expanduser()
@@ -149,9 +166,21 @@ def exportDuckDB_metadata(
     sections.append(f"- Database file: `{source_db}`")
     sections.append(f"- Output file: `{target_path}`")
     sections.append("")
+    sections.append("## AI context loading guide")
+    sections.append("")
+    sections.append("Use this generated reference set in the following order:")
+    sections.append("")
+    sections.append("1. Read `DB_Metadata.md` for database objects, columns, types, nullability and defaults.")
+    sections.append("2. Read `dim_indicator.parquet` for indicator master definitions and runtime/library mappings.")
+    sections.append("3. Read `dim_indicator_component.parquet` for multi-output component contracts.")
+    sections.append("4. Read `dim_indicator_config.parquet` for executable parameter/timeframe configurations.")
+    sections.append("5. Join the three snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.")
+    sections.append("")
+    sections.append("The Parquet files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.")
+    sections.append("")
 
     try:
-        with DuckDBManager() as con:
+        with DuckDBManager(read_only=True) as con:
             table_relation = con.sql(
                 """
                 SELECT table_schema, table_name, table_type
@@ -214,6 +243,55 @@ def exportDuckDB_metadata(
                         f"| `{column_name}` | `{data_type}` | `{is_nullable}` | `{default_value}` |"
                     )
                 sections.append("")
+
+            sections.append("## Indicator metadata snapshots")
+            sections.append("")
+            sections.append("| DuckDB source | Parquet file | Rows |")
+            sections.append("| --- | --- | ---: |")
+
+            for table_name, file_name in _INDICATOR_METADATA_EXPORTS:
+                column_rows = con.execute(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'main' AND table_name = ?
+                    ORDER BY ordinal_position
+                    """,
+                    [table_name],
+                ).fetchall()
+                if not column_rows:
+                    raise RuntimeError(
+                        f"Không tìm thấy bảng CherryMon.main.{table_name} để export."
+                    )
+
+                column_list = ", ".join(
+                    _quote_identifier(column_name) for (column_name,) in column_rows
+                )
+                qualified_table = (
+                    f'{_quote_identifier("main")}.{_quote_identifier(table_name)}'
+                )
+                export_path = target_path.parent / file_name
+                temporary_path = export_path.with_suffix(export_path.suffix + ".tmp")
+
+                try:
+                    con.execute(
+                        f"COPY (SELECT {column_list} FROM {qualified_table}) "
+                        f"TO {_quote_sql_literal(str(temporary_path))} "
+                        "(FORMAT PARQUET, COMPRESSION ZSTD)"
+                    )
+                    temporary_path.replace(export_path)
+                finally:
+                    if temporary_path.exists():
+                        temporary_path.unlink()
+
+                row_count = con.execute(
+                    f"SELECT COUNT(*) FROM {qualified_table}"
+                ).fetchone()[0]
+                sections.append(
+                    f"| `CherryMon`.`main`.`{table_name}` | "
+                    f"`{file_name}` | {row_count} |"
+                )
+            sections.append("")
     except Exception as exc:  # pragma: no cover - depends on local DB lock state
         sections.append("## Access note")
         sections.append("")
