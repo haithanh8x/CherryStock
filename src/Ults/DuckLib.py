@@ -278,6 +278,8 @@ def exportDuckDB_metadata(
                 )
                 export_path = target_path.parent / file_name
                 temporary_path = export_path.with_suffix(export_path.suffix + ".tmp")
+                if temporary_path.exists():
+                    temporary_path.unlink()
 
                 try:
                     con.execute(
