@@ -39,6 +39,16 @@ Rules:
 - pass dataset-specific `date_col`, `symbol_col`, `key_cols`, `required_cols` instead of duplicating validators;
 - rolling indicator columns with legitimate warmup NULLs must use optional-null-rate handling instead of strict required-column thresholds.
 
+## Generated database context for AI
+- `docs/reference/DB_Metadata.md`: generated database object/column/type/nullability/default reference.
+- `docs/reference/dim_indicator.parquet`: current indicator master definitions.
+- `docs/reference/dim_indicator_component.parquet`: current indicator output-component mappings.
+- `docs/reference/dim_indicator_config.parquet`: current executable parameter/timeframe configurations.
+
+For database or indicator work, AI agents must read `DB_Metadata.md` first for structure, then load the relevant Parquet snapshots for current dimension values. Join the snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.
+
+These four files are one generated reference set produced by `Ults.DuckLib.exportDuckDB_metadata()`. Do not infer current dimension values from the Markdown schema alone.
+
 ## Validation before database changes
 Confirm:
 - read vs write intent;
@@ -50,5 +60,5 @@ Confirm:
 - impact on public views / downstream consumers.
 
 Related references:
-- `.github/agents/DB_Metadata.md`
+- `docs/reference/DB_Metadata.md`
 - `docs/adr/ADR-001-duckdb-connection.md`
