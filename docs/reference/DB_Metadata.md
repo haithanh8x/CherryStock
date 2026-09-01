@@ -1,11 +1,8 @@
 # DuckDB Metadata
 
-- Generated at: 2026-08-29T09:58:11.254066+00:00
+- Generated at: 2026-09-01T03:58:27.469464+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
-- Output file: `C:\Github\CherryStock\.github\agents\DB_Metadata.md`
-
-- Schema count: 1
-- Table/view count: 34
+- Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
 ## AI context loading guide
 
@@ -17,8 +14,10 @@ Use this generated reference set in the following order:
 4. Read `dim_indicator_config.parquet` for executable parameter/timeframe configurations.
 5. Join the three snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.
 
-The Parquet files contain current dimension rows from the same export run. Do not infer current configuration values from the Markdown schema alone. Run `Ults.DuckLib.exportDuckDB_metadata()` to refresh all four files together.
+The Parquet files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
+- Schema count: 1
+- Table/view count: 36
 
 ## Schemas
 
@@ -59,7 +58,9 @@ The Parquet files contain current dimension rows from the same export run. Do no
 - `main`.`t` (BASE TABLE)
 - `main`.`vw_ACCCNNTD` (VIEW)
 - `main`.`vw_ACCCNNTD_Price` (VIEW)
+- `main`.`vw_Indicator_config` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
+- `main`.`vw_Ticker_indicators` (VIEW)
 
 ## Objects
 
@@ -91,11 +92,11 @@ The Parquet files contain current dimension rows from the same export run. Do no
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
-| `Ticker` | `VARCHAR` | `NO` | `` |
-| `Date` | `DATE` | `NO` | `` |
-| `ConfigId` | `BIGINT` | `NO` | `` |
-| `ComponentCode` | `VARCHAR` | `NO` | `` |
-| `Value` | `DOUBLE` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `nan` |
+| `Date` | `DATE` | `NO` | `nan` |
+| `ConfigId` | `BIGINT` | `NO` | `nan` |
+| `ComponentCode` | `VARCHAR` | `NO` | `nan` |
+| `Value` | `DOUBLE` | `YES` | `nan` |
 | `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.dimCalendar (BASE TABLE)
@@ -121,27 +122,27 @@ The Parquet files contain current dimension rows from the same export run. Do no
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
-| `IndicatorCode` | `VARCHAR` | `NO` | `` |
-| `IndicatorName` | `VARCHAR` | `NO` | `` |
-| `Category` | `VARCHAR` | `NO` | `` |
-| `Engine` | `VARCHAR` | `NO` | `` |
-| `FunctionName` | `VARCHAR` | `NO` | `` |
-| `RequiredInputs` | `JSON` | `NO` | `` |
-| `ParameterSchema` | `JSON` | `YES` | `` |
-| `Description` | `VARCHAR` | `YES` | `` |
+| `IndicatorCode` | `VARCHAR` | `NO` | `nan` |
+| `IndicatorName` | `VARCHAR` | `NO` | `nan` |
+| `Category` | `VARCHAR` | `NO` | `nan` |
+| `Engine` | `VARCHAR` | `NO` | `nan` |
+| `FunctionName` | `VARCHAR` | `NO` | `nan` |
+| `RequiredInputs` | `JSON` | `NO` | `nan` |
+| `ParameterSchema` | `JSON` | `YES` | `nan` |
+| `Description` | `VARCHAR` | `YES` | `nan` |
 | `IsActive` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
-| `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
+| `UpdatedAt` | `TIMESTAMP` | `YES` | `nan` |
 
 ### main.dim_indicator_component (BASE TABLE)
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
-| `IndicatorCode` | `VARCHAR` | `NO` | `` |
-| `ComponentCode` | `VARCHAR` | `NO` | `` |
-| `ComponentName` | `VARCHAR` | `NO` | `` |
-| `OutputPrefix` | `VARCHAR` | `YES` | `` |
-| `SortOrder` | `INTEGER` | `YES` | `` |
+| `IndicatorCode` | `VARCHAR` | `NO` | `nan` |
+| `ComponentCode` | `VARCHAR` | `NO` | `nan` |
+| `ComponentName` | `VARCHAR` | `NO` | `nan` |
+| `OutputPrefix` | `VARCHAR` | `YES` | `nan` |
+| `SortOrder` | `INTEGER` | `YES` | `nan` |
 | `IsPrimary` | `BOOLEAN` | `NO` | `CAST('f' AS BOOLEAN)` |
 | `IsActive` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
 
@@ -150,15 +151,15 @@ The Parquet files contain current dimension rows from the same export run. Do no
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
 | `ConfigId` | `BIGINT` | `NO` | `nextval('CherryMon.main.seq_indicator_config')` |
-| `ConfigCode` | `VARCHAR` | `NO` | `` |
-| `IndicatorCode` | `VARCHAR` | `NO` | `` |
-| `Timeframe` | `VARCHAR` | `NO` | `` |
-| `Parameters` | `JSON` | `NO` | `` |
-| `WarmupBars` | `INTEGER` | `YES` | `` |
+| `ConfigCode` | `VARCHAR` | `NO` | `nan` |
+| `IndicatorCode` | `VARCHAR` | `NO` | `nan` |
+| `Timeframe` | `VARCHAR` | `NO` | `nan` |
+| `Parameters` | `JSON` | `NO` | `nan` |
+| `WarmupBars` | `INTEGER` | `YES` | `nan` |
 | `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
-| `Description` | `VARCHAR` | `YES` | `` |
+| `Description` | `VARCHAR` | `YES` | `nan` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
-| `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
+| `UpdatedAt` | `TIMESTAMP` | `YES` | `nan` |
 
 ### main.raw_active_eod (BASE TABLE)
 
@@ -626,6 +627,37 @@ The Parquet files contain current dimension rows from the same export run. Do no
 | `TD_NetVal` | `DOUBLE` | `YES` | `` |
 | `CC_NetVal` | `DOUBLE` | `YES` | `` |
 
+### main.vw_Indicator_config (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `YES` | `` |
+| `ConfigCode` | `VARCHAR` | `YES` | `` |
+| `IndicatorCode` | `VARCHAR` | `YES` | `` |
+| `Timeframe` | `VARCHAR` | `YES` | `` |
+| `Parameters` | `JSON` | `YES` | `` |
+| `WarmupBars` | `INTEGER` | `YES` | `` |
+| `ConfigIsEnabled` | `BOOLEAN` | `YES` | `` |
+| `ConfigDescription` | `VARCHAR` | `YES` | `` |
+| `ConfigCreatedAt` | `TIMESTAMP` | `YES` | `` |
+| `ConfigUpdatedAt` | `TIMESTAMP` | `YES` | `` |
+| `IndicatorName` | `VARCHAR` | `YES` | `` |
+| `Category` | `VARCHAR` | `YES` | `` |
+| `Engine` | `VARCHAR` | `YES` | `` |
+| `FunctionName` | `VARCHAR` | `YES` | `` |
+| `RequiredInputs` | `JSON` | `YES` | `` |
+| `ParameterSchema` | `JSON` | `YES` | `` |
+| `IndicatorDescription` | `VARCHAR` | `YES` | `` |
+| `IndicatorIsActive` | `BOOLEAN` | `YES` | `` |
+| `IndicatorCreatedAt` | `TIMESTAMP` | `YES` | `` |
+| `IndicatorUpdatedAt` | `TIMESTAMP` | `YES` | `` |
+| `ComponentCode` | `VARCHAR` | `YES` | `` |
+| `ComponentName` | `VARCHAR` | `YES` | `` |
+| `OutputPrefix` | `VARCHAR` | `YES` | `` |
+| `SortOrder` | `INTEGER` | `YES` | `` |
+| `IsPrimary` | `BOOLEAN` | `YES` | `` |
+| `ComponentIsActive` | `BOOLEAN` | `YES` | `` |
+
 ### main.vw_Ticker (VIEW)
 
 | Column | Type | Nullable | Default |
@@ -643,3 +675,24 @@ The Parquet files contain current dimension rows from the same export run. Do no
 | `Book Value` | `DOUBLE` | `YES` | `` |
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
+
+### main.vw_Ticker_indicators (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Date` | `DATE` | `YES` | `` |
+| `ConfigId` | `BIGINT` | `YES` | `` |
+| `ComponentCode` | `VARCHAR` | `YES` | `` |
+| `Value` | `DOUBLE` | `YES` | `` |
+| `IndicatorCode` | `VARCHAR` | `YES` | `` |
+| `Timeframe` | `VARCHAR` | `YES` | `` |
+| `WarmupBars` | `INTEGER` | `YES` | `` |
+
+## Indicator metadata snapshots
+
+| DuckDB source | Parquet file | Rows |
+| --- | --- | ---: |
+| `CherryMon`.`main`.`dim_indicator` | `dim_indicator.parquet` | 66 |
+| `CherryMon`.`main`.`dim_indicator_component` | `dim_indicator_component.parquet` | 7 |
+| `CherryMon`.`main`.`dim_indicator_config` | `dim_indicator_config.parquet` | 18 |
