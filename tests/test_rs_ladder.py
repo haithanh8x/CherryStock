@@ -3,8 +3,13 @@ from datetime import date
 import pytest
 
 from src.calcEngine.levelLadder import (
+    ConfirmationContext,
     CurrentPrice,
     LevelCandidate,
+    SOURCE_FAMILY_TREND_AVERAGE,
+    SOURCE_FAMILY_VOLATILITY_BAND,
+    SOURCE_ROLE_LEVEL,
+    VALUE_SEMANTIC_PRICE_LEVEL,
     build_level_ladder_from_data,
 )
 
@@ -18,6 +23,10 @@ def candidate(
     *,
     timeframe: str = "D",
     length: int = 20,
+    indicator_code: str = "MA",
+    component_code: str = "VALUE",
+    source_family: str = SOURCE_FAMILY_TREND_AVERAGE,
+    value_semantic: str = VALUE_SEMANTIC_PRICE_LEVEL,
 ) -> LevelCandidate:
     return LevelCandidate(
         ticker="MWG",
@@ -25,14 +34,17 @@ def candidate(
         source_type="INDICATOR",
         source_code=code,
         timeframe=timeframe,
-        indicator_code="MA",
+        indicator_code=indicator_code,
         config_id=sum(
             (index + 1) * ord(char)
             for index, char in enumerate(f"{code}:{timeframe}:{length}")
         ),
         config_code=code,
-        component_code="VALUE",
+        component_code=component_code,
         source_date=AS_OF,
+        source_role=SOURCE_ROLE_LEVEL,
+        source_family=source_family,
+        value_semantic=value_semantic,
         metadata={"length": length, "parameters": {"length": length}},
     )
 
@@ -121,3 +133,95 @@ def test_result_is_deterministic() -> None:
     second = build_level_ladder_from_data(current(), candidates)
 
     assert first == second
+
+
+def confirmation(value: float, *, timeframe: str = "D") -> ConfirmationContext:
+    return ConfirmationContext(
+        ticker="MWG",
+        as_of_date=AS_OF,
+        source_code=f"RSI14_{timeframe}",
+        source_family="MOMENTUM_CONFIRMATION",
+        timeframe=timeframe,
+        indicator_code="RSI",
+        config_id=900 + ord(timeframe),
+        config_code=f"RSI14_{timeframe}",
+        component_code="VALUE",
+        value=value,
+        source_date=AS_OF,
+        metadata={"parameters": {"length": 14}},
+    )
+
+
+def test_bb_level_can_cluster_with_ma_and_preserves_family_diversity() -> None:
+    result = build_level_ladder_from_data(
+        current(),
+        [
+            candidate(95.0, "MA20_D"),
+            candidate(
+                95.2,
+                "BB20_2_D:LOWER",
+                indicator_code="BB",
+                component_code="LOWER",
+                source_family=SOURCE_FAMILY_VOLATILITY_BAND,
+            ),
+        ],
+        cluster_threshold_pct=0.01,
+    )
+
+    assert result.support_levels[0].source_count == 2
+    assert result.support_levels[0].source_family_count == 2
+    assert {source.source_family for source in result.support_levels[0].sources} == {
+        SOURCE_FAMILY_TREND_AVERAGE,
+        SOURCE_FAMILY_VOLATILITY_BAND,
+    }
+
+
+def test_same_family_sources_do_not_count_as_independent_families() -> None:
+    result = build_level_ladder_from_data(
+        current(),
+        [
+            candidate(95.0, "MA20_D"),
+            candidate(95.1, "MA50_D", length=50),
+            candidate(95.2, "MA100_D", length=100),
+            candidate(95.3, "MA200_D", length=200),
+        ],
+        cluster_threshold_pct=0.01,
+    )
+
+    level = result.support_levels[0]
+    assert level.source_count == 4
+    assert level.source_family_count == 1
+
+
+def test_rsi_confirmation_changes_strength_but_not_proximity_rank() -> None:
+    candidates = [
+        candidate(95.0, "MA20_D"),
+        candidate(90.0, "MA50_D", length=50),
+    ]
+
+    baseline = build_level_ladder_from_data(current(), candidates)
+    confirmed = build_level_ladder_from_data(
+        current(),
+        candidates,
+        confirmations=[confirmation(25.0)],
+    )
+
+    assert [level.rank for level in confirmed.support_levels] == ["S1", "S2"]
+    assert [level.price for level in confirmed.support_levels] == [
+        level.price for level in baseline.support_levels
+    ]
+    assert confirmed.support_levels[0].strength_score > baseline.support_levels[0].strength_score
+    assert confirmed.confirmations[0].indicator_code == "RSI"
+
+
+def test_non_price_semantic_is_rejected_from_level_pipeline() -> None:
+    bad = candidate(
+        95.0,
+        "RSI14_D",
+        indicator_code="RSI",
+        value_semantic="OSCILLATOR",
+    )
+
+    with pytest.raises(ValueError, match="ValueSemantic=PRICE_LEVEL"):
+        build_level_ladder_from_data(current(), [bad])
+
