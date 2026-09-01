@@ -24,8 +24,16 @@ When the request involves architecture, system design, solution design, componen
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
 - [[../.github/instructions/database.instructions|Database Instructions]]
-- [[../.github/agents/DB_Metadata|DB Metadata]]
+- [[reference/DB_Metadata|DB Metadata]]
 - [[runbook/MCP_DuckDB|DuckDB MCP Runbook]]
+
+### Generated Database Context
+- [[reference/DB_Metadata|DB Metadata]]
+- `reference/dim_indicator.parquet`
+- `reference/dim_indicator_component.parquet`
+- `reference/dim_indicator_config.parquet`
+
+Read the Markdown file for structure, then the Parquet snapshots for current indicator metadata/configuration values. The four files are refreshed together by `exportDuckDB_metadata()`.
 
 ### Technical Indicators
 - [[architecture/Indicator_Engine|Indicator Engine Architecture]]
@@ -73,7 +81,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[../.github/agents/Instructions/project_structured|Project Structure - Legacy Reference]]
 
 ## Reference
-- [[../.github/agents/DB_Metadata|DB Metadata]]
+- [[reference/DB_Metadata|DB Metadata]]
 
 ## Backlog
 - [[backlog/README|Backlog Guide]]
