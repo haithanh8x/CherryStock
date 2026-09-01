@@ -147,7 +147,13 @@ def exportDuckDB_metadata(
     db_path: str | os.PathLike[str] | None = None,
     output_path: str | os.PathLike[str] | None = None,
 ) -> Path:
-    """Export schema documentation and indicator dimension snapshots.\n\n    The default output set is written to ``docs/reference`` and contains\n    ``DB_Metadata.md`` plus one Parquet file for each indicator dimension.\n    """
+    """Export schema documentation and indicator dimension snapshots.
+
+    The default output set is written to ``docs/reference`` and contains
+    ``DB_Metadata.md`` plus one Parquet file for each indicator dimension.
+    A custom ``output_path`` changes the Markdown path and places the Parquet
+    snapshots in that file\'s parent directory.
+    """
     source_db = Path(db_path).expanduser() if db_path else settings.local_db_path.expanduser()
     target_path = (
         Path(output_path).expanduser()
