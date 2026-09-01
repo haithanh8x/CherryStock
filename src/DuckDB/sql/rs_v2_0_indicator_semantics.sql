@@ -1,0 +1,2 @@
+-- R/S V2.0 indicator semantic metadata migration.
+-- Placeholder; populated in the next commit.
