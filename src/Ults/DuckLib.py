@@ -10,9 +10,9 @@ from cherrystock.infrastructure.database.connection import DuckDBConnectionFacto
 
 
 _INDICATOR_METADATA_EXPORTS: tuple[tuple[str, str], ...] = (
-    ("dim_indicator", "dim_indicator.parquet"),
-    ("dim_indicator_component", "dim_indicator_component.parquet"),
-    ("dim_indicator_config", "dim_indicator_config.parquet"),
+    ("dim_indicator", "dim_indicator.csv"),
+    ("dim_indicator_component", "dim_indicator_component.csv"),
+    ("dim_indicator_config", "dim_indicator_config.csv"),
 )
 
 
@@ -150,7 +150,7 @@ def exportDuckDB_metadata(
     """Export schema documentation and indicator dimension snapshots.
 
     The default output set is written to ``docs/reference`` and contains
-    ``DB_Metadata.md`` plus one Parquet file for each indicator dimension.
+    ``DB_Metadata.md`` plus one CSV file for each indicator dimension.
     A custom ``output_path`` changes the Markdown path and places the Parquet
     snapshots in that file\'s parent directory.
     """
@@ -177,12 +177,12 @@ def exportDuckDB_metadata(
     sections.append("Use this generated reference set in the following order:")
     sections.append("")
     sections.append("1. Read `DB_Metadata.md` for database objects, columns, types, nullability and defaults.")
-    sections.append("2. Read `dim_indicator.parquet` for indicator master definitions and runtime/library mappings.")
-    sections.append("3. Read `dim_indicator_component.parquet` for multi-output component contracts.")
-    sections.append("4. Read `dim_indicator_config.parquet` for executable parameter/timeframe configurations.")
+    sections.append("2. Read `dim_indicator.csv` for indicator master definitions and runtime/library mappings.")
+    sections.append("3. Read `dim_indicator_component.csv` for multi-output component contracts.")
+    sections.append("4. Read `dim_indicator_config.csv` for executable parameter/timeframe configurations.")
     sections.append("5. Join the three snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.")
     sections.append("")
-    sections.append("The Parquet files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.")
+    sections.append("The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.")
     sections.append("")
 
     try:
@@ -252,7 +252,7 @@ def exportDuckDB_metadata(
 
             sections.append("## Indicator metadata snapshots")
             sections.append("")
-            sections.append("| DuckDB source | Parquet file | Rows |")
+            sections.append("| DuckDB source | CSV file | Rows |")
             sections.append("| --- | --- | ---: |")
 
             for table_name, file_name in _INDICATOR_METADATA_EXPORTS:
@@ -285,7 +285,7 @@ def exportDuckDB_metadata(
                     con.execute(
                         f"COPY (SELECT {column_list} FROM {qualified_table}) "
                         f"TO {_quote_sql_literal(str(temporary_path))} "
-                        "(FORMAT PARQUET, COMPRESSION ZSTD)"
+                        "(FORMAT CSV, HEADER TRUE)"
                     )
                     temporary_path.replace(export_path)
                 finally:
