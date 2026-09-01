@@ -1,7 +1,9 @@
-"""Support / Resistance Level Ladder V1.
+"""Support / Resistance Level Ladder V2.0.
 
-V1 uses MA20/50/100/200 on D/W/M from the Indicator Engine public views.
-Database access is read-only; calculation and rendering remain separate.
+V2.0 extends the MA-only ladder with Bollinger Band price levels and RSI
+confirmation while keeping Indicator Engine public views as the only
+technical-indicator read contracts. Database access is read-only; calculation
+and rendering remain separate.
 """
 
 from __future__ import annotations
@@ -24,6 +26,18 @@ except ModuleNotFoundError:  # allows import from repository root in pytest
 LOGGER = logging.getLogger(__name__)
 SUPPORTED_TIMEFRAMES = ("D", "W", "M")
 V1_MA_LENGTHS = (20, 50, 100, 200)
+BB_LEVEL_COMPONENTS = ("LOWER", "MIDDLE", "UPPER")
+
+SOURCE_ROLE_LEVEL = "LEVEL"
+SOURCE_ROLE_CONTEXT = "CONTEXT"
+SOURCE_ROLE_CONFIRMATION = "CONFIRMATION"
+
+SOURCE_FAMILY_TREND_AVERAGE = "TREND_AVERAGE"
+SOURCE_FAMILY_VOLATILITY_BAND = "VOLATILITY_BAND"
+SOURCE_FAMILY_MOMENTUM_CONFIRMATION = "MOMENTUM_CONFIRMATION"
+
+VALUE_SEMANTIC_PRICE_LEVEL = "PRICE_LEVEL"
+VALUE_SEMANTIC_OSCILLATOR = "OSCILLATOR"
 
 
 @dataclass(frozen=True)
@@ -31,6 +45,22 @@ class CurrentPrice:
     ticker: str
     as_of_date: date
     price: float
+
+
+@dataclass(frozen=True)
+class ConfirmationContext:
+    ticker: str
+    as_of_date: date
+    source_code: str
+    source_family: str
+    timeframe: str | None
+    indicator_code: str
+    config_id: int
+    config_code: str
+    component_code: str
+    value: float
+    source_date: date
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -45,6 +75,9 @@ class LevelCandidate:
     config_code: str | None
     component_code: str | None
     source_date: date
+    source_role: str = SOURCE_ROLE_LEVEL
+    source_family: str = "UNCLASSIFIED"
+    value_semantic: str = VALUE_SEMANTIC_PRICE_LEVEL
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -59,6 +92,9 @@ class NormalizedLevel:
     config_id: int | None
     config_code: str | None
     component_code: str | None
+    source_role: str
+    source_family: str
+    value_semantic: str
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -70,6 +106,7 @@ class LevelZone:
     representative_price: float
     sources: tuple[NormalizedLevel, ...]
     source_count: int
+    source_family_count: int
     level_type: str | None = None
     distance_pct: float | None = None
 
@@ -82,6 +119,7 @@ class ScoredLevel:
     timeframe_score: float
     touch_score: float
     recency_score: float
+    confirmation_score: float
     touch_count: int
 
 
@@ -95,6 +133,7 @@ class RankedLevel:
     distance_pct: float
     strength_score: float
     source_count: int
+    source_family_count: int
     sources: tuple[NormalizedLevel, ...]
 
 
@@ -110,6 +149,7 @@ class LevelLadderResult:
     upside_to_r1_pct: float | None
     downside_to_s1_pct: float | None
     risk_reward_ratio: float | None
+    confirmations: tuple[ConfirmationContext, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -118,6 +158,8 @@ class StrengthConfig:
     timeframe_weight: float = 0.25
     touch_weight: float = 0.25
     recency_weight: float = 0.15
+    confirmation_weight: float = 0.10
+    family_confluence_target: int = 3
     touch_target: int = 4
     touch_tolerance_pct: float = 0.003
     recency_days: int = 180
@@ -127,6 +169,11 @@ class StrengthConfig:
     ma_length_weights: dict[int, float] = field(
         default_factory=lambda: {20: 0.8, 50: 1.0, 100: 1.15, 200: 1.3}
     )
+    bb_component_weights: dict[str, float] = field(
+        default_factory=lambda: {"LOWER": 1.0, "MIDDLE": 0.8, "UPPER": 1.0}
+    )
+    rsi_oversold: float = 30.0
+    rsi_overbought: float = 70.0
 
 
 def _normalize_ticker(ticker: str) -> str:
@@ -207,6 +254,8 @@ def _validate_public_views(connection: Any) -> None:
             "IndicatorIsActive",
             "ComponentCode",
             "ComponentIsActive",
+            "ValueSemantic",
+            "Unit",
         },
     )
 
@@ -283,19 +332,34 @@ def load_price_history(
     )
 
 
-def load_ma_level_candidates(
+def _load_latest_indicator_rows(
     connection: Any,
     *,
     ticker: str,
     as_of_date: date,
-    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
-) -> list[LevelCandidate]:
-    """Load latest MA20/50/100/200 D/W/M values from public Indicator Engine views."""
+    indicator_code: str,
+    timeframes: Sequence[str],
+    component_codes: Sequence[str],
+) -> pd.DataFrame:
+    """Load latest point-in-time rows for one indicator from public SSOT views."""
     normalized_timeframes = _validate_timeframes(timeframes)
+    normalized_components = tuple(
+        dict.fromkeys(str(code).strip().upper() for code in component_codes)
+    )
+    if not normalized_components:
+        raise ValueError("component_codes must not be empty")
+
     _validate_public_views(connection)
-    placeholders = ", ".join("?" for _ in normalized_timeframes)
-    params: list[Any] = [ticker, as_of_date, *normalized_timeframes]
-    df = connection.execute(
+    tf_placeholders = ", ".join("?" for _ in normalized_timeframes)
+    component_placeholders = ", ".join("?" for _ in normalized_components)
+    params: list[Any] = [
+        ticker,
+        as_of_date,
+        str(indicator_code).strip().upper(),
+        *normalized_timeframes,
+        *normalized_components,
+    ]
+    return connection.execute(
         f"""
         WITH ranked AS (
             SELECT
@@ -308,6 +372,8 @@ def load_ma_level_candidates(
                 cfg."IndicatorCode",
                 cfg."Timeframe",
                 cfg."Parameters",
+                cfg."ValueSemantic",
+                cfg."Unit",
                 ROW_NUMBER() OVER (
                     PARTITION BY val."ConfigId", val."ComponentCode"
                     ORDER BY val."Date" DESC
@@ -318,26 +384,63 @@ def load_ma_level_candidates(
                AND cfg."ComponentCode" = val."ComponentCode"
             WHERE val."Ticker" = ?
               AND val."Date" <= ?
-              AND cfg."IndicatorCode" = 'MA'
-              AND cfg."Timeframe" IN ({placeholders})
+              AND cfg."IndicatorCode" = ?
+              AND cfg."Timeframe" IN ({tf_placeholders})
               AND cfg."ConfigIsEnabled" = TRUE
               AND cfg."IndicatorIsActive" = TRUE
               AND COALESCE(cfg."ComponentIsActive", TRUE) = TRUE
-              AND val."ComponentCode" = 'VALUE'
+              AND val."ComponentCode" IN ({component_placeholders})
               AND val."Value" IS NOT NULL
         )
         SELECT
             "Ticker", "Date", "ConfigId", "ComponentCode", "Value",
-            "ConfigCode", "IndicatorCode", "Timeframe", "Parameters"
+            "ConfigCode", "IndicatorCode", "Timeframe", "Parameters",
+            "ValueSemantic", "Unit"
         FROM ranked
         WHERE rn = 1
-        ORDER BY "Timeframe", "ConfigId"
+        ORDER BY "Timeframe", "ConfigId", "ComponentCode"
         """,
         params,
     ).df()
 
+
+def _require_value_semantic(
+    row: Any,
+    *,
+    expected: str,
+) -> str:
+    semantic = str(row.ValueSemantic or "").strip().upper()
+    if semantic != expected:
+        raise ValueError(
+            "Invalid ValueSemantic for "
+            f"{row.IndicatorCode}/{row.ComponentCode}/ConfigId={row.ConfigId}: "
+            f"expected={expected!r}, actual={semantic!r}"
+        )
+    return semantic
+
+
+def load_ma_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+) -> list[LevelCandidate]:
+    """MA provider: latest MA20/50/100/200 D/W/M price levels from Indicator SSOT."""
+    df = _load_latest_indicator_rows(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        indicator_code="MA",
+        timeframes=timeframes,
+        component_codes=("VALUE",),
+    )
+
     candidates: list[LevelCandidate] = []
     for row in df.itertuples(index=False):
+        semantic = _require_value_semantic(
+            row, expected=VALUE_SEMANTIC_PRICE_LEVEL
+        )
         parameters = _parse_parameters(row.Parameters)
         length_raw = parameters.get("length")
         if length_raw is None:
@@ -350,6 +453,7 @@ def load_ma_level_candidates(
             ) from None
         if length not in V1_MA_LENGTHS:
             continue
+
         price = float(row.Value)
         if not math.isfinite(price) or price <= 0:
             raise ValueError(f"Invalid MA value for ConfigId={row.ConfigId}: {row.Value!r}")
@@ -365,11 +469,133 @@ def load_ma_level_candidates(
                 config_code=str(row.ConfigCode),
                 component_code=str(row.ComponentCode).upper(),
                 source_date=pd.Timestamp(row.Date).date(),
-                metadata={"parameters": parameters, "length": length},
+                source_role=SOURCE_ROLE_LEVEL,
+                source_family=SOURCE_FAMILY_TREND_AVERAGE,
+                value_semantic=semantic,
+                metadata={
+                    "parameters": parameters,
+                    "length": length,
+                    "unit": row.Unit,
+                },
             )
         )
     return candidates
 
+
+def load_bb_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+) -> list[LevelCandidate]:
+    """BB provider: only LOWER/MIDDLE/UPPER components may create price levels."""
+    df = _load_latest_indicator_rows(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        indicator_code="BB",
+        timeframes=timeframes,
+        component_codes=BB_LEVEL_COMPONENTS,
+    )
+
+    candidates: list[LevelCandidate] = []
+    for row in df.itertuples(index=False):
+        semantic = _require_value_semantic(
+            row, expected=VALUE_SEMANTIC_PRICE_LEVEL
+        )
+        component = str(row.ComponentCode).upper()
+        price = float(row.Value)
+        if not math.isfinite(price) or price <= 0:
+            raise ValueError(f"Invalid BB value for ConfigId={row.ConfigId}: {row.Value!r}")
+        candidates.append(
+            LevelCandidate(
+                ticker=str(row.Ticker).upper(),
+                price=price,
+                source_type="INDICATOR",
+                source_code=f"{row.ConfigCode}:{component}",
+                timeframe=str(row.Timeframe).upper(),
+                indicator_code=str(row.IndicatorCode).upper(),
+                config_id=int(row.ConfigId),
+                config_code=str(row.ConfigCode),
+                component_code=component,
+                source_date=pd.Timestamp(row.Date).date(),
+                source_role=SOURCE_ROLE_LEVEL,
+                source_family=SOURCE_FAMILY_VOLATILITY_BAND,
+                value_semantic=semantic,
+                metadata={
+                    "parameters": _parse_parameters(row.Parameters),
+                    "unit": row.Unit,
+                },
+            )
+        )
+    return candidates
+
+
+def load_rsi_confirmation_contexts(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+) -> list[ConfirmationContext]:
+    """RSI provider: latest D/W/M values used only as confirmation context."""
+    df = _load_latest_indicator_rows(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        indicator_code="RSI",
+        timeframes=timeframes,
+        component_codes=("VALUE",),
+    )
+
+    contexts: list[ConfirmationContext] = []
+    for row in df.itertuples(index=False):
+        _require_value_semantic(row, expected=VALUE_SEMANTIC_OSCILLATOR)
+        value = float(row.Value)
+        if not math.isfinite(value) or not 0.0 <= value <= 100.0:
+            raise ValueError(f"Invalid RSI value for ConfigId={row.ConfigId}: {row.Value!r}")
+        contexts.append(
+            ConfirmationContext(
+                ticker=str(row.Ticker).upper(),
+                as_of_date=as_of_date,
+                source_code=str(row.ConfigCode),
+                source_family=SOURCE_FAMILY_MOMENTUM_CONFIRMATION,
+                timeframe=str(row.Timeframe).upper(),
+                indicator_code="RSI",
+                config_id=int(row.ConfigId),
+                config_code=str(row.ConfigCode),
+                component_code=str(row.ComponentCode).upper(),
+                value=value,
+                source_date=pd.Timestamp(row.Date).date(),
+                metadata={
+                    "parameters": _parse_parameters(row.Parameters),
+                    "unit": row.Unit,
+                },
+            )
+        )
+    return contexts
+
+
+def _source_provider_registry() -> dict[str, dict[str, Any]]:
+    """Return the V2.0 provider registry without coupling the core pipeline to sources."""
+    return {
+        "MA": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_TREND_AVERAGE,
+            "loader": load_ma_level_candidates,
+        },
+        "BB": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_VOLATILITY_BAND,
+            "loader": load_bb_level_candidates,
+        },
+        "RSI": {
+            "role": SOURCE_ROLE_CONFIRMATION,
+            "family": SOURCE_FAMILY_MOMENTUM_CONFIRMATION,
+            "loader": load_rsi_confirmation_contexts,
+        },
+    }
 
 def normalize_levels(
     candidates: Iterable[LevelCandidate],
@@ -386,14 +612,27 @@ def normalize_levels(
             raise ValueError("Candidate source_date is after CurrentPrice.as_of_date")
         if candidate.timeframe and candidate.timeframe not in SUPPORTED_TIMEFRAMES:
             raise ValueError(f"Unsupported candidate timeframe: {candidate.timeframe}")
+        if candidate.source_role != SOURCE_ROLE_LEVEL:
+            raise ValueError(
+                f"Only LEVEL candidates may enter normalization: {candidate.source_role}"
+            )
+        if candidate.value_semantic != VALUE_SEMANTIC_PRICE_LEVEL:
+            raise ValueError(
+                "LEVEL candidate must have ValueSemantic=PRICE_LEVEL: "
+                f"{candidate.source_code}={candidate.value_semantic}"
+            )
         price = float(candidate.price)
         if not math.isfinite(price) or price <= 0:
             raise ValueError(f"Invalid candidate price: {candidate.price!r}")
         tf_weight = config.timeframe_weights.get(candidate.timeframe or "", 1.0)
-        ma_weight = 1.0
+        source_weight = 1.0
         if candidate.indicator_code == "MA":
-            ma_weight = config.ma_length_weights.get(
+            source_weight = config.ma_length_weights.get(
                 int(candidate.metadata.get("length", 0) or 0), 1.0
+            )
+        elif candidate.indicator_code == "BB":
+            source_weight = config.bb_component_weights.get(
+                candidate.component_code or "", 1.0
             )
         result.append(
             NormalizedLevel(
@@ -401,11 +640,14 @@ def normalize_levels(
                 source_type=candidate.source_type,
                 source_code=candidate.source_code,
                 timeframe=candidate.timeframe,
-                weight=float(tf_weight * ma_weight),
+                weight=float(tf_weight * source_weight),
                 source_date=candidate.source_date,
                 config_id=candidate.config_id,
                 config_code=candidate.config_code,
                 component_code=candidate.component_code,
+                source_role=candidate.source_role,
+                source_family=candidate.source_family,
+                value_semantic=candidate.value_semantic,
                 metadata=dict(candidate.metadata),
             )
         )
@@ -446,6 +688,7 @@ def cluster_levels(
             representative_price=_weighted_price(cluster),
             sources=tuple(cluster),
             source_count=len(cluster),
+            source_family_count=len({x.source_family for x in cluster}),
         )
         for index, cluster in enumerate(clusters, start=1)
     ]
@@ -495,31 +738,78 @@ def _touch_count(
     return int(((lows <= high) & (highs >= low)).fillna(False).sum())
 
 
+def _rsi_confirmation_score(
+    zone: LevelZone,
+    confirmations: Sequence[ConfirmationContext],
+    config: StrengthConfig,
+) -> float:
+    if zone.level_type not in {"SUPPORT", "RESISTANCE"} or not confirmations:
+        return 0.0
+
+    weighted_total = 0.0
+    weight_sum = 0.0
+    for context in confirmations:
+        if context.indicator_code != "RSI":
+            continue
+        value = float(context.value)
+        if zone.level_type == "SUPPORT":
+            denominator = 50.0 - config.rsi_oversold
+            raw = (50.0 - value) / denominator * 100.0 if denominator > 0 else 0.0
+        else:
+            denominator = config.rsi_overbought - 50.0
+            raw = (value - 50.0) / denominator * 100.0 if denominator > 0 else 0.0
+        score = max(0.0, min(raw, 100.0))
+        weight = config.timeframe_weights.get(context.timeframe or "", 1.0)
+        weighted_total += score * max(weight, 0.0)
+        weight_sum += max(weight, 0.0)
+
+    return weighted_total / weight_sum if weight_sum > 0 else 0.0
+
+
 def score_zones(
     zones: Sequence[LevelZone],
     *,
     current_price: CurrentPrice,
     price_history: pd.DataFrame | None,
     strength_config: StrengthConfig | None = None,
+    confirmations: Sequence[ConfirmationContext] = (),
 ) -> list[ScoredLevel]:
-    """Strength V1 = confluence + timeframe + touches + recency, normalized 0..100."""
+    """Strength V2.0 uses family diversity plus optional RSI confirmation."""
     config = strength_config or StrengthConfig()
-    weights = (
+    base_weights = (
         config.confluence_weight,
         config.timeframe_weight,
         config.touch_weight,
         config.recency_weight,
     )
-    if any(w < 0 for w in weights) or sum(weights) <= 0:
-        raise ValueError("Strength weights must be non-negative and sum to > 0")
+    all_weights = (*base_weights, config.confirmation_weight)
+    if any(w < 0 for w in all_weights) or sum(base_weights) <= 0:
+        raise ValueError("Strength weights must be non-negative and base weights sum to > 0")
+    if config.family_confluence_target <= 0:
+        raise ValueError("family_confluence_target must be > 0")
     if config.touch_target <= 0 or config.recency_days <= 0:
         raise ValueError("touch_target and recency_days must be > 0")
     if not 0 <= config.touch_tolerance_pct <= 0.05:
         raise ValueError("touch_tolerance_pct must be between 0 and 0.05")
-    tf_total = sum(config.timeframe_weights.get(tf, 0.0) for tf in SUPPORTED_TIMEFRAMES) or 1.0
+    if not 0 <= config.rsi_oversold < 50 < config.rsi_overbought <= 100:
+        raise ValueError("RSI thresholds must satisfy 0 <= oversold < 50 < overbought <= 100")
+
+    for context in confirmations:
+        if context.ticker.upper() != current_price.ticker:
+            raise ValueError("Confirmation ticker does not match CurrentPrice")
+        if context.source_date > current_price.as_of_date:
+            raise ValueError("Confirmation source_date is after CurrentPrice.as_of_date")
+
+    tf_total = (
+        sum(config.timeframe_weights.get(tf, 0.0) for tf in SUPPORTED_TIMEFRAMES)
+        or 1.0
+    )
     result: list[ScoredLevel] = []
     for zone in zones:
-        confluence = min(zone.source_count / 4.0, 1.0) * 100.0
+        confluence = min(
+            zone.source_family_count / float(config.family_confluence_target),
+            1.0,
+        ) * 100.0
         timeframes = {x.timeframe for x in zone.sources if x.timeframe}
         timeframe = min(
             sum(config.timeframe_weights.get(tf, 0.0) for tf in timeframes) / tf_total,
@@ -530,12 +820,20 @@ def score_zones(
         latest = max(x.source_date for x in zone.sources)
         age = max((current_price.as_of_date - latest).days, 0)
         recency = max(0.0, 1.0 - age / float(config.recency_days)) * 100.0
-        score = (
+        confirmation = _rsi_confirmation_score(zone, confirmations, config)
+
+        weighted_score = (
             confluence * config.confluence_weight
             + timeframe * config.timeframe_weight
             + touch * config.touch_weight
             + recency * config.recency_weight
-        ) / sum(weights)
+        )
+        effective_weight = sum(base_weights)
+        if confirmations and zone.level_type in {"SUPPORT", "RESISTANCE"}:
+            weighted_score += confirmation * config.confirmation_weight
+            effective_weight += config.confirmation_weight
+
+        score = weighted_score / effective_weight
         result.append(
             ScoredLevel(
                 zone=zone,
@@ -544,11 +842,11 @@ def score_zones(
                 timeframe_score=round(timeframe, 2),
                 touch_score=round(touch, 2),
                 recency_score=round(recency, 2),
+                confirmation_score=round(confirmation, 2),
                 touch_count=touches,
             )
         )
     return result
-
 
 def rank_levels(
     levels: Sequence[ScoredLevel],
@@ -582,6 +880,7 @@ def rank_levels(
             distance_pct=round(zone.distance_pct, 4),
             strength_score=item.strength_score,
             source_count=zone.source_count,
+            source_family_count=zone.source_family_count,
             sources=zone.sources,
         )
 
@@ -601,6 +900,7 @@ def build_level_ladder_from_data(
     max_support_levels: int = 3,
     max_resistance_levels: int = 3,
     strength_config: StrengthConfig | None = None,
+    confirmations: Sequence[ConfirmationContext] = (),
 ) -> LevelLadderResult:
     """Pure calculation pipeline used by production and focused tests."""
     normalized = normalize_levels(
@@ -617,6 +917,7 @@ def build_level_ladder_from_data(
         current_price=current_price,
         price_history=price_history,
         strength_config=strength_config,
+        confirmations=confirmations,
     )
     supports, resistances = rank_levels(
         scored,
@@ -643,6 +944,7 @@ def build_level_ladder_from_data(
         upside_to_r1_pct=round(upside, 4) if upside is not None else None,
         downside_to_s1_pct=round(downside, 4) if downside is not None else None,
         risk_reward_ratio=round(rr, 4) if rr is not None else None,
+        confirmations=tuple(confirmations),
     )
 
 
@@ -659,7 +961,7 @@ def build_level_ladder(
     strength_config: StrengthConfig | None = None,
     connection: Any | None = None,
 ) -> LevelLadderResult:
-    """Build RS Ladder V1 from current Close and MA20/50/100/200 D/W/M."""
+    """Build R/S Ladder V2.0 from registered LEVEL and CONFIRMATION providers."""
     normalized_ticker = _normalize_ticker(ticker)
     normalized_timeframes = _validate_timeframes(timeframes)
     _validate_pct("cluster_threshold_pct", cluster_threshold_pct)
@@ -667,20 +969,25 @@ def build_level_ladder(
     if max_support_levels <= 0 or max_resistance_levels <= 0:
         raise ValueError("max_support_levels and max_resistance_levels must be > 0")
 
-    sources = {"MA"} if enabled_sources is None else {
-        str(source).strip().upper() for source in enabled_sources
-    }
-    unsupported = sources - {"MA"}
+    registry = _source_provider_registry()
+    sources = (
+        set(registry)
+        if enabled_sources is None
+        else {str(source).strip().upper() for source in enabled_sources}
+    )
+    unsupported = sources - set(registry)
     if unsupported:
         raise ValueError(
-            f"RS Ladder V1 only supports MA; unsupported={sorted(unsupported)}"
+            f"Unsupported R/S V2.0 sources: {sorted(unsupported)}; "
+            f"supported={sorted(registry)}"
         )
 
     LOGGER.info(
-        "RS Ladder V1 start | ticker=%s as_of=%s timeframes=%s cluster=%.4f",
+        "RS Ladder V2.0 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster=%.4f",
         normalized_ticker,
         as_of_date,
         normalized_timeframes,
+        sorted(sources),
         cluster_threshold_pct,
     )
 
@@ -688,24 +995,36 @@ def build_level_ladder(
         current = load_current_price(
             con, ticker=normalized_ticker, as_of_date=as_of_date
         )
-        candidates = (
-            load_ma_level_candidates(
+        candidates: list[LevelCandidate] = []
+        confirmations: list[ConfirmationContext] = []
+
+        for source in sorted(sources):
+            spec = registry[source]
+            loaded = spec["loader"](
                 con,
                 ticker=normalized_ticker,
                 as_of_date=current.as_of_date,
                 timeframes=normalized_timeframes,
             )
-            if "MA" in sources
-            else []
-        )
+            if spec["role"] == SOURCE_ROLE_LEVEL:
+                candidates.extend(loaded)
+            elif spec["role"] == SOURCE_ROLE_CONFIRMATION:
+                confirmations.extend(loaded)
+            else:
+                raise RuntimeError(
+                    f"Unsupported provider role in V2.0 registry: {spec['role']}"
+                )
+
         history = load_price_history(
             con, ticker=normalized_ticker, as_of_date=current.as_of_date
         )
         LOGGER.info(
-            "RS Ladder V1 inputs | ticker=%s date=%s candidates=%d history=%d",
+            "RS Ladder V2.0 inputs | ticker=%s date=%s candidates=%d "
+            "confirmations=%d history=%d",
             normalized_ticker,
             current.as_of_date,
             len(candidates),
+            len(confirmations),
             len(history),
         )
         result = build_level_ladder_from_data(
@@ -717,9 +1036,10 @@ def build_level_ladder(
             max_support_levels=max_support_levels,
             max_resistance_levels=max_resistance_levels,
             strength_config=strength_config,
+            confirmations=confirmations,
         )
         LOGGER.info(
-            "RS Ladder V1 success | ticker=%s supports=%d resistances=%d",
+            "RS Ladder V2.0 success | ticker=%s supports=%d resistances=%d",
             normalized_ticker,
             len(result.support_levels),
             len(result.resistance_levels),
@@ -733,5 +1053,5 @@ def build_level_ladder(
         with DuckDBManager(read_only=True) as con:
             return calculate(con)
     except Exception:
-        LOGGER.exception("RS Ladder V1 failed | ticker=%s", normalized_ticker)
+        LOGGER.exception("RS Ladder V2.0 failed | ticker=%s", normalized_ticker)
         raise
