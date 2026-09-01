@@ -75,3 +75,7 @@ Thumbs.db
 state.json
 CherryStock.code-workspace
 *.code-workspace
+
+# Keep generated reference artifacts in Git
+!docs/reference/
+!docs/reference/**

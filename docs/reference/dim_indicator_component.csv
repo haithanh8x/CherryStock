@@ -1,0 +1,8 @@
+IndicatorCode,ComponentCode,ComponentName,OutputPrefix,SortOrder,IsPrimary,IsActive
+RSI,VALUE,RSI Value,,1,true,true
+BB,LOWER,Lower Band,BBL,1,false,true
+BB,MIDDLE,Middle Band,BBM,2,false,true
+BB,UPPER,Upper Band,BBU,3,true,true
+BB,WIDTH,Band Width,BBB,4,false,true
+BB,PERCENT,Percent Position,BBP,5,false,true
+MA,VALUE,MA Value,,1,true,true
