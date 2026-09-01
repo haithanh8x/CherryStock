@@ -597,6 +597,7 @@ def _source_provider_registry() -> dict[str, dict[str, Any]]:
         },
     }
 
+
 def normalize_levels(
     candidates: Iterable[LevelCandidate],
     *,
@@ -847,6 +848,7 @@ def score_zones(
             )
         )
     return result
+
 
 def rank_levels(
     levels: Sequence[ScoredLevel],
