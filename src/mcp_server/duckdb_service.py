@@ -1,4 +1,5 @@
-"""Read-only DuckDB service used by CherryStock MCP tools."""
+"""DuckDB services used by CherryStock MCP tools: read-only queries plus a
+guarded, explicit-transaction INSERT/UPDATE/DELETE write surface."""
 
 from __future__ import annotations
 
@@ -483,3 +484,109 @@ class DuckDBReadService:
             "truncated": truncated,
             "rows": rows,
         }
+
+
+def _extract_affected_rows(cursor: Any) -> int | None:
+    """Best-effort read of DuckDB's INSERT/UPDATE/DELETE row-count result."""
+
+    try:
+        rows = cursor.fetchall()
+    except Exception:
+        return None
+    if len(rows) == 1 and len(rows[0]) == 1 and isinstance(rows[0][0], int):
+        return int(rows[0][0])
+    return None
+
+
+class DuckDBWriteService:
+    """Guarded write-side service exposing explicit-transaction INSERT/UPDATE/DELETE.
+
+    Only already-validated (``security.validate_write_sql``) statements reach
+    this service. A single shared writer connection is held open only while a
+    caller-controlled transaction is in progress; single ad-hoc writes open,
+    commit and close their own connection.
+    """
+
+    def __init__(self) -> None:
+        self._connection: Any | None = None
+
+    def begin_transaction(self) -> dict[str, Any]:
+        """Open one write connection and start an explicit transaction."""
+
+        if self._connection is not None:
+            raise RuntimeError(
+                "A transaction is already open. Commit or roll it back first."
+            )
+        connection = DuckDBManager.get_connection(read_only=False)
+        try:
+            connection.execute("BEGIN")
+        except Exception:
+            DuckDBManager.close_connection(connection)
+            raise
+        self._connection = connection
+        return {"status": "ok", "transaction": "started"}
+
+    def commit_transaction(self) -> dict[str, Any]:
+        """Commit and close the currently open explicit transaction."""
+
+        if self._connection is None:
+            raise RuntimeError("No open transaction to commit.")
+        connection = self._connection
+        try:
+            connection.execute("COMMIT")
+        finally:
+            DuckDBManager.close_connection(connection)
+            self._connection = None
+        return {"status": "ok", "transaction": "committed"}
+
+    def rollback_transaction(self) -> dict[str, Any]:
+        """Roll back and close the currently open explicit transaction."""
+
+        if self._connection is None:
+            raise RuntimeError("No open transaction to roll back.")
+        connection = self._connection
+        try:
+            connection.execute("ROLLBACK")
+        finally:
+            DuckDBManager.close_connection(connection)
+            self._connection = None
+        return {"status": "ok", "transaction": "rolled_back"}
+
+    def execute_write(
+        self,
+        safe_sql: str,
+        params: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """Execute one validated INSERT/UPDATE/DELETE statement.
+
+        Runs inside the caller's open transaction (``begin_transaction``) when
+        present; otherwise auto-commits as its own single-statement transaction.
+        """
+
+        owns_transaction = self._connection is None
+        connection = self._connection or DuckDBManager.get_connection(read_only=False)
+        try:
+            if owns_transaction:
+                connection.execute("BEGIN")
+            cursor = connection.execute(safe_sql, params or [])
+            affected_rows = _extract_affected_rows(cursor)
+            if owns_transaction:
+                connection.execute("COMMIT")
+        except Exception:
+            if owns_transaction:
+                try:
+                    connection.execute("ROLLBACK")
+                except Exception:
+                    pass
+            raise
+        finally:
+            if owns_transaction:
+                DuckDBManager.close_connection(connection)
+
+        return {
+            "status": "ok",
+            "sql": safe_sql,
+            "affected_rows": affected_rows,
+            "transaction": "auto_committed" if owns_transaction else "pending",
+        }
+

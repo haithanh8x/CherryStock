@@ -22,7 +22,7 @@ else {
     $Python = $PythonCommand.Source
 }
 
-Write-Host "Starting CherryStock DuckDB MCP (read-only)"
+Write-Host "Starting CherryStock DuckDB MCP"
 Write-Host "Transport: $Transport"
 
 $Arguments = @(

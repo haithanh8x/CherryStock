@@ -19,7 +19,9 @@ Handle only technical-indicator metadata and calculated values:
 - `cal_indicator_values`
 - `vw_Indicator_config` and `vw_Ticker_indicators` validation
 
-Use the `cherrymon-duckdb` MCP server for every CherryMon DuckDB read and write. Do not use terminal Python scripts, direct DuckDB connections, or raw filesystem access to update the database.
+Use the `cherrymon-duckdb` MCP server for every CherryMon DuckDB read and write (metadata upserts in PHASE 1, all validation queries in PHASE 3). Do not use terminal Python scripts, direct DuckDB connections, or raw filesystem access to update metadata or query results.
+
+Exception: PHASE 2 historical backfill calls `refresh_technical_indicators()`, the Python calculation engine, which cannot be invoked as SQL through MCP. Run it through a small `scripts/` wrapper (see PHASE 2 below) and report its printed summary; do not attempt to replicate its calculation logic as hand-written SQL.
 
 ## Required Discovery
 
@@ -29,14 +31,15 @@ Before any database mutation:
 2. Identify the scenario: `NEW`, `ACTIVATE`, `NEW_PARAMETER_FAMILY`, `MODIFY`, `REPAIR`, `DEACTIVATE`, or `DELETE`.
 3. Query current master definition, components, configs, fact-row counts, D/W/M family completeness, and public-view usage for the requested scope through MCP.
 4. Verify the library function, runtime inputs, parameter schema, warmup requirement, and output component prefixes before creating or enabling a config.
-5. State a short plan and expected scope before writing.
+5. Confirm `cherrymon-duckdb` exposes write tools (`begin_transaction`, `execute_write`, `commit_transaction`, `rollback_transaction`), not only `query_readonly`. If only read tools are available, STOP and tell the user write mode must be enabled on the MCP server before PHASE 1 can proceed.
+6. State a short plan and expected scope before writing.
 
 ## Add, Activate, Modify, and Repair
 
 Follow the mandatory state machine in the reference document exactly:
 
-1. **PHASE 1 - Config metadata:** idempotently upsert definition, components, and complete D/W/M config families. Validate the complete contract before enabling production configs.
-2. **PHASE 2 - Historical backfill:** run a targeted MWG smoke test first. Then backfill only the affected `ConfigId` values using `refresh_technical_indicators()` semantics. Use full-engine backfill only when the requested change genuinely affects all enabled configs.
+1. **PHASE 1 - Config metadata:** wrap the definition/component/config upserts in one `begin_transaction()` ... `commit_transaction()` MCP call sequence. Idempotently upsert definition, components, and complete D/W/M config families. Validate the complete contract before enabling production configs. Read back the assigned `ConfigId` values via MCP after commit; they are sequence-generated and will differ across environments.
+2. **PHASE 2 - Historical backfill:** run a targeted MWG smoke test first. Then backfill only the affected `ConfigId` values using `refresh_technical_indicators()` semantics through a `scripts/` wrapper. Resolve `ConfigId` dynamically by `ConfigCode`/`IndicatorCode` inside the script (query `dim_indicator_config` at runtime) instead of hard-coding the numeric IDs read during discovery, so the script stays correct if rerun against another environment. Use full-engine backfill only when the requested change genuinely affects all enabled configs.
 3. **PHASE 3 - Validation:** validate config/component coverage, source-to-output ticker coverage, dates, null behavior, duplicate primary keys, zero-output configs, unexpected components, and sample values.
 
 For `MODIFY`, do not change the meaning of an existing `ConfigCode` with history. Create a new parameter family/config code, backfill it, validate it, then deactivate the old family only when explicitly requested.
@@ -59,6 +62,12 @@ After either operation, validate that the changed scope is absent from active co
 - Never alter `cal_indicator_values` schema, truncate it, or delete data outside the requested config scope.
 - Never mark an indicator/config production-ready unless all mandatory validation phases pass.
 - Stop immediately on a failed phase; report the exact failing condition and do not proceed to the next phase.
+
+### MCP write gotchas (confirmed during ATR14 onboarding)
+
+- Use `now()`, not the bare `CURRENT_TIMESTAMP` keyword, for `UpdatedAt`/`CreatedAt` values inside `execute_write` INSERT/UPDATE statements; `CURRENT_TIMESTAMP` in a VALUES list raised a DuckDB binder error there.
+- `vw_Indicator_config` exposes `ConfigIsEnabled`, `IndicatorIsActive`, and `ComponentIsActive`, not bare `IsEnabled`/`IsActive`. Query the underlying `dim_indicator_config.IsEnabled` / `dim_indicator.IsActive` directly when working against the base tables instead of the view.
+- `execute_write` only accepts a single `INSERT`/`UPDATE`/`DELETE` statement; issue one call per statement and hold them inside one `begin_transaction()`/`commit_transaction()` pair for a related metadata batch. On any failure mid-sequence, call `rollback_transaction()` before retrying — the write connection stays open server-side until commit or rollback.
 
 ## Required Response Format
 

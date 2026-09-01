@@ -26,6 +26,17 @@ def _read_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
     return value
 
 
+def _read_bool(name: str, default: bool) -> bool:
+    raw = (os.getenv(name) or "").strip().lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean-like value, got {raw!r}")
+
+
 @dataclass(frozen=True)
 class MCPSettings:
     """Runtime settings that are specific to the local MCP server."""
@@ -33,6 +44,7 @@ class MCPSettings:
     host: str
     port: int
     max_query_rows: int
+    write_enabled: bool
 
 
 def load_mcp_settings() -> MCPSettings:
@@ -56,6 +68,7 @@ def load_mcp_settings() -> MCPSettings:
             minimum=1,
             maximum=ABSOLUTE_MAX_QUERY_ROWS,
         ),
+        write_enabled=_read_bool("CHERRYSTOCK_MCP_ENABLE_WRITE", True),
     )
 
 

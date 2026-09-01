@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 
 from src.mcp_server.duckdb_service import DuckDBReadService
-from src.mcp_server.security import clamp_query_limit, validate_readonly_sql
+from src.mcp_server.security import (
+    clamp_query_limit,
+    validate_readonly_sql,
+    validate_write_sql,
+)
 
 
 @pytest.mark.parametrize(
@@ -57,3 +61,49 @@ def test_query_result_is_truncated_at_requested_limit(mcp_test_db):
 
     assert result["row_count"] == 2
     assert result["truncated"] is True
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "DROP TABLE main.dim_indicator",
+        "TRUNCATE main.cal_indicator_values",
+        "ALTER TABLE main.dim_indicator ADD COLUMN x INT",
+        "ATTACH 'other.duckdb'",
+        "CREATE TABLE t (x INT)",
+        "PRAGMA database_list",
+        "SET GLOBAL memory_limit='10GB'",
+        "SELECT 1",
+        "MERGE INTO t USING s ON t.id = s.id",
+        "INSERT INTO t VALUES (1); DELETE FROM t",
+    ],
+)
+def test_unsafe_write_sql_is_blocked(sql):
+    with pytest.raises(ValueError):
+        validate_write_sql(sql)
+
+
+def test_update_delete_without_where_is_blocked_by_default():
+    with pytest.raises(ValueError, match="WHERE clause"):
+        validate_write_sql("UPDATE main.dim_indicator SET IsActive = TRUE")
+    with pytest.raises(ValueError, match="WHERE clause"):
+        validate_write_sql("DELETE FROM main.dim_indicator_config")
+
+
+def test_update_delete_without_where_allowed_with_explicit_flag():
+    safe_sql = validate_write_sql(
+        "DELETE FROM main.dim_indicator_config", allow_full_scan=True
+    )
+    assert safe_sql == "DELETE FROM main.dim_indicator_config"
+
+
+def test_insert_update_delete_with_where_are_allowed():
+    assert validate_write_sql(
+        "INSERT INTO main.dim_indicator (IndicatorCode) VALUES ('ATR')"
+    )
+    assert validate_write_sql(
+        "UPDATE main.dim_indicator SET IsActive = TRUE WHERE IndicatorCode = 'ATR'"
+    )
+    assert validate_write_sql(
+        "DELETE FROM main.dim_indicator_config WHERE ConfigId = 1"
+    )

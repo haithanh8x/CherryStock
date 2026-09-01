@@ -1,8 +1,16 @@
-"""Read-only MCP server for CherryStock's local DuckDB.
+"""MCP server for CherryStock's local DuckDB.
 
-V1 intentionally exposes no database write/DDL tool. All reads use the
-centralized CherryStock DuckDB access layer and domain tools prefer public
-vw_* contracts over internal persistence tables.
+Reads use the centralized CherryStock DuckDB access layer and domain tools
+prefer public vw_* contracts over internal persistence tables.
+
+Writes are exposed through a guarded ``execute_write`` tool: only
+INSERT/UPDATE/DELETE statements are allowed (validated by
+``security.validate_write_sql``), DDL/ATTACH/PRAGMA/extension-loading stay
+forbidden, and UPDATE/DELETE require a WHERE clause unless the caller passes
+``allow_full_scan=True``. Related writes should be wrapped in
+``begin_transaction``/``commit_transaction``/``rollback_transaction`` so a
+failure mid-sequence rolls back cleanly. Set
+``CHERRYSTOCK_MCP_ENABLE_WRITE=false`` to disable the write surface entirely.
 
 Run:
     python -m src.mcp_server.duckdb_mcp --transport stdio
@@ -36,14 +44,18 @@ except ImportError:  # pragma: no cover - exercised on MCP SDK 1.x
 try:
     # Package execution (python -m src.mcp_server.duckdb_mcp)
     from .config import settings
-    from .duckdb_service import DuckDBReadService
-    from .security import clamp_query_limit, validate_readonly_sql
+    from .duckdb_service import DuckDBReadService, DuckDBWriteService
+    from .security import clamp_query_limit, validate_readonly_sql, validate_write_sql
 except ImportError:
     # Direct script execution (python path/to/duckdb_mcp.py) has no parent
     # package, so relative imports fail; fall back to absolute imports.
     from mcp_server.config import settings
-    from mcp_server.duckdb_service import DuckDBReadService
-    from mcp_server.security import clamp_query_limit, validate_readonly_sql
+    from mcp_server.duckdb_service import DuckDBReadService, DuckDBWriteService
+    from mcp_server.security import (
+        clamp_query_limit,
+        validate_readonly_sql,
+        validate_write_sql,
+    )
 
 
 def _create_mcp_server() -> Any:
@@ -64,6 +76,14 @@ def _create_mcp_server() -> Any:
 
 mcp = _create_mcp_server()
 _service = DuckDBReadService()
+_write_service = DuckDBWriteService()
+
+
+def _require_write_enabled() -> None:
+    if not settings.write_enabled:
+        raise RuntimeError(
+            "Write tools are disabled. Set CHERRYSTOCK_MCP_ENABLE_WRITE=true to enable."
+        )
 
 
 @mcp.tool()
@@ -144,9 +164,53 @@ def table_stats(relation_name: str) -> dict[str, Any]:
     return _service.table_stats(relation_name)
 
 
+@mcp.tool()
+def begin_transaction() -> dict[str, Any]:
+    """Open one explicit write transaction for a sequence of related writes."""
+
+    _require_write_enabled()
+    return _write_service.begin_transaction()
+
+
+@mcp.tool()
+def execute_write(
+    sql: str,
+    params: list[Any] | None = None,
+    allow_full_scan: bool = False,
+) -> dict[str, Any]:
+    """Execute one guarded INSERT/UPDATE/DELETE statement against CherryStock.
+
+    Runs inside the transaction opened by ``begin_transaction`` when one is
+    open; otherwise auto-commits as its own single-statement transaction.
+    UPDATE/DELETE without a WHERE clause is blocked unless
+    ``allow_full_scan=True`` is passed explicitly. DDL, ATTACH/DETACH, PRAGMA,
+    extension loading and filesystem/export functions remain forbidden.
+    """
+
+    _require_write_enabled()
+    safe_sql = validate_write_sql(sql, allow_full_scan=allow_full_scan)
+    return _write_service.execute_write(safe_sql, params)
+
+
+@mcp.tool()
+def commit_transaction() -> dict[str, Any]:
+    """Commit the currently open explicit write transaction."""
+
+    _require_write_enabled()
+    return _write_service.commit_transaction()
+
+
+@mcp.tool()
+def rollback_transaction() -> dict[str, Any]:
+    """Roll back the currently open explicit write transaction."""
+
+    _require_write_enabled()
+    return _write_service.rollback_transaction()
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="CherryStock read-only DuckDB MCP server"
+        description="CherryStock DuckDB MCP server"
     )
     parser.add_argument(
         "--transport",
