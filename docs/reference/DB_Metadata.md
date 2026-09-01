@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-01T03:58:27.469464+00:00
+- Generated at: 2026-09-01T05:31:20.726095+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -9,12 +9,12 @@
 Use this generated reference set in the following order:
 
 1. Read `DB_Metadata.md` for database objects, columns, types, nullability and defaults.
-2. Read `dim_indicator.parquet` for indicator master definitions and runtime/library mappings.
-3. Read `dim_indicator_component.parquet` for multi-output component contracts.
-4. Read `dim_indicator_config.parquet` for executable parameter/timeframe configurations.
+2. Read `dim_indicator.csv` for indicator master definitions and runtime/library mappings.
+3. Read `dim_indicator_component.csv` for multi-output component contracts.
+4. Read `dim_indicator_config.csv` for executable parameter/timeframe configurations.
 5. Join the three snapshots by `IndicatorCode`; use `ConfigId` for calculated-value relationships and `ComponentCode` for component relationships.
 
-The Parquet files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
+The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
 - Table/view count: 36
@@ -691,8 +691,8 @@ The Parquet files are data snapshots generated from the same DuckDB export run. 
 
 ## Indicator metadata snapshots
 
-| DuckDB source | Parquet file | Rows |
+| DuckDB source | CSV file | Rows |
 | --- | --- | ---: |
-| `CherryMon`.`main`.`dim_indicator` | `dim_indicator.parquet` | 66 |
-| `CherryMon`.`main`.`dim_indicator_component` | `dim_indicator_component.parquet` | 7 |
-| `CherryMon`.`main`.`dim_indicator_config` | `dim_indicator_config.parquet` | 18 |
+| `CherryMon`.`main`.`dim_indicator` | `dim_indicator.csv` | 66 |
+| `CherryMon`.`main`.`dim_indicator_component` | `dim_indicator_component.csv` | 7 |
+| `CherryMon`.`main`.`dim_indicator_config` | `dim_indicator_config.csv` | 18 |
