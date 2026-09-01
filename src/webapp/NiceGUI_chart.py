@@ -1863,7 +1863,7 @@ def portfolio_tab_content() -> None:
 
 
 def rs_tab_content() -> None:
-    """Render the Support / Resistance Ladder V1 page.
+    """Render the Support / Resistance Ladder V2.0 page.
 
     Data acquisition and business calculation belong to calcEngine.levelLadder;
     this function only composes controls, metrics, chart and table.
@@ -1874,7 +1874,7 @@ def rs_tab_content() -> None:
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Support / Resistance Ladder",
-                "V1: MA20 / MA50 / MA100 / MA200 trên D / W / M",
+                "V2.0: MA + Bollinger Bands; RSI dùng làm confirmation",
                 icon="vertical_align_center",
             )
             ui.label(
@@ -1940,7 +1940,7 @@ def rs_tab_content() -> None:
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Level Details",
-                "Source, timeframe, distance và strength",
+                "Source family, timeframe, distance và strength",
                 icon="table_chart",
             )
             level_grid = ui.aggrid(
@@ -1970,9 +1970,14 @@ def rs_tab_content() -> None:
                         },
                         {"headerName": "TF", "field": "timeframes", "width": 78},
                         {
+                            "headerName": "Families",
+                            "field": "families",
+                            "minWidth": 150,
+                        },
+                        {
                             "headerName": "Sources",
                             "field": "sources",
-                            "minWidth": 170,
+                            "minWidth": 190,
                             "flex": 1,
                         },
                     ],
