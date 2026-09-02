@@ -2132,3 +2132,367 @@ V2.1 is complete when:
 14. Read-only DuckDB preflight PASS.
 15. Real-data MWG cross-check PASS before production rollout.
 
+---
+
+# 32. V2.2 Implementation Contract
+
+V2.2 adds a dedicated Volume Profile domain to the existing R/S provider architecture.
+
+## 32.1 Design Principle
+
+Volume Profile is **not** registered as a technical indicator.
+
+Reason:
+
+- MA/BB/RSI/ATR are time-series technical indicators managed by Indicator Engine.
+- POC/HVN/LVN are price-by-volume structures derived from a price window.
+- Volume Profile uses its own calculation semantics and must remain a dedicated domain/provider.
+
+Target flow:
+
+```text
+raw_stock_eod
+      │
+      │ Date / High / Low / Close / Volume
+      ▼
+Volume Profile Engine
+      │
+      ├── POC
+      ├── HVN
+      └── LVN
+      │
+      ├───────────────┐
+      ▼               ▼
+LevelCandidate[]   Volume Confirmation
+      │               │
+      └───────┬───────┘
+              ▼
+           R/S Core
+```
+
+## 32.2 Daily-OHLCV Approximation
+
+Current CherryStock production source is daily OHLCV.
+
+Daily bars do not contain true intraday tick-level volume-at-price.
+
+Therefore V2.2 must not pretend exact exchange-level Volume Profile precision.
+
+The implemented deterministic approximation:
+
+1. select latest configured eligible daily bars;
+2. calculate the total High–Low price range;
+3. divide the price range into fixed bins;
+4. distribute each daily bar's Volume uniformly across the bins crossed by its Low–High range;
+5. aggregate volume per price bin;
+6. derive POC/HVN/LVN from the aggregated profile.
+
+This approximation is explicit and replaceable by a future intraday/tick provider without changing R/S core contracts.
+
+## 32.3 VolumeProfileConfig
+
+Default runtime contract:
+
+```text
+window_bars   = 120
+bins          = 48
+min_records   = 30
+
+hvn_quantile  = 0.80
+lvn_quantile  = 0.20
+
+max_hvn       = 4
+max_lvn       = 4
+```
+
+Validation:
+
+```text
+8 <= bins <= 256
+min_records > 0
+0 < lvn_quantile < hvn_quantile < 1
+max_hvn/max_lvn >= 0
+```
+
+The configuration is passed through application/runtime code in V2.2.
+
+No database configuration table is introduced in this release.
+
+## 32.4 POC
+
+POC = price bin with the highest aggregated volume.
+
+Contract:
+
+```text
+source_code     = VP_POC
+source_type     = VOLUME_PROFILE
+source_role     = LEVEL
+source_family   = VOLUME_STRUCTURE
+value_semantic  = PRICE_LEVEL
+```
+
+POC is assigned the strongest Volume Profile representative weight.
+
+## 32.5 HVN
+
+HVN candidates are local volume maxima above the configured high-volume quantile.
+
+Contract:
+
+```text
+VP_HVN_01
+VP_HVN_02
+...
+```
+
+All belong to:
+
+```text
+VOLUME_STRUCTURE
+```
+
+## 32.6 LVN
+
+LVN candidates are local positive-volume minima below the configured low-volume quantile.
+
+Contract:
+
+```text
+VP_LVN_01
+VP_LVN_02
+...
+```
+
+LVN is still a possible structural price boundary, but receives a lower representative weight than POC/HVN.
+
+## 32.7 Volume Family Cap
+
+POC, HVN and LVN are not independent source families.
+
+All use:
+
+```text
+SourceFamily = VOLUME_STRUCTURE
+```
+
+Therefore:
+
+```text
+POC + HVN + LVN in same zone
+        ↓
+source_count may increase
+source_family_count increases by at most 1
+```
+
+This prevents a dense Volume Profile from overpowering unrelated evidence such as MARKET_STRUCTURE or TREND_AVERAGE.
+
+## 32.8 Volume Confirmation
+
+The Volume Profile provider returns a bundle:
+
+```text
+ProviderBundle
+├── LevelCandidate[]          POC/HVN/LVN
+└── ConfirmationContext[]     node density confirmation
+```
+
+Each confirmation carries:
+
+```text
+source_family   = VOLUME_CONFIRMATION
+reference_price = profile node price
+value           = normalized node score 0–100
+```
+
+Volume confirmation contributes to Strength only when its `reference_price` belongs to the evaluated zone.
+
+It never changes proximity rank.
+
+## 32.9 Profile Node Score
+
+Current node scoring:
+
+```text
+POC = 100
+
+HVN =
+    max(50, node_volume / poc_volume × 100)
+
+LVN =
+    bounded below 50 using node_volume / poc_volume
+```
+
+This score is a confirmation-strength input, not an S/R rank.
+
+## 32.10 Point-in-Time Contract
+
+Volume Profile input is filtered to:
+
+```text
+Date <= as_of_date
+```
+
+The selected profile uses the latest `window_bars` eligible rows from that bounded dataset.
+
+For every generated Volume Profile candidate:
+
+```text
+source_date  = profile.window_end
+confirmed_at = profile.window_end
+
+source_date <= as_of_date
+confirmed_at <= as_of_date
+```
+
+Future bars cannot influence historical profile calculations.
+
+## 32.11 Performance Contract
+
+V2.2 provider calculates one profile and returns both:
+
+- Level candidates;
+- volume confirmations.
+
+It must not calculate the same Volume Profile once for LEVEL and again for CONFIRMATION in a single request.
+
+The pure profile engine has no DuckDB/UI dependency.
+
+Physical boundary:
+
+```text
+src/calcEngine/volumeProfile.py
+    pure profile calculation
+
+src/calcEngine/levelLadder.py
+    DB provider adapter + R/S integration
+```
+
+## 32.12 Strength V2.2
+
+Strength V2.2 keeps V2.1 components:
+
+- family diversity;
+- timeframe confluence;
+- touch quality;
+- recency;
+- RSI confirmation;
+- structural quality.
+
+It adds:
+
+```text
+VolumeConfirmation
+```
+
+Default dedicated weight:
+
+```text
+volume_confirmation_weight = 0.10
+```
+
+This component is only included when a matching Volume Profile confirmation exists for the zone.
+
+## 32.13 Backward Compatibility
+
+V2.1 source set can still be requested explicitly:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=(
+        "MA",
+        "BB",
+        "SWING",
+        "PREVIOUS_HL",
+        "52W_HL",
+        "ATR",
+        "RSI",
+    ),
+)
+```
+
+Volume-only research mode:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("VOLUME_PROFILE",),
+)
+```
+
+Default V2.2 enables all registered providers including `VOLUME_PROFILE`.
+
+## 32.14 DuckDB Impact
+
+V2.2 requires **no new DuckDB schema migration**.
+
+Required source contract already exists:
+
+```text
+raw_stock_eod
+├── Date
+├── High
+├── Low
+├── Close
+└── Volume
+```
+
+Read-only production preflight:
+
+```text
+src/DuckDB/sql/rs_v2_2_preflight.sql
+```
+
+No POC/HVN/LVN persistence table is introduced in V2.2.
+
+Persistence/evaluation remains part of later architecture phases.
+
+## 32.15 Physical Implementation
+
+```text
+src/calcEngine/volumeProfile.py
+    VolumeProfileConfig
+    VolumeProfileNode
+    VolumeProfileResult
+    build_volume_profile_from_history()
+
+src/calcEngine/levelLadder.py
+    ProviderBundle
+    load_volume_profile_bundle()
+    VOLUME_STRUCTURE
+    VOLUME_CONFIRMATION
+    Volume Profile representative weights
+    Volume confirmation Strength component
+    V2.2 provider registry/orchestration
+
+src/DuckDB/sql/rs_v2_2_preflight.sql
+    read-only production-data validation
+
+tests/test_rs_ladder.py
+    pure profile + provider + family-cap regression
+
+tests/test_R_S_V2_2.md
+    local production cross-check
+```
+
+## 32.16 V2.2 Acceptance Criteria
+
+V2.2 is complete when:
+
+1. all V2.1 focused regression tests remain PASS;
+2. Volume Profile is calculated from raw OHLCV, not Indicator Engine;
+3. POC is deterministic for identical input/config;
+4. POC/HVN/LVN use VOLUME_STRUCTURE;
+5. POC/HVN/LVN are PRICE_LEVEL candidates;
+6. multiple Volume Profile nodes count as at most one family per zone;
+7. volume confirmation is separate from level role;
+8. volume confirmation may alter Strength but never rank;
+9. future bars cannot enter historical profiles;
+10. profile configuration validates explicit boundaries;
+11. insufficient profile history fails clearly;
+12. no new DuckDB schema migration is required;
+13. read-only preflight PASS;
+14. MWG real-data smoke PASS;
+15. NiceGUI V2.2 smoke PASS.
+

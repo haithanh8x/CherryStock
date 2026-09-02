@@ -96,7 +96,7 @@ def build_level_ladder_chart_options(
 
     ranked = [*ladder.support_levels, *ladder.resistance_levels]
     if not ranked:
-        return empty_level_ladder_chart_options("Không có R/S V2.1 level hợp lệ")
+        return empty_level_ladder_chart_options("Không có R/S V2.2 level hợp lệ")
 
     prices = [level.price for level in ranked] + [ladder.current_price]
     min_price, max_price = min(prices), max(prices)

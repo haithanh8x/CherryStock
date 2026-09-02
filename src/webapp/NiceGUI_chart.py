@@ -1863,7 +1863,7 @@ def portfolio_tab_content() -> None:
 
 
 def rs_tab_content() -> None:
-    """Render the Support / Resistance Ladder V2.1 page.
+    """Render the Support / Resistance Ladder V2.2 page.
 
     Data acquisition and business calculation belong to calcEngine.levelLadder;
     this function only composes controls, metrics, chart and table.
@@ -1874,7 +1874,7 @@ def rs_tab_content() -> None:
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Support / Resistance Ladder",
-                "V2.1: ATR adaptive + MA/BB + Swing/Previous H-L/52W; RSI confirmation",
+                "V2.2: + Volume Profile POC/HVN/LVN & volume confirmation",
                 icon="vertical_align_center",
             )
             ui.label(
@@ -2046,7 +2046,7 @@ def rs_tab_content() -> None:
         level_grid.update()
 
         ui.notify(
-            f"{result.ticker} R/S V2.1 @ {result.as_of_date.isoformat()} | "
+            f"{result.ticker} R/S V2.2 @ {result.as_of_date.isoformat()} | "
             f"S={len(result.support_levels)} R={len(result.resistance_levels)} | "
             f"cluster={(result.cluster_threshold_pct_used or 0) * 100:.2f}% "
             f"neutral={(result.neutral_threshold_pct_used or 0) * 100:.2f}%",

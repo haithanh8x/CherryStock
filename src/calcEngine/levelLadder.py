@@ -1,8 +1,7 @@
-"""Support / Resistance Level Ladder V2.1.
+"""Support / Resistance Level Ladder V2.2.
 
-V2.1 extends the multi-source ladder with ATR-adaptive clustering, structural
-price levels and point-in-time safety while keeping Indicator Engine public
-views as the only technical-indicator read contracts. Database access is read-only; calculation
+V2.2 extends the ladder with a dedicated Volume Profile domain (POC/HVN/LVN)
+and volume confirmation while preserving V2.1 adaptive and point-in-time contracts. Database access is read-only; calculation
 and rendering remain separate.
 """
 
@@ -16,6 +15,11 @@ from datetime import date, timedelta
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
+
+try:
+    from calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
+except ModuleNotFoundError:
+    from src.calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
 
 try:
     from Ults.DuckLib import DuckDBManager
@@ -37,6 +41,8 @@ SOURCE_FAMILY_VOLATILITY_BAND = "VOLATILITY_BAND"
 SOURCE_FAMILY_MOMENTUM_CONFIRMATION = "MOMENTUM_CONFIRMATION"
 SOURCE_FAMILY_MARKET_STRUCTURE = "MARKET_STRUCTURE"
 SOURCE_FAMILY_VOLATILITY_CONTEXT = "VOLATILITY_CONTEXT"
+SOURCE_FAMILY_VOLUME_STRUCTURE = "VOLUME_STRUCTURE"
+SOURCE_FAMILY_VOLUME_CONFIRMATION = "VOLUME_CONFIRMATION"
 
 VALUE_SEMANTIC_PRICE_LEVEL = "PRICE_LEVEL"
 VALUE_SEMANTIC_OSCILLATOR = "OSCILLATOR"
@@ -80,7 +86,17 @@ class ConfirmationContext:
     component_code: str
     value: float
     source_date: date
+    reference_price: float | None = None
+    unit: str | None = None
+    source_type: str = "INDICATOR"
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ProviderBundle:
+    candidates: tuple["LevelCandidate", ...] = ()
+    confirmations: tuple[ConfirmationContext, ...] = ()
+    market_contexts: tuple[MarketContext, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -143,6 +159,7 @@ class ScoredLevel:
     recency_score: float
     confirmation_score: float
     structural_quality_score: float
+    volume_confirmation_score: float
     touch_count: int
 
 
@@ -186,6 +203,7 @@ class StrengthConfig:
     recency_weight: float = 0.15
     confirmation_weight: float = 0.10
     structural_quality_weight: float = 0.15
+    volume_confirmation_weight: float = 0.10
     family_confluence_target: int = 3
     touch_target: int = 4
     touch_tolerance_pct: float = 0.003
@@ -198,6 +216,9 @@ class StrengthConfig:
     )
     bb_component_weights: dict[str, float] = field(
         default_factory=lambda: {"LOWER": 1.0, "MIDDLE": 0.8, "UPPER": 1.0}
+    )
+    volume_profile_weights: dict[str, float] = field(
+        default_factory=lambda: {"POC": 1.30, "HVN": 1.10, "LVN": 0.70}
     )
     rsi_oversold: float = 30.0
     rsi_overbought: float = 70.0
@@ -351,7 +372,7 @@ def load_price_history(
         raise ValueError("history limit must be > 0")
     df = connection.execute(
         """
-        SELECT "Date", "High", "Low", "Close"
+        SELECT "Date", "High", "Low", "Close", "Volume"
         FROM "CherryMon"."main"."raw_stock_eod"
         WHERE "Ticker" = ? AND "Date" <= ?
         ORDER BY "Date" DESC
@@ -688,10 +709,11 @@ def _load_structural_history(
         [ticker, start_date, as_of_date],
     ).df()
     if df.empty:
-        return pd.DataFrame(columns=["Date", "High", "Low", "Close"])
+        return pd.DataFrame(columns=["Date", "High", "Low", "Close", "Volume"])
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    for column in ("High", "Low", "Close"):
-        df[column] = pd.to_numeric(df[column], errors="coerce")
+    for column in ("High", "Low", "Close", "Volume"):
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
     return (
         df.dropna(subset=["Date", "High", "Low"])
         .sort_values("Date")
@@ -979,8 +1001,104 @@ def load_52w_level_candidates(
     ]
 
 
+
+
+
+def load_volume_profile_bundle(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    volume_profile_config: VolumeProfileConfig | None = None,
+) -> ProviderBundle:
+    """Build POC/HVN/LVN levels and volume confirmations in one profile pass."""
+    del timeframes
+    config = volume_profile_config or VolumeProfileConfig()
+    history = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=max(540, config.window_bars * 3),
+    )
+    if "Volume" not in history.columns:
+        raise ValueError("Volume Profile requires Volume in raw_stock_eod")
+    profile = build_volume_profile_from_history(
+        history,
+        as_of_date=as_of_date,
+        config=config,
+    )
+
+    nodes = [profile.poc, *profile.hvn, *profile.lvn]
+    candidates: list[LevelCandidate] = []
+    confirmations: list[ConfirmationContext] = []
+    counters = {"POC": 0, "HVN": 0, "LVN": 0}
+
+    for node in nodes:
+        counters[node.node_type] += 1
+        suffix = (
+            node.node_type
+            if node.node_type == "POC"
+            else f"{node.node_type}_{counters[node.node_type]:02d}"
+        )
+        source_code = f"VP_{suffix}"
+        metadata = {
+            "node_type": node.node_type,
+            "volume_share": node.volume_share,
+            "relative_volume": node.relative_volume,
+            "profile_score": node.score,
+            "window_start": profile.window_start.isoformat(),
+            "window_end": profile.window_end.isoformat(),
+            "profile_bars": profile.bars,
+            "profile_bins": profile.bins,
+        }
+        candidates.append(
+            LevelCandidate(
+                ticker=ticker.upper(),
+                price=node.price,
+                source_type="VOLUME_PROFILE",
+                source_code=source_code,
+                timeframe="D",
+                indicator_code=None,
+                config_id=None,
+                config_code=None,
+                component_code=node.node_type,
+                source_date=profile.window_end,
+                confirmed_at=profile.window_end,
+                source_role=SOURCE_ROLE_LEVEL,
+                source_family=SOURCE_FAMILY_VOLUME_STRUCTURE,
+                value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+                metadata=metadata,
+            )
+        )
+        confirmations.append(
+            ConfirmationContext(
+                ticker=ticker.upper(),
+                as_of_date=as_of_date,
+                source_code=f"{source_code}_CONF",
+                source_family=SOURCE_FAMILY_VOLUME_CONFIRMATION,
+                timeframe="D",
+                indicator_code="VOLUME_PROFILE",
+                config_id=0,
+                config_code="VOLUME_PROFILE",
+                component_code=node.node_type,
+                value=node.score,
+                source_date=profile.window_end,
+                reference_price=node.price,
+                unit="SCORE",
+                source_type="VOLUME_PROFILE",
+                metadata=metadata,
+            )
+        )
+
+    return ProviderBundle(
+        candidates=tuple(candidates),
+        confirmations=tuple(confirmations),
+    )
+
+
 def _source_provider_registry() -> dict[str, dict[str, Any]]:
-    """Return the V2.1 provider registry without coupling the core pipeline to sources."""
+    """Return the V2.2 provider registry without coupling the core pipeline to sources."""
     return {
         "MA": {
             "role": SOURCE_ROLE_LEVEL,
@@ -1009,6 +1127,12 @@ def _source_provider_registry() -> dict[str, dict[str, Any]]:
             "family": SOURCE_FAMILY_MARKET_STRUCTURE,
             "loader": load_52w_level_candidates,
             "uses_structural_config": True,
+        },
+        "VOLUME_PROFILE": {
+            "kind": "BUNDLE",
+            "family": SOURCE_FAMILY_VOLUME_STRUCTURE,
+            "loader": load_volume_profile_bundle,
+            "uses_volume_profile_config": True,
         },
         "ATR": {
             "role": SOURCE_ROLE_CONTEXT,
@@ -1063,6 +1187,10 @@ def normalize_levels(
             )
         elif candidate.indicator_code == "BB":
             source_weight = config.bb_component_weights.get(
+                candidate.component_code or "", 1.0
+            )
+        elif candidate.source_family == SOURCE_FAMILY_VOLUME_STRUCTURE:
+            source_weight = config.volume_profile_weights.get(
                 candidate.component_code or "", 1.0
             )
         result.append(
@@ -1235,6 +1363,27 @@ def _rsi_confirmation_score(
     return weighted_total / weight_sum if weight_sum > 0 else 0.0
 
 
+def _volume_confirmation_score(
+    zone: LevelZone,
+    confirmations: Sequence[ConfirmationContext],
+    tolerance_pct: float,
+) -> tuple[float, bool]:
+    if zone.level_type not in {"SUPPORT", "RESISTANCE"}:
+        return 0.0, False
+    low = zone.price_low * (1.0 - tolerance_pct)
+    high = zone.price_high * (1.0 + tolerance_pct)
+    matched = [
+        float(context.value)
+        for context in confirmations
+        if context.source_family == SOURCE_FAMILY_VOLUME_CONFIRMATION
+        and context.reference_price is not None
+        and low <= float(context.reference_price) <= high
+    ]
+    if not matched:
+        return 0.0, False
+    return max(0.0, min(max(matched), 100.0)), True
+
+
 def _structural_quality_score(
     zone: LevelZone,
     *,
@@ -1268,7 +1417,7 @@ def score_zones(
     strength_config: StrengthConfig | None = None,
     confirmations: Sequence[ConfirmationContext] = (),
 ) -> list[ScoredLevel]:
-    """Strength V2.1 adds structural quality while preserving family diversity."""
+    """Strength V2.2 adds Volume Profile confirmation to V2.1 components."""
     config = strength_config or StrengthConfig()
     base_weights = (
         config.confluence_weight,
@@ -1280,6 +1429,7 @@ def score_zones(
         *base_weights,
         config.confirmation_weight,
         config.structural_quality_weight,
+        config.volume_confirmation_weight,
     )
     if any(w < 0 for w in all_weights) or sum(base_weights) <= 0:
         raise ValueError("Strength weights must be non-negative and base weights sum to > 0")
@@ -1319,6 +1469,15 @@ def score_zones(
         age = max((current_price.as_of_date - latest).days, 0)
         recency = max(0.0, 1.0 - age / float(config.recency_days)) * 100.0
         confirmation = _rsi_confirmation_score(zone, confirmations, config)
+        has_rsi = any(
+            context.indicator_code == "RSI"
+            for context in confirmations
+        )
+        volume_confirmation, has_volume_confirmation = _volume_confirmation_score(
+            zone,
+            confirmations,
+            config.touch_tolerance_pct,
+        )
         structural_quality, has_structural = _structural_quality_score(
             zone,
             current_price=current_price,
@@ -1332,9 +1491,14 @@ def score_zones(
             + recency * config.recency_weight
         )
         effective_weight = sum(base_weights)
-        if confirmations and zone.level_type in {"SUPPORT", "RESISTANCE"}:
+        if has_rsi and zone.level_type in {"SUPPORT", "RESISTANCE"}:
             weighted_score += confirmation * config.confirmation_weight
             effective_weight += config.confirmation_weight
+        if has_volume_confirmation:
+            weighted_score += (
+                volume_confirmation * config.volume_confirmation_weight
+            )
+            effective_weight += config.volume_confirmation_weight
         if has_structural:
             weighted_score += (
                 structural_quality * config.structural_quality_weight
@@ -1352,6 +1516,7 @@ def score_zones(
                 recency_score=round(recency, 2),
                 confirmation_score=round(confirmation, 2),
                 structural_quality_score=round(structural_quality, 2),
+                volume_confirmation_score=round(volume_confirmation, 2),
                 touch_count=touches,
             )
         )
@@ -1481,9 +1646,10 @@ def build_level_ladder(
     neutral_threshold_pct: float = 0.003,
     strength_config: StrengthConfig | None = None,
     structural_config: StructuralSourceConfig | None = None,
+    volume_profile_config: VolumeProfileConfig | None = None,
     connection: Any | None = None,
 ) -> LevelLadderResult:
-    """Build R/S Ladder V2.1 from LEVEL, CONTEXT and CONFIRMATION providers."""
+    """Build R/S Ladder V2.2 from indicator, structural and volume providers."""
     normalized_ticker = _normalize_ticker(ticker)
     normalized_timeframes = _validate_timeframes(timeframes)
     _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
@@ -1500,12 +1666,12 @@ def build_level_ladder(
     unsupported = sources - set(registry)
     if unsupported:
         raise ValueError(
-            f"Unsupported R/S V2.1 sources: {sorted(unsupported)}; "
+            f"Unsupported R/S V2.2 sources: {sorted(unsupported)}; "
             f"supported={sorted(registry)}"
         )
 
     LOGGER.info(
-        "RS Ladder V2.1 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster_floor=%.4f",
+        "RS Ladder V2.2 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster_floor=%.4f",
         normalized_ticker,
         as_of_date,
         normalized_timeframes,
@@ -1532,8 +1698,18 @@ def build_level_ladder(
                 loader_kwargs["structural_config"] = (
                     structural_config or StructuralSourceConfig()
                 )
+            if spec.get("uses_volume_profile_config"):
+                loader_kwargs["volume_profile_config"] = (
+                    volume_profile_config or VolumeProfileConfig()
+                )
             loaded = spec["loader"](con, **loader_kwargs)
-            if spec["role"] == SOURCE_ROLE_LEVEL:
+            if spec.get("kind") == "BUNDLE":
+                if not isinstance(loaded, ProviderBundle):
+                    raise RuntimeError("Bundle provider must return ProviderBundle")
+                candidates.extend(loaded.candidates)
+                confirmations.extend(loaded.confirmations)
+                market_contexts.extend(loaded.market_contexts)
+            elif spec["role"] == SOURCE_ROLE_LEVEL:
                 candidates.extend(loaded)
             elif spec["role"] == SOURCE_ROLE_CONTEXT:
                 market_contexts.extend(loaded)
@@ -1541,14 +1717,14 @@ def build_level_ladder(
                 confirmations.extend(loaded)
             else:
                 raise RuntimeError(
-                    f"Unsupported provider role in V2.1 registry: {spec['role']}"
+                    f"Unsupported provider role in V2.2 registry: {spec.get('role')}"
                 )
 
         history = load_price_history(
             con, ticker=normalized_ticker, as_of_date=current.as_of_date
         )
         LOGGER.info(
-            "RS Ladder V2.1 inputs | ticker=%s date=%s candidates=%d "
+            "RS Ladder V2.2 inputs | ticker=%s date=%s candidates=%d "
             "contexts=%d confirmations=%d history=%d",
             normalized_ticker,
             current.as_of_date,
@@ -1570,7 +1746,7 @@ def build_level_ladder(
             market_contexts=market_contexts,
         )
         LOGGER.info(
-            "RS Ladder V2.1 success | ticker=%s supports=%d resistances=%d "
+            "RS Ladder V2.2 success | ticker=%s supports=%d resistances=%d "
             "cluster=%.4f neutral=%.4f",
             normalized_ticker,
             len(result.support_levels),
@@ -1587,5 +1763,5 @@ def build_level_ladder(
         with DuckDBManager(read_only=True) as con:
             return calculate(con)
     except Exception:
-        LOGGER.exception("RS Ladder V2.1 failed | ticker=%s", normalized_ticker)
+        LOGGER.exception("RS Ladder V2.2 failed | ticker=%s", normalized_ticker)
         raise

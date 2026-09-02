@@ -3,6 +3,10 @@ from datetime import date
 import pandas as pd
 import pytest
 
+from src.calcEngine.volumeProfile import (
+    VolumeProfileConfig,
+    build_volume_profile_from_history,
+)
 from src.calcEngine.levelLadder import (
     ConfirmationContext,
     CurrentPrice,
@@ -12,9 +16,12 @@ from src.calcEngine.levelLadder import (
     SOURCE_FAMILY_TREND_AVERAGE,
     SOURCE_FAMILY_VOLATILITY_BAND,
     SOURCE_FAMILY_VOLATILITY_CONTEXT,
+    SOURCE_FAMILY_VOLUME_CONFIRMATION,
+    SOURCE_FAMILY_VOLUME_STRUCTURE,
     SOURCE_ROLE_LEVEL,
     VALUE_SEMANTIC_PRICE_LEVEL,
     build_level_ladder_from_data,
+    load_volume_profile_bundle,
     load_52w_level_candidates,
     load_previous_period_level_candidates,
     load_swing_level_candidates,
@@ -428,4 +435,116 @@ def test_structural_family_improves_strength_without_changing_rank() -> None:
     assert enhanced.support_levels[0].rank == baseline.support_levels[0].rank == "S1"
     assert enhanced.support_levels[0].strength_score > baseline.support_levels[0].strength_score
     assert enhanced.support_levels[0].source_family_count == 2
+
+
+def _volume_history() -> pd.DataFrame:
+    dates = pd.date_range("2026-01-02", periods=80, freq="B")
+    rows = []
+    for i, dt in enumerate(dates):
+        center = 70.0 + (i % 10) * 0.5
+        volume = 1_000_000 + (4_000_000 if 3 <= (i % 10) <= 5 else 0)
+        rows.append(
+            {
+                "Date": dt,
+                "High": center + 1.0,
+                "Low": center - 1.0,
+                "Close": center,
+                "Volume": volume,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def test_volume_profile_is_deterministic_and_bounded() -> None:
+    frame = _volume_history()
+    cfg = VolumeProfileConfig(window_bars=60, bins=24, min_records=30)
+
+    first = build_volume_profile_from_history(
+        frame,
+        as_of_date=date(2026, 4, 30),
+        config=cfg,
+    )
+    second = build_volume_profile_from_history(
+        frame,
+        as_of_date=date(2026, 4, 30),
+        config=cfg,
+    )
+
+    assert first == second
+    assert first.poc.node_type == "POC"
+    assert first.price_low <= first.poc.price <= first.price_high
+    assert first.total_volume > 0
+    assert first.bars == 60
+
+
+def test_volume_profile_excludes_future_bars() -> None:
+    frame = _volume_history()
+    future = pd.DataFrame(
+        [{
+            "Date": pd.Timestamp("2026-12-31"),
+            "High": 999.0,
+            "Low": 998.0,
+            "Close": 998.5,
+            "Volume": 999_999_999,
+        }]
+    )
+    combined = pd.concat([frame, future], ignore_index=True)
+
+    result = build_volume_profile_from_history(
+        combined,
+        as_of_date=date(2026, 4, 30),
+        config=VolumeProfileConfig(window_bars=60, bins=24, min_records=30),
+    )
+
+    assert result.price_high < 999.0
+    assert result.window_end <= date(2026, 4, 30)
+
+
+def test_volume_profile_bundle_returns_levels_and_confirmations() -> None:
+    frame = _volume_history()
+    bundle = load_volume_profile_bundle(
+        _HistoryConnection(frame),
+        ticker="MWG",
+        as_of_date=date(2026, 4, 30),
+        volume_profile_config=VolumeProfileConfig(
+            window_bars=60,
+            bins=24,
+            min_records=30,
+            max_hvn=2,
+            max_lvn=2,
+        ),
+    )
+
+    assert bundle.candidates
+    assert bundle.confirmations
+    assert all(x.source_family == SOURCE_FAMILY_VOLUME_STRUCTURE for x in bundle.candidates)
+    assert all(x.source_family == SOURCE_FAMILY_VOLUME_CONFIRMATION for x in bundle.confirmations)
+    assert any(x.component_code == "POC" for x in bundle.candidates)
+
+
+def test_volume_family_counts_once_in_confluence() -> None:
+    bundle = load_volume_profile_bundle(
+        _HistoryConnection(_volume_history()),
+        ticker="MWG",
+        as_of_date=date(2026, 4, 30),
+        volume_profile_config=VolumeProfileConfig(
+            window_bars=60,
+            bins=24,
+            min_records=30,
+            max_hvn=2,
+            max_lvn=2,
+        ),
+    )
+    selected = list(bundle.candidates[:3])
+    cp = CurrentPrice("MWG", date(2026, 4, 30), 80.0)
+    result = build_level_ladder_from_data(
+        cp,
+        selected,
+        confirmations=bundle.confirmations,
+        cluster_threshold_pct=0.10,
+    )
+
+    levels = [*result.support_levels, *result.resistance_levels]
+    assert levels
+    assert all(level.source_family_count == 1 for level in levels)
 
