@@ -6,7 +6,7 @@
 - **Release / Change:** BB Negative LOWER Handling
 - **Date:** 2026-09-02
 - **Type:** Calculation Engine / Bug Fix
-- **Status:** IN PROGRESS
+- **Status:** VALIDATED / MERGE PENDING
 - **Parent release:** R/S Ladder V2.4
 - **Affected provider:** Bollinger Bands LEVEL provider
 - **Production file:** `src/calcEngine/levelLadder.py`
@@ -147,3 +147,52 @@ revert BB provider candidate-skip commit
 ```
 
 No database migration is required.
+
+
+## 9. Validation Evidence
+
+Local agent result:
+
+```text
+Final Verdict: PASS
+Action: KEEP
+```
+
+Evidence:
+
+```text
+Compile                 PASS
+Focused BB pytest        6/6 PASS
+Full ladder suite        28/28 PASS
+Negative BB skip         PASS
+NaN/Infinity guard       PASS
+ValueSemantic strictness PASS
+Golden regression        PASS
+THD real-data smoke      PASS
+Diff scope               PASS
+Production code changed during test: NO
+```
+
+THD real-data smoke:
+
+```text
+RSV24_BB_NEGATIVE_FAST_SMOKE
+13 snapshots
+65 events
+130 metrics
+COMPLETED
+```
+
+Observed provider evidence includes repeated skips of non-positive BB20_2_W / BB20_2_M LOWER values without aborting evaluation.
+
+Merge remains pending because PR #13 is stacked on the PR #12 warm-up branch.
+
+Required merge order:
+
+```text
+PR #12
+then
+PR #13
+then
+full monthly validation on main
+```
