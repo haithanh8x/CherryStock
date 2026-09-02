@@ -353,3 +353,31 @@ ROLLBACK          NOT REQUIRED
 PRODUCTION READY  YES
 PRODUCTION        DEPLOYED
 ```
+
+
+## 17. Operational Extension — Monthly Full Evaluation
+
+R/S V2.4 Source Effectiveness is operationalized as a monthly full-universe workflow.
+
+Canonical entry point:
+
+```text
+scripts/run_rs_v2_4_full_evaluation.py
+```
+
+Detailed operational Change Request:
+
+```text
+docs/ChangeRequest/CR_RS_V2_4_Monthly_Full_Evaluation.md
+```
+
+Release evidence:
+
+```text
+PR             #9
+Merge commit   eed1990c7bccc0475eb9ac83c2c187e3bebf2b65
+Final Verdict  PASS
+Action         KEEP
+```
+
+This extension does not change V2.4 runtime scoring, provider registration, source weights, promotion semantics or production deployment boundaries.
