@@ -1,8 +1,8 @@
-"""Support / Resistance Level Ladder V2.3.
+"""Support / Resistance Level Ladder V2.4.
 
-V2.3 preserves the V2.2 production level model while adding explicit model
-versioning for historical evaluation, calibration and promotion governance. Database access is read-only; calculation
-and rendering remain separate.
+V2.4 preserves V2.3 runtime behavior while adding stable source-config
+research filters for Source Effectiveness evaluation. Database access is
+read-only; calculation and rendering remain separate.
 """
 
 from __future__ import annotations
@@ -15,6 +15,11 @@ from datetime import date, timedelta
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
+
+try:
+    from calcEngine.rsSourceIdentity import filter_source_objects
+except ModuleNotFoundError:
+    from src.calcEngine.rsSourceIdentity import filter_source_objects
 
 try:
     from calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
@@ -31,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 SUPPORTED_TIMEFRAMES = ("D", "W", "M")
 V1_MA_LENGTHS = (20, 50, 100, 200)
 BB_LEVEL_COMPONENTS = ("LOWER", "MIDDLE", "UPPER")
-RS_MODEL_VERSION = "RS_V2_3_BASELINE"
+RS_MODEL_VERSION = "RS_V2_4_BASELINE"
 
 SOURCE_ROLE_LEVEL = "LEVEL"
 SOURCE_ROLE_CONTEXT = "CONTEXT"
@@ -1653,10 +1658,12 @@ def build_level_ladder(
     strength_config: StrengthConfig | None = None,
     structural_config: StructuralSourceConfig | None = None,
     volume_profile_config: VolumeProfileConfig | None = None,
+    included_source_keys: tuple[str, ...] | None = None,
+    excluded_source_keys: tuple[str, ...] | None = None,
     model_version: str = RS_MODEL_VERSION,
     connection: Any | None = None,
 ) -> LevelLadderResult:
-    """Build R/S Ladder V2.3 baseline with explicit model-version tagging."""
+    """Build R/S Ladder V2.4 baseline with optional research source filters."""
     normalized_ticker = _normalize_ticker(ticker)
     normalized_timeframes = _validate_timeframes(timeframes)
     _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
@@ -1673,12 +1680,12 @@ def build_level_ladder(
     unsupported = sources - set(registry)
     if unsupported:
         raise ValueError(
-            f"Unsupported R/S V2.3 sources: {sorted(unsupported)}; "
+            f"Unsupported R/S V2.4 sources: {sorted(unsupported)}; "
             f"supported={sorted(registry)}"
         )
 
     LOGGER.info(
-        "RS Ladder V2.3 start | ticker=%s as_of=%s model=%s timeframes=%s sources=%s cluster_floor=%.4f",
+        "RS Ladder V2.4 start | ticker=%s as_of=%s model=%s timeframes=%s sources=%s cluster_floor=%.4f",
         normalized_ticker,
         as_of_date,
         model_version,
@@ -1725,14 +1732,30 @@ def build_level_ladder(
                 confirmations.extend(loaded)
             else:
                 raise RuntimeError(
-                    f"Unsupported provider role in V2.3 registry: {spec.get('role')}"
+                    f"Unsupported provider role in V2.4 registry: {spec.get('role')}"
                 )
+
+        candidates = filter_source_objects(
+            candidates,
+            included_source_keys=included_source_keys,
+            excluded_source_keys=excluded_source_keys,
+        )
+        confirmations = filter_source_objects(
+            confirmations,
+            included_source_keys=included_source_keys,
+            excluded_source_keys=excluded_source_keys,
+        )
+        market_contexts = filter_source_objects(
+            market_contexts,
+            included_source_keys=included_source_keys,
+            excluded_source_keys=excluded_source_keys,
+        )
 
         history = load_price_history(
             con, ticker=normalized_ticker, as_of_date=current.as_of_date
         )
         LOGGER.info(
-            "RS Ladder V2.3 inputs | ticker=%s date=%s candidates=%d "
+            "RS Ladder V2.4 inputs | ticker=%s date=%s candidates=%d "
             "contexts=%d confirmations=%d history=%d",
             normalized_ticker,
             current.as_of_date,
@@ -1755,7 +1778,7 @@ def build_level_ladder(
             model_version=model_version,
         )
         LOGGER.info(
-            "RS Ladder V2.3 success | ticker=%s supports=%d resistances=%d "
+            "RS Ladder V2.4 success | ticker=%s supports=%d resistances=%d "
             "cluster=%.4f neutral=%.4f",
             normalized_ticker,
             len(result.support_levels),
@@ -1772,5 +1795,5 @@ def build_level_ladder(
         with DuckDBManager(read_only=True) as con:
             return calculate(con)
     except Exception:
-        LOGGER.exception("RS Ladder V2.3 failed | ticker=%s", normalized_ticker)
+        LOGGER.exception("RS Ladder V2.4 failed | ticker=%s", normalized_ticker)
         raise
