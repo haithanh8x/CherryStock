@@ -42,6 +42,7 @@ src/cherrystock/infrastructure/database/repositories/rs_evaluation_repository.py
 src/cherrystock/infrastructure/database/unit_of_work.py
 src/cherrystock/infrastructure/database/repositories/__init__.py
 scripts/run_rs_v2_3_evaluation.py
+scripts/run_rs_v2_3_migration.py
 scripts/promote_rs_v2_3_model.py
 scripts/run_rs_v2_3_golden.py
 src/webapp/NiceGUI_chart.py
@@ -72,11 +73,19 @@ PASS:
 
 ## Seq 2 — Execute DuckDB migration
 
-Run externally against CherryMon:
+Preferred write-capable entry point:
+
+```powershell
+python scripts/run_rs_v2_3_migration.py
+```
+
+The helper executes:
 
 ```text
 src/DuckDB/sql/rs_v2_3_evaluation_governance.sql
 ```
+
+directly against CherryMon. Use this helper when MCP is read-only and cannot execute DDL.
 
 This migration is additive/idempotent.
 
