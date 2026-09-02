@@ -370,6 +370,8 @@ def load_price_history(
     """Load one read-only OHLC history window for touch scoring."""
     if limit <= 0:
         raise ValueError("history limit must be > 0")
+    # Shared by structural and V2.2 Volume Profile providers; Volume is part
+    # of this loader contract even though Swing/Previous/52W only consume OHLC.
     df = connection.execute(
         """
         SELECT "Date", "High", "Low", "Close", "Volume"
