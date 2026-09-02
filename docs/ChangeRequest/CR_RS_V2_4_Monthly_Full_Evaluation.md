@@ -61,7 +61,7 @@ vw_RS_Source_Effectiveness
 
 The monthly orchestrator provides:
 
-- automatic eligible ticker-universe resolution from `raw_stock_eod`;
+- automatic active ticker-universe resolution from `raw_lstTicker.status='Y'` joined to `raw_stock_eod`;
 - default 3-year evaluation lookback;
 - canonical horizons 5 / 10 / 20 / 40;
 - point-in-time-safe evaluation end that reserves future trading bars for mature outcomes;
@@ -237,3 +237,54 @@ ROLLBACK             NOT REQUIRED
 PRODUCTION READY     YES
 PRODUCTION           DEPLOYED
 ```
+
+
+## 14. Post-release Fix — Active Ticker Universe
+
+The initial monthly orchestrator resolved eligible tickers from `raw_stock_eod` only. Local plan validation exposed a universe of 1,491 tickers, which was broader than the CherryStock production-active universe.
+
+The default universe contract is now:
+
+```text
+raw_lstTicker.status = 'Y'
+        ∩
+raw_stock_eod available
+        ∩
+minimum historical bars satisfied
+        ∩
+freshness gate satisfied
+```
+
+Implementation:
+
+```text
+src/Orchestrator/rs_v2_4_full_evaluation.py::_resolve_tickers()
+```
+
+Validation result:
+
+```text
+pytest tests/test_rs_v2_4_full_evaluation.py
+11 passed
+```
+
+Plan validation after the fix:
+
+```text
+universe_filter         raw_lstTicker.status='Y'
+ticker_count            340
+expected_snapshot_count 50784
+evaluation_end          2026-07-03
+latest_data_date        2026-08-28
+```
+
+Release evidence:
+
+```text
+PR             #10
+Merge commit   cfd27e92056ac1ce21d7f887cfc8e5f9c120ef16
+Final Verdict  PASS
+Action         KEEP
+```
+
+This fix changes only monthly evaluation universe selection. It does not alter R/S runtime scoring, Source Effectiveness formulas, Promotion Gate thresholds, source weights, provider registration or production deployment behavior.
