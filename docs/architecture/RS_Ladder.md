@@ -3149,3 +3149,33 @@ automatic production deployment
 
 Concrete technical-indicator onboarding after approval remains owned by Indicator Management and requires a separate release/change request.
 
+
+
+## 34.1 BB non-positive PRICE_LEVEL handling
+
+Bollinger Band arithmetic may legitimately produce a non-positive LOWER value during extreme price acceleration:
+
+```text
+LOWER = MIDDLE - K * STD
+```
+
+For the R/S LEVEL domain:
+
+```text
+finite BB PRICE_LEVEL > 0
+    -> valid LEVEL candidate
+
+finite BB PRICE_LEVEL <= 0
+    -> invalid tradable level
+    -> skip candidate
+
+NaN / Infinity
+    -> data defect
+    -> raise
+```
+
+This is a provider-normalization rule, not a change to the Indicator Engine formula.
+
+The BB provider must preserve valid MIDDLE/UPPER candidates when a LOWER candidate is skipped.
+
+The rule must not weaken ValueSemantic validation or silently swallow malformed indicator values.
