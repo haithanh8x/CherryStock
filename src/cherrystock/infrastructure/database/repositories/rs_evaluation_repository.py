@@ -67,6 +67,7 @@ class RSEvaluationRepository:
         status: str,
         include_source_keys_json: str | None = None,
         exclude_source_keys_json: str | None = None,
+        research_indicator_specs_json: str | None = None,
         notes: str | None = None,
     ) -> None:
         self._connection.execute(
@@ -74,9 +75,10 @@ class RSEvaluationRepository:
             INSERT INTO "CherryMon"."main"."cal_rs_evaluation_run" (
                 "EvaluationRunId", "ModelVersion", "DatasetStart", "DatasetEnd",
                 "HorizonBars", "TickerCount", "SnapshotCount", "SplitConfigJson",
-                "Status", "IncludeSourceKeysJson", "ExcludeSourceKeysJson", "Notes"
+                "Status", "IncludeSourceKeysJson", "ExcludeSourceKeysJson",
+                "ResearchIndicatorSpecsJson", "Notes"
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT ("EvaluationRunId") DO UPDATE SET
                 "ModelVersion" = EXCLUDED."ModelVersion",
                 "DatasetStart" = EXCLUDED."DatasetStart",
@@ -88,6 +90,7 @@ class RSEvaluationRepository:
                 "Status" = EXCLUDED."Status",
                 "IncludeSourceKeysJson" = EXCLUDED."IncludeSourceKeysJson",
                 "ExcludeSourceKeysJson" = EXCLUDED."ExcludeSourceKeysJson",
+                "ResearchIndicatorSpecsJson" = EXCLUDED."ResearchIndicatorSpecsJson",
                 "Notes" = EXCLUDED."Notes";
             """,
             [
@@ -102,6 +105,7 @@ class RSEvaluationRepository:
                 status,
                 include_source_keys_json,
                 exclude_source_keys_json,
+                research_indicator_specs_json,
                 notes,
             ],
         )
