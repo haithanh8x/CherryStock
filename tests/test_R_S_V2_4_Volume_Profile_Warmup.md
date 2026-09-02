@@ -111,29 +111,53 @@ Action = STOP
 
 ## Sequence 4 — Minimal Real-data Smoke
 
-Do NOT run 340 tickers.
+Do NOT run 20–30 tickers and do NOT run the 340-ticker universe.
 
-Use a small real-data ticker set and short window that is sufficient to exercise historical snapshot selection:
+Use exactly:
+
+```text
+1 reproducer ticker
++
+1 mature control ticker
+```
+
+Recommended default:
+
+```text
+reproducer = AAH
+control    = MWG
+```
+
+Use only a short window:
 
 ```powershell
 python scripts/run_rs_v2_3_evaluation.py `
   --tickers AAH,MWG `
   --start 2023-07-04 `
-  --end 2023-10-31 `
+  --end 2023-08-31 `
   --snapshot-step 5 `
   --horizon-bars 5 `
   --model-version RS_V2_4_BASELINE `
   --run-id RSV24_WARMUP_FAST_SMOKE
 ```
 
+This is intentionally small. It should execute only a few dozen ladder builds, not hundreds or tens of thousands.
+
 PASS when:
 
 - command does not fail with `insufficient Volume Profile history`;
-- command reaches evaluation summary/persistence;
-- output contains `warmup_skipped_snapshots`;
-- snapshots > 0.
+- command reaches evaluation summary;
+- snapshots > 0;
+- if the reproducer actually has an immature sampled date, `warmup_skipped_snapshots > 0`.
 
-If the selected short-history ticker no longer reproduces warm-up conditions because local data changed, unit tests remain the authoritative defect proof; use any one active ticker known to have <30 valid VP bars at an early sampled date.
+If `warmup_skipped_snapshots = 0` because current local data no longer makes AAH a reproducer:
+
+1. do NOT broaden the universe;
+2. select exactly one known active ticker with <30 valid VP bars at an early sampled date;
+3. rerun the same short-window smoke with that ticker + MWG;
+4. stop after one successful reproducer.
+
+The focused unit tests remain the authoritative proof of warm-up selection logic. The real-data smoke only proves the production integration path.
 
 ## Sequence 5 — Runtime Safety / Diff Scope
 
@@ -163,8 +187,8 @@ No change is allowed to live Volume Profile validation.
 [ ] compile PASS
 [ ] focused pytest PASS
 [ ] golden regression PASS
-[ ] minimal real-data smoke PASS
-[ ] warmup_skipped_snapshots observable
+[ ] minimal 2-ticker real-data smoke PASS
+[ ] warmup_skipped_snapshots > 0 when reproducer is present
 [ ] VolumeProfile min_records remains 30
 [ ] sampling cadence unchanged
 [ ] no runtime scoring change
@@ -184,6 +208,7 @@ full Source Effectiveness refresh
 Promotion Gate matrix
 NiceGUI
 full monthly resume verification
+20–30 ticker confidence sample
 ```
 
 These belong to post-merge monthly validation.
@@ -199,7 +224,7 @@ Action: KEEP | FIX ONCE | REVERT | STOP
 - Compile:
 - Focused pytest:
 - Golden regression:
-- Minimal real-data smoke:
+- Minimal real-data smoke (tickers/window):
 - warmup_skipped_snapshots:
 - VolumeProfile min_records:
 - Diff scope:
