@@ -171,6 +171,112 @@ Avoid:
 - sleep-based timing when deterministic synchronization exists;
 - duplicated production business logic inside tests.
 
+## Validation Depth — Minimum Sufficient Evidence
+
+Testing depth MUST match the change objective. Do not use a release-scale workload as the default gate for a narrow bug fix.
+
+Canonical validation layers:
+
+~~~text
+BUG FAST VALIDATION
+    focused logic / defect proof
+    expected: seconds to a few minutes
+
+INTEGRATION VALIDATION
+    bounded real-data / persistence / component interaction
+    expected: small ticker/data scope
+
+FULL RELEASE / MONTHLY VALIDATION
+    broad universe / multi-horizon / ablation / effectiveness / UI / operational workload
+    expected: expensive and run only when release/operation requires it
+~~~
+
+Core principle:
+
+~~~text
+Bug validation
+    = minimum sufficient evidence
+
+Release validation
+    = broad regression evidence
+
+Monthly / operational evaluation
+    = production workload
+~~~
+
+For a narrow bug fix, the default PR gate SHOULD be:
+
+~~~text
+1. compile/import check when relevant
+2. focused regression/unit test for the defect
+3. nearest golden/regression boundary when one exists
+4. one minimal real-data reproduction when the defect depends on real data
+5. diff/scope safety check
+6. finite verdict
+~~~
+
+Do NOT automatically require these for a narrow bug unless the changed boundary actually affects them:
+
+~~~text
+full ticker universe
+multi-horizon matrix
+full ablation matrix
+full Source Effectiveness refresh
+Promotion Gate matrix
+NiceGUI / full UI smoke
+full monthly resume/idempotency workload
+repository-wide performance run
+~~~
+
+Those belong to integration/release/operational validation and should normally run once after the related fixes are merged, not once per bug.
+
+### Minimal real-data reproduction
+
+When real data is required to prove a bug fix:
+
+- use the smallest known ticker/entity set that reproduces the defect;
+- use the shortest date/window that still crosses the defect;
+- use one horizon/configuration unless the bug is horizon/configuration dependent;
+- stop when the original defect is disproved and the boundary regression checks pass.
+
+Do not broaden from one known reproducer to the full universe merely for confidence.
+
+### Escalation rule
+
+Escalate from Bug Fast Validation to Integration Validation only when:
+
+- focused tests cannot exercise the failing boundary;
+- the change crosses persistence/component boundaries;
+- the defect depends on interaction between multiple production components;
+- acceptance criteria explicitly require broader evidence;
+- a focused test reveals a regression outside the local boundary.
+
+Escalate to Full Release / Monthly Validation only when:
+
+- validating a release candidate;
+- validating an architecture/data-contract change with broad blast radius;
+- executing an operational/monthly workflow;
+- the user or approved runbook explicitly requires it.
+
+### Runbook design consequence
+
+A bug runbook MUST NOT duplicate the entire parent release test plan by default.
+
+Prefer:
+
+~~~text
+Sync branch
+→ Compile
+→ Focused pytest
+→ Golden / nearest regression boundary
+→ Minimal real-data reproduction
+→ Diff scope
+→ Verdict
+→ Return git to main
+~~~
+
+Full-universe or multi-horizon execution should be listed as post-merge/release validation when applicable, not as a default bug PR gate.
+
 ## Test Selection
 
 Use this order:
