@@ -3078,3 +3078,74 @@ V2.3 is complete when:
 19. baseline multi-ticker historical evaluation persists events/metrics.
 20. NiceGUI V2.3 smoke PASS.
 
+---
+
+# 34. V2.4 Source Effectiveness & Indicator Promotion
+
+Detailed architecture:
+
+```text
+docs/architecture/RS_Source_Effectiveness.md
+```
+
+Requirement:
+
+```text
+REQ-0022
+```
+
+ADR:
+
+```text
+ADR-008
+```
+
+V2.4 preserves V2.3 R/S runtime behavior by default and adds a research/governance layer for determining whether a source/config adds incremental out-of-sample predictive value for each ticker.
+
+Core separation:
+
+```text
+Runtime Strength
+    !=
+Source Effectiveness
+    !=
+Model Promotion Gate
+    !=
+Source Promotion Gate
+```
+
+New source research contract:
+
+```text
+build_level_ladder(
+    ...,
+    included_source_keys=None,
+    excluded_source_keys=None,
+)
+```
+
+Default `None` values preserve the existing runtime source set.
+
+V2.4 persistence/public contracts:
+
+```text
+cal_rs_source_effectiveness_run
+cal_rs_source_effectiveness
+sys_rs_source_promotion_audit
+vw_RS_Source_Effectiveness
+```
+
+Promotion approval remains non-deploying:
+
+```text
+APPROVED_FOR_INTEGRATION
+    !=
+automatic Indicator Engine change
+    !=
+automatic R/S registry/weight change
+    !=
+automatic production deployment
+```
+
+Concrete technical-indicator onboarding after approval remains owned by Indicator Management and requires a separate release/change request.
+
