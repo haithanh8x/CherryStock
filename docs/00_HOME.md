@@ -97,6 +97,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 
 ## Runbooks
 - [[runbook/MCP_DuckDB|CherryStock Local DuckDB MCP]]
+- [[runbook/RS_V2_4_Monthly_Full_Evaluation|R/S V2.4 Monthly Full Source Effectiveness]]
 
 ## Domain Knowledge
 - [[../.github/agents/Instructions/StockTerm|Stock Terms]]
