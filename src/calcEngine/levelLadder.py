@@ -507,13 +507,13 @@ def _validate_research_indicator_spec(spec: ResearchIndicatorSpec) -> ResearchIn
     semantic = str(spec.expected_value_semantic).strip().upper()
     if not config_code or not component_code or not source_family or not semantic:
         raise ValueError("research indicator spec fields must be non-empty")
-    if source_role not in {
-        SOURCE_ROLE_LEVEL,
-        SOURCE_ROLE_CONTEXT,
-        SOURCE_ROLE_CONFIRMATION,
-    }:
-        raise ValueError(f"Unsupported research source role: {source_role}")
-    if source_role == SOURCE_ROLE_LEVEL and semantic != VALUE_SEMANTIC_PRICE_LEVEL:
+    if source_role != SOURCE_ROLE_LEVEL:
+        raise ValueError(
+            "Generic ResearchIndicatorSpec supports LEVEL sources only. "
+            "New CONTEXT/CONFIRMATION candidates require a source-specific "
+            "research behavior adapter before effectiveness evaluation."
+        )
+    if semantic != VALUE_SEMANTIC_PRICE_LEVEL:
         raise ValueError(
             "Research LEVEL source must require ValueSemantic=PRICE_LEVEL"
         )
