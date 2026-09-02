@@ -4,7 +4,20 @@ applyTo: "src/Chart/**/*.py,**/*chart*.py,**/*Chart*.py"
 
 # Chart Instructions
 
-This file owns chart and visualization implementation rules.
+This file defines mandatory chart and visualization implementation rules.
+
+Canonical knowledge:
+- `docs/architecture/Chart_Architecture.md`
+- `docs/architecture/theme.md`
+- relevant chart/domain architecture and ADR materials routed from `docs/00_HOME.md`
+
+## Agent routing
+- Unclear visualization requirement, user behavior, scope or acceptance criteria → `.github/agents/BusinessAnalyst.agent.md`.
+- New chart architecture, reusable contract or cross-page design → `.github/agents/SolutionArchitect.agent.md`.
+- Clear chart/UI implementation following approved contracts → `.github/agents/GeneralCoding.agent.md`.
+- Test design/execution or independent UI validation → `.github/agents/TestEngineer.agent.md`.
+
+General Coding MUST update the affected canonical chart/theme document when an approved input, output or interaction contract changes, then hand off with `IMPLEMENTED_PENDING_VALIDATION`.
 
 ## Responsibilities
 - Separate data acquisition/preparation from rendering.
