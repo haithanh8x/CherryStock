@@ -16,7 +16,7 @@ Focused smoke:
         --plan-only
 
 Monthly default behavior:
-- eligible universe from raw_stock_eod;
+- eligible universe from raw_lstTicker.status='Y' joined to raw_stock_eod;
 - 3-year evaluation lookback;
 - H5/H10/H20/H40;
 - point-in-time-safe evaluation end with future bars reserved;
@@ -381,16 +381,19 @@ def _resolve_tickers(
     rows = connection.execute(
         """
         SELECT
-            "Ticker",
+            eod."Ticker",
             COUNT(*) AS "BarCount",
-            MIN("Date") AS "MinDate",
-            MAX("Date") AS "MaxDate"
-        FROM "CherryMon"."main"."raw_stock_eod"
-        WHERE "Date" BETWEEN ? AND ?
-        GROUP BY "Ticker"
+            MIN(eod."Date") AS "MinDate",
+            MAX(eod."Date") AS "MaxDate"
+        FROM "CherryMon"."main"."raw_stock_eod" AS eod
+        INNER JOIN "CherryMon"."main"."raw_lstTicker" AS ticker
+            ON ticker."Ticker" = eod."Ticker"
+        WHERE ticker."status" = 'Y'
+          AND eod."Date" BETWEEN ? AND ?
+        GROUP BY eod."Ticker"
         HAVING COUNT(*) >= ?
-           AND MAX("Date") >= ?
-        ORDER BY "Ticker";
+           AND MAX(eod."Date") >= ?
+        ORDER BY eod."Ticker";
         """,
         [
             window.start_date,
@@ -1047,6 +1050,7 @@ def main() -> None:
                     "evaluation_end": window.evaluation_end.isoformat(),
                     "latest_data_date": window.latest_data_date.isoformat(),
                     "future_outcome_bars_reserved": max(horizons),
+                    "universe_filter": "raw_lstTicker.status='Y'",
                     "ticker_count": len(tickers),
                     "tickers_preview": list(tickers[:20]),
                     "expected_snapshot_count": expected_snapshot_count,
