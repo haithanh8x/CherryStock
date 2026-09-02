@@ -3,7 +3,10 @@
 - **Change ID:** CR-RS-V2.0-20260901
 - **Release:** R/S Ladder V2.0
 - **Date:** 2026-09-01
-- **Status:** Code merged / DuckDB migration and local production validation pending
+- **Production deployment date:** 2026-09-02
+- **Status:** **PRODUCTION DEPLOYED / VALIDATED / PASS**
+- **Final verdict:** **PASS**
+- **Final action:** **KEEP and STOP**
 - **Repository:** CherryStock
 - **Main merge commit:** `7ebd6bcb9d0d4faff117f4bff0d99c98c223238b`
 - **Pull Request:** #4 — feat: upgrade R/S Ladder to V2.0 multi-source architecture
@@ -379,11 +382,19 @@ Strength và Rank tiếp tục là hai concept độc lập.
 
 ### Automated Test
 
-Run:
+Executed:
 
 ```powershell
 python -m pytest tests/test_rs_ladder.py -v
 ```
+
+Result:
+
+```text
+10 passed in 1.27s
+```
+
+Status: **PASS**
 
 Tests cover:
 
@@ -397,27 +408,176 @@ Tests cover:
 
 ### Production Data Runbook
 
-Use:
+Runbook:
 
 ```text
 tests/test_R_S_V2_0.md
 ```
 
-Required validation:
+Final result: **PASS**
 
-1. DuckDB migration PASS.
-2. metadata export refreshed.
-3. automated pytest PASS.
-4. MA-only MWG smoke PASS.
-5. default MA + BB + RSI MWG smoke PASS.
-6. semantic safety PASS.
-7. NiceGUI R/S smoke PASS.
+All production cross-check steps completed successfully:
+
+1. DuckDB migration — PASS.
+2. DB reference refresh — PASS.
+3. automated pytest — PASS.
+4. MA-only MWG regression — PASS.
+5. default MA + BB + RSI MWG smoke — PASS.
+6. semantic safety — PASS.
+7. NiceGUI smoke — PASS.
+
+### Production Validation Evidence
+
+#### Step 1 — DuckDB migration: PASS
+
+Migration:
+
+```text
+src/DuckDB/sql/rs_v2_0_indicator_semantics.sql
+```
+
+was applied successfully and verified idempotent.
+
+Validated semantic metadata:
+
+| Indicator | Component | ValueSemantic | Unit |
+|---|---|---|---|
+| MA | VALUE | PRICE_LEVEL | PRICE |
+| BB | LOWER | PRICE_LEVEL | PRICE |
+| BB | MIDDLE | PRICE_LEVEL | PRICE |
+| BB | UPPER | PRICE_LEVEL | PRICE |
+| BB | WIDTH | VOLATILITY | PERCENT |
+| BB | PERCENT | RATIO | RATIO |
+| RSI | VALUE | OSCILLATOR | INDEX |
+| ATR | VALUE | VOLATILITY_DISTANCE | PRICE |
+
+`vw_Indicator_config` exposes both `ValueSemantic` and `Unit`.
+
+Operational note: the first attempt encountered a DuckDB file lock because an old MCP Python process was still holding the database file. The process was stopped and MCP restarted successfully. This was classified as an **environment/operation issue, not a V2.0 code defect**.
+
+#### Step 2 — DB reference refresh: PASS
+
+`exportDuckDB_metadata()` completed successfully.
+
+Generated references now include the semantic columns in both:
+
+```text
+dim_indicator_component
+vw_Indicator_config
+```
+
+Verified in `docs/reference/DB_Metadata.md`.
+
+#### Step 3 — Focused pytest: PASS
+
+```text
+tests/test_rs_ladder.py
+10 passed
+```
+
+#### Step 4 — MA-only regression: PASS
+
+Execution with:
+
+```python
+enabled_sources=("MA",)
+```
+
+returned:
+
+```text
+Support:
+S1 = 73.36
+S2 = 70.62
+S3 = 59.59
+
+Resistance:
+R1 = 76.70
+R2 = 79.94
+```
+
+Only MA sources were present and proximity ranking remained correct.
+
+#### Step 5 — Default V2.0 production-data smoke: PASS
+
+Production smoke result:
+
+```text
+AsOfDate    = 2026-08-28
+CurrentPrice = 75.0
+
+Support:
+S1 = 73.30 | Strength 73.11 | 5 sources | 2 families
+S2 = 70.61 | 2 sources | 2 families
+S3 = 67.54 | 1 source  | 1 family
+
+Resistance:
+R1 = 76.55 | Strength 71.53 | 4 sources | 2 families
+R2 = 79.94 | Strength 60.92 | 2 sources | 1 family
+R3 = 85.74 | Strength 55.87 | 1 source  | 1 family
+```
+
+RSI confirmation values:
+
+```text
+RSI14_D = 55.43
+RSI14_W = 47.47
+RSI14_M = 53.85
+```
+
+Validated:
+
+- RSI appears only in `confirmations`;
+- RSI does not leak into level sources;
+- `source_family_count <= source_count` for every ranked level;
+- S1 is nearest support below current price;
+- R1 is nearest resistance above current price;
+- all Strength scores are inside `[0,100]`.
+
+#### Step 6 — Semantic safety: PASS
+
+A deliberately invalid RSI level candidate with:
+
+```text
+value_semantic = OSCILLATOR
+```
+
+was rejected with:
+
+```text
+ValueError:
+LEVEL candidate must have ValueSemantic=PRICE_LEVEL:
+RSI14_D=OSCILLATOR
+```
+
+This confirms non-price indicator values cannot enter the price-level pipeline.
+
+#### Step 7 — NiceGUI production smoke: PASS
+
+Validated UI behavior:
+
+- header shows `V2.0: MA + Bollinger Bands; RSI dùng làm confirmation`;
+- chart renders correctly;
+- R/S ladder displays live V2.0 levels;
+- Level Details includes `Families`;
+- visible families include `TREND_AVERAGE` and `VOLATILITY_BAND`;
+- source lineage includes BB and MA configurations;
+- Refresh for MWG works;
+- observed Reward/Risk approximately `0.91`;
+- no stale V1 MA-only empty-state text remains.
+
+Final cross-check result:
+
+```text
+FINAL VERDICT: PASS
+ACTION: KEEP and STOP
+```
 
 ---
 
 ## 11. Current Release Status
 
-At merge time:
+Production deployment and validation completed successfully.
 
 | Item | Status |
 |---|---|
@@ -425,47 +585,76 @@ At merge time:
 | PR mergeability | PASS |
 | Architecture docs | PASS |
 | ADR | PASS |
-| Migration SQL generated | PASS |
-| Unit tests added | PASS |
+| Migration SQL | PASS |
+| DuckDB migration applied | PASS |
+| Semantic metadata validation | PASS |
+| DB reference refresh | PASS |
+| Unit tests | PASS — 10/10 |
+| MA-only regression | PASS |
+| Default V2.0 MWG real-data validation | PASS |
+| Semantic safety | PASS |
+| NiceGUI smoke test | PASS |
 | GitHub CI | NOT CONFIGURED / NO CHECKS |
-| Local DuckDB migration | PENDING |
-| Local pytest execution | PENDING |
-| MWG real-data validation | PENDING |
-| NiceGUI smoke test | PENDING |
+| Production deployment | **PASS** |
+| Final verdict | **PASS** |
 
 Current release state:
 
 ```text
 CODE MERGED
-DATABASE DEPLOYMENT PENDING
-PRODUCTION VALIDATION PENDING
+DATABASE MIGRATION COMPLETED
+DB REFERENCE REFRESHED
+UNIT TEST PASS
+PRODUCTION DATA VALIDATION PASS
+NICEGUI SMOKE PASS
+PRODUCTION DEPLOYED
+PRODUCTION READY
 ```
 
-Do not classify the runtime release as fully production-ready until the local runbook returns PASS.
+Final action:
+
+```text
+KEEP and STOP
+```
+
+R/S Ladder V2.0 is now the deployed production implementation.
 
 ---
 
-## 12. Deployment Sequence
+## 12. Production Deployment Record
 
-Run in this exact order:
+Deployment completed in the intended sequence:
 
 ```text
-1. git pull origin main
-2. execute src/DuckDB/sql/rs_v2_0_indicator_semantics.sql
-3. validate semantic metadata
-4. regenerate docs/reference DB metadata snapshots
-5. run python -m pytest tests/test_rs_ladder.py -v
-6. run MA-only MWG smoke
-7. run default V2.0 MWG smoke
-8. run NiceGUI R/S smoke
-9. mark release production-ready only when all validations PASS
+1. git pull origin main                                      PASS
+2. execute rs_v2_0_indicator_semantics.sql                  PASS
+3. validate semantic metadata                              PASS
+4. regenerate docs/reference DB metadata snapshots         PASS
+5. python -m pytest tests/test_rs_ladder.py -v             PASS — 10/10
+6. MA-only MWG regression smoke                            PASS
+7. default V2.0 MWG production-data smoke                  PASS
+8. semantic safety test                                    PASS
+9. NiceGUI R/S smoke                                       PASS
+10. production rollout                                     PASS
 ```
+
+Deployment date:
+
+```text
+2026-09-02
+```
+
+No code rollback or database rollback was required.
 
 ---
 
 ## 13. Rollback
 
-If migration succeeds but runtime validation fails:
+No rollback was required during production deployment.
+
+The following rollback path remains documented for contingency use.
+
+If a future regression requires rollback:
 
 ### Code rollback
 
@@ -538,6 +727,31 @@ Mitigation:
 
 mandatory migration before V2.0 default runtime.
 
+Production outcome: **mitigated successfully**. Migration was applied and validated.
+
+### Operational Risk — DuckDB file lock from MCP process
+
+Observed during production cross-check:
+
+```text
+old Python MCP process held CherryMon.duckdb file lock
+```
+
+Resolution:
+
+```text
+stop stale Python process
+restart MCP server
+rerun validation
+```
+
+Classification:
+
+```text
+environment / operational issue
+not a V2.0 code defect
+```
+
 ### Risk — Historical indicator data unavailable
 
 MA/BB/RSI must already have sufficient backfilled values in `vw_Ticker_indicators`.
@@ -595,3 +809,27 @@ GitHub:
 PR #4
 Merge commit: 7ebd6bcb9d0d4faff117f4bff0d99c98c223238b
 ```
+
+Production validation summary:
+
+```text
+DuckDB migration       PASS
+DB reference refresh   PASS
+pytest                  PASS — 10/10
+MA-only regression     PASS
+V2.0 real-data smoke   PASS
+semantic safety        PASS
+NiceGUI smoke          PASS
+
+FINAL VERDICT           PASS
+ACTION                  KEEP and STOP
+RELEASE STATUS          PRODUCTION DEPLOYED / PRODUCTION READY
+```
+
+Operational cleanup note:
+
+```text
+scripts/query_mwg_price.py
+```
+
+was a one-off query script from an earlier session and was explicitly undone before final production sign-off. No rollback action is required for that file.
