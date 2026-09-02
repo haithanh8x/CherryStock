@@ -61,11 +61,13 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
+- [[architecture/RS_Source_Effectiveness|R/S Source Effectiveness Architecture]]
 - [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 - [[adr/ADR-004-rs-v2-source-semantics|ADR-004 R/S V2.0 Source Semantics]]
 - [[adr/ADR-005-rs-v2-1-adaptive-structural|ADR-005 R/S V2.1 Adaptive Structural Levels]]
 - [[adr/ADR-006-rs-v2-2-volume-profile|ADR-006 R/S V2.2 Volume Profile Domain]]
 - [[adr/ADR-007-rs-v2-3-evaluation-governance|ADR-007 R/S V2.3 Evaluation Governance]]
+- [[adr/ADR-008-rs-v2-4-source-effectiveness-promotion|ADR-008 R/S V2.4 Source Effectiveness Promotion]]
 - [[../.github/instructions/chart.instructions|Chart Instructions]]
 
 ### Crawlers / Data Ingestion

@@ -28,10 +28,12 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from calcEngine.levelLadder import (  # noqa: E402
     RS_MODEL_VERSION,
+    ResearchIndicatorSpec,
     StrengthConfig,
     StructuralSourceConfig,
     build_level_ladder,
 )
+from calcEngine.rsSourceIdentity import normalize_source_key_set  # noqa: E402
 from calcEngine.rsEvaluation import (  # noqa: E402
     EvaluationConfig,
     RSModelSpec,
@@ -77,6 +79,24 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--strength-config-json", default="{}")
     parser.add_argument("--volume-profile-config-json", default="{}")
     parser.add_argument("--structural-config-json", default="{}")
+    parser.add_argument(
+        "--include-source-keys",
+        default="",
+        help="Comma-separated canonical source/config keys to keep",
+    )
+    parser.add_argument(
+        "--exclude-source-keys",
+        default="",
+        help="Comma-separated canonical source/config keys to drop",
+    )
+    parser.add_argument(
+        "--research-indicator-specs-json",
+        default="[]",
+        help=(
+            "JSON list of research-only Indicator Engine config specs; "
+            "does not register providers in production"
+        ),
+    )
     parser.add_argument("--run-id", default=None)
     return parser.parse_args()
 
@@ -86,6 +106,41 @@ def _parse_json_object(raw: str, name: str) -> dict:
     if not isinstance(value, dict):
         raise ValueError(f"{name} must decode to a JSON object")
     return value
+
+
+def _parse_research_indicator_specs(raw: str) -> tuple[ResearchIndicatorSpec, ...]:
+    value = json.loads(raw)
+    if not isinstance(value, list):
+        raise ValueError("--research-indicator-specs-json must decode to a JSON list")
+    specs: list[ResearchIndicatorSpec] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, dict):
+            raise ValueError(
+                "research indicator spec must be a JSON object: "
+                f"index={index}"
+            )
+        required = {
+            "config_code",
+            "component_code",
+            "source_role",
+            "source_family",
+            "expected_value_semantic",
+        }
+        missing = required - set(item)
+        if missing:
+            raise ValueError(
+                f"research indicator spec index={index} missing {sorted(missing)}"
+            )
+        specs.append(
+            ResearchIndicatorSpec(
+                config_code=str(item["config_code"]),
+                component_code=str(item["component_code"]),
+                source_role=str(item["source_role"]),
+                source_family=str(item["source_family"]),
+                expected_value_semantic=str(item["expected_value_semantic"]),
+            )
+        )
+    return tuple(specs)
 
 
 def _ensure_v23_tables(connection) -> None:
@@ -100,15 +155,9 @@ def _ensure_v23_tables(connection) -> None:
         """
         SELECT table_name
         FROM information_schema.tables
-<<<<<<< HEAD
         WHERE lower(table_catalog) = 'cherrymon'
-          AND table_schema = 'main'
-          AND table_name IN (
-=======
-        WHERE lower(table_catalog) = lower('CherryMon')
-          AND lower(table_schema) = lower('main')
+          AND lower(table_schema) = 'main'
           AND lower(table_name) IN (
->>>>>>> 1b4c3ad (auto-sync: 2026-09-02 13:31:44)
               'dim_rs_model_version',
               'cal_rs_evaluation_run',
               'cal_rs_evaluation_event',
@@ -176,6 +225,24 @@ def main() -> None:
     structural_kwargs = _parse_json_object(
         args.structural_config_json, "structural-config-json"
     )
+    included_source_keys = normalize_source_key_set(
+        item for item in args.include_source_keys.split(",") if item.strip()
+    )
+    excluded_source_keys = normalize_source_key_set(
+        item for item in args.exclude_source_keys.split(",") if item.strip()
+    )
+    overlap = set(included_source_keys) & set(excluded_source_keys)
+    if overlap:
+        raise ValueError(
+            "source keys cannot be both included and excluded: "
+            f"{sorted(overlap)}"
+        )
+    research_indicator_specs = _parse_research_indicator_specs(
+        args.research_indicator_specs_json
+    )
+    research_spec_payload = tuple(
+        asdict(spec) for spec in research_indicator_specs
+    )
 
     strength_config = StrengthConfig(**strength_kwargs)
     volume_profile_config = VolumeProfileConfig(**profile_kwargs)
@@ -190,7 +257,14 @@ def main() -> None:
         strength_config=strength_kwargs,
         volume_profile_config=profile_kwargs,
         structural_config=structural_kwargs,
-        parent_version="RS_V2_2_PROD",
+        included_source_keys=included_source_keys,
+        excluded_source_keys=excluded_source_keys,
+        research_indicator_specs=research_spec_payload,
+        parent_version=(
+            "RS_V2_3_BASELINE"
+            if args.model_version == RS_MODEL_VERSION
+            else "RS_V2_4_BASELINE"
+        ),
         notes="Generated by scripts/run_rs_v2_3_evaluation.py",
     )
 
@@ -251,6 +325,9 @@ def main() -> None:
                     strength_config=strength_config,
                     structural_config=structural_config,
                     volume_profile_config=volume_profile_config,
+                    included_source_keys=included_source_keys or None,
+                    excluded_source_keys=excluded_source_keys or None,
+                    research_indicator_specs=research_indicator_specs or None,
                     model_version=model.model_version,
                     connection=connection,
                 )
@@ -297,7 +374,17 @@ def main() -> None:
             snapshot_count=snapshot_count,
             split_config_json=json.dumps(asdict(split_config), sort_keys=True),
             status="COMPLETED",
-            notes=f"enabled_sources={','.join(enabled_sources)}",
+            include_source_keys_json=json.dumps(list(included_source_keys)),
+            exclude_source_keys_json=json.dumps(list(excluded_source_keys)),
+            research_indicator_specs_json=json.dumps(
+                list(research_spec_payload),
+                sort_keys=True,
+            ),
+            notes=(
+                f"enabled_sources={','.join(enabled_sources)};"
+                f"include={','.join(included_source_keys)};"
+                f"exclude={','.join(excluded_source_keys)}"
+            ),
         )
         repository.replace_events(run_id, event_df)
         repository.replace_metrics(run_id, metric_df)
@@ -313,6 +400,9 @@ def main() -> None:
                 "snapshots": snapshot_count,
                 "events": len(events),
                 "metrics": len(metric_df),
+                "included_source_keys": list(included_source_keys),
+                "excluded_source_keys": list(excluded_source_keys),
+                "research_indicator_specs": list(research_spec_payload),
             },
             indent=2,
             sort_keys=True,

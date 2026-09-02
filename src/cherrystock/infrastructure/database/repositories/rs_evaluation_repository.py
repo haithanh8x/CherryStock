@@ -65,6 +65,9 @@ class RSEvaluationRepository:
         snapshot_count: int,
         split_config_json: str,
         status: str,
+        include_source_keys_json: str | None = None,
+        exclude_source_keys_json: str | None = None,
+        research_indicator_specs_json: str | None = None,
         notes: str | None = None,
     ) -> None:
         self._connection.execute(
@@ -72,9 +75,10 @@ class RSEvaluationRepository:
             INSERT INTO "CherryMon"."main"."cal_rs_evaluation_run" (
                 "EvaluationRunId", "ModelVersion", "DatasetStart", "DatasetEnd",
                 "HorizonBars", "TickerCount", "SnapshotCount", "SplitConfigJson",
-                "Status", "Notes"
+                "Status", "IncludeSourceKeysJson", "ExcludeSourceKeysJson",
+                "ResearchIndicatorSpecsJson", "Notes"
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT ("EvaluationRunId") DO UPDATE SET
                 "ModelVersion" = EXCLUDED."ModelVersion",
                 "DatasetStart" = EXCLUDED."DatasetStart",
@@ -84,6 +88,9 @@ class RSEvaluationRepository:
                 "SnapshotCount" = EXCLUDED."SnapshotCount",
                 "SplitConfigJson" = EXCLUDED."SplitConfigJson",
                 "Status" = EXCLUDED."Status",
+                "IncludeSourceKeysJson" = EXCLUDED."IncludeSourceKeysJson",
+                "ExcludeSourceKeysJson" = EXCLUDED."ExcludeSourceKeysJson",
+                "ResearchIndicatorSpecsJson" = EXCLUDED."ResearchIndicatorSpecsJson",
                 "Notes" = EXCLUDED."Notes";
             """,
             [
@@ -96,6 +103,9 @@ class RSEvaluationRepository:
                 snapshot_count,
                 split_config_json,
                 status,
+                include_source_keys_json,
+                exclude_source_keys_json,
+                research_indicator_specs_json,
                 notes,
             ],
         )
@@ -283,3 +293,219 @@ class RSEvaluationRepository:
                 notes,
             ],
         )
+
+    def upsert_source_effectiveness_run(
+        self,
+        *,
+        effectiveness_run_id: str,
+        scope_type: str,
+        source_key: str,
+        source_family: str,
+        source_role: str,
+        horizon_bars: int,
+        baseline_run_id: str,
+        ablation_run_id: str,
+        standalone_run_id: str | None,
+        policy_json: str,
+        status: str,
+        notes: str | None = None,
+    ) -> None:
+        self._connection.execute(
+            """
+            INSERT INTO "CherryMon"."main"."cal_rs_source_effectiveness_run" (
+                "EffectivenessRunId", "ScopeType", "SourceKey", "SourceFamily",
+                "SourceRole", "HorizonBars", "BaselineRunId", "AblationRunId",
+                "StandaloneRunId", "PolicyJson", "Status", "Notes"
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT ("EffectivenessRunId") DO UPDATE SET
+                "ScopeType" = EXCLUDED."ScopeType",
+                "SourceKey" = EXCLUDED."SourceKey",
+                "SourceFamily" = EXCLUDED."SourceFamily",
+                "SourceRole" = EXCLUDED."SourceRole",
+                "HorizonBars" = EXCLUDED."HorizonBars",
+                "BaselineRunId" = EXCLUDED."BaselineRunId",
+                "AblationRunId" = EXCLUDED."AblationRunId",
+                "StandaloneRunId" = EXCLUDED."StandaloneRunId",
+                "PolicyJson" = EXCLUDED."PolicyJson",
+                "Status" = EXCLUDED."Status",
+                "Notes" = EXCLUDED."Notes";
+            """,
+            [
+                effectiveness_run_id,
+                scope_type,
+                source_key,
+                source_family,
+                source_role,
+                horizon_bars,
+                baseline_run_id,
+                ablation_run_id,
+                standalone_run_id,
+                policy_json,
+                status,
+                notes,
+            ],
+        )
+
+    def replace_source_effectiveness(
+        self,
+        effectiveness_run_id: str,
+        dataframe: pd.DataFrame,
+    ) -> int:
+        self._connection.execute(
+            """
+            DELETE FROM "CherryMon"."main"."cal_rs_source_effectiveness"
+            WHERE "EffectivenessRunId" = ?;
+            """,
+            [effectiveness_run_id],
+        )
+        if dataframe is None or dataframe.empty:
+            return 0
+
+        required = {
+            "EffectivenessRunId", "Ticker", "ScopeType", "SourceKey",
+            "SourceFamily", "SourceRole", "HorizonBars", "AttributionMode",
+            "MarginalMetric", "LineageEventCount", "ValidationEventCount", "TestEventCount",
+            "TouchRate", "HoldRateGivenTouch", "BreakRateGivenTouch",
+            "RetestRateGivenBreak", "DirectionalEdgePct", "ValidationQuality",
+            "TestQuality", "ValidationMarginalLift", "TestMarginalLift",
+            "TemporalStability", "RegimeStability", "ComplexityDelta",
+            "EffectivenessScore", "Recommendation", "EvidenceJson",
+        }
+        missing = required - set(dataframe.columns)
+        if missing:
+            raise ValueError(
+                "source-effectiveness dataframe missing columns: "
+                f"{sorted(missing)}"
+            )
+
+        self._connection.register("df_rs_source_effectiveness", dataframe)
+        try:
+            self._connection.execute(
+                """
+                INSERT INTO "CherryMon"."main"."cal_rs_source_effectiveness" (
+                    "EffectivenessRunId", "Ticker", "ScopeType", "SourceKey",
+                    "SourceFamily", "SourceRole", "HorizonBars",
+                    "AttributionMode", "MarginalMetric", "LineageEventCount",
+                    "ValidationEventCount", "TestEventCount", "TouchRate",
+                    "HoldRateGivenTouch", "BreakRateGivenTouch",
+                    "RetestRateGivenBreak", "DirectionalEdgePct",
+                    "ValidationQuality", "TestQuality",
+                    "ValidationMarginalLift", "TestMarginalLift",
+                    "TemporalStability", "RegimeStability", "ComplexityDelta",
+                    "EffectivenessScore", "Recommendation", "EvidenceJson"
+                )
+                SELECT
+                    "EffectivenessRunId", "Ticker", "ScopeType", "SourceKey",
+                    "SourceFamily", "SourceRole", "HorizonBars",
+                    "AttributionMode", "MarginalMetric", "LineageEventCount",
+                    "ValidationEventCount", "TestEventCount", "TouchRate",
+                    "HoldRateGivenTouch", "BreakRateGivenTouch",
+                    "RetestRateGivenBreak", "DirectionalEdgePct",
+                    "ValidationQuality", "TestQuality",
+                    "ValidationMarginalLift", "TestMarginalLift",
+                    "TemporalStability", "RegimeStability", "ComplexityDelta",
+                    "EffectivenessScore", "Recommendation", "EvidenceJson"
+                FROM df_rs_source_effectiveness;
+                """
+            )
+        finally:
+            self._connection.unregister("df_rs_source_effectiveness")
+        return len(dataframe)
+
+    def mark_source_effectiveness_run_complete(
+        self,
+        effectiveness_run_id: str,
+        *,
+        status: str = "COMPLETED",
+    ) -> None:
+        self._connection.execute(
+            """
+            UPDATE "CherryMon"."main"."cal_rs_source_effectiveness_run"
+            SET "Status" = ?, "CompletedAt" = CURRENT_TIMESTAMP
+            WHERE "EffectivenessRunId" = ?;
+            """,
+            [status, effectiveness_run_id],
+        )
+
+    def record_source_promotion_decision(
+        self,
+        *,
+        decision_id: str,
+        effectiveness_run_id: str,
+        source_key: str,
+        source_family: str,
+        source_role: str,
+        horizon_bars: int,
+        outcome: str,
+        ticker_count: int,
+        positive_ticker_count: int,
+        positive_ticker_ratio: float,
+        avg_effectiveness_score: float,
+        avg_validation_lift: float,
+        avg_test_lift: float,
+        avg_temporal_stability: float,
+        avg_regime_stability: float | None,
+        max_complexity_delta: float,
+        reasons: tuple[str, ...],
+        policy: dict[str, Any],
+        applied: bool,
+        notes: str | None = None,
+    ) -> None:
+        self._connection.execute(
+            """
+            INSERT INTO "CherryMon"."main"."sys_rs_source_promotion_audit" (
+                "DecisionId", "EffectivenessRunId", "SourceKey",
+                "SourceFamily", "SourceRole", "HorizonBars", "Outcome",
+                "TickerCount", "PositiveTickerCount", "PositiveTickerRatio",
+                "AvgEffectivenessScore", "AvgValidationLift", "AvgTestLift",
+                "AvgTemporalStability", "AvgRegimeStability",
+                "MaxComplexityDelta", "ReasonsJson", "PolicyJson",
+                "Applied", "Notes"
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT ("DecisionId") DO UPDATE SET
+                "EffectivenessRunId" = EXCLUDED."EffectivenessRunId",
+                "SourceKey" = EXCLUDED."SourceKey",
+                "SourceFamily" = EXCLUDED."SourceFamily",
+                "SourceRole" = EXCLUDED."SourceRole",
+                "HorizonBars" = EXCLUDED."HorizonBars",
+                "Outcome" = EXCLUDED."Outcome",
+                "TickerCount" = EXCLUDED."TickerCount",
+                "PositiveTickerCount" = EXCLUDED."PositiveTickerCount",
+                "PositiveTickerRatio" = EXCLUDED."PositiveTickerRatio",
+                "AvgEffectivenessScore" = EXCLUDED."AvgEffectivenessScore",
+                "AvgValidationLift" = EXCLUDED."AvgValidationLift",
+                "AvgTestLift" = EXCLUDED."AvgTestLift",
+                "AvgTemporalStability" = EXCLUDED."AvgTemporalStability",
+                "AvgRegimeStability" = EXCLUDED."AvgRegimeStability",
+                "MaxComplexityDelta" = EXCLUDED."MaxComplexityDelta",
+                "ReasonsJson" = EXCLUDED."ReasonsJson",
+                "PolicyJson" = EXCLUDED."PolicyJson",
+                "Applied" = EXCLUDED."Applied",
+                "Notes" = EXCLUDED."Notes";
+            """,
+            [
+                decision_id,
+                effectiveness_run_id,
+                source_key,
+                source_family,
+                source_role,
+                horizon_bars,
+                outcome,
+                ticker_count,
+                positive_ticker_count,
+                positive_ticker_ratio,
+                avg_effectiveness_score,
+                avg_validation_lift,
+                avg_test_lift,
+                avg_temporal_stability,
+                avg_regime_stability,
+                max_complexity_delta,
+                json.dumps(list(reasons), sort_keys=True),
+                json.dumps(policy, sort_keys=True),
+                applied,
+                notes,
+            ],
+        )
+

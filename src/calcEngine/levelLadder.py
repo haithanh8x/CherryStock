@@ -1,8 +1,8 @@
-"""Support / Resistance Level Ladder V2.3.
+"""Support / Resistance Level Ladder V2.4.
 
-V2.3 preserves the V2.2 production level model while adding explicit model
-versioning for historical evaluation, calibration and promotion governance. Database access is read-only; calculation
-and rendering remain separate.
+V2.4 preserves V2.3 runtime behavior while adding stable source-config
+research filters for Source Effectiveness evaluation. Database access is
+read-only; calculation and rendering remain separate.
 """
 
 from __future__ import annotations
@@ -15,6 +15,11 @@ from datetime import date, timedelta
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
+
+try:
+    from calcEngine.rsSourceIdentity import filter_source_objects
+except ModuleNotFoundError:
+    from src.calcEngine.rsSourceIdentity import filter_source_objects
 
 try:
     from calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
@@ -31,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 SUPPORTED_TIMEFRAMES = ("D", "W", "M")
 V1_MA_LENGTHS = (20, 50, 100, 200)
 BB_LEVEL_COMPONENTS = ("LOWER", "MIDDLE", "UPPER")
-RS_MODEL_VERSION = "RS_V2_3_BASELINE"
+RS_MODEL_VERSION = "RS_V2_4_BASELINE"
 
 SOURCE_ROLE_LEVEL = "LEVEL"
 SOURCE_ROLE_CONTEXT = "CONTEXT"
@@ -98,6 +103,17 @@ class ProviderBundle:
     candidates: tuple["LevelCandidate", ...] = ()
     confirmations: tuple[ConfirmationContext, ...] = ()
     market_contexts: tuple[MarketContext, ...] = ()
+
+
+@dataclass(frozen=True)
+class ResearchIndicatorSpec:
+    """Explicit research-only adapter contract for one Indicator Engine config."""
+
+    config_code: str
+    component_code: str
+    source_role: str
+    source_family: str
+    expected_value_semantic: str
 
 
 @dataclass(frozen=True)
@@ -481,6 +497,210 @@ def _require_value_semantic(
             f"expected={expected!r}, actual={semantic!r}"
         )
     return semantic
+
+
+def _validate_research_indicator_spec(spec: ResearchIndicatorSpec) -> ResearchIndicatorSpec:
+    config_code = str(spec.config_code).strip().upper()
+    component_code = str(spec.component_code).strip().upper()
+    source_role = str(spec.source_role).strip().upper()
+    source_family = str(spec.source_family).strip().upper()
+    semantic = str(spec.expected_value_semantic).strip().upper()
+    if not config_code or not component_code or not source_family or not semantic:
+        raise ValueError("research indicator spec fields must be non-empty")
+    if source_role != SOURCE_ROLE_LEVEL:
+        raise ValueError(
+            "Generic ResearchIndicatorSpec supports LEVEL sources only. "
+            "New CONTEXT/CONFIRMATION candidates require a source-specific "
+            "research behavior adapter before effectiveness evaluation."
+        )
+    if semantic != VALUE_SEMANTIC_PRICE_LEVEL:
+        raise ValueError(
+            "Research LEVEL source must require ValueSemantic=PRICE_LEVEL"
+        )
+    return ResearchIndicatorSpec(
+        config_code=config_code,
+        component_code=component_code,
+        source_role=source_role,
+        source_family=source_family,
+        expected_value_semantic=semantic,
+    )
+
+
+def _research_source_code(config_code: str, component_code: str) -> str:
+    return (
+        config_code
+        if component_code == "VALUE"
+        else f"{config_code}:{component_code}"
+    )
+
+
+def load_research_indicator_bundle(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    specs: Sequence[ResearchIndicatorSpec],
+) -> ProviderBundle:
+    """Load explicit research configs from Indicator Engine public SSOT.
+
+    This adapter is never registered in the production provider registry.
+    """
+    normalized_specs = tuple(_validate_research_indicator_spec(spec) for spec in specs)
+    if not normalized_specs:
+        return ProviderBundle()
+
+    _validate_public_views(connection)
+    config_codes = tuple(sorted({spec.config_code for spec in normalized_specs}))
+    component_codes = tuple(sorted({spec.component_code for spec in normalized_specs}))
+    config_placeholders = ", ".join("?" for _ in config_codes)
+    component_placeholders = ", ".join("?" for _ in component_codes)
+
+    df = connection.execute(
+        f"""
+        WITH ranked AS (
+            SELECT
+                val."Ticker",
+                val."Date",
+                val."ConfigId",
+                val."ComponentCode",
+                val."Value",
+                cfg."ConfigCode",
+                cfg."IndicatorCode",
+                cfg."Timeframe",
+                cfg."Parameters",
+                cfg."ValueSemantic",
+                cfg."Unit",
+                ROW_NUMBER() OVER (
+                    PARTITION BY val."ConfigId", val."ComponentCode"
+                    ORDER BY val."Date" DESC
+                ) AS rn
+            FROM "CherryMon"."main"."vw_Ticker_indicators" val
+            INNER JOIN "CherryMon"."main"."vw_Indicator_config" cfg
+                ON cfg."ConfigId" = val."ConfigId"
+               AND cfg."ComponentCode" = val."ComponentCode"
+            WHERE val."Ticker" = ?
+              AND val."Date" <= ?
+              AND cfg."ConfigCode" IN ({config_placeholders})
+              AND val."ComponentCode" IN ({component_placeholders})
+              AND cfg."ConfigIsEnabled" = TRUE
+              AND cfg."IndicatorIsActive" = TRUE
+              AND COALESCE(cfg."ComponentIsActive", TRUE) = TRUE
+              AND val."Value" IS NOT NULL
+        )
+        SELECT
+            "Ticker", "Date", "ConfigId", "ComponentCode", "Value",
+            "ConfigCode", "IndicatorCode", "Timeframe", "Parameters",
+            "ValueSemantic", "Unit"
+        FROM ranked
+        WHERE rn = 1
+        ORDER BY "ConfigCode", "ComponentCode"
+        """,
+        [ticker, as_of_date, *config_codes, *component_codes],
+    ).df()
+
+    rows = {
+        (str(row.ConfigCode).upper(), str(row.ComponentCode).upper()): row
+        for row in df.itertuples(index=False)
+    }
+
+    candidates: list[LevelCandidate] = []
+    confirmations: list[ConfirmationContext] = []
+    contexts: list[MarketContext] = []
+
+    for spec in normalized_specs:
+        key = (spec.config_code, spec.component_code)
+        row = rows.get(key)
+        if row is None:
+            raise ValueError(
+                "Research indicator config/component has no active point-in-time value: "
+                f"{spec.config_code}/{spec.component_code}"
+            )
+        semantic = _require_value_semantic(
+            row,
+            expected=spec.expected_value_semantic,
+        )
+        value = float(row.Value)
+        if not math.isfinite(value):
+            raise ValueError(
+                f"Invalid research indicator value for {spec.config_code}: {row.Value!r}"
+            )
+
+        source_code = _research_source_code(spec.config_code, spec.component_code)
+        source_date = pd.Timestamp(row.Date).date()
+        metadata = {
+            "research_only": True,
+            "parameters": _parse_parameters(row.Parameters),
+            "value_semantic": semantic,
+            "unit": str(row.Unit) if row.Unit is not None else None,
+        }
+
+        if spec.source_role == SOURCE_ROLE_LEVEL:
+            if value <= 0:
+                raise ValueError(
+                    f"Research PRICE_LEVEL must be > 0: {source_code}={value}"
+                )
+            candidates.append(
+                LevelCandidate(
+                    ticker=str(row.Ticker).upper(),
+                    price=value,
+                    source_type="RESEARCH_INDICATOR",
+                    source_code=source_code,
+                    timeframe=str(row.Timeframe).upper(),
+                    indicator_code=str(row.IndicatorCode).upper(),
+                    config_id=int(row.ConfigId),
+                    config_code=str(row.ConfigCode),
+                    component_code=str(row.ComponentCode).upper(),
+                    source_date=source_date,
+                    confirmed_at=source_date,
+                    source_role=SOURCE_ROLE_LEVEL,
+                    source_family=spec.source_family,
+                    value_semantic=semantic,
+                    metadata=metadata,
+                )
+            )
+        elif spec.source_role == SOURCE_ROLE_CONTEXT:
+            contexts.append(
+                MarketContext(
+                    ticker=str(row.Ticker).upper(),
+                    as_of_date=as_of_date,
+                    source_code=source_code,
+                    source_family=spec.source_family,
+                    timeframe=str(row.Timeframe).upper(),
+                    indicator_code=str(row.IndicatorCode).upper(),
+                    config_id=int(row.ConfigId),
+                    config_code=str(row.ConfigCode),
+                    component_code=str(row.ComponentCode).upper(),
+                    value=value,
+                    unit=str(row.Unit) if row.Unit is not None else None,
+                    source_date=source_date,
+                    metadata=metadata,
+                )
+            )
+        else:
+            confirmations.append(
+                ConfirmationContext(
+                    ticker=str(row.Ticker).upper(),
+                    as_of_date=as_of_date,
+                    source_code=source_code,
+                    source_family=spec.source_family,
+                    timeframe=str(row.Timeframe).upper(),
+                    indicator_code=str(row.IndicatorCode).upper(),
+                    config_id=int(row.ConfigId),
+                    config_code=str(row.ConfigCode),
+                    component_code=str(row.ComponentCode).upper(),
+                    value=value,
+                    source_date=source_date,
+                    unit=str(row.Unit) if row.Unit is not None else None,
+                    source_type="RESEARCH_INDICATOR",
+                    metadata=metadata,
+                )
+            )
+
+    return ProviderBundle(
+        candidates=tuple(candidates),
+        confirmations=tuple(confirmations),
+        market_contexts=tuple(contexts),
+    )
 
 
 def load_ma_level_candidates(
@@ -1653,10 +1873,13 @@ def build_level_ladder(
     strength_config: StrengthConfig | None = None,
     structural_config: StructuralSourceConfig | None = None,
     volume_profile_config: VolumeProfileConfig | None = None,
+    included_source_keys: tuple[str, ...] | None = None,
+    excluded_source_keys: tuple[str, ...] | None = None,
+    research_indicator_specs: tuple[ResearchIndicatorSpec, ...] | None = None,
     model_version: str = RS_MODEL_VERSION,
     connection: Any | None = None,
 ) -> LevelLadderResult:
-    """Build R/S Ladder V2.3 baseline with explicit model-version tagging."""
+    """Build R/S Ladder V2.4 baseline with optional research source filters."""
     normalized_ticker = _normalize_ticker(ticker)
     normalized_timeframes = _validate_timeframes(timeframes)
     _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
@@ -1673,12 +1896,12 @@ def build_level_ladder(
     unsupported = sources - set(registry)
     if unsupported:
         raise ValueError(
-            f"Unsupported R/S V2.3 sources: {sorted(unsupported)}; "
+            f"Unsupported R/S V2.4 sources: {sorted(unsupported)}; "
             f"supported={sorted(registry)}"
         )
 
     LOGGER.info(
-        "RS Ladder V2.3 start | ticker=%s as_of=%s model=%s timeframes=%s sources=%s cluster_floor=%.4f",
+        "RS Ladder V2.4 start | ticker=%s as_of=%s model=%s timeframes=%s sources=%s cluster_floor=%.4f",
         normalized_ticker,
         as_of_date,
         model_version,
@@ -1725,14 +1948,59 @@ def build_level_ladder(
                 confirmations.extend(loaded)
             else:
                 raise RuntimeError(
-                    f"Unsupported provider role in V2.3 registry: {spec.get('role')}"
+                    f"Unsupported provider role in V2.4 registry: {spec.get('role')}"
                 )
+
+        if research_indicator_specs:
+            research_bundle = load_research_indicator_bundle(
+                con,
+                ticker=normalized_ticker,
+                as_of_date=current.as_of_date,
+                specs=research_indicator_specs,
+            )
+            existing_codes = {
+                str(value.source_code).upper()
+                for value in [*candidates, *confirmations, *market_contexts]
+            }
+            research_codes = {
+                str(value.source_code).upper()
+                for value in [
+                    *research_bundle.candidates,
+                    *research_bundle.confirmations,
+                    *research_bundle.market_contexts,
+                ]
+            }
+            collisions = existing_codes & research_codes
+            if collisions:
+                raise ValueError(
+                    "Research indicator source collides with existing R/S provider: "
+                    f"{sorted(collisions)}"
+                )
+            candidates.extend(research_bundle.candidates)
+            confirmations.extend(research_bundle.confirmations)
+            market_contexts.extend(research_bundle.market_contexts)
+
+        candidates = filter_source_objects(
+            candidates,
+            included_source_keys=included_source_keys,
+            excluded_source_keys=excluded_source_keys,
+        )
+        confirmations = filter_source_objects(
+            confirmations,
+            included_source_keys=included_source_keys,
+            excluded_source_keys=excluded_source_keys,
+        )
+        market_contexts = filter_source_objects(
+            market_contexts,
+            included_source_keys=included_source_keys,
+            excluded_source_keys=excluded_source_keys,
+        )
 
         history = load_price_history(
             con, ticker=normalized_ticker, as_of_date=current.as_of_date
         )
         LOGGER.info(
-            "RS Ladder V2.3 inputs | ticker=%s date=%s candidates=%d "
+            "RS Ladder V2.4 inputs | ticker=%s date=%s candidates=%d "
             "contexts=%d confirmations=%d history=%d",
             normalized_ticker,
             current.as_of_date,
@@ -1755,7 +2023,7 @@ def build_level_ladder(
             model_version=model_version,
         )
         LOGGER.info(
-            "RS Ladder V2.3 success | ticker=%s supports=%d resistances=%d "
+            "RS Ladder V2.4 success | ticker=%s supports=%d resistances=%d "
             "cluster=%.4f neutral=%.4f",
             normalized_ticker,
             len(result.support_levels),
@@ -1772,5 +2040,5 @@ def build_level_ladder(
         with DuckDBManager(read_only=True) as con:
             return calculate(con)
     except Exception:
-        LOGGER.exception("RS Ladder V2.3 failed | ticker=%s", normalized_ticker)
+        LOGGER.exception("RS Ladder V2.4 failed | ticker=%s", normalized_ticker)
         raise

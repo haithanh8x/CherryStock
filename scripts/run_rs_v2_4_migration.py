@@ -1,9 +1,9 @@
-"""Execute the R/S V2.3 evaluation-governance DuckDB migration.
+"""Execute the R/S V2.4 Source Effectiveness DuckDB migration.
 
-This is the write-capable entry point for environments where MCP is read-only.
+Use this helper when MCP is read-only and cannot execute DDL.
 
 Usage:
-    python scripts/run_rs_v2_3_migration.py
+    python scripts/run_rs_v2_4_migration.py
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ MIGRATION_PATH = (
     / "src"
     / "DuckDB"
     / "sql"
-    / "rs_v2_3_evaluation_governance.sql"
+    / "rs_v2_4_source_effectiveness.sql"
 )
 
 
@@ -46,7 +46,7 @@ def main() -> None:
             connection.execute("ROLLBACK")
             raise
 
-    print(f"R/S V2.3 migration applied: {MIGRATION_PATH}")
+    print(f"R/S V2.4 migration applied: {MIGRATION_PATH}")
 
 
 if __name__ == "__main__":
