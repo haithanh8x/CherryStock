@@ -11,6 +11,8 @@
 - **Affected provider:** Bollinger Bands LEVEL provider
 - **Production file:** `src/calcEngine/levelLadder.py`
 - **Validation runbook:** `tests/test_R_S_V2_4_BB_Negative_Lower.md`
+- **Bug branch:** `fix/rs-v2-4-bb-negative-lower`
+- **Pull Request:** PR #13 (stacked on warm-up fix branch until validation completes)
 
 ## 2. Problem
 
