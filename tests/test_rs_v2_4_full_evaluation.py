@@ -8,8 +8,9 @@ import pytest
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1]
-    / "scripts"
-    / "run_rs_v2_4_full_evaluation.py"
+    / "src"
+    / "Orchestrator"
+    / "rs_v2_4_full_evaluation.py"
 )
 SPEC = importlib.util.spec_from_file_location("rs_v24_full_eval", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
