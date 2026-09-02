@@ -1,0 +1,566 @@
+# Change Request — R/S Ladder V2.1
+
+- **Change ID:** CR-RS-V2.1-20260902
+- **Release:** R/S Ladder V2.1
+- **Date:** 2026-09-02
+- **Status:** **CODE MERGED / PRODUCTION VALIDATION PENDING**
+- **Repository:** CherryStock
+- **Pull Request:** #5 — feat: upgrade R/S Ladder to V2.1 adaptive structural architecture
+- **Main merge commit:** `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3`
+
+---
+
+## 1. Change Summary
+
+R/S Ladder V2.1 nâng cấp V2.0 theo hai hướng chính:
+
+1. **Adaptive volatility**
+   - ATR14_D trở thành CONTEXT.
+   - Cluster threshold và neutral threshold tự điều chỉnh theo ATR.
+2. **Observed market structure**
+   - Swing High / Low.
+   - Previous Week High / Low.
+   - Previous Month High / Low.
+   - Rolling 52W High / Low.
+   - Point-in-time / no-lookahead contract.
+
+V2.1 không thay đổi invariant:
+
+```text
+S1 = nearest eligible support
+R1 = nearest eligible resistance
+Strength = confidence, not rank
+```
+
+---
+
+## 2. Source Model
+
+### LEVEL
+
+```text
+MA                         TREND_AVERAGE
+BB LOWER/MIDDLE/UPPER      VOLATILITY_BAND
+Swing High/Low             MARKET_STRUCTURE
+Previous Week H/L          MARKET_STRUCTURE
+Previous Month H/L         MARKET_STRUCTURE
+52W High/Low               MARKET_STRUCTURE
+```
+
+### CONTEXT
+
+```text
+ATR14_D                    VOLATILITY_CONTEXT
+```
+
+### CONFIRMATION
+
+```text
+RSI14_D/W/M                MOMENTUM_CONFIRMATION
+```
+
+ATR không tạo LevelCandidate.
+
+RSI không tạo LevelCandidate.
+
+---
+
+## 3. ATR Adaptive Clustering
+
+Formula:
+
+```text
+ATRPercent = ATR14_D / CurrentPrice
+
+ClusterThresholdPct =
+    max(
+        MinClusterPct,
+        ATRPercent × ATRClusterMultiplier
+    )
+
+NeutralThresholdPct =
+    max(
+        MinNeutralPct,
+        ATRPercent × ATRNeutralMultiplier
+    )
+```
+
+Current defaults:
+
+```text
+MinClusterPct         = 1.0%
+MinNeutralPct         = 0.3%
+ATRClusterMultiplier  = 0.50
+ATRNeutralMultiplier  = 0.15
+```
+
+Nếu ATR context không có tại historical `as_of_date`:
+
+```text
+fallback = configured percent floor
+```
+
+không fail toàn bộ ladder.
+
+Actual runtime thresholds được expose trong:
+
+```text
+LevelLadderResult.cluster_threshold_pct_used
+LevelLadderResult.neutral_threshold_pct_used
+LevelLadderResult.market_contexts
+```
+
+---
+
+## 4. Point-in-Time Contract
+
+V2.1 bổ sung:
+
+```text
+source_date
+confirmed_at
+```
+
+cho level candidates.
+
+Mandatory invariant:
+
+```text
+source_date <= as_of_date
+confirmed_at <= as_of_date
+```
+
+Nếu `confirmed_at > as_of_date`, normalization fail rõ ràng.
+
+### Swing
+
+```text
+source_date
+    = pivot date
+
+confirmed_at
+    = right-side confirmation bar date
+```
+
+Default:
+
+```text
+left = 3
+right = 3
+lookback = 252 bars
+max candidates each side = 12
+```
+
+Swing pivot chưa đủ right-side bars không được dùng.
+
+### Previous Week
+
+Chỉ dùng completed previous ISO/calendar week.
+
+Current partial week bị loại.
+
+### Previous Month
+
+Chỉ dùng completed previous calendar month.
+
+Current partial month bị loại.
+
+### 52W
+
+Rolling window:
+
+```text
+as_of_date - 365 days
+        ↓
+as_of_date
+```
+
+Không dùng future bar.
+
+---
+
+## 5. Structural Providers
+
+V2.1 đọc trực tiếp:
+
+```text
+raw_stock_eod
+```
+
+cho structural sources.
+
+Không tạo technical-indicator metadata giả cho Swing/Previous H-L/52W.
+
+Common structural contract:
+
+```text
+source_type    = STRUCTURAL
+source_role    = LEVEL
+source_family  = MARKET_STRUCTURE
+value_semantic = PRICE_LEVEL
+```
+
+Implemented functions:
+
+```text
+load_swing_level_candidates()
+load_previous_period_level_candidates()
+load_52w_level_candidates()
+```
+
+---
+
+## 6. Strength V2.1
+
+V2.1 giữ:
+
+```text
+Family Diversity
+Timeframe Confluence
+Touch Quality
+Recency
+RSI Confirmation
+```
+
+và thêm:
+
+```text
+StructuralQuality
+```
+
+StructuralQuality dựa trên MARKET_STRUCTURE evidence và recency.
+
+Structural component chỉ được thêm khi zone thực sự chứa structural source.
+
+Điều này tránh tự động penalize các indicator-only levels của V2.0.
+
+---
+
+## 7. Backward Compatibility
+
+MA-only regression vẫn hỗ trợ:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("MA",),
+)
+```
+
+V2.0-like indicator-only mode:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("MA", "BB", "RSI"),
+)
+```
+
+Indicator + ATR without structure:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("MA", "BB", "ATR", "RSI"),
+)
+```
+
+Default V2.1:
+
+```python
+build_level_ladder("MWG")
+```
+
+enables all registered V2.1 providers.
+
+---
+
+## 8. DuckDB Impact
+
+### Schema Migration
+
+```text
+NO NEW DDL MIGRATION REQUIRED
+```
+
+V2.1 reuse các production objects đã có:
+
+```text
+raw_stock_eod
+vw_Ticker_indicators
+vw_Indicator_config
+ATR14_D
+ValueSemantic
+Unit
+```
+
+ATR14 đã onboard/backfill trước release này.
+
+### Required Preflight
+
+Read-only SQL:
+
+```text
+src/DuckDB/sql/rs_v2_1_preflight.sql
+```
+
+Preflight validates:
+
+- ATR14_D config;
+- ATR semantic metadata;
+- ATR calculated-value coverage;
+- MWG benchmark ATR;
+- raw_stock_eod structural-history coverage;
+- benchmark latest eligible raw date.
+
+No DDL/DML is executed by this SQL.
+
+---
+
+## 9. Source Code Changes
+
+Main files:
+
+```text
+src/calcEngine/levelLadder.py
+src/Chart/levelLadderChart.py
+src/webapp/NiceGUI_chart.py
+src/DuckDB/sql/rs_v2_1_preflight.sql
+```
+
+Validation:
+
+```text
+tests/test_rs_ladder.py
+tests/test_R_S_V2_1.md
+```
+
+Documentation:
+
+```text
+docs/architecture/RS_Ladder.md
+docs/adr/ADR-005-rs-v2-1-adaptive-structural.md
+docs/00_HOME.md
+```
+
+---
+
+## 10. UI Changes
+
+NiceGUI R/S header:
+
+```text
+V2.1: ATR adaptive + MA/BB + Swing/Previous H-L/52W; RSI confirmation
+```
+
+Cluster control đổi thành:
+
+```text
+Min Cluster %
+```
+
+vì input hiện chỉ là floor; actual threshold có thể lớn hơn do ATR.
+
+Refresh notification expose:
+
+```text
+actual cluster %
+actual neutral %
+```
+
+Level Details tiếp tục hiển thị Families và có thể xuất hiện:
+
+```text
+MARKET_STRUCTURE
+```
+
+---
+
+## 11. Validation Scope
+
+Focused automated test:
+
+```powershell
+python -m pytest tests/test_rs_ladder.py -v
+```
+
+V2.1 tests cover:
+
+- ATR adaptive threshold;
+- ATR fallback;
+- future confirmed candidate rejection;
+- confirmed swing pivots;
+- previous period current-partial exclusion;
+- 52W point-in-time bound;
+- structural family Strength contribution;
+- all existing V2.0 regression tests.
+
+Production runbook:
+
+```text
+tests/test_R_S_V2_1.md
+```
+
+Required before production sign-off:
+
+1. DuckDB preflight PASS.
+2. pytest PASS.
+3. MA-only regression PASS.
+4. ATR adaptive smoke PASS.
+5. structural-provider smoke PASS.
+6. default V2.1 MWG smoke PASS.
+7. historical point-in-time comparison PASS.
+8. NiceGUI smoke PASS.
+
+---
+
+## 12. Current Release Status
+
+| Item | Status |
+|---|---|
+| Architecture contract | PASS |
+| ADR | PASS |
+| Source code merged to main | PASS |
+| PR #5 | MERGED |
+| DuckDB DDL migration | NOT REQUIRED |
+| DuckDB read-only preflight | GENERATED / PENDING EXECUTION |
+| Automated tests added | PASS |
+| Local pytest execution | PENDING |
+| ATR real-data validation | PENDING |
+| Structural real-data validation | PENDING |
+| Historical no-lookahead smoke | PENDING |
+| NiceGUI V2.1 smoke | PENDING |
+| Production deployment | PENDING |
+
+Current state:
+
+```text
+CODE MERGED
+NO DATABASE MIGRATION REQUIRED
+PRODUCTION PREFLIGHT PENDING
+PRODUCTION VALIDATION PENDING
+```
+
+Do not classify V2.1 as Production Ready until the local runbook returns PASS.
+
+---
+
+## 13. Deployment Sequence
+
+```text
+1. git pull origin main
+2. run src/DuckDB/sql/rs_v2_1_preflight.sql
+3. python -m pytest tests/test_rs_ladder.py -v
+4. MA-only regression smoke
+5. ATR adaptive smoke
+6. structural provider smoke
+7. default V2.1 MWG smoke
+8. historical point-in-time comparison
+9. NiceGUI smoke
+10. update this Change Request to PRODUCTION DEPLOYED only if all PASS
+```
+
+---
+
+## 14. Rollback
+
+If V2.1 validation fails, V2.0-compatible source subsets remain available.
+
+Temporary indicator-only fallback:
+
+```python
+build_level_ladder(
+    ticker,
+    enabled_sources=("MA", "BB", "RSI"),
+)
+```
+
+Full code rollback target:
+
+```text
+Merge commit: 1d1b82b7023c3ae1142c6c449fc538278ffbe0a3
+```
+
+No database rollback is required because V2.1 introduces no schema migration.
+
+---
+
+## 15. Risks
+
+### Look-ahead in Swing
+
+Mitigation:
+
+```text
+confirmed_at <= as_of_date
+```
+
+enforced before normalization.
+
+### Partial period contamination
+
+Mitigation:
+
+- Previous Week excludes current week.
+- Previous Month excludes current month.
+
+### ATR as false price level
+
+Mitigation:
+
+```text
+ATR → MarketContext
+Role = CONTEXT
+```
+
+### High-volatility threshold
+
+Adaptive resolved threshold may exceed the user-entered percent floor.
+
+Core cluster/classification accepts resolved volatility-driven thresholds rather than failing at the old fixed upper bound.
+
+### Structural over-weighting
+
+All structural sources belong to one:
+
+```text
+MARKET_STRUCTURE
+```
+
+family, so multiple structural observations do not become independent families.
+
+---
+
+## 16. References
+
+Architecture:
+
+```text
+docs/architecture/RS_Ladder.md
+```
+
+ADR:
+
+```text
+docs/adr/ADR-005-rs-v2-1-adaptive-structural.md
+```
+
+DuckDB preflight:
+
+```text
+src/DuckDB/sql/rs_v2_1_preflight.sql
+```
+
+Tests:
+
+```text
+tests/test_rs_ladder.py
+tests/test_R_S_V2_1.md
+```
+
+GitHub:
+
+```text
+PR #5
+Merge commit: 1d1b82b7023c3ae1142c6c449fc538278ffbe0a3
+```
