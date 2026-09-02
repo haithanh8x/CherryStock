@@ -1863,7 +1863,7 @@ def portfolio_tab_content() -> None:
 
 
 def rs_tab_content() -> None:
-    """Render the Support / Resistance Ladder V2.0 page.
+    """Render the Support / Resistance Ladder V2.1 page.
 
     Data acquisition and business calculation belong to calcEngine.levelLadder;
     this function only composes controls, metrics, chart and table.
@@ -1874,7 +1874,7 @@ def rs_tab_content() -> None:
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Support / Resistance Ladder",
-                "V2.0: MA + Bollinger Bands; RSI dùng làm confirmation",
+                "V2.1: ATR adaptive + MA/BB + Swing/Previous H-L/52W; RSI confirmation",
                 icon="vertical_align_center",
             )
             ui.label(
@@ -1894,7 +1894,7 @@ def rs_tab_content() -> None:
                 ).props("outlined dense clearable type=date").classes("w-44")
 
                 cluster_input = ui.number(
-                    label="Cluster %",
+                    label="Min Cluster %",
                     value=1.0,
                     min=0.1,
                     max=5.0,
@@ -2046,8 +2046,10 @@ def rs_tab_content() -> None:
         level_grid.update()
 
         ui.notify(
-            f"{result.ticker} R/S @ {result.as_of_date.isoformat()} | "
-            f"S={len(result.support_levels)} R={len(result.resistance_levels)}",
+            f"{result.ticker} R/S V2.1 @ {result.as_of_date.isoformat()} | "
+            f"S={len(result.support_levels)} R={len(result.resistance_levels)} | "
+            f"cluster={(result.cluster_threshold_pct_used or 0) * 100:.2f}% "
+            f"neutral={(result.neutral_threshold_pct_used or 0) * 100:.2f}%",
             type="positive",
         )
 

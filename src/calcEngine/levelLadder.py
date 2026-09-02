@@ -1,8 +1,8 @@
-"""Support / Resistance Level Ladder V2.0.
+"""Support / Resistance Level Ladder V2.1.
 
-V2.0 extends the MA-only ladder with Bollinger Band price levels and RSI
-confirmation while keeping Indicator Engine public views as the only
-technical-indicator read contracts. Database access is read-only; calculation
+V2.1 extends the multi-source ladder with ATR-adaptive clustering, structural
+price levels and point-in-time safety while keeping Indicator Engine public
+views as the only technical-indicator read contracts. Database access is read-only; calculation
 and rendering remain separate.
 """
 
@@ -12,7 +12,7 @@ import json
 import logging
 import math
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
@@ -35,9 +35,12 @@ SOURCE_ROLE_CONFIRMATION = "CONFIRMATION"
 SOURCE_FAMILY_TREND_AVERAGE = "TREND_AVERAGE"
 SOURCE_FAMILY_VOLATILITY_BAND = "VOLATILITY_BAND"
 SOURCE_FAMILY_MOMENTUM_CONFIRMATION = "MOMENTUM_CONFIRMATION"
+SOURCE_FAMILY_MARKET_STRUCTURE = "MARKET_STRUCTURE"
+SOURCE_FAMILY_VOLATILITY_CONTEXT = "VOLATILITY_CONTEXT"
 
 VALUE_SEMANTIC_PRICE_LEVEL = "PRICE_LEVEL"
 VALUE_SEMANTIC_OSCILLATOR = "OSCILLATOR"
+VALUE_SEMANTIC_VOLATILITY_DISTANCE = "VOLATILITY_DISTANCE"
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,23 @@ class CurrentPrice:
     ticker: str
     as_of_date: date
     price: float
+
+
+@dataclass(frozen=True)
+class MarketContext:
+    ticker: str
+    as_of_date: date
+    source_code: str
+    source_family: str
+    timeframe: str | None
+    indicator_code: str
+    config_id: int
+    config_code: str
+    component_code: str
+    value: float
+    unit: str | None
+    source_date: date
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -75,6 +95,7 @@ class LevelCandidate:
     config_code: str | None
     component_code: str | None
     source_date: date
+    confirmed_at: date | None = None
     source_role: str = SOURCE_ROLE_LEVEL
     source_family: str = "UNCLASSIFIED"
     value_semantic: str = VALUE_SEMANTIC_PRICE_LEVEL
@@ -89,6 +110,7 @@ class NormalizedLevel:
     timeframe: str | None
     weight: float
     source_date: date
+    confirmed_at: date
     config_id: int | None
     config_code: str | None
     component_code: str | None
@@ -120,6 +142,7 @@ class ScoredLevel:
     touch_score: float
     recency_score: float
     confirmation_score: float
+    structural_quality_score: float
     touch_count: int
 
 
@@ -150,6 +173,9 @@ class LevelLadderResult:
     downside_to_s1_pct: float | None
     risk_reward_ratio: float | None
     confirmations: tuple[ConfirmationContext, ...] = ()
+    market_contexts: tuple[MarketContext, ...] = ()
+    cluster_threshold_pct_used: float | None = None
+    neutral_threshold_pct_used: float | None = None
 
 
 @dataclass(frozen=True)
@@ -159,6 +185,7 @@ class StrengthConfig:
     touch_weight: float = 0.25
     recency_weight: float = 0.15
     confirmation_weight: float = 0.10
+    structural_quality_weight: float = 0.15
     family_confluence_target: int = 3
     touch_target: int = 4
     touch_tolerance_pct: float = 0.003
@@ -174,6 +201,18 @@ class StrengthConfig:
     )
     rsi_oversold: float = 30.0
     rsi_overbought: float = 70.0
+    atr_cluster_multiplier: float = 0.50
+    atr_neutral_multiplier: float = 0.15
+    structural_recency_days: int = 180
+
+
+@dataclass(frozen=True)
+class StructuralSourceConfig:
+    swing_left: int = 3
+    swing_right: int = 3
+    swing_lookback_bars: int = 252
+    swing_max_candidates_each: int = 12
+    historical_lookback_days: int = 370
 
 
 def _normalize_ticker(ticker: str) -> str:
@@ -577,8 +616,371 @@ def load_rsi_confirmation_contexts(
     return contexts
 
 
+def load_atr_market_contexts(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+) -> list[MarketContext]:
+    """ATR provider: V2.1 uses ATR14_D as volatility context for adaptive distances."""
+    del timeframes
+    df = _load_latest_indicator_rows(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        indicator_code="ATR",
+        timeframes=("D",),
+        component_codes=("VALUE",),
+    )
+
+    contexts: list[MarketContext] = []
+    for row in df.itertuples(index=False):
+        _require_value_semantic(
+            row, expected=VALUE_SEMANTIC_VOLATILITY_DISTANCE
+        )
+        value = float(row.Value)
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(
+                f"Invalid ATR value for ConfigId={row.ConfigId}: {row.Value!r}"
+            )
+        contexts.append(
+            MarketContext(
+                ticker=str(row.Ticker).upper(),
+                as_of_date=as_of_date,
+                source_code=str(row.ConfigCode),
+                source_family=SOURCE_FAMILY_VOLATILITY_CONTEXT,
+                timeframe=str(row.Timeframe).upper(),
+                indicator_code="ATR",
+                config_id=int(row.ConfigId),
+                config_code=str(row.ConfigCode),
+                component_code=str(row.ComponentCode).upper(),
+                value=value,
+                unit=str(row.Unit) if row.Unit is not None else None,
+                source_date=pd.Timestamp(row.Date).date(),
+                metadata={"parameters": _parse_parameters(row.Parameters)},
+            )
+        )
+    return contexts
+
+
+def _load_structural_history(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    lookback_days: int,
+) -> pd.DataFrame:
+    if lookback_days <= 0:
+        raise ValueError("lookback_days must be > 0")
+    start_date = as_of_date - timedelta(days=int(lookback_days))
+    df = connection.execute(
+        """
+        SELECT "Date", "High", "Low", "Close"
+        FROM "CherryMon"."main"."raw_stock_eod"
+        WHERE "Ticker" = ?
+          AND "Date" >= ?
+          AND "Date" <= ?
+          AND "High" IS NOT NULL
+          AND "Low" IS NOT NULL
+        ORDER BY "Date"
+        """,
+        [ticker, start_date, as_of_date],
+    ).df()
+    if df.empty:
+        return pd.DataFrame(columns=["Date", "High", "Low", "Close"])
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    for column in ("High", "Low", "Close"):
+        df[column] = pd.to_numeric(df[column], errors="coerce")
+    return (
+        df.dropna(subset=["Date", "High", "Low"])
+        .sort_values("Date")
+        .reset_index(drop=True)
+    )
+
+
+def load_swing_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    structural_config: StructuralSourceConfig | None = None,
+) -> list[LevelCandidate]:
+    """Confirmed daily swing highs/lows with explicit pivot_date and confirmed_at."""
+    del timeframes
+    config = structural_config or StructuralSourceConfig()
+    if config.swing_left <= 0 or config.swing_right <= 0:
+        raise ValueError("swing_left and swing_right must be > 0")
+    if config.swing_max_candidates_each <= 0:
+        raise ValueError("swing_max_candidates_each must be > 0")
+
+    df = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=max(config.historical_lookback_days, 500),
+    )
+    if len(df) < config.swing_left + config.swing_right + 1:
+        return []
+
+    if len(df) > config.swing_lookback_bars + config.swing_left + config.swing_right:
+        df = df.iloc[
+            -(config.swing_lookback_bars + config.swing_left + config.swing_right):
+        ].reset_index(drop=True)
+
+    highs: list[LevelCandidate] = []
+    lows: list[LevelCandidate] = []
+    left = config.swing_left
+    right = config.swing_right
+
+    for index in range(left, len(df) - right):
+        row = df.iloc[index]
+        pivot_date = pd.Timestamp(row["Date"]).date()
+        confirmed_at = pd.Timestamp(df.iloc[index + right]["Date"]).date()
+        if confirmed_at > as_of_date:
+            continue
+
+        left_highs = df.iloc[index - left:index]["High"]
+        right_highs = df.iloc[index + 1:index + right + 1]["High"]
+        left_lows = df.iloc[index - left:index]["Low"]
+        right_lows = df.iloc[index + 1:index + right + 1]["Low"]
+
+        high = float(row["High"])
+        low = float(row["Low"])
+        common_metadata = {
+            "pivot_date": pivot_date.isoformat(),
+            "confirmed_at": confirmed_at.isoformat(),
+            "left": left,
+            "right": right,
+        }
+
+        if high > float(left_highs.max()) and high >= float(right_highs.max()):
+            highs.append(
+                LevelCandidate(
+                    ticker=ticker.upper(),
+                    price=high,
+                    source_type="STRUCTURAL",
+                    source_code=f"SWING_HIGH_{pivot_date:%Y%m%d}",
+                    timeframe="D",
+                    indicator_code=None,
+                    config_id=None,
+                    config_code=None,
+                    component_code=None,
+                    source_date=pivot_date,
+                    confirmed_at=confirmed_at,
+                    source_role=SOURCE_ROLE_LEVEL,
+                    source_family=SOURCE_FAMILY_MARKET_STRUCTURE,
+                    value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+                    metadata={**common_metadata, "structure_kind": "SWING_HIGH"},
+                )
+            )
+
+        if low < float(left_lows.min()) and low <= float(right_lows.min()):
+            lows.append(
+                LevelCandidate(
+                    ticker=ticker.upper(),
+                    price=low,
+                    source_type="STRUCTURAL",
+                    source_code=f"SWING_LOW_{pivot_date:%Y%m%d}",
+                    timeframe="D",
+                    indicator_code=None,
+                    config_id=None,
+                    config_code=None,
+                    component_code=None,
+                    source_date=pivot_date,
+                    confirmed_at=confirmed_at,
+                    source_role=SOURCE_ROLE_LEVEL,
+                    source_family=SOURCE_FAMILY_MARKET_STRUCTURE,
+                    value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+                    metadata={**common_metadata, "structure_kind": "SWING_LOW"},
+                )
+            )
+
+    highs = sorted(highs, key=lambda item: item.source_date, reverse=True)[
+        :config.swing_max_candidates_each
+    ]
+    lows = sorted(lows, key=lambda item: item.source_date, reverse=True)[
+        :config.swing_max_candidates_each
+    ]
+    return sorted(
+        [*highs, *lows],
+        key=lambda item: (item.price, item.source_code),
+    )
+
+
+def _period_level_candidate(
+    *,
+    ticker: str,
+    source_code: str,
+    price: float,
+    source_date: date,
+    confirmed_at: date,
+    timeframe: str,
+    structure_kind: str,
+) -> LevelCandidate:
+    if not math.isfinite(price) or price <= 0:
+        raise ValueError(f"Invalid structural level {source_code}: {price!r}")
+    return LevelCandidate(
+        ticker=ticker.upper(),
+        price=price,
+        source_type="STRUCTURAL",
+        source_code=source_code,
+        timeframe=timeframe,
+        indicator_code=None,
+        config_id=None,
+        config_code=None,
+        component_code=None,
+        source_date=source_date,
+        confirmed_at=confirmed_at,
+        source_role=SOURCE_ROLE_LEVEL,
+        source_family=SOURCE_FAMILY_MARKET_STRUCTURE,
+        value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+        metadata={"structure_kind": structure_kind},
+    )
+
+
+def load_previous_period_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    structural_config: StructuralSourceConfig | None = None,
+) -> list[LevelCandidate]:
+    """Previous completed week/month H/L only; never uses the current partial period."""
+    del timeframes
+    config = structural_config or StructuralSourceConfig()
+    df = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=config.historical_lookback_days,
+    )
+    if df.empty:
+        return []
+
+    result: list[LevelCandidate] = []
+    current_week_start = as_of_date - timedelta(days=as_of_date.weekday())
+    previous_week = df[df["Date"].dt.date < current_week_start].copy()
+    if not previous_week.empty:
+        iso = previous_week["Date"].dt.isocalendar()
+        previous_week["_iso_year"] = iso.year
+        previous_week["_iso_week"] = iso.week
+        latest_key = previous_week[["_iso_year", "_iso_week"]].iloc[-1]
+        group = previous_week[
+            (previous_week["_iso_year"] == latest_key["_iso_year"])
+            & (previous_week["_iso_week"] == latest_key["_iso_week"])
+        ]
+        source_date = pd.Timestamp(group["Date"].max()).date()
+        result.extend(
+            [
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_WEEK_HIGH",
+                    price=float(group["High"].max()),
+                    source_date=source_date,
+                    confirmed_at=current_week_start,
+                    timeframe="W",
+                    structure_kind="PREVIOUS_WEEK_HIGH",
+                ),
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_WEEK_LOW",
+                    price=float(group["Low"].min()),
+                    source_date=source_date,
+                    confirmed_at=current_week_start,
+                    timeframe="W",
+                    structure_kind="PREVIOUS_WEEK_LOW",
+                ),
+            ]
+        )
+
+    current_month_start = as_of_date.replace(day=1)
+    previous_month = df[df["Date"].dt.date < current_month_start].copy()
+    if not previous_month.empty:
+        previous_month["_period"] = previous_month["Date"].dt.to_period("M")
+        latest_period = previous_month["_period"].iloc[-1]
+        group = previous_month[previous_month["_period"] == latest_period]
+        source_date = pd.Timestamp(group["Date"].max()).date()
+        result.extend(
+            [
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_MONTH_HIGH",
+                    price=float(group["High"].max()),
+                    source_date=source_date,
+                    confirmed_at=current_month_start,
+                    timeframe="M",
+                    structure_kind="PREVIOUS_MONTH_HIGH",
+                ),
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_MONTH_LOW",
+                    price=float(group["Low"].min()),
+                    source_date=source_date,
+                    confirmed_at=current_month_start,
+                    timeframe="M",
+                    structure_kind="PREVIOUS_MONTH_LOW",
+                ),
+            ]
+        )
+    return result
+
+
+def load_52w_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    structural_config: StructuralSourceConfig | None = None,
+) -> list[LevelCandidate]:
+    """Rolling 52-week high/low using only observations available at as_of_date."""
+    del timeframes
+    config = structural_config or StructuralSourceConfig()
+    df = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=config.historical_lookback_days,
+    )
+    if df.empty:
+        return []
+
+    window_start = as_of_date - timedelta(days=365)
+    window = df[df["Date"].dt.date >= window_start]
+    if window.empty:
+        return []
+
+    high_index = window["High"].idxmax()
+    low_index = window["Low"].idxmin()
+    high_date = pd.Timestamp(window.loc[high_index, "Date"]).date()
+    low_date = pd.Timestamp(window.loc[low_index, "Date"]).date()
+    return [
+        _period_level_candidate(
+            ticker=ticker,
+            source_code="HIGH_52W",
+            price=float(window.loc[high_index, "High"]),
+            source_date=high_date,
+            confirmed_at=as_of_date,
+            timeframe="D",
+            structure_kind="HIGH_52W",
+        ),
+        _period_level_candidate(
+            ticker=ticker,
+            source_code="LOW_52W",
+            price=float(window.loc[low_index, "Low"]),
+            source_date=low_date,
+            confirmed_at=as_of_date,
+            timeframe="D",
+            structure_kind="LOW_52W",
+        ),
+    ]
+
+
 def _source_provider_registry() -> dict[str, dict[str, Any]]:
-    """Return the V2.0 provider registry without coupling the core pipeline to sources."""
+    """Return the V2.1 provider registry without coupling the core pipeline to sources."""
     return {
         "MA": {
             "role": SOURCE_ROLE_LEVEL,
@@ -589,6 +991,29 @@ def _source_provider_registry() -> dict[str, dict[str, Any]]:
             "role": SOURCE_ROLE_LEVEL,
             "family": SOURCE_FAMILY_VOLATILITY_BAND,
             "loader": load_bb_level_candidates,
+        },
+        "SWING": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_MARKET_STRUCTURE,
+            "loader": load_swing_level_candidates,
+            "uses_structural_config": True,
+        },
+        "PREVIOUS_HL": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_MARKET_STRUCTURE,
+            "loader": load_previous_period_level_candidates,
+            "uses_structural_config": True,
+        },
+        "52W_HL": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_MARKET_STRUCTURE,
+            "loader": load_52w_level_candidates,
+            "uses_structural_config": True,
+        },
+        "ATR": {
+            "role": SOURCE_ROLE_CONTEXT,
+            "family": SOURCE_FAMILY_VOLATILITY_CONTEXT,
+            "loader": load_atr_market_contexts,
         },
         "RSI": {
             "role": SOURCE_ROLE_CONFIRMATION,
@@ -611,6 +1036,11 @@ def normalize_levels(
             raise ValueError("Candidate ticker does not match CurrentPrice")
         if candidate.source_date > current_price.as_of_date:
             raise ValueError("Candidate source_date is after CurrentPrice.as_of_date")
+        confirmed_at = candidate.confirmed_at or candidate.source_date
+        if confirmed_at > current_price.as_of_date:
+            raise ValueError(
+                "Candidate confirmed_at is after CurrentPrice.as_of_date"
+            )
         if candidate.timeframe and candidate.timeframe not in SUPPORTED_TIMEFRAMES:
             raise ValueError(f"Unsupported candidate timeframe: {candidate.timeframe}")
         if candidate.source_role != SOURCE_ROLE_LEVEL:
@@ -643,6 +1073,7 @@ def normalize_levels(
                 timeframe=candidate.timeframe,
                 weight=float(tf_weight * source_weight),
                 source_date=candidate.source_date,
+                confirmed_at=confirmed_at,
                 config_id=candidate.config_id,
                 config_code=candidate.config_code,
                 component_code=candidate.component_code,
@@ -662,13 +1093,50 @@ def _weighted_price(levels: Sequence[NormalizedLevel]) -> float:
     return sum(level.price * max(level.weight, 0.0) for level in levels) / total
 
 
+def resolve_adaptive_thresholds(
+    *,
+    current_price: CurrentPrice,
+    market_contexts: Sequence[MarketContext],
+    min_cluster_pct: float,
+    min_neutral_pct: float,
+    strength_config: StrengthConfig | None = None,
+) -> tuple[float, float]:
+    """Resolve V2.1 cluster/neutral percentages from ATR14_D with percent floors."""
+    config = strength_config or StrengthConfig()
+    cluster_floor = _validate_pct("cluster_threshold_pct", min_cluster_pct, 0.10)
+    neutral_floor = _validate_pct("neutral_threshold_pct", min_neutral_pct, 0.10)
+    if config.atr_cluster_multiplier < 0 or config.atr_neutral_multiplier < 0:
+        raise ValueError("ATR multipliers must be >= 0")
+
+    eligible = [
+        context
+        for context in market_contexts
+        if context.indicator_code == "ATR"
+        and context.timeframe == "D"
+        and context.source_date <= current_price.as_of_date
+        and context.value > 0
+    ]
+    if not eligible:
+        return cluster_floor, neutral_floor
+
+    context = max(eligible, key=lambda item: item.source_date)
+    atr_pct = float(context.value) / current_price.price
+    if not math.isfinite(atr_pct) or atr_pct <= 0:
+        return cluster_floor, neutral_floor
+
+    return (
+        max(cluster_floor, atr_pct * config.atr_cluster_multiplier),
+        max(neutral_floor, atr_pct * config.atr_neutral_multiplier),
+    )
+
+
 def cluster_levels(
     levels: Sequence[NormalizedLevel],
     *,
     cluster_threshold_pct: float = 0.01,
 ) -> list[LevelZone]:
     """Group nearby levels into deterministic zones."""
-    threshold = _validate_pct("cluster_threshold_pct", cluster_threshold_pct)
+    threshold = _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 1.00)
     if not levels:
         return []
     clusters: list[list[NormalizedLevel]] = []
@@ -701,7 +1169,7 @@ def classify_zones(
     current_price: CurrentPrice,
     neutral_threshold_pct: float = 0.003,
 ) -> list[LevelZone]:
-    neutral = _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.02)
+    neutral = _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 1.00)
     result: list[LevelZone] = []
     for zone in zones:
         distance = (
@@ -767,6 +1235,31 @@ def _rsi_confirmation_score(
     return weighted_total / weight_sum if weight_sum > 0 else 0.0
 
 
+def _structural_quality_score(
+    zone: LevelZone,
+    *,
+    current_price: CurrentPrice,
+    config: StrengthConfig,
+) -> tuple[float, bool]:
+    structural = [
+        source
+        for source in zone.sources
+        if source.source_family == SOURCE_FAMILY_MARKET_STRUCTURE
+    ]
+    if not structural:
+        return 0.0, False
+    if config.structural_recency_days <= 0:
+        raise ValueError("structural_recency_days must be > 0")
+
+    scores = []
+    for source in structural:
+        age = max((current_price.as_of_date - source.source_date).days, 0)
+        scores.append(
+            max(0.0, 1.0 - age / float(config.structural_recency_days)) * 100.0
+        )
+    return sum(scores) / len(scores), True
+
+
 def score_zones(
     zones: Sequence[LevelZone],
     *,
@@ -775,7 +1268,7 @@ def score_zones(
     strength_config: StrengthConfig | None = None,
     confirmations: Sequence[ConfirmationContext] = (),
 ) -> list[ScoredLevel]:
-    """Strength V2.0 uses family diversity plus optional RSI confirmation."""
+    """Strength V2.1 adds structural quality while preserving family diversity."""
     config = strength_config or StrengthConfig()
     base_weights = (
         config.confluence_weight,
@@ -783,7 +1276,11 @@ def score_zones(
         config.touch_weight,
         config.recency_weight,
     )
-    all_weights = (*base_weights, config.confirmation_weight)
+    all_weights = (
+        *base_weights,
+        config.confirmation_weight,
+        config.structural_quality_weight,
+    )
     if any(w < 0 for w in all_weights) or sum(base_weights) <= 0:
         raise ValueError("Strength weights must be non-negative and base weights sum to > 0")
     if config.family_confluence_target <= 0:
@@ -822,6 +1319,11 @@ def score_zones(
         age = max((current_price.as_of_date - latest).days, 0)
         recency = max(0.0, 1.0 - age / float(config.recency_days)) * 100.0
         confirmation = _rsi_confirmation_score(zone, confirmations, config)
+        structural_quality, has_structural = _structural_quality_score(
+            zone,
+            current_price=current_price,
+            config=config,
+        )
 
         weighted_score = (
             confluence * config.confluence_weight
@@ -833,6 +1335,11 @@ def score_zones(
         if confirmations and zone.level_type in {"SUPPORT", "RESISTANCE"}:
             weighted_score += confirmation * config.confirmation_weight
             effective_weight += config.confirmation_weight
+        if has_structural:
+            weighted_score += (
+                structural_quality * config.structural_quality_weight
+            )
+            effective_weight += config.structural_quality_weight
 
         score = weighted_score / effective_weight
         result.append(
@@ -844,6 +1351,7 @@ def score_zones(
                 touch_score=round(touch, 2),
                 recency_score=round(recency, 2),
                 confirmation_score=round(confirmation, 2),
+                structural_quality_score=round(structural_quality, 2),
                 touch_count=touches,
             )
         )
@@ -903,16 +1411,24 @@ def build_level_ladder_from_data(
     max_resistance_levels: int = 3,
     strength_config: StrengthConfig | None = None,
     confirmations: Sequence[ConfirmationContext] = (),
+    market_contexts: Sequence[MarketContext] = (),
 ) -> LevelLadderResult:
-    """Pure calculation pipeline used by production and focused tests."""
+    """Pure V2.1 pipeline with optional ATR-adaptive distance context."""
+    cluster_pct_used, neutral_pct_used = resolve_adaptive_thresholds(
+        current_price=current_price,
+        market_contexts=market_contexts,
+        min_cluster_pct=cluster_threshold_pct,
+        min_neutral_pct=neutral_threshold_pct,
+        strength_config=strength_config,
+    )
     normalized = normalize_levels(
         candidates, current_price=current_price, strength_config=strength_config
     )
-    zones = cluster_levels(normalized, cluster_threshold_pct=cluster_threshold_pct)
+    zones = cluster_levels(normalized, cluster_threshold_pct=cluster_pct_used)
     zones = classify_zones(
         zones,
         current_price=current_price,
-        neutral_threshold_pct=neutral_threshold_pct,
+        neutral_threshold_pct=neutral_pct_used,
     )
     scored = score_zones(
         zones,
@@ -947,6 +1463,9 @@ def build_level_ladder_from_data(
         downside_to_s1_pct=round(downside, 4) if downside is not None else None,
         risk_reward_ratio=round(rr, 4) if rr is not None else None,
         confirmations=tuple(confirmations),
+        market_contexts=tuple(market_contexts),
+        cluster_threshold_pct_used=round(cluster_pct_used, 6),
+        neutral_threshold_pct_used=round(neutral_pct_used, 6),
     )
 
 
@@ -961,13 +1480,14 @@ def build_level_ladder(
     cluster_threshold_pct: float = 0.01,
     neutral_threshold_pct: float = 0.003,
     strength_config: StrengthConfig | None = None,
+    structural_config: StructuralSourceConfig | None = None,
     connection: Any | None = None,
 ) -> LevelLadderResult:
-    """Build R/S Ladder V2.0 from registered LEVEL and CONFIRMATION providers."""
+    """Build R/S Ladder V2.1 from LEVEL, CONTEXT and CONFIRMATION providers."""
     normalized_ticker = _normalize_ticker(ticker)
     normalized_timeframes = _validate_timeframes(timeframes)
-    _validate_pct("cluster_threshold_pct", cluster_threshold_pct)
-    _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.02)
+    _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
+    _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.10)
     if max_support_levels <= 0 or max_resistance_levels <= 0:
         raise ValueError("max_support_levels and max_resistance_levels must be > 0")
 
@@ -980,12 +1500,12 @@ def build_level_ladder(
     unsupported = sources - set(registry)
     if unsupported:
         raise ValueError(
-            f"Unsupported R/S V2.0 sources: {sorted(unsupported)}; "
+            f"Unsupported R/S V2.1 sources: {sorted(unsupported)}; "
             f"supported={sorted(registry)}"
         )
 
     LOGGER.info(
-        "RS Ladder V2.0 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster=%.4f",
+        "RS Ladder V2.1 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster_floor=%.4f",
         normalized_ticker,
         as_of_date,
         normalized_timeframes,
@@ -999,33 +1519,41 @@ def build_level_ladder(
         )
         candidates: list[LevelCandidate] = []
         confirmations: list[ConfirmationContext] = []
+        market_contexts: list[MarketContext] = []
 
         for source in sorted(sources):
             spec = registry[source]
-            loaded = spec["loader"](
-                con,
-                ticker=normalized_ticker,
-                as_of_date=current.as_of_date,
-                timeframes=normalized_timeframes,
-            )
+            loader_kwargs: dict[str, Any] = {
+                "ticker": normalized_ticker,
+                "as_of_date": current.as_of_date,
+                "timeframes": normalized_timeframes,
+            }
+            if spec.get("uses_structural_config"):
+                loader_kwargs["structural_config"] = (
+                    structural_config or StructuralSourceConfig()
+                )
+            loaded = spec["loader"](con, **loader_kwargs)
             if spec["role"] == SOURCE_ROLE_LEVEL:
                 candidates.extend(loaded)
+            elif spec["role"] == SOURCE_ROLE_CONTEXT:
+                market_contexts.extend(loaded)
             elif spec["role"] == SOURCE_ROLE_CONFIRMATION:
                 confirmations.extend(loaded)
             else:
                 raise RuntimeError(
-                    f"Unsupported provider role in V2.0 registry: {spec['role']}"
+                    f"Unsupported provider role in V2.1 registry: {spec['role']}"
                 )
 
         history = load_price_history(
             con, ticker=normalized_ticker, as_of_date=current.as_of_date
         )
         LOGGER.info(
-            "RS Ladder V2.0 inputs | ticker=%s date=%s candidates=%d "
-            "confirmations=%d history=%d",
+            "RS Ladder V2.1 inputs | ticker=%s date=%s candidates=%d "
+            "contexts=%d confirmations=%d history=%d",
             normalized_ticker,
             current.as_of_date,
             len(candidates),
+            len(market_contexts),
             len(confirmations),
             len(history),
         )
@@ -1039,12 +1567,16 @@ def build_level_ladder(
             max_resistance_levels=max_resistance_levels,
             strength_config=strength_config,
             confirmations=confirmations,
+            market_contexts=market_contexts,
         )
         LOGGER.info(
-            "RS Ladder V2.0 success | ticker=%s supports=%d resistances=%d",
+            "RS Ladder V2.1 success | ticker=%s supports=%d resistances=%d "
+            "cluster=%.4f neutral=%.4f",
             normalized_ticker,
             len(result.support_levels),
             len(result.resistance_levels),
+            result.cluster_threshold_pct_used or cluster_threshold_pct,
+            result.neutral_threshold_pct_used or neutral_threshold_pct,
         )
         return result
 
@@ -1055,5 +1587,5 @@ def build_level_ladder(
         with DuckDBManager(read_only=True) as con:
             return calculate(con)
     except Exception:
-        LOGGER.exception("RS Ladder V2.0 failed | ticker=%s", normalized_ticker)
+        LOGGER.exception("RS Ladder V2.1 failed | ticker=%s", normalized_ticker)
         raise
