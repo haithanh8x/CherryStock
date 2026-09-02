@@ -1363,6 +1363,27 @@ def _rsi_confirmation_score(
     return weighted_total / weight_sum if weight_sum > 0 else 0.0
 
 
+def _volume_confirmation_score(
+    zone: LevelZone,
+    confirmations: Sequence[ConfirmationContext],
+    tolerance_pct: float,
+) -> tuple[float, bool]:
+    if zone.level_type not in {"SUPPORT", "RESISTANCE"}:
+        return 0.0, False
+    low = zone.price_low * (1.0 - tolerance_pct)
+    high = zone.price_high * (1.0 + tolerance_pct)
+    matched = [
+        float(context.value)
+        for context in confirmations
+        if context.source_family == SOURCE_FAMILY_VOLUME_CONFIRMATION
+        and context.reference_price is not None
+        and low <= float(context.reference_price) <= high
+    ]
+    if not matched:
+        return 0.0, False
+    return max(0.0, min(max(matched), 100.0)), True
+
+
 def _structural_quality_score(
     zone: LevelZone,
     *,
@@ -1396,7 +1417,7 @@ def score_zones(
     strength_config: StrengthConfig | None = None,
     confirmations: Sequence[ConfirmationContext] = (),
 ) -> list[ScoredLevel]:
-    """Strength V2.1 adds structural quality while preserving family diversity."""
+    """Strength V2.2 adds Volume Profile confirmation to V2.1 components."""
     config = strength_config or StrengthConfig()
     base_weights = (
         config.confluence_weight,
@@ -1408,6 +1429,7 @@ def score_zones(
         *base_weights,
         config.confirmation_weight,
         config.structural_quality_weight,
+        config.volume_confirmation_weight,
     )
     if any(w < 0 for w in all_weights) or sum(base_weights) <= 0:
         raise ValueError("Strength weights must be non-negative and base weights sum to > 0")
@@ -1447,6 +1469,15 @@ def score_zones(
         age = max((current_price.as_of_date - latest).days, 0)
         recency = max(0.0, 1.0 - age / float(config.recency_days)) * 100.0
         confirmation = _rsi_confirmation_score(zone, confirmations, config)
+        has_rsi = any(
+            context.indicator_code == "RSI"
+            for context in confirmations
+        )
+        volume_confirmation, has_volume_confirmation = _volume_confirmation_score(
+            zone,
+            confirmations,
+            config.touch_tolerance_pct,
+        )
         structural_quality, has_structural = _structural_quality_score(
             zone,
             current_price=current_price,
@@ -1460,9 +1491,14 @@ def score_zones(
             + recency * config.recency_weight
         )
         effective_weight = sum(base_weights)
-        if confirmations and zone.level_type in {"SUPPORT", "RESISTANCE"}:
+        if has_rsi and zone.level_type in {"SUPPORT", "RESISTANCE"}:
             weighted_score += confirmation * config.confirmation_weight
             effective_weight += config.confirmation_weight
+        if has_volume_confirmation:
+            weighted_score += (
+                volume_confirmation * config.volume_confirmation_weight
+            )
+            effective_weight += config.volume_confirmation_weight
         if has_structural:
             weighted_score += (
                 structural_quality * config.structural_quality_weight
@@ -1480,6 +1516,7 @@ def score_zones(
                 recency_score=round(recency, 2),
                 confirmation_score=round(confirmation, 2),
                 structural_quality_score=round(structural_quality, 2),
+                volume_confirmation_score=round(volume_confirmation, 2),
                 touch_count=touches,
             )
         )
