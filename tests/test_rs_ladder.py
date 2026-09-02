@@ -3,6 +3,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
+import src.calcEngine.levelLadder as level_ladder_module
 from src.calcEngine.volumeProfile import (
     VolumeProfileConfig,
     build_volume_profile_from_history,
@@ -21,6 +22,7 @@ from src.calcEngine.levelLadder import (
     SOURCE_ROLE_LEVEL,
     VALUE_SEMANTIC_PRICE_LEVEL,
     build_level_ladder_from_data,
+    load_bb_level_candidates,
     load_volume_profile_bundle,
     load_52w_level_candidates,
     load_previous_period_level_candidates,
@@ -165,6 +167,120 @@ def confirmation(value: float, *, timeframe: str = "D") -> ConfirmationContext:
         source_date=AS_OF,
         metadata={"parameters": {"length": 14}},
     )
+
+
+def _bb_rows(values: list[tuple[str, float]]) -> pd.DataFrame:
+    rows = []
+    for index, (component, value) in enumerate(values, start=1):
+        rows.append(
+            {
+                "Ticker": "THD",
+                "Date": pd.Timestamp("2026-05-29"),
+                "ConfigId": 2,
+                "ComponentCode": component,
+                "Value": value,
+                "ConfigCode": "BB20_2_W",
+                "IndicatorCode": "BB",
+                "Timeframe": "W",
+                "Parameters": '{"length":20,"stddev":2}',
+                "ValueSemantic": "PRICE_LEVEL",
+                "Unit": "PRICE",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def test_bb_provider_skips_non_positive_price_levels_and_keeps_valid_components(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frame = _bb_rows(
+        [
+            ("LOWER", -4.86),
+            ("MIDDLE", 120.0),
+            ("UPPER", 244.86),
+        ]
+    )
+    monkeypatch.setattr(
+        level_ladder_module,
+        "_load_latest_indicator_rows",
+        lambda *_args, **_kwargs: frame,
+    )
+
+    candidates = load_bb_level_candidates(
+        object(),
+        ticker="THD",
+        as_of_date=date(2026, 5, 29),
+        timeframes=("W",),
+    )
+
+    assert [item.component_code for item in candidates] == ["MIDDLE", "UPPER"]
+    assert [item.price for item in candidates] == [120.0, 244.86]
+
+
+def test_bb_provider_skips_zero_price_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frame = _bb_rows(
+        [
+            ("LOWER", 0.0),
+            ("MIDDLE", 120.0),
+        ]
+    )
+    monkeypatch.setattr(
+        level_ladder_module,
+        "_load_latest_indicator_rows",
+        lambda *_args, **_kwargs: frame,
+    )
+
+    candidates = load_bb_level_candidates(
+        object(),
+        ticker="THD",
+        as_of_date=date(2026, 5, 29),
+        timeframes=("W",),
+    )
+
+    assert [item.component_code for item in candidates] == ["MIDDLE"]
+
+
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), float("-inf")])
+def test_bb_provider_still_rejects_non_finite_values(
+    monkeypatch: pytest.MonkeyPatch,
+    bad_value: float,
+) -> None:
+    frame = _bb_rows([("LOWER", bad_value)])
+    monkeypatch.setattr(
+        level_ladder_module,
+        "_load_latest_indicator_rows",
+        lambda *_args, **_kwargs: frame,
+    )
+
+    with pytest.raises(ValueError, match="Invalid BB value"):
+        load_bb_level_candidates(
+            object(),
+            ticker="THD",
+            as_of_date=date(2026, 5, 29),
+            timeframes=("W",),
+        )
+
+
+def test_bb_provider_still_rejects_wrong_value_semantic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frame = _bb_rows([("LOWER", 100.0)])
+    frame.loc[:, "ValueSemantic"] = "OSCILLATOR"
+    monkeypatch.setattr(
+        level_ladder_module,
+        "_load_latest_indicator_rows",
+        lambda *_args, **_kwargs: frame,
+    )
+
+    with pytest.raises(ValueError, match="Invalid ValueSemantic"):
+        load_bb_level_candidates(
+            object(),
+            ticker="THD",
+            as_of_date=date(2026, 5, 29),
+            timeframes=("W",),
+        )
 
 
 def test_bb_level_can_cluster_with_ma_and_preserves_family_diversity() -> None:
