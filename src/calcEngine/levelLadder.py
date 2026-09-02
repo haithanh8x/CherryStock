@@ -204,7 +204,7 @@ class StrengthConfig:
     confirmation_weight: float = 0.10
     structural_quality_weight: float = 0.15
     volume_confirmation_weight: float = 0.10
-    family_confluence_target: int = 4
+    family_confluence_target: int = 3
     touch_target: int = 4
     touch_tolerance_pct: float = 0.003
     recency_days: int = 180
