@@ -361,7 +361,7 @@ class RSEvaluationRepository:
         required = {
             "EffectivenessRunId", "Ticker", "ScopeType", "SourceKey",
             "SourceFamily", "SourceRole", "HorizonBars", "AttributionMode",
-            "LineageEventCount", "ValidationEventCount", "TestEventCount",
+            "MarginalMetric", "LineageEventCount", "ValidationEventCount", "TestEventCount",
             "TouchRate", "HoldRateGivenTouch", "BreakRateGivenTouch",
             "RetestRateGivenBreak", "DirectionalEdgePct", "ValidationQuality",
             "TestQuality", "ValidationMarginalLift", "TestMarginalLift",
@@ -382,7 +382,7 @@ class RSEvaluationRepository:
                 INSERT INTO "CherryMon"."main"."cal_rs_source_effectiveness" (
                     "EffectivenessRunId", "Ticker", "ScopeType", "SourceKey",
                     "SourceFamily", "SourceRole", "HorizonBars",
-                    "AttributionMode", "LineageEventCount",
+                    "AttributionMode", "MarginalMetric", "LineageEventCount",
                     "ValidationEventCount", "TestEventCount", "TouchRate",
                     "HoldRateGivenTouch", "BreakRateGivenTouch",
                     "RetestRateGivenBreak", "DirectionalEdgePct",
@@ -394,7 +394,7 @@ class RSEvaluationRepository:
                 SELECT
                     "EffectivenessRunId", "Ticker", "ScopeType", "SourceKey",
                     "SourceFamily", "SourceRole", "HorizonBars",
-                    "AttributionMode", "LineageEventCount",
+                    "AttributionMode", "MarginalMetric", "LineageEventCount",
                     "ValidationEventCount", "TestEventCount", "TouchRate",
                     "HoldRateGivenTouch", "BreakRateGivenTouch",
                     "RetestRateGivenBreak", "DirectionalEdgePct",
