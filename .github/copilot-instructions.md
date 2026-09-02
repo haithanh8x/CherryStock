@@ -1,8 +1,11 @@
-# CherryStock AI Instructions
+# CherryStock Agent Harness — Governance and Routing
 
-## Role
-Bạn là Senior Software Engineer / Solution Architect làm việc trực tiếp trên source code CherryStock.
-Mục tiêu: implement thay đổi đúng business requirement, tuân thủ architecture hiện tại, hạn chế breaking change, có validation/test và có cách chạy thực tế.
+## Purpose
+This file is the mandatory repository-level entry point for CherryStock AI-assisted work.
+
+It defines global governance, intent classification, specialist routing, ownership priority, handoff contracts, bounded execution and material ownership.
+
+The default repository agent acts as task orchestrator. Specialist agents own their defined outcomes. Canonical Agent Harness architecture is documented at `docs/architecture/agent-harness/README.md`.
 
 ## Instruction priority
 Trước khi sửa code hoặc thiết kế, đọc instructions theo thứ tự:
@@ -10,7 +13,10 @@ Trước khi sửa code hoặc thiết kế, đọc instructions theo thứ tự
 1. .github/copilot-instructions.md — global engineering governance.
 2. .github/agents/CherryMon.agent.md — architecture constitution.
 3. Intent-specific agent nếu có:
+   - .github/agents/BusinessAnalyst.agent.md cho requirement analysis, clarification, acceptance criteria và backlog.
    - .github/agents/SolutionArchitect.agent.md cho architecture/design.
+   - .github/agents/Indicator_Management.agent.md cho concrete indicator lifecycle.
+   - .github/agents/GeneralCoding.agent.md cho clear general implementation.
    - .github/agents/TestEngineer.agent.md cho test design, validation runbook, reproduce bug, performance test hoặc execution verification.
 4. Matching .github/instructions/*.instructions.md — domain-specific policy.
 5. docs/00_HOME.md và related architecture/specification/ADR documents under docs/.
@@ -27,11 +33,21 @@ Before executing a task, classify its primary intent and select the authoritativ
 
 | Primary intent | Authoritative agent |
 | --- | --- |
+| Requirement analysis, clarification, scope, business rules, acceptance criteria, backlog creation/refinement or requirement decomposition | `.github/agents/BusinessAnalyst.agent.md` |
 | Onboard, add, activate, modify, repair, deactivate, or delete a technical indicator, its components, metadata, parameter/config family, or D/W/M configuration | `.github/agents/Indicator_Management.agent.md` |
 | Architecture, system design, solution design, technical design, structural refactor, integration design, data architecture, MCP architecture, or AI/agent architecture | `.github/agents/SolutionArchitect.agent.md` |
+| Clear implementation, focused bug fix, contract-preserving refactor, code/config/SQL/script/documentation change not owned end-to-end by a domain agent | `.github/agents/GeneralCoding.agent.md` |
 | Test design, test execution, validation, regression, reproduction, cross-check, acceptance, performance, or execution verification | `.github/agents/TestEngineer.agent.md` |
 
 Agent selection defines WHO owns the task. Matching `.github/instructions/*.instructions.md` files still define domain rules, and `docs/**` remains the engineering knowledge Source of Truth.
+
+### Business Analysis / Requirement Management
+
+For requirement analysis, clarification, scope definition, business rules, acceptance criteria, backlog creation/refinement, impact discovery or requirement decomposition, MUST follow `.github/agents/BusinessAnalyst.agent.md`.
+
+Durable requirement output belongs under `docs/backlog/requirements/`.
+
+Do not require Business Analyst for a small explicit change when behavior, scope and acceptance criteria are already clear. Business Analyst owns requirement readiness; it does not design architecture, implement code or claim test verdicts.
 
 ### Indicator Management
 
@@ -72,29 +88,40 @@ Testing tasks MUST be finite and bounded:
 - no automatic transition to another hypothesis after a terminal verdict.
 
 ### Implementation
-For implementation requests, use the normal engineering workflow below and matching domain instructions. If implementation follows an approved architecture design, preserve the approved contracts and update docs/ADR when the implementation changes them.
+For a clear implementation request not owned end-to-end by a specialist domain agent, MUST follow `.github/agents/GeneralCoding.agent.md` and matching domain instructions.
+
+If implementation follows an approved architecture design, preserve the approved contracts and update docs/ADR when the implementation changes them.
+
+General Coding normally ends with `IMPLEMENTED_PENDING_VALIDATION` and hands off to Test Engineer. It must not self-declare final PASS.
 
 ## Agent ownership and handoff
 
 When multiple agents appear relevant, use this ownership priority:
 
 1. Domain-specific agent for a concrete domain lifecycle operation.
-2. Solution Architect for broad architecture or cross-module design.
-3. Test Engineer for independent validation and test-focused work.
-4. General engineering workflow only when no specialist owns the primary intent.
+2. Business Analyst when requirement quality/readiness is the primary objective.
+3. Solution Architect for broad architecture or cross-module design.
+4. General Coding for clear implementation not owned end-to-end by a domain agent.
+5. Test Engineer for independent validation and test-focused work.
 
 Default handoff:
+- Unclear/material new request: `BusinessAnalyst` → `READY_FOR_DESIGN` or `READY_FOR_IMPLEMENTATION`.
+- Requirement needing design: `BusinessAnalyst` → `SolutionArchitect` → `GeneralCoding` or domain owner → `TestEngineer`.
+- Clear implementation: `GeneralCoding` → `IMPLEMENTED_PENDING_VALIDATION` → `TestEngineer`.
 - Indicator lifecycle change: `Indicator_Management` → implementation/backfill → `TestEngineer` validation.
-- Architecture change: `SolutionArchitect` → implementation/domain owner → `TestEngineer` validation.
 - Test-only request: `TestEngineer` owns the task and returns a finite verdict.
 
 Examples:
+- "Phân tích requirement và tạo backlog cho cảnh báo cổ phiếu" → `BusinessAnalyst.agent.md`.
+- "Sửa lỗi nhỏ đã có acceptance criteria" → `GeneralCoding.agent.md`.
 - "Thêm / onboard indicator RSI" → `Indicator_Management.agent.md`.
 - "Thiết kế indicator RSI mới" → `Indicator_Management.agent.md`; consult architecture rules only when needed.
 - "Thiết kế lại Indicator Engine" → `SolutionArchitect.agent.md`; consult Indicator Management for lifecycle constraints.
 - "Test Indicator Engine sau refactor" → `TestEngineer.agent.md`.
 
 ## Domain routing
+- Requirement analysis / clarification / backlog / acceptance criteria → .github/agents/BusinessAnalyst.agent.md + docs/backlog/requirements/
+- Clear general implementation / bug fix / contract-preserving refactor → .github/agents/GeneralCoding.agent.md + matching domain instruction(s)
 - Database / DuckDB / SQL / transaction / data quality → .github/instructions/database.instructions.md
 - Technical indicator lifecycle / metadata / components / config families / activation / backfill / deactivation / deletion → .github/agents/Indicator_Management.agent.md + .github/instructions/indicators.instructions.md
 - Broad Indicator Engine architecture or cross-module redesign → .github/agents/SolutionArchitect.agent.md + .github/instructions/indicators.instructions.md
@@ -112,14 +139,16 @@ Before implementation:
 1. Identify affected domain(s).
 2. Read CherryMon.agent.md.
 3. Select the mandatory specialist using the Intent routing and ownership priority above.
-4. If the request is a concrete indicator lifecycle change, route through Indicator_Management.agent.md first.
-5. If the request is broad design/architecture, route through SolutionArchitect.agent.md first.
-6. If the request is test design/execution, route through TestEngineer.agent.md first.
-7. Read matching domain instruction(s).
-8. Read docs/00_HOME.md and related architecture/specification/ADR documents.
-9. Inspect existing implementation and similar patterns.
-10. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
-11. Propose the smallest compatible change.
+4. If requirement readiness is the objective or material ambiguity exists, route through BusinessAnalyst.agent.md first.
+5. If the request is a concrete indicator lifecycle change, route through Indicator_Management.agent.md first.
+6. If the request is broad design/architecture, route through SolutionArchitect.agent.md first.
+7. If the request is a clear implementation, route through GeneralCoding.agent.md.
+8. If the request is test design/execution, route through TestEngineer.agent.md first.
+9. Read matching domain instruction(s).
+10. Read docs/00_HOME.md and related requirement/architecture/specification/ADR documents.
+11. Inspect existing implementation and similar patterns.
+12. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
+13. Propose the smallest compatible change.
 
 During implementation:
 - Reuse existing utilities/services/repositories before creating abstractions.
@@ -185,7 +214,9 @@ For implementation work use this concise structure:
 ### Notes
 - Assumptions / remaining risks
 
+For requirement/backlog work, use the output contract defined by .github/agents/BusinessAnalyst.agent.md.
 For design/architecture work, use the output contract defined by .github/agents/SolutionArchitect.agent.md.
+For general implementation work, use the output contract defined by .github/agents/GeneralCoding.agent.md.
 For test-design/execution work, use the output contract defined by .github/agents/TestEngineer.agent.md.
 
 Do not only provide sample code when repository write access is available and the user asked for implementation.
