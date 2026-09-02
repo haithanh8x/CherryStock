@@ -1,0 +1,41 @@
+{
+	"folders": [
+		{
+			"name": "CherryStock",
+			"path": "."
+		}
+	],
+	"settings": {
+		"sqltools.useNodeRuntime": true,
+		"sqltools.connections": [],
+		"workbench.editorAssociations": {
+			"*.copilotmd": "vscode.markdown.preview.editor",
+			"*.parquet": "duckdb.dataFileViewer",
+			"*.csv": "duckdb.dataFileViewer",
+			"*.tsv": "duckdb.dataFileViewer",
+			"*.xlsx": "duckdb.dataFileViewer",
+			"*.md": "vscode.markdown.preview.editor"
+		},
+		"duckdb.databases": [
+			{
+				"alias": "CherryMon",
+				"type": "file",
+				"path": "../../OneDrive/Working/Datafile/CherryMon.duckdb",
+				"readOnly": true,
+				"attached": false
+			}
+		],
+		"duckdb.defaultDatabase": "CherryMon",
+		"files.exclude": {
+			"**/.git": false
+		},
+		"chat.tools.terminal.autoApprove": {
+			"ForEach-Object": true,
+			".venv\\Scripts\\python.exe": true,
+			"/^python -c \"from src\\.calcEngine\\.levelLadder import build_level_ladder; r=build_level_ladder\\('MWG'\\); print\\(r\\)\"$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
+}
