@@ -4,7 +4,21 @@ applyTo: "**/*.py,tests/**/*.py,tests/**/*.md,scripts/**/*.py"
 
 # CherryStock Testing & Validation Instructions
 
-This file owns repository-wide test, validation, execution-verification and completion rules.
+This file defines mandatory repository-wide test, validation, execution-verification and completion rules.
+
+Canonical workflow and material routing:
+- `docs/architecture/agent-harness/README.md`
+- `docs/development/Development_Workflow.md`
+- relevant requirement under `docs/backlog/requirements/`
+- relevant architecture, ADR, domain and runbook materials routed from `docs/00_HOME.md`
+
+## Agent routing
+- Test strategy, test design, test execution, regression, cross-check and independent validation → `.github/agents/TestEngineer.agent.md`.
+- General Coding performs only focused developer verification and hands off with `IMPLEMENTED_PENDING_VALIDATION`.
+- Missing or ambiguous acceptance criteria for a material change → `.github/agents/BusinessAnalyst.agent.md`.
+- Test evidence revealing an architecture decision gap → `.github/agents/SolutionArchitect.agent.md`.
+
+Test Engineer owns the final `PASS | FAIL | BLOCKED | REGRESSION` verdict. General Coding and domain implementation agents MUST NOT self-approve final validation.
 
 ## Core Principle
 
@@ -28,10 +42,11 @@ Before generating, changing or executing tests:
 
 1. Read .github/copilot-instructions.md.
 2. Read .github/agents/TestEngineer.agent.md for test-design or test-execution work.
-3. Read matching domain instructions.
-4. Read relevant architecture/spec/ADR docs from docs/00_HOME.md.
-5. Inspect the production code under test.
-6. Inspect the nearest existing tests and reuse project patterns.
+3. Read the related requirement and its acceptance criteria when one exists.
+4. Read matching domain instructions.
+5. Read relevant architecture/spec/ADR docs from docs/00_HOME.md.
+6. Inspect the production code under test and the General Coding/domain handoff.
+7. Inspect the nearest existing tests and reuse project patterns.
 
 Do not invent test conventions when repository examples already exist.
 
