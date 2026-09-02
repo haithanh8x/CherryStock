@@ -16,6 +16,18 @@ from typing import Any, Iterable, Mapping, Sequence
 
 import pandas as pd
 
+DEFAULT_SOURCE_FAMILY_MAP = {
+    "MA": "TREND_AVERAGE",
+    "BB": "VOLATILITY_BAND",
+    "SWING": "MARKET_STRUCTURE",
+    "PREVIOUS_HL": "MARKET_STRUCTURE",
+    "52W_HL": "MARKET_STRUCTURE",
+    "VOLUME_PROFILE": "VOLUME_STRUCTURE",
+    "ATR": "VOLATILITY_CONTEXT",
+    "RSI": "MOMENTUM_CONFIRMATION",
+}
+
+
 
 @dataclass(frozen=True)
 class EvaluationConfig:
