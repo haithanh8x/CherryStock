@@ -29,11 +29,4 @@ select * from "CherryMon"."main"."cal_Trends" where Ticker='MWG' order by Date d
 select * from "CherryMon"."main"."dim_indicator";
 select * from "CherryMon"."main"."dim_indicator_component";
 select * from "CherryMon"."main"."dim_indicator_config";
-select distinct Ticker from "CherryMon"."main"."vw_Ticker_indicators";
-
-SELECT Ticker, status
-FROM "CherryMon"."main"."raw_lstTicker"
-WHERE status = 'Y'
-ORDER BY Ticker;
-
-select * from "CherryMon"."main"."cal_indicator_values";
+select * from "CherryMon"."main"."vw_Ticker_indicators" where Ticker='MWG' and date='2026-08-28';

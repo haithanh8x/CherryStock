@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-01T05:31:20.726095+00:00
+- Generated at: 2026-09-01T09:53:19.120993+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -92,11 +92,11 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
-| `Ticker` | `VARCHAR` | `NO` | `nan` |
-| `Date` | `DATE` | `NO` | `nan` |
-| `ConfigId` | `BIGINT` | `NO` | `nan` |
-| `ComponentCode` | `VARCHAR` | `NO` | `nan` |
-| `Value` | `DOUBLE` | `YES` | `nan` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Date` | `DATE` | `NO` | `` |
+| `ConfigId` | `BIGINT` | `NO` | `` |
+| `ComponentCode` | `VARCHAR` | `NO` | `` |
+| `Value` | `DOUBLE` | `YES` | `` |
 | `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.dimCalendar (BASE TABLE)
@@ -122,44 +122,46 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
-| `IndicatorCode` | `VARCHAR` | `NO` | `nan` |
-| `IndicatorName` | `VARCHAR` | `NO` | `nan` |
-| `Category` | `VARCHAR` | `NO` | `nan` |
-| `Engine` | `VARCHAR` | `NO` | `nan` |
-| `FunctionName` | `VARCHAR` | `NO` | `nan` |
-| `RequiredInputs` | `JSON` | `NO` | `nan` |
-| `ParameterSchema` | `JSON` | `YES` | `nan` |
-| `Description` | `VARCHAR` | `YES` | `nan` |
+| `IndicatorCode` | `VARCHAR` | `NO` | `` |
+| `IndicatorName` | `VARCHAR` | `NO` | `` |
+| `Category` | `VARCHAR` | `NO` | `` |
+| `Engine` | `VARCHAR` | `NO` | `` |
+| `FunctionName` | `VARCHAR` | `NO` | `` |
+| `RequiredInputs` | `JSON` | `NO` | `` |
+| `ParameterSchema` | `JSON` | `YES` | `` |
+| `Description` | `VARCHAR` | `YES` | `` |
 | `IsActive` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
-| `UpdatedAt` | `TIMESTAMP` | `YES` | `nan` |
+| `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.dim_indicator_component (BASE TABLE)
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
-| `IndicatorCode` | `VARCHAR` | `NO` | `nan` |
-| `ComponentCode` | `VARCHAR` | `NO` | `nan` |
-| `ComponentName` | `VARCHAR` | `NO` | `nan` |
-| `OutputPrefix` | `VARCHAR` | `YES` | `nan` |
-| `SortOrder` | `INTEGER` | `YES` | `nan` |
+| `IndicatorCode` | `VARCHAR` | `NO` | `` |
+| `ComponentCode` | `VARCHAR` | `NO` | `` |
+| `ComponentName` | `VARCHAR` | `NO` | `` |
+| `OutputPrefix` | `VARCHAR` | `YES` | `` |
+| `SortOrder` | `INTEGER` | `YES` | `` |
 | `IsPrimary` | `BOOLEAN` | `NO` | `CAST('f' AS BOOLEAN)` |
 | `IsActive` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `ValueSemantic` | `VARCHAR` | `YES` | `` |
+| `Unit` | `VARCHAR` | `YES` | `` |
 
 ### main.dim_indicator_config (BASE TABLE)
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
 | `ConfigId` | `BIGINT` | `NO` | `nextval('CherryMon.main.seq_indicator_config')` |
-| `ConfigCode` | `VARCHAR` | `NO` | `nan` |
-| `IndicatorCode` | `VARCHAR` | `NO` | `nan` |
-| `Timeframe` | `VARCHAR` | `NO` | `nan` |
-| `Parameters` | `JSON` | `NO` | `nan` |
-| `WarmupBars` | `INTEGER` | `YES` | `nan` |
+| `ConfigCode` | `VARCHAR` | `NO` | `` |
+| `IndicatorCode` | `VARCHAR` | `NO` | `` |
+| `Timeframe` | `VARCHAR` | `NO` | `` |
+| `Parameters` | `JSON` | `NO` | `` |
+| `WarmupBars` | `INTEGER` | `YES` | `` |
 | `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
-| `Description` | `VARCHAR` | `YES` | `nan` |
+| `Description` | `VARCHAR` | `YES` | `` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
-| `UpdatedAt` | `TIMESTAMP` | `YES` | `nan` |
+| `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.raw_active_eod (BASE TABLE)
 
@@ -655,6 +657,8 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ComponentName` | `VARCHAR` | `YES` | `` |
 | `OutputPrefix` | `VARCHAR` | `YES` | `` |
 | `SortOrder` | `INTEGER` | `YES` | `` |
+| `ValueSemantic` | `VARCHAR` | `YES` | `` |
+| `Unit` | `VARCHAR` | `YES` | `` |
 | `IsPrimary` | `BOOLEAN` | `YES` | `` |
 | `ComponentIsActive` | `BOOLEAN` | `YES` | `` |
 
@@ -694,5 +698,5 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | DuckDB source | CSV file | Rows |
 | --- | --- | ---: |
 | `CherryMon`.`main`.`dim_indicator` | `dim_indicator.csv` | 66 |
-| `CherryMon`.`main`.`dim_indicator_component` | `dim_indicator_component.csv` | 7 |
-| `CherryMon`.`main`.`dim_indicator_config` | `dim_indicator_config.csv` | 18 |
+| `CherryMon`.`main`.`dim_indicator_component` | `dim_indicator_component.csv` | 8 |
+| `CherryMon`.`main`.`dim_indicator_config` | `dim_indicator_config.csv` | 21 |

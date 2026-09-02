@@ -17,3 +17,6 @@ ConfigId,ConfigCode,IndicatorCode,Timeframe,Parameters,WarmupBars,IsEnabled,Desc
 16,RSI14_D,RSI,D,"{""length"": 14}",14,true,,2026-08-25 21:44:46.321917,2026-08-25 21:45:37.499737
 17,RSI14_W,RSI,W,"{""length"": 14}",14,true,,2026-08-25 21:44:46.334261,2026-08-25 21:45:37.510437
 18,RSI14_M,RSI,M,"{""length"": 14}",14,true,,2026-08-25 21:44:46.346396,2026-08-25 21:45:37.527703
+37,ATR14_D,ATR,D,"{""length"": 14}",14,true,,2026-09-01 15:11:55.795737,
+38,ATR14_W,ATR,W,"{""length"": 14}",14,true,,2026-09-01 15:11:55.795737,
+39,ATR14_M,ATR,M,"{""length"": 14}",14,true,,2026-09-01 15:11:55.795737,
