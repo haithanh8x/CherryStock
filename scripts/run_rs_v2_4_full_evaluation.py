@@ -279,10 +279,16 @@ def _build_run_prefix(
     explicit_prefix: str | None,
     month_tag: str,
     evaluation_end: date,
+    tickers: Sequence[str],
+    snapshot_step: int,
 ) -> str:
     if explicit_prefix:
         return _slug(explicit_prefix, 56)
-    return f"RSV24FULL_{month_tag}_E{evaluation_end:%Y%m%d}"
+    universe_hash = _short_hash(tickers)
+    return (
+        f"RSV24FULL_{month_tag}_E{evaluation_end:%Y%m%d}_"
+        f"S{snapshot_step}_U{universe_hash}"
+    )
 
 
 def _as_date(value) -> date:
@@ -411,6 +417,32 @@ def _resolve_tickers(
     if not result:
         raise RuntimeError("No eligible tickers resolved")
     return result
+
+
+def _expected_snapshot_count(
+    connection,
+    tickers: Sequence[str],
+    window: EvaluationWindow,
+    snapshot_step: int,
+) -> int:
+    placeholders = ",".join("?" for _ in tickers)
+    rows = connection.execute(
+        f"""
+        SELECT
+            "Ticker",
+            COUNT(*) AS "BarCount"
+        FROM "CherryMon"."main"."raw_stock_eod"
+        WHERE "Ticker" IN ({placeholders})
+          AND "Date" BETWEEN ? AND ?
+        GROUP BY "Ticker";
+        """,
+        [*tickers, window.start_date, window.evaluation_end],
+    ).fetchall()
+    counts = {str(row[0]).upper(): int(row[1]) for row in rows}
+    missing = sorted(set(tickers) - set(counts))
+    if missing:
+        raise ValueError(f"snapshot-count source data missing tickers: {missing}")
+    return sum((counts[ticker] + snapshot_step - 1) // snapshot_step for ticker in tickers)
 
 
 def _indicator_source_specs(connection) -> set[SourceSpec]:
@@ -612,6 +644,8 @@ def _evaluation_run_state(connection, run_id: str) -> dict | None:
             "DatasetStart",
             "DatasetEnd",
             "HorizonBars",
+            "TickerCount",
+            "SnapshotCount",
             "Status",
             "IncludeSourceKeysJson",
             "ExcludeSourceKeysJson"
@@ -622,13 +656,25 @@ def _evaluation_run_state(connection, run_id: str) -> dict | None:
     ).fetchone()
     if row is None:
         return None
+    ticker_rows = connection.execute(
+        """
+        SELECT DISTINCT "Ticker"
+        FROM "CherryMon"."main"."cal_rs_evaluation_event"
+        WHERE "EvaluationRunId" = ?
+        ORDER BY "Ticker";
+        """,
+        [run_id],
+    ).fetchall()
     return {
         "dataset_start": _as_date(row[0]),
         "dataset_end": _as_date(row[1]),
         "horizon_bars": int(row[2]),
-        "status": str(row[3]),
-        "include_keys": tuple(sorted(json.loads(row[4] or "[]"))),
-        "exclude_keys": tuple(sorted(json.loads(row[5] or "[]"))),
+        "ticker_count": int(row[3]),
+        "snapshot_count": int(row[4]),
+        "status": str(row[5]),
+        "include_keys": tuple(sorted(json.loads(row[6] or "[]"))),
+        "exclude_keys": tuple(sorted(json.loads(row[7] or "[]"))),
+        "event_tickers": tuple(str(item[0]).upper() for item in ticker_rows),
     }
 
 
@@ -669,6 +715,8 @@ def _assert_evaluation_compatible(
     window: EvaluationWindow,
     horizon: int,
     excluded_source_keys: Sequence[str],
+    tickers: Sequence[str],
+    expected_snapshot_count: int,
 ) -> None:
     expected_excluded = tuple(
         sorted(canonical_source_key(value) for value in excluded_source_keys)
@@ -683,6 +731,16 @@ def _assert_evaluation_compatible(
         mismatches.append("DatasetEnd")
     if state["horizon_bars"] != horizon:
         mismatches.append("HorizonBars")
+    if state["ticker_count"] != len(tickers):
+        mismatches.append("TickerCount")
+    if state["snapshot_count"] != expected_snapshot_count:
+        mismatches.append("SnapshotCount")
+    if (
+        state["status"] == "COMPLETED"
+        and state["event_tickers"]
+        and state["event_tickers"] != tuple(sorted(tickers))
+    ):
+        mismatches.append("TickerUniverse")
     if state["include_keys"]:
         mismatches.append("IncludeSourceKeysJson")
     if actual_excluded != expected_excluded:
@@ -828,6 +886,8 @@ def _maybe_run_evaluation(
     window: EvaluationWindow,
     horizon: int,
     excluded_source_keys: Sequence[str],
+    tickers: Sequence[str],
+    expected_snapshot_count: int,
     label: str,
 ) -> None:
     with factory.reader() as connection:
@@ -839,6 +899,8 @@ def _maybe_run_evaluation(
             window,
             horizon,
             excluded_source_keys,
+            tickers,
+            expected_snapshot_count,
         )
         if resume and state["status"] == "COMPLETED":
             print(f"[RS-V2.4-FULL] REUSE {label} run_id={run_id}")
@@ -928,12 +990,20 @@ def main() -> None:
             args.min_history_bars,
             args.max_tickers,
         )
+        expected_snapshot_count = _expected_snapshot_count(
+            connection,
+            tickers,
+            window,
+            args.snapshot_step,
+        )
 
     month_tag = _month_tag(args.run_month)
     run_prefix = _build_run_prefix(
         args.run_prefix,
         month_tag,
         window.evaluation_end,
+        tickers,
+        args.snapshot_step,
     )
     baseline_runs = {
         horizon: f"{run_prefix}_BASE_H{horizon}" for horizon in horizons
@@ -951,6 +1021,7 @@ def main() -> None:
                     "future_outcome_bars_reserved": max(horizons),
                     "ticker_count": len(tickers),
                     "tickers_preview": list(tickers[:20]),
+                    "expected_snapshot_count": expected_snapshot_count,
                     "horizons": list(horizons),
                     "scopes": list(scopes),
                     "snapshot_step": args.snapshot_step,
@@ -996,6 +1067,8 @@ def main() -> None:
             window,
             horizon,
             (),
+            tickers,
+            expected_snapshot_count,
             f"baseline H{horizon}",
         )
 
@@ -1072,6 +1145,8 @@ def main() -> None:
                     window,
                     horizon,
                     excluded,
+                    tickers,
+                    expected_snapshot_count,
                     f"ablation SOURCE_CONFIG {spec.source_key} H{horizon}",
                 )
 
@@ -1143,6 +1218,8 @@ def main() -> None:
                     window,
                     horizon,
                     member_keys,
+                    tickers,
+                    expected_snapshot_count,
                     f"ablation SOURCE_FAMILY {family} H{horizon}",
                 )
 
