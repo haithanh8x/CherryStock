@@ -1646,9 +1646,10 @@ def build_level_ladder(
     neutral_threshold_pct: float = 0.003,
     strength_config: StrengthConfig | None = None,
     structural_config: StructuralSourceConfig | None = None,
+    volume_profile_config: VolumeProfileConfig | None = None,
     connection: Any | None = None,
 ) -> LevelLadderResult:
-    """Build R/S Ladder V2.1 from LEVEL, CONTEXT and CONFIRMATION providers."""
+    """Build R/S Ladder V2.2 from indicator, structural and volume providers."""
     normalized_ticker = _normalize_ticker(ticker)
     normalized_timeframes = _validate_timeframes(timeframes)
     _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
@@ -1665,12 +1666,12 @@ def build_level_ladder(
     unsupported = sources - set(registry)
     if unsupported:
         raise ValueError(
-            f"Unsupported R/S V2.1 sources: {sorted(unsupported)}; "
+            f"Unsupported R/S V2.2 sources: {sorted(unsupported)}; "
             f"supported={sorted(registry)}"
         )
 
     LOGGER.info(
-        "RS Ladder V2.1 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster_floor=%.4f",
+        "RS Ladder V2.2 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster_floor=%.4f",
         normalized_ticker,
         as_of_date,
         normalized_timeframes,
@@ -1697,8 +1698,18 @@ def build_level_ladder(
                 loader_kwargs["structural_config"] = (
                     structural_config or StructuralSourceConfig()
                 )
+            if spec.get("uses_volume_profile_config"):
+                loader_kwargs["volume_profile_config"] = (
+                    volume_profile_config or VolumeProfileConfig()
+                )
             loaded = spec["loader"](con, **loader_kwargs)
-            if spec["role"] == SOURCE_ROLE_LEVEL:
+            if spec.get("kind") == "BUNDLE":
+                if not isinstance(loaded, ProviderBundle):
+                    raise RuntimeError("Bundle provider must return ProviderBundle")
+                candidates.extend(loaded.candidates)
+                confirmations.extend(loaded.confirmations)
+                market_contexts.extend(loaded.market_contexts)
+            elif spec["role"] == SOURCE_ROLE_LEVEL:
                 candidates.extend(loaded)
             elif spec["role"] == SOURCE_ROLE_CONTEXT:
                 market_contexts.extend(loaded)
@@ -1706,14 +1717,14 @@ def build_level_ladder(
                 confirmations.extend(loaded)
             else:
                 raise RuntimeError(
-                    f"Unsupported provider role in V2.1 registry: {spec['role']}"
+                    f"Unsupported provider role in V2.2 registry: {spec.get('role')}"
                 )
 
         history = load_price_history(
             con, ticker=normalized_ticker, as_of_date=current.as_of_date
         )
         LOGGER.info(
-            "RS Ladder V2.1 inputs | ticker=%s date=%s candidates=%d "
+            "RS Ladder V2.2 inputs | ticker=%s date=%s candidates=%d "
             "contexts=%d confirmations=%d history=%d",
             normalized_ticker,
             current.as_of_date,
@@ -1735,7 +1746,7 @@ def build_level_ladder(
             market_contexts=market_contexts,
         )
         LOGGER.info(
-            "RS Ladder V2.1 success | ticker=%s supports=%d resistances=%d "
+            "RS Ladder V2.2 success | ticker=%s supports=%d resistances=%d "
             "cluster=%.4f neutral=%.4f",
             normalized_ticker,
             len(result.support_levels),
@@ -1752,5 +1763,5 @@ def build_level_ladder(
         with DuckDBManager(read_only=True) as con:
             return calculate(con)
     except Exception:
-        LOGGER.exception("RS Ladder V2.1 failed | ticker=%s", normalized_ticker)
+        LOGGER.exception("RS Ladder V2.2 failed | ticker=%s", normalized_ticker)
         raise
