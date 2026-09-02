@@ -56,6 +56,7 @@ class RSModelSpec:
     structural_config: Mapping[str, Any] = field(default_factory=dict)
     included_source_keys: tuple[str, ...] = ()
     excluded_source_keys: tuple[str, ...] = ()
+    research_indicator_specs: tuple[Mapping[str, Any], ...] = ()
     parent_version: str | None = None
     notes: str | None = None
 
@@ -64,6 +65,13 @@ class RSModelSpec:
         payload["enabled_sources"] = sorted(self.enabled_sources)
         payload["included_source_keys"] = sorted(self.included_source_keys)
         payload["excluded_source_keys"] = sorted(self.excluded_source_keys)
+        payload["research_indicator_specs"] = sorted(
+            (
+                dict(spec)
+                for spec in self.research_indicator_specs
+            ),
+            key=lambda item: json.dumps(item, sort_keys=True, separators=(",", ":")),
+        )
         return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
 
     @property
@@ -517,12 +525,14 @@ def calculate_complexity_score(model: RSModelSpec) -> float:
         len(set(model.included_source_keys))
         + len(set(model.excluded_source_keys))
     )
+    research_specs = len(model.research_indicator_specs)
     raw = (
         sources * 0.02
         + strength_changes * 0.01
         + profile_changes * 0.01
         + structural_changes * 0.01
         + source_filters * 0.005
+        + research_specs * 0.01
     )
     return round(min(raw, 1.0), 6)
 
