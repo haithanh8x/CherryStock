@@ -3,7 +3,10 @@
 - **Change ID:** CR-RS-V2.2-20260902
 - **Release:** R/S Ladder V2.2
 - **Date:** 2026-09-02
-- **Status:** **CODE MERGED / PRODUCTION VALIDATION PENDING**
+- **Production deployment date:** 2026-09-02
+- **Status:** **PRODUCTION DEPLOYED / VALIDATED**
+- **Final verdict:** **PASS**
+- **Final action:** **KEEP**
 - **Repository:** CherryStock
 - **Pull Request:** #6 — feat: upgrade R/S Ladder to V2.2 Volume Profile architecture
 - **Main merge commit:** `f2eeb815dc6254f4dc28a1eeb1b2d99e3bf9486c`
@@ -332,7 +335,7 @@ docs/00_HOME.md
 
 ---
 
-## 14. Validation Required
+## 14. Validation Evidence
 
 Run:
 
@@ -346,15 +349,26 @@ Then execute:
 tests/test_R_S_V2_2.md
 ```
 
-Production sign-off requires:
+Production validation completed successfully on 2026-09-02.
 
-1. DuckDB preflight PASS.
-2. pytest PASS.
-3. V2.1 explicit-source regression PASS.
-4. VOLUME_PROFILE-only smoke PASS.
-5. default V2.2 MWG smoke PASS.
-6. historical Volume Profile point-in-time PASS.
-7. NiceGUI smoke PASS.
+Validation result:
+
+```text
+FINAL VERDICT: PASS
+ACTION: KEEP
+```
+
+Validated successfully:
+
+1. DuckDB read-only preflight.
+2. focused pytest and full relevant regression suite.
+3. V2.1 explicit-source compatibility.
+4. VOLUME_PROFILE-only runtime.
+5. default V2.2 MWG runtime.
+6. historical point-in-time Volume Profile behavior.
+7. NiceGUI V2.2 smoke.
+
+All relevant tests remained PASS after the required loader fix described below.
 
 ---
 
@@ -368,47 +382,62 @@ Production sign-off requires:
 | PR #6 | MERGED |
 | DuckDB DDL migration | NOT REQUIRED |
 | DuckDB data migration | NOT REQUIRED |
-| Read-only preflight | GENERATED / PENDING |
-| Automated tests added | PASS |
-| Local pytest | PENDING |
-| V2.1 regression smoke | PENDING |
-| Volume Profile real-data smoke | PENDING |
-| Historical point-in-time smoke | PENDING |
-| NiceGUI V2.2 smoke | PENDING |
-| Production deployment | PENDING |
+| Read-only preflight | PASS |
+| Automated tests | PASS |
+| V2.1 regression smoke | PASS |
+| Volume Profile real-data smoke | PASS |
+| Historical point-in-time smoke | PASS |
+| NiceGUI V2.2 smoke | PASS |
+| Required loader bug fix | PASS / KEPT |
+| Production deployment | **PASS** |
+| Final verdict | **PASS** |
 
 Current state:
 
 ```text
 CODE MERGED
 NO DATABASE MIGRATION REQUIRED
-PRODUCTION PREFLIGHT PENDING
-PRODUCTION VALIDATION PENDING
+PREFLIGHT PASS
+TESTS PASS
+V2.1 REGRESSION PASS
+VOLUME PROFILE VALIDATION PASS
+POINT-IN-TIME VALIDATION PASS
+NICEGUI SMOKE PASS
+PRODUCTION DEPLOYED
+PRODUCTION READY
 ```
 
-Do not mark Production Ready until the V2.2 runbook returns PASS.
+Final action:
+
+```text
+KEEP
+```
 
 ---
 
-## 16. Deployment Sequence
+## 16. Production Deployment Record
 
 ```text
-1. git pull origin main
-2. run src/DuckDB/sql/rs_v2_2_preflight.sql
-3. python -m pytest tests/test_rs_ladder.py -v
-4. V2.1 explicit-source regression
-5. VOLUME_PROFILE-only smoke
-6. default V2.2 MWG smoke
-7. historical point-in-time Volume Profile smoke
-8. NiceGUI V2.2 smoke
-9. update CR/master tracking only when all PASS
+1. git pull origin main                          PASS
+2. DuckDB read-only preflight                    PASS
+3. pytest / relevant regression suite            PASS
+4. V2.1 explicit-source regression               PASS
+5. VOLUME_PROFILE-only smoke                     PASS
+6. default V2.2 MWG smoke                        PASS
+7. historical point-in-time Volume Profile       PASS
+8. NiceGUI V2.2 smoke                            PASS
+9. production rollout                            PASS
 ```
+
+No DDL migration or data migration was required.
 
 ---
 
 ## 17. Rollback
 
-No database rollback is required.
+No rollback was required during production validation or deployment.
+
+The following fallback remains documented for contingency use.
 
 Temporary V2.1 fallback:
 
@@ -445,7 +474,54 @@ f2eeb815dc6254f4dc28a1eeb1b2d99e3bf9486c
 
 ---
 
-## 19. References
+## 19. Production Bug Fix
+
+During V2.2 validation, `_load_structural_history()` exposed a shared-history contract used by both structural providers and the Volume Profile provider.
+
+Root cause before fix:
+
+```text
+empty/result schema expected:
+Date, High, Low, Close, Volume
+
+but SQL SELECT returned only:
+Date, High, Low, Close
+```
+
+This caused V2.2 Volume Profile to receive history without the required `Volume` column.
+
+Fix:
+
+```text
+SELECT Date, High, Low, Close, Volume
+FROM raw_stock_eod
+```
+
+Impact assessment:
+
+- required for V2.2 Volume Profile operation;
+- no logic change to Swing;
+- no logic change to Previous Week/Month H/L;
+- no logic change to 52W H/L;
+- existing structural providers simply ignore the extra column;
+- full relevant test suite remained PASS.
+
+Fix commits:
+
+```text
+f2ef37f59cdfbde0aa5dbaa8e5d23996d7dc8433  auto-sync containing functional fix
+cc8aeed278936b6ab87632d7707d544de410376c  explicit root-cause contract documentation
+```
+
+Final decision:
+
+```text
+KEEP
+```
+
+---
+
+## 20. References
 
 ```text
 docs/architecture/RS_Ladder.md
