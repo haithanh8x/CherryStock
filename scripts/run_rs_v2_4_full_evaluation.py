@@ -53,6 +53,7 @@ from calcEngine.levelLadder import (  # noqa: E402
     SOURCE_ROLE_CONTEXT,
     SOURCE_ROLE_LEVEL,
     SUPPORTED_TIMEFRAMES,
+    V1_MA_LENGTHS,
 )
 from calcEngine.rsSourceIdentity import canonical_source_key  # noqa: E402
 from cherrystock.config.settings import settings  # noqa: E402
@@ -453,6 +454,7 @@ def _indicator_source_specs(connection) -> set[SourceSpec]:
             "IndicatorCode",
             "Timeframe",
             "ComponentCode",
+            "Parameters",
             "ValueSemantic"
         FROM "CherryMon"."main"."vw_Indicator_config"
         WHERE "IndicatorCode" IN ('MA', 'BB', 'ATR', 'RSI')
@@ -465,16 +467,35 @@ def _indicator_source_specs(connection) -> set[SourceSpec]:
     ).fetchall()
 
     result: set[SourceSpec] = set()
-    for config_code, indicator_code, timeframe, component_code, value_semantic in rows:
+    for (
+        config_code,
+        indicator_code,
+        timeframe,
+        component_code,
+        parameters_raw,
+        value_semantic,
+    ) in rows:
         indicator = str(indicator_code).upper()
         timeframe_value = str(timeframe).upper()
         config = str(config_code).upper()
         component = str(component_code or "").upper()
         semantic = str(value_semantic or "").upper()
+        if isinstance(parameters_raw, dict):
+            parameters = parameters_raw
+        else:
+            parsed = json.loads(parameters_raw or "{}")
+            parameters = parsed if isinstance(parsed, dict) else {}
 
         if timeframe_value not in SUPPORTED_TIMEFRAMES:
             continue
-        if indicator == "MA" and semantic == "PRICE_LEVEL":
+        if indicator == "MA" and semantic == "PRICE_LEVEL" and component == "VALUE":
+            length_raw = parameters.get("length")
+            try:
+                length = int(length_raw)
+            except (TypeError, ValueError):
+                continue
+            if length not in V1_MA_LENGTHS:
+                continue
             result.add(
                 SourceSpec(
                     canonical_source_key(config),
@@ -494,7 +515,12 @@ def _indicator_source_specs(connection) -> set[SourceSpec]:
                     SOURCE_ROLE_LEVEL,
                 )
             )
-        elif indicator == "ATR" and config == "ATR14_D":
+        elif (
+            indicator == "ATR"
+            and timeframe_value == "D"
+            and component == "VALUE"
+            and semantic == "VOLATILITY_DISTANCE"
+        ):
             result.add(
                 SourceSpec(
                     canonical_source_key(config),
@@ -502,7 +528,11 @@ def _indicator_source_specs(connection) -> set[SourceSpec]:
                     SOURCE_ROLE_CONTEXT,
                 )
             )
-        elif indicator == "RSI" and config == "RSI14_D":
+        elif (
+            indicator == "RSI"
+            and component == "VALUE"
+            and semantic == "OSCILLATOR"
+        ):
             result.add(
                 SourceSpec(
                     canonical_source_key(config),
