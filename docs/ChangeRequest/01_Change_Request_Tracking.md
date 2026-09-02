@@ -57,6 +57,7 @@ Không bắt buộc tạo Change Request riêng cho minor typo, isolated bug fix
 | **CR-RS-V2.1-20260902** | **R/S Ladder V2.1** | Architecture / Calculation Engine / UI | ATR-adaptive clustering/neutral, Swing H/L, Previous W/M H/L, 52W H/L, point-in-time confirmed_at, structural quality | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — preflight 5/5 + pytest 17/17 + MA regression + ATR adaptive + structural/no-look-ahead + NiceGUI** | [CR_RS_Ladder_V2_1.md](./CR_RS_Ladder_V2_1.md) | PR #5 / `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3` |
 | **CR-RS-V2.2-20260902** | **R/S Ladder V2.2** | Architecture / Calculation Engine / UI | Volume Profile Engine, POC/HVN/LVN, VOLUME_STRUCTURE family cap, volume confirmation, point-in-time profile | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — preflight + pytest/regression + V2.1 compatibility + Volume Profile/no-look-ahead + NiceGUI; loader fix KEPT** | [CR_RS_Ladder_V2_2.md](./CR_RS_Ladder_V2_2.md) | PR #6 / `f2eeb815dc6254f4dc28a1eeb1b2d99e3bf9486c` + fix `cc8aeed278936b6ab87632d7707d544de410376c` |
 | **CR-RS-V2.3-20260902** | **R/S Ladder V2.3** | Architecture / Calculation Engine / Data Model / Operational | Historical evaluation, hit/break/retest, temporal split, cross-ticker/regime metrics, ablation/calibration, complexity penalty, model versioning, Promotion Gate, golden benchmark | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — migration + preflight + pytest + golden + historical evaluation/idempotency + ablation + Promotion Gate dry-run + NiceGUI; 2 focused fixes KEPT** | [CR_RS_Ladder_V2_3.md](./CR_RS_Ladder_V2_3.md) | PR #7 / `74da4ec8ed9f733de6849883e9ee6942a71a2508` + fixes `731795e4`, `d24b2a82` |
+| **CR-RS-V2.4-20260902** | **R/S Ladder V2.4** | Architecture / Calculation Engine / Data Model / Operational | Source Effectiveness, canonical source identity, source-config/family ablation, role-aware OOS attribution, research-only Indicator adapter, Source Promotion Gate, public effectiveness SSOT | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — migration/idempotency + preflight + pytest + V2.3 golden regression + historical baseline/ablation + effectiveness/view/idempotency + confirmation-role + multi-horizon + Source Promotion Gate dry-run + runtime/NiceGUI; 1 fixture fix KEPT; MA50_D=RESEARCH evidence-driven** | [CR_RS_Ladder_V2_4.md](./CR_RS_Ladder_V2_4.md) | PR #8 / `45a7324825afc0e2d32a166a90dcbc17fe5fb1ac` + validation fix `1a722f82` |
 
 ---
 
@@ -299,24 +300,34 @@ Không dùng Change Request master để thay thế architecture docs hoặc bac
 
 ## 9. Current Roadmap Edge
 
-R/S V2.3 đã hoàn tất DuckDB migration, production validation và deployment với Final Verdict = PASS.
+R/S V2.4 đã hoàn tất BA → SA → Dev → Test, DuckDB migration, production validation và merge với Final Verdict = PASS.
 
-V2.3 là major stage cuối cùng hiện được định nghĩa trong roadmap R/S V2.x:
+V2.4 hiện là major stage mới nhất của roadmap R/S V2.x:
 
 ```text
+V2.3
 Historical evaluation
-Ablation
-Calibration
-Promotion Gate
-Model versioning
-Golden regression benchmark
+Ablation / calibration
+Model Promotion Gate
+Golden regression
+
+        ↓
+
+V2.4
+Source Effectiveness
+Canonical source identity
+Source-config / family ablation
+Per-ticker / multi-horizon OOS evidence
+Role-aware marginal attribution
+Source Promotion Gate
+vw_RS_Source_Effectiveness
 ```
 
-Sau khi V2.3 production validation PASS:
+Governance edge sau V2.4:
 
-- không tự động tạo một version tiếp theo;
-- challenger chỉ có `PROMOTION_APPROVED` khi qua gate;
-- mọi challenger thực sự được deploy phải có Change Request / release riêng;
-- version tiếp theo chỉ được mở khi có requirement/ADR mới.
-
-V2.3 đã hoàn tất toàn bộ prerequisite và production cross-check. Không tự động mở version tiếp theo; mọi challenger được Promotion Gate phê duyệt vẫn cần một Change Request / deployment release riêng trước khi thay đổi runtime production.
+- không tự động tạo V2.5;
+- `APPROVED_FOR_INTEGRATION` chỉ là source-governance approval, không phải production deployment;
+- MA50_D hiện là `RESEARCH` với evidence hiện tại và không được tự động thêm weight/runtime behavior;
+- indicator/source candidate muốn thay đổi production R/S phải có requirement/change request/release riêng;
+- effectiveness result không tự động biến thành ticker-specific production weight;
+- version tiếp theo chỉ mở khi có requirement/ADR mới.
