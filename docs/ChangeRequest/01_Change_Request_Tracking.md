@@ -55,7 +55,7 @@ Không bắt buộc tạo Change Request riêng cho minor typo, isolated bug fix
 |---|---|---|---|---|---|---|---|---|
 | **CR-RS-V2.0-20260901** | **R/S Ladder V2.0** | Architecture / Calculation Engine / Data Model / UI | MA + BB LEVEL providers, RSI CONFIRMATION, SourceRole/SourceFamily, family-based confluence, ValueSemantic/Unit metadata | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — 10/10 pytest + DuckDB + MWG smoke + semantic safety + NiceGUI** | [CR_RS_Ladder_V2_0.md](./CR_RS_Ladder_V2_0.md) | PR #4 / `7ebd6bcb9d0d4faff117f4bff0d99c98c223238b` |
 | **CR-RS-V2.1-20260902** | **R/S Ladder V2.1** | Architecture / Calculation Engine / UI | ATR-adaptive clustering/neutral, Swing H/L, Previous W/M H/L, 52W H/L, point-in-time confirmed_at, structural quality | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — preflight 5/5 + pytest 17/17 + MA regression + ATR adaptive + structural/no-look-ahead + NiceGUI** | [CR_RS_Ladder_V2_1.md](./CR_RS_Ladder_V2_1.md) | PR #5 / `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3` |
-| **CR-RS-V2.2-20260902** | **R/S Ladder V2.2** | Architecture / Calculation Engine / UI | Volume Profile Engine, POC/HVN/LVN, VOLUME_STRUCTURE family cap, volume confirmation, point-in-time profile | **CODE MERGED / VALIDATION PENDING** | — | **PENDING — DuckDB preflight + pytest + V2.1 regression + Volume Profile MWG/no-look-ahead + NiceGUI** | [CR_RS_Ladder_V2_2.md](./CR_RS_Ladder_V2_2.md) | PR #6 / `f2eeb815dc6254f4dc28a1eeb1b2d99e3bf9486c` |
+| **CR-RS-V2.2-20260902** | **R/S Ladder V2.2** | Architecture / Calculation Engine / UI | Volume Profile Engine, POC/HVN/LVN, VOLUME_STRUCTURE family cap, volume confirmation, point-in-time profile | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — preflight + pytest/regression + V2.1 compatibility + Volume Profile/no-look-ahead + NiceGUI; loader fix KEPT** | [CR_RS_Ladder_V2_2.md](./CR_RS_Ladder_V2_2.md) | PR #6 / `f2eeb815dc6254f4dc28a1eeb1b2d99e3bf9486c` + fix `cc8aeed278936b6ab87632d7707d544de410376c` |
 
 ---
 
@@ -298,9 +298,9 @@ Không dùng Change Request master để thay thế architecture docs hoặc bac
 
 ## 9. Next Expected Major Change
 
-R/S V2.2 đã merge code và đang chờ production validation.
+R/S V2.2 đã hoàn tất production deployment và validation PASS.
 
-Sau khi V2.2 PASS và production deployed, major release tiếp theo theo roadmap là:
+Major release tiếp theo theo roadmap là:
 
 ```text
 R/S V2.3
@@ -324,4 +324,4 @@ Model versioning
 Golden benchmark / regression set
 ```
 
-V2.3 production rollout chỉ bắt đầu sau khi V2.2 hoàn tất local cross-check và Change Request V2.2 được chốt PASS.
+V2.2 đã đáp ứng prerequisite cho V2.3: production deployed, local cross-check PASS và Change Request V2.2 đã được chốt.
