@@ -30,6 +30,7 @@ Out of scope:
 
 ~~~text
 scripts/run_rs_v2_4_full_evaluation.py
+src/Orchestrator/rs_v2_4_full_evaluation.py
 scripts/run_rs_v2_3_evaluation.py
 scripts/run_rs_v2_4_source_effectiveness.py
 scripts/promote_rs_v2_4_source.py
@@ -47,6 +48,7 @@ Only:
 
 ~~~text
 scripts/run_rs_v2_4_full_evaluation.py
+src/Orchestrator/rs_v2_4_full_evaluation.py
 tests/test_rs_v2_4_full_evaluation.py
 docs/runbook/RS_V2_4_Monthly_Full_Evaluation.md
 docs/architecture/RS_Source_Effectiveness.md
@@ -67,7 +69,7 @@ PASS when branch is current and working tree is clean before local validation.
 ## Sequence 2 — CLI Compile / Unit Tests
 
 ~~~powershell
-python -m py_compile scripts/run_rs_v2_4_full_evaluation.py
+python -m py_compile scripts/run_rs_v2_4_full_evaluation.py src/Orchestrator/rs_v2_4_full_evaluation.py
 python -m pytest tests/test_rs_v2_4_full_evaluation.py -v
 ~~~
 
