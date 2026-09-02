@@ -980,7 +980,7 @@ def load_52w_level_candidates(
 
 
 def _source_provider_registry() -> dict[str, dict[str, Any]]:
-    """Return the V2.0 provider registry without coupling the core pipeline to sources."""
+    """Return the V2.1 provider registry without coupling the core pipeline to sources."""
     return {
         "MA": {
             "role": SOURCE_ROLE_LEVEL,
@@ -991,6 +991,26 @@ def _source_provider_registry() -> dict[str, dict[str, Any]]:
             "role": SOURCE_ROLE_LEVEL,
             "family": SOURCE_FAMILY_VOLATILITY_BAND,
             "loader": load_bb_level_candidates,
+        },
+        "SWING": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_MARKET_STRUCTURE,
+            "loader": load_swing_level_candidates,
+        },
+        "PREVIOUS_HL": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_MARKET_STRUCTURE,
+            "loader": load_previous_period_level_candidates,
+        },
+        "52W_HL": {
+            "role": SOURCE_ROLE_LEVEL,
+            "family": SOURCE_FAMILY_MARKET_STRUCTURE,
+            "loader": load_52w_level_candidates,
+        },
+        "ATR": {
+            "role": SOURCE_ROLE_CONTEXT,
+            "family": SOURCE_FAMILY_VOLATILITY_CONTEXT,
+            "loader": load_atr_market_contexts,
         },
         "RSI": {
             "role": SOURCE_ROLE_CONFIRMATION,
@@ -1013,6 +1033,11 @@ def normalize_levels(
             raise ValueError("Candidate ticker does not match CurrentPrice")
         if candidate.source_date > current_price.as_of_date:
             raise ValueError("Candidate source_date is after CurrentPrice.as_of_date")
+        confirmed_at = candidate.confirmed_at or candidate.source_date
+        if confirmed_at > current_price.as_of_date:
+            raise ValueError(
+                "Candidate confirmed_at is after CurrentPrice.as_of_date"
+            )
         if candidate.timeframe and candidate.timeframe not in SUPPORTED_TIMEFRAMES:
             raise ValueError(f"Unsupported candidate timeframe: {candidate.timeframe}")
         if candidate.source_role != SOURCE_ROLE_LEVEL:
@@ -1045,6 +1070,7 @@ def normalize_levels(
                 timeframe=candidate.timeframe,
                 weight=float(tf_weight * source_weight),
                 source_date=candidate.source_date,
+                confirmed_at=confirmed_at,
                 config_id=candidate.config_id,
                 config_code=candidate.config_code,
                 component_code=candidate.component_code,
