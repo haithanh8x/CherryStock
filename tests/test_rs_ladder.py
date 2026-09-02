@@ -548,3 +548,12 @@ def test_volume_family_counts_once_in_confluence() -> None:
     assert levels
     assert all(level.source_family_count == 1 for level in levels)
 
+def test_v23_model_version_tag_is_preserved() -> None:
+    result = build_level_ladder_from_data(
+        current(),
+        [candidate(95.0, "MA20_D")],
+        model_version="RS_TEST_CHALLENGER",
+    )
+
+    assert result.model_version == "RS_TEST_CHALLENGER"
+
