@@ -6,7 +6,7 @@
 - **Release:** R/S Ladder V2.4
 - **Title:** Source Effectiveness & Indicator Promotion Framework
 - **Date:** 2026-09-02
-- **Status:** VALIDATED / MERGE PENDING
+- **Status:** PRODUCTION DEPLOYED / VALIDATED
 - **Final Verdict:** PASS
 - **Action:** KEEP
 - **Requirement:** REQ-0022
@@ -14,6 +14,8 @@
 - **ADR:** docs/adr/ADR-008-rs-v2-4-source-effectiveness-promotion.md
 - **Test runbook:** tests/test_R_S_V2_4.md
 - **Pull Request:** PR #8
+- **Merge commit:** `45a7324825afc0e2d32a166a90dcbc17fe5fb1ac`
+- **Production date:** 2026-09-02
 
 ## 2. Objective
 
@@ -332,7 +334,7 @@ APPROVED_FOR_INTEGRATION
 
 Any future indicator/source that passes V2.4 Source Promotion Gate must still go through a separate implementation/change request before altering production R/S behavior.
 
-## 16. Release State Before Merge
+## 16. Final Release State
 
 ```text
 BA                DONE
@@ -341,7 +343,13 @@ DEV               DONE
 TEST              PASS
 FINAL VERDICT     PASS
 ACTION            KEEP
-PR                #8 OPEN
-MERGE             PENDING
-PRODUCTION DOC    PENDING FINALIZATION AFTER MERGE
+PR                #8 MERGED
+MERGE COMMIT      45a7324825afc0e2d32a166a90dcbc17fe5fb1ac
+DB MIGRATION      PASS
+PREFLIGHT         PASS
+GOLDEN REGRESSION PASS
+RUNTIME REGRESSION NONE
+ROLLBACK          NOT REQUIRED
+PRODUCTION READY  YES
+PRODUCTION        DEPLOYED
 ```
