@@ -790,8 +790,19 @@ def load_bb_level_candidates(
         )
         component = str(row.ComponentCode).upper()
         price = float(row.Value)
-        if not math.isfinite(price) or price <= 0:
+        if not math.isfinite(price):
             raise ValueError(f"Invalid BB value for ConfigId={row.ConfigId}: {row.Value!r}")
+        if price <= 0:
+            LOGGER.warning(
+                "Skip non-positive BB PRICE_LEVEL | ticker=%s config=%s component=%s timeframe=%s value=%r as_of=%s",
+                str(row.Ticker).upper(),
+                str(row.ConfigCode),
+                component,
+                str(row.Timeframe).upper(),
+                row.Value,
+                as_of_date,
+            )
+            continue
         candidates.append(
             LevelCandidate(
                 ticker=str(row.Ticker).upper(),
