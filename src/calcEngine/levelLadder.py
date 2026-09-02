@@ -697,7 +697,7 @@ def _load_structural_history(
     start_date = as_of_date - timedelta(days=int(lookback_days))
     df = connection.execute(
         """
-        SELECT "Date", "High", "Low", "Close"
+        SELECT "Date", "High", "Low", "Close", "Volume"
         FROM "CherryMon"."main"."raw_stock_eod"
         WHERE "Ticker" = ?
           AND "Date" >= ?
