@@ -52,6 +52,20 @@ class _ActiveTickerConnection:
         )
 
 
+class _WarmupSnapshotConnection:
+    def execute(self, sql, params=None):
+        assert '"raw_stock_eod"' in sql
+        rows = []
+        old_dates = pd.date_range("2025-12-01", periods=71, freq="D")
+        new_dates = pd.date_range("2026-01-01", periods=40, freq="D")
+        for value in old_dates:
+            rows.append(("OLD", value.date(), 11.0, 10.0, 10.5, 1000.0))
+        for value in new_dates:
+            rows.append(("NEW", value.date(), 11.0, 10.0, 10.5, 1000.0))
+        rows.sort(key=lambda item: (item[0], item[1]))
+        return _Rows(rows)
+
+
 class _IndicatorConfigConnection:
     def execute(self, sql, params=None):
         assert '"vw_Indicator_config"' in sql
@@ -95,6 +109,25 @@ def test_resolve_tickers_filters_raw_lstTicker_status_y() -> None:
         500,
         window.freshness_cutoff,
     ]
+
+
+def test_expected_snapshot_count_matches_volume_profile_warmup() -> None:
+    connection = _WarmupSnapshotConnection()
+    window = module.EvaluationWindow(
+        start_date=date(2026, 1, 1),
+        evaluation_end=date(2026, 2, 9),
+        latest_data_date=date(2026, 2, 28),
+        freshness_cutoff=date(2026, 2, 23),
+    )
+
+    count = module._expected_snapshot_count(
+        connection,
+        ("NEW", "OLD"),
+        window,
+        snapshot_step=5,
+    )
+
+    assert count == 10
 
 
 def test_parse_horizons_is_sorted_unique_and_positive() -> None:
