@@ -3,7 +3,10 @@
 - **Change ID:** CR-RS-V2.3-20260902
 - **Release:** R/S Ladder V2.3
 - **Date:** 2026-09-02
-- **Status:** **CODE MERGED / DB MIGRATION PENDING / PRODUCTION VALIDATION PENDING**
+- **Production deployment date:** 2026-09-02
+- **Status:** **PRODUCTION DEPLOYED / VALIDATED**
+- **Final verdict:** **PASS**
+- **Final action:** **KEEP**
 - **Repository:** CherryStock
 - **Pull Request:** #7 — feat: upgrade R/S Ladder to V2.3 evaluation and model governance
 - **Main merge commit:** `74da4ec8ed9f733de6849883e9ee6942a71a2508`
@@ -419,11 +422,19 @@ It does not switch production runtime automatically.
 
 V2.3 requires a new additive persistence schema.
 
-Execute externally:
+Preferred execution entry point:
+
+```powershell
+python scripts/run_rs_v2_3_migration.py
+```
+
+The helper executes:
 
 ```text
 src/DuckDB/sql/rs_v2_3_evaluation_governance.sql
 ```
+
+This write-capable helper is required when MCP is read-only and cannot execute DDL.
 
 Objects:
 
@@ -553,6 +564,7 @@ Scripts:
 
 ```text
 scripts/run_rs_v2_3_evaluation.py
+scripts/run_rs_v2_3_migration.py
 scripts/promote_rs_v2_3_model.py
 scripts/run_rs_v2_3_golden.py
 ```
@@ -583,48 +595,41 @@ docs/00_HOME.md
 
 ---
 
-## 18. Validation Required
+## 18. Production Validation Evidence
 
-### Migration
-
-Execute:
-
-```text
-src/DuckDB/sql/rs_v2_3_evaluation_governance.sql
-```
-
-### Preflight
-
-Run read-only:
-
-```text
-src/DuckDB/sql/rs_v2_3_preflight.sql
-```
-
-### Focused pytest
-
-```powershell
-python -m pytest tests/test_rs_ladder.py tests/test_rs_evaluation.py -v
-```
-
-Current expected suite size:
-
-```text
-36 tests
-```
-
-Use all-collected PASS as the authoritative criterion if more relevant tests are added.
-
-### Golden benchmark
-
-```powershell
-python scripts/run_rs_v2_3_golden.py
-```
-
-### Full local production cross-check
+Full local production cross-check completed successfully on 2026-09-02 using:
 
 ```text
 tests/test_R_S_V2_3.md
+```
+
+Validated release areas:
+
+1. Git sync.
+2. DuckDB V2.3 migration.
+3. read-only preflight.
+4. focused runtime + evaluation pytest.
+5. golden regression benchmark.
+6. baseline multi-ticker historical evaluation.
+7. persisted event/metric validation.
+8. persistence idempotency.
+9. source-ablation challenger.
+10. Promotion Gate dry-run.
+11. NiceGUI V2.3 smoke.
+
+Final result:
+
+```text
+FINAL VERDICT: PASS
+ACTION: KEEP
+```
+
+Governance confirmation:
+
+```text
+Promotion Gate --apply was NOT used.
+No challenger was auto-promoted or auto-deployed.
+Golden benchmark PASS confirms no V2.2 runtime-behavior regression.
 ```
 
 ---
@@ -637,50 +642,66 @@ tests/test_R_S_V2_3.md
 | ADR | PASS |
 | Source code merged to main | PASS |
 | PR #7 | MERGED |
-| Runtime V2.2 behavioral compatibility design | PASS |
+| Runtime V2.2 behavioral compatibility | PASS |
 | DuckDB migration SQL generated | PASS |
-| DuckDB migration execution | PENDING |
-| Read-only preflight | PENDING |
-| Automated tests added | PASS |
-| Local pytest execution | PENDING |
-| Golden benchmark | PENDING |
-| Multi-ticker historical evaluation | PENDING |
-| Persistence/idempotency validation | PENDING |
-| Ablation smoke | PENDING |
-| Promotion Gate dry-run | PENDING |
-| NiceGUI V2.3 smoke | PENDING |
-| Production deployment | PENDING |
+| DuckDB migration execution | PASS |
+| Read-only preflight | PASS |
+| Automated tests | PASS |
+| Golden benchmark | PASS |
+| Multi-ticker historical evaluation | PASS |
+| Persistence/idempotency validation | PASS |
+| Ablation smoke | PASS |
+| Promotion Gate dry-run | PASS |
+| Promotion Gate apply | **NOT EXECUTED — BY DESIGN** |
+| NiceGUI V2.3 smoke | PASS |
+| Production deployment | **PASS** |
+| Final verdict | **PASS** |
 
 Current state:
 
 ```text
 CODE MERGED
-DB MIGRATION REQUIRED
-DB MIGRATION PENDING
-PRODUCTION PREFLIGHT PENDING
-PRODUCTION VALIDATION PENDING
+DB MIGRATION PASS
+PRODUCTION PREFLIGHT PASS
+AUTOMATED TESTS PASS
+GOLDEN BENCHMARK PASS
+HISTORICAL EVALUATION PASS
+IDEMPOTENCY PASS
+ABLATION PASS
+PROMOTION GATE DRY-RUN PASS
+NICEGUI PASS
+PRODUCTION DEPLOYED
+PRODUCTION READY
 ```
 
-Do not classify V2.3 as Production Ready until `tests/test_R_S_V2_3.md` returns PASS.
+Final action:
+
+```text
+KEEP
+```
 
 ---
 
-## 20. Deployment Sequence
+## 20. Production Deployment Record
 
 ```text
-1. git pull origin main
-2. execute rs_v2_3_evaluation_governance.sql
-3. execute rs_v2_3_preflight.sql
-4. pytest runtime + evaluation suites
-5. golden benchmark
-6. baseline multi-ticker historical evaluation
-7. persisted event/metric validation
-8. idempotency rerun
-9. ablation challenger smoke
-10. Promotion Gate dry-run
-11. NiceGUI smoke
-12. update CR/master tracking only when all PASS
+1. git pull origin main                          PASS
+2. V2.3 DuckDB migration                         PASS
+3. V2.3 read-only preflight                      PASS
+4. runtime + evaluation pytest                   PASS
+5. golden benchmark                              PASS
+6. baseline multi-ticker historical evaluation   PASS
+7. persisted event/metric validation             PASS
+8. idempotency rerun                             PASS
+9. ablation challenger smoke                     PASS
+10. Promotion Gate dry-run                       PASS
+11. NiceGUI smoke                                PASS
+12. production sign-off                          PASS
 ```
+
+No rollback was required.
+
+The Promotion Gate remained a dry-run during release validation and `--apply` was intentionally not used.
 
 ---
 
@@ -692,7 +713,9 @@ V2.3 baseline preserves V2.2 behavior.
 
 The main runtime change is model-version metadata.
 
-If V2.3 evaluation/governance validation fails, the evaluation layer can be rolled back without requiring a price/indicator data rollback.
+No rollback was required during V2.3 production validation.
+
+The evaluation layer remains independently rollbackable from price/indicator data if a future regression is found.
 
 ### Database rollback
 
@@ -756,7 +779,86 @@ stable run/event/metric keys and replace-on-rerun persistence.
 
 ---
 
-## 23. References
+## 23. Production Validation Fixes
+
+Two focused fixes were required during the bounded V2.3 runbook. Both were inside the allowed test scope and each defect used one repair attempt.
+
+### Fix 1 — information_schema catalog case
+
+Affected:
+
+```text
+scripts/run_rs_v2_3_evaluation.py::_ensure_v23_tables
+```
+
+Root cause:
+
+DuckDB `information_schema.tables.table_catalog` was resolved in lowercase in the local environment, while the query filtered using:
+
+```text
+table_catalog = 'CherryMon'
+```
+
+The table-existence preflight therefore falsely reported the V2.3 objects as missing.
+
+Fix:
+
+```sql
+lower(table_catalog) = 'cherrymon'
+```
+
+Commit:
+
+```text
+731795e4fd338f017ff1468cf97134b220c32134
+```
+
+This affects only evaluation table discovery and does not alter R/S runtime behavior.
+
+### Fix 2 — explicit migration runner
+
+Added:
+
+```text
+scripts/run_rs_v2_3_migration.py
+```
+
+Reason:
+
+The CherryMon MCP connection used for validation is read-only and cannot execute DDL. V2.3 therefore needs a write-capable local entry point that executes the generated migration SQL exactly as required by the runbook.
+
+The helper executes:
+
+```text
+src/DuckDB/sql/rs_v2_3_evaluation_governance.sql
+```
+
+inside an explicit DuckDB transaction.
+
+Commit:
+
+```text
+d24b2a82494e2b924e88c50eca933882a685ed95
+```
+
+Runbook documentation update:
+
+```text
+8dace93f40f449318b51944e949809eb6100738c
+```
+
+### Regression assessment
+
+```text
+Golden benchmark: PASS
+V2.2 runtime behavior: UNAFFECTED
+Rollback: NOT REQUIRED
+Final action: KEEP
+```
+
+---
+
+## 24. References
 
 Architecture:
 
