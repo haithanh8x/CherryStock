@@ -91,16 +91,16 @@ using active/enabled metadata.
 Current R/S mapping:
 
 ~~~text
-MA price-level configs
+MA price-level configs with runtime lengths 20/50/100/200
     → TREND_AVERAGE / LEVEL
 
-BB price-level components
+BB active price-level components
     → VOLATILITY_BAND / LEVEL
 
-ATR14_D
+ATR active D configs
     → VOLATILITY_CONTEXT / CONTEXT
 
-RSI14_D
+RSI active D/W/M configs
     → MOMENTUM_CONFIRMATION / CONFIRMATION
 ~~~
 
