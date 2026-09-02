@@ -10,8 +10,9 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from bisect import bisect_left, bisect_right
 from dataclasses import asdict, dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Iterable, Mapping, Sequence
 
 import pandas as pd
@@ -202,6 +203,86 @@ def _prepare_history(history: pd.DataFrame) -> pd.DataFrame:
         .sort_values("Date")
         .reset_index(drop=True)
     )
+
+
+def select_evaluation_snapshot_dates(
+    history: pd.DataFrame,
+    *,
+    start_date: date,
+    end_date: date,
+    snapshot_step: int,
+    enabled_sources: Sequence[str],
+    volume_profile_min_records: int = 30,
+    volume_profile_window_bars: int = 120,
+) -> tuple[date, ...]:
+    """Return deterministic historical snapshots after provider warm-up gates.
+
+    Sampling keeps the original cadence anchored to the first row inside the
+    requested evaluation window. Warm-up only removes sampled dates that a
+    currently enabled provider cannot evaluate point-in-time.
+
+    VOLUME_PROFILE is the only current provider with a hard minimum-history
+    error contract. Its warm-up test mirrors the runtime loader:
+    - valid positive-volume OHLCV rows only;
+    - lookback=max(540 calendar days, window_bars * 3);
+    - at least min_records rows available at/before the snapshot.
+    """
+    if snapshot_step <= 0:
+        raise ValueError("snapshot_step must be > 0")
+    if end_date < start_date:
+        raise ValueError("end_date must be >= start_date")
+    if volume_profile_min_records <= 0:
+        raise ValueError("volume_profile_min_records must be > 0")
+    if volume_profile_window_bars <= 0:
+        raise ValueError("volume_profile_window_bars must be > 0")
+    if "Date" not in history.columns:
+        raise ValueError("history missing columns: ['Date']")
+
+    frame = history.copy()
+    frame["Date"] = pd.to_datetime(frame["Date"], errors="coerce")
+    frame = frame.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
+    requested = frame[
+        (frame["Date"].dt.date >= start_date)
+        & (frame["Date"].dt.date <= end_date)
+    ]
+    sampled = requested.iloc[::snapshot_step]
+    sampled_dates = tuple(pd.Timestamp(value).date() for value in sampled["Date"])
+    normalized_sources = {
+        str(value).strip().upper() for value in enabled_sources if str(value).strip()
+    }
+    if "VOLUME_PROFILE" not in normalized_sources or not sampled_dates:
+        return sampled_dates
+
+    required = {"High", "Low", "Volume"}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(
+            "history missing Volume Profile warm-up columns: "
+            f"{sorted(missing)}"
+        )
+
+    valid = frame.loc[:, ["Date", "High", "Low", "Volume"]].copy()
+    for column in ("High", "Low", "Volume"):
+        valid[column] = pd.to_numeric(valid[column], errors="coerce")
+    valid = valid[
+        valid["High"].notna()
+        & valid["Low"].notna()
+        & valid["Volume"].notna()
+        & (valid["High"] >= valid["Low"])
+        & (valid["Low"] > 0)
+        & (valid["Volume"] > 0)
+    ]
+    valid_dates = sorted(pd.Timestamp(value).date() for value in valid["Date"])
+    lookback_days = max(540, int(volume_profile_window_bars) * 3)
+
+    eligible: list[date] = []
+    for snapshot_date in sampled_dates:
+        window_start = snapshot_date - timedelta(days=lookback_days)
+        left = bisect_left(valid_dates, window_start)
+        right = bisect_right(valid_dates, snapshot_date)
+        if right - left >= volume_profile_min_records:
+            eligible.append(snapshot_date)
+    return tuple(eligible)
 
 
 def classify_market_regime(
