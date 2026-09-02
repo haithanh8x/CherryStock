@@ -1136,7 +1136,7 @@ def cluster_levels(
     cluster_threshold_pct: float = 0.01,
 ) -> list[LevelZone]:
     """Group nearby levels into deterministic zones."""
-    threshold = _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
+    threshold = _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 1.00)
     if not levels:
         return []
     clusters: list[list[NormalizedLevel]] = []
@@ -1169,7 +1169,7 @@ def classify_zones(
     current_price: CurrentPrice,
     neutral_threshold_pct: float = 0.003,
 ) -> list[LevelZone]:
-    neutral = _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.10)
+    neutral = _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 1.00)
     result: list[LevelZone] = []
     for zone in zones:
         distance = (
