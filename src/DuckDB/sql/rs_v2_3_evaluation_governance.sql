@@ -99,11 +99,11 @@ INSERT INTO "CherryMon"."main"."dim_rs_model_version" (
 SELECT
     'RS_V2_3_BASELINE',
     'RS_V2_2_PROD',
-    'PRODUCTION',
+    'BASELINE',
     'RUNTIME_DEFAULT',
     '{"enabled_sources":["52W_HL","ATR","BB","MA","PREVIOUS_HL","RSI","SWING","VOLUME_PROFILE"]}',
     NULL,
-    'V2.3 baseline keeps V2.2 runtime behavior and adds evaluation/model-governance contracts.'
+    'V2.3 baseline keeps V2.2 runtime behavior and adds evaluation/model-governance contracts. Promotion approval does not auto-switch runtime.'
 WHERE NOT EXISTS (
     SELECT 1
     FROM "CherryMon"."main"."dim_rs_model_version"
