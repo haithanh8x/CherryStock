@@ -62,6 +62,7 @@ class SourceEffectivenessRecord:
     source_role: str
     horizon_bars: int
     attribution_mode: str
+    marginal_metric: str
     lineage_event_count: int
     validation_event_count: int
     test_event_count: int
@@ -171,6 +172,45 @@ def _events_for_family(
         for event in events
         if family in {str(value).upper() for value in event.source_families}
     ]
+
+
+def strength_predictive_score(
+    events: Sequence[LevelEvaluationEvent],
+) -> float:
+    """Brier-derived quality: does Strength predict hold after a touch?"""
+    touched = [event for event in events if event.touched]
+    if not touched:
+        return 0.0
+    squared_errors = []
+    for event in touched:
+        probability = _clamp(float(event.strength_score) / 100.0)
+        actual = 1.0 if event.held else 0.0
+        squared_errors.append((probability - actual) ** 2)
+    return round(1.0 - sum(squared_errors) / len(squared_errors), 6)
+
+
+def _split_strength_score(
+    events: Sequence[LevelEvaluationEvent],
+    split: str,
+) -> float:
+    return strength_predictive_score(
+        [event for event in events if event.split == split]
+    )
+
+
+def _regime_strength_quality(
+    events: Sequence[LevelEvaluationEvent],
+) -> dict[str, float]:
+    groups: dict[str, list[LevelEvaluationEvent]] = {}
+    for event in events:
+        if event.regime is None or event.split not in {"VALIDATION", "TEST"}:
+            continue
+        groups.setdefault(event.regime, []).append(event)
+    return {
+        key: strength_predictive_score(values)
+        for key, values in sorted(groups.items())
+        if values
+    }
 
 
 def _regime_quality(
@@ -300,8 +340,23 @@ def calculate_source_effectiveness(
     base_test = _split_metrics(baseline, "TEST")
     drop_val = _split_metrics(ablation, "VALIDATION")
     drop_test = _split_metrics(ablation, "TEST")
-    validation_lift = base_val.quality_score - drop_val.quality_score
-    test_lift = base_test.quality_score - drop_test.quality_score
+
+    if role == ROLE_CONFIRMATION:
+        baseline_validation_quality = _split_strength_score(baseline, "VALIDATION")
+        baseline_test_quality = _split_strength_score(baseline, "TEST")
+        ablation_validation_quality = _split_strength_score(ablation, "VALIDATION")
+        ablation_test_quality = _split_strength_score(ablation, "TEST")
+        validation_lift = baseline_validation_quality - ablation_validation_quality
+        test_lift = baseline_test_quality - ablation_test_quality
+        marginal_metric = "STRENGTH_BRIER"
+    else:
+        baseline_validation_quality = base_val.quality_score
+        baseline_test_quality = base_test.quality_score
+        ablation_validation_quality = drop_val.quality_score
+        ablation_test_quality = drop_test.quality_score
+        validation_lift = baseline_validation_quality - ablation_validation_quality
+        test_lift = baseline_test_quality - ablation_test_quality
+        marginal_metric = "LEVEL_QUALITY"
 
     normalized_scope = str(scope_type).upper()
     mode = attribution_mode or (
@@ -373,7 +428,15 @@ def calculate_source_effectiveness(
             test_lift,
             cfg.temporal_lift_scale,
         )
-        regime_lifts = _regime_lift(baseline, ablation)
+        if role == ROLE_CONFIRMATION:
+            base_regimes = _regime_strength_quality(baseline)
+            drop_regimes = _regime_strength_quality(ablation)
+            regime_lifts = {
+                key: base_regimes[key] - drop_regimes[key]
+                for key in base_regimes.keys() & drop_regimes.keys()
+            }
+        else:
+            regime_lifts = _regime_lift(baseline, ablation)
         regime_stability = _regime_stability(regime_lifts, cfg.regime_range_scale)
         validation_score = _clamp(0.5 + validation_lift / cfg.marginal_lift_scale)
         test_score = _clamp(0.5 + test_lift / cfg.marginal_lift_scale)
@@ -387,8 +450,8 @@ def calculate_source_effectiveness(
         ) * 100.0
         val_events = min(base_val.event_count, drop_val.event_count)
         test_events = min(base_test.event_count, drop_test.event_count)
-        validation_quality = base_val.quality_score
-        test_quality = base_test.quality_score
+        validation_quality = baseline_validation_quality
+        test_quality = baseline_test_quality
         regime_evidence = regime_lifts
 
     raw -= max(float(complexity_delta), 0.0) * cfg.complexity_penalty_points
@@ -411,6 +474,7 @@ def calculate_source_effectiveness(
         source_role=role,
         horizon_bars=int(horizon_bars),
         attribution_mode=mode,
+        marginal_metric=marginal_metric,
         lineage_event_count=lineage_count,
         validation_event_count=val_events,
         test_event_count=test_events,
@@ -547,6 +611,7 @@ def effectiveness_to_dataframe(
                 "SourceRole": row["source_role"],
                 "HorizonBars": row["horizon_bars"],
                 "AttributionMode": row["attribution_mode"],
+                "MarginalMetric": row["marginal_metric"],
                 "LineageEventCount": row["lineage_event_count"],
                 "ValidationEventCount": row["validation_event_count"],
                 "TestEventCount": row["test_event_count"],
