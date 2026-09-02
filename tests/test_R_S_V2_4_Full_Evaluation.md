@@ -70,7 +70,7 @@ PASS when branch is current and working tree is clean before local validation.
 
 ~~~powershell
 python -m py_compile scripts/run_rs_v2_4_full_evaluation.py src/Orchestrator/rs_v2_4_full_evaluation.py
-python -m pytest tests/test_rs_v2_4_full_evaluation.py -v
+python -m pytest tests/test_rs_evaluation.py tests/test_rs_v2_4_full_evaluation.py -v
 ~~~
 
 PASS when compile succeeds and all focused unit tests pass.
@@ -116,6 +116,8 @@ evaluation_end < latest_data_date
 No baseline/effectiveness child run should execute in plan-only mode.
 
 PASS also requires that the plan reports `raw_lstTicker.status='Y'` as the universe filter. Inactive tickers must not be part of the resolved default universe.
+
+The expected snapshot count must reflect provider warm-up filtering. A newly listed ticker must not cause the baseline to fail only because an early sampled date has fewer than 30 valid Volume Profile bars.
 
 ## Sequence 5 — Focused One-source Smoke
 
