@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 import importlib.util
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -13,6 +14,7 @@ MODULE_PATH = (
 SPEC = importlib.util.spec_from_file_location("rs_v24_full_eval", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 module = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = module
 SPEC.loader.exec_module(module)
 
 
