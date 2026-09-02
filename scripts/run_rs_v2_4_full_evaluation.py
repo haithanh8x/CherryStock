@@ -599,15 +599,13 @@ def _select_config_specs(
 def _family_groups(
     full_catalog: Sequence[SourceSpec],
     selected_specs: Sequence[SourceSpec],
-    skip_source_keys: Sequence[str],
 ) -> dict[tuple[str, str], tuple[str, ...]]:
     selected_families = {spec.source_family for spec in selected_specs}
-    skipped = {canonical_source_key(value) for value in skip_source_keys}
     roles_by_family: dict[str, set[str]] = {}
     members: dict[tuple[str, str], set[str]] = {}
 
     for spec in full_catalog:
-        if spec.source_family not in selected_families or spec.source_key in skipped:
+        if spec.source_family not in selected_families:
             continue
         roles_by_family.setdefault(spec.source_family, set()).add(spec.source_role)
         members.setdefault((spec.source_family, spec.source_role), set()).add(spec.source_key)
@@ -1089,7 +1087,6 @@ def main() -> None:
     family_groups = _family_groups(
         full_catalog,
         config_specs,
-        skip_source_keys,
     )
 
     print(
