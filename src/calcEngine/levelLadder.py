@@ -996,16 +996,19 @@ def _source_provider_registry() -> dict[str, dict[str, Any]]:
             "role": SOURCE_ROLE_LEVEL,
             "family": SOURCE_FAMILY_MARKET_STRUCTURE,
             "loader": load_swing_level_candidates,
+            "uses_structural_config": True,
         },
         "PREVIOUS_HL": {
             "role": SOURCE_ROLE_LEVEL,
             "family": SOURCE_FAMILY_MARKET_STRUCTURE,
             "loader": load_previous_period_level_candidates,
+            "uses_structural_config": True,
         },
         "52W_HL": {
             "role": SOURCE_ROLE_LEVEL,
             "family": SOURCE_FAMILY_MARKET_STRUCTURE,
             "loader": load_52w_level_candidates,
+            "uses_structural_config": True,
         },
         "ATR": {
             "role": SOURCE_ROLE_CONTEXT,
@@ -1477,6 +1480,7 @@ def build_level_ladder(
     cluster_threshold_pct: float = 0.01,
     neutral_threshold_pct: float = 0.003,
     strength_config: StrengthConfig | None = None,
+    structural_config: StructuralSourceConfig | None = None,
     connection: Any | None = None,
 ) -> LevelLadderResult:
     """Build R/S Ladder V2.1 from LEVEL, CONTEXT and CONFIRMATION providers."""
@@ -1519,12 +1523,16 @@ def build_level_ladder(
 
         for source in sorted(sources):
             spec = registry[source]
-            loaded = spec["loader"](
-                con,
-                ticker=normalized_ticker,
-                as_of_date=current.as_of_date,
-                timeframes=normalized_timeframes,
-            )
+            loader_kwargs: dict[str, Any] = {
+                "ticker": normalized_ticker,
+                "as_of_date": current.as_of_date,
+                "timeframes": normalized_timeframes,
+            }
+            if spec.get("uses_structural_config"):
+                loader_kwargs["structural_config"] = (
+                    structural_config or StructuralSourceConfig()
+                )
+            loaded = spec["loader"](con, **loader_kwargs)
             if spec["role"] == SOURCE_ROLE_LEVEL:
                 candidates.extend(loaded)
             elif spec["role"] == SOURCE_ROLE_CONTEXT:
