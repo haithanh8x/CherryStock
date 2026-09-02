@@ -54,12 +54,16 @@ class RSModelSpec:
     strength_config: Mapping[str, Any] = field(default_factory=dict)
     volume_profile_config: Mapping[str, Any] = field(default_factory=dict)
     structural_config: Mapping[str, Any] = field(default_factory=dict)
+    included_source_keys: tuple[str, ...] = ()
+    excluded_source_keys: tuple[str, ...] = ()
     parent_version: str | None = None
     notes: str | None = None
 
     def canonical_json(self) -> str:
         payload = asdict(self)
         payload["enabled_sources"] = sorted(self.enabled_sources)
+        payload["included_source_keys"] = sorted(self.included_source_keys)
+        payload["excluded_source_keys"] = sorted(self.excluded_source_keys)
         return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
 
     @property
@@ -509,11 +513,16 @@ def calculate_complexity_score(model: RSModelSpec) -> float:
     strength_changes = len(model.strength_config)
     profile_changes = len(model.volume_profile_config)
     structural_changes = len(model.structural_config)
+    source_filters = (
+        len(set(model.included_source_keys))
+        + len(set(model.excluded_source_keys))
+    )
     raw = (
         sources * 0.02
         + strength_changes * 0.01
         + profile_changes * 0.01
         + structural_changes * 0.01
+        + source_filters * 0.005
     )
     return round(min(raw, 1.0), 6)
 
