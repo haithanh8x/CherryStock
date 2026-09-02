@@ -1725,7 +1725,7 @@ def build_level_ladder(
                 confirmations.extend(loaded)
             else:
                 raise RuntimeError(
-                    f"Unsupported provider role in V2.2 registry: {spec.get('role')}"
+                    f"Unsupported provider role in V2.3 registry: {spec.get('role')}"
                 )
 
         history = load_price_history(
