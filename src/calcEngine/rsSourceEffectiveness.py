@@ -86,6 +86,8 @@ class SourceEffectivenessRecord:
 @dataclass(frozen=True)
 class SourcePromotionPolicy:
     min_tickers: int = 3
+    min_validation_events_per_ticker: int = 20
+    min_test_events_per_ticker: int = 10
     min_positive_ticker_ratio: float = 0.60
     min_effectiveness_score: float = 65.0
     min_validation_lift: float = 0.01
@@ -499,6 +501,26 @@ def calculate_source_effectiveness(
     )
 
 
+def _validate_promotion_policy(policy: SourcePromotionPolicy) -> None:
+    if policy.min_tickers <= 0:
+        raise ValueError("min_tickers must be > 0")
+    if (
+        policy.min_validation_events_per_ticker < 0
+        or policy.min_test_events_per_ticker < 0
+    ):
+        raise ValueError("promotion sample thresholds must be >= 0")
+    for name in (
+        "min_positive_ticker_ratio",
+        "min_temporal_stability",
+        "min_regime_stability",
+    ):
+        value = float(getattr(policy, name))
+        if not 0 <= value <= 1:
+            raise ValueError(f"{name} must be in [0,1]")
+    if not 0 <= policy.min_effectiveness_score <= 100:
+        raise ValueError("min_effectiveness_score must be in [0,100]")
+
+
 def evaluate_source_promotion(
     records: Sequence[SourceEffectivenessRecord],
     *,
@@ -506,6 +528,7 @@ def evaluate_source_promotion(
 ) -> SourcePromotionDecision:
     """Evaluate cross-ticker readiness without mutating runtime configuration."""
     cfg = policy or SourcePromotionPolicy()
+    _validate_promotion_policy(cfg)
     if not records:
         raise ValueError("records must be non-empty")
     first = records[0]
@@ -522,13 +545,20 @@ def evaluate_source_promotion(
     rows = list(unique.values())
     ticker_count = len(rows)
 
+    def sample_ready(record: SourceEffectivenessRecord) -> bool:
+        return (
+            record.validation_event_count >= cfg.min_validation_events_per_ticker
+            and record.test_event_count >= cfg.min_test_events_per_ticker
+        )
+
     def positive(record: SourceEffectivenessRecord) -> bool:
         regime_ok = (
             record.regime_stability is not None
             and record.regime_stability >= cfg.min_regime_stability
         )
         return (
-            record.effectiveness_score >= cfg.min_effectiveness_score
+            sample_ready(record)
+            and record.effectiveness_score >= cfg.min_effectiveness_score
             and record.validation_marginal_lift >= cfg.min_validation_lift
             and record.test_marginal_lift >= cfg.min_test_lift
             and record.temporal_stability >= cfg.min_temporal_stability
@@ -552,9 +582,20 @@ def evaluate_source_promotion(
     severe_negative = any(
         record.test_marginal_lift < cfg.max_negative_test_lift for record in rows
     )
+    all_samples_ready = all(sample_ready(record) for record in rows)
+    any_regime_evidence = any(
+        record.regime_stability is not None for record in rows
+    )
+
     if ticker_count < cfg.min_tickers:
         outcome = "RESEARCH"
         reasons.append("insufficient ticker coverage")
+    elif not all_samples_ready:
+        outcome = "RESEARCH"
+        reasons.append("insufficient per-ticker OOS sample")
+    elif not any_regime_evidence:
+        outcome = "RESEARCH"
+        reasons.append("insufficient regime breadth")
     elif (
         positive_ratio >= cfg.min_positive_ticker_ratio
         and not severe_negative
