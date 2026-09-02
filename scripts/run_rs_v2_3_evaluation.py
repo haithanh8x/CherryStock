@@ -189,11 +189,10 @@ def main() -> None:
     )
 
     factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
-    with DuckDBUnitOfWork(factory) as uow:
-        if uow.connection is None or uow.rs_evaluations is None:
-            raise RuntimeError("UnitOfWork did not initialize R/S evaluation dependencies.")
-        connection = uow.connection
-        repository = uow.rs_evaluations
+
+    # Historical calculation is read-only and may be long-running. Keep it
+    # outside the writer transaction to avoid holding a DuckDB write lock.
+    with factory.reader() as connection:
         _ensure_v23_tables(connection)
 
         future_end_date = end_date + timedelta(
@@ -223,28 +222,11 @@ def main() -> None:
 
         split_map = assign_temporal_splits(snapshot_dates, config=split_config)
         unique_snapshots = sorted(set(snapshot_dates))
-
-        repository.upsert_model_version(
-            model_version=model.model_version,
-            parent_version=model.parent_version,
-            status="CANDIDATE" if model.model_version != RS_MODEL_VERSION else "BASELINE",
-            signature=model.signature,
-            config_json=model.canonical_json(),
-            complexity_score=calculate_complexity_score(model),
-            notes=model.notes,
-        )
-        repository.upsert_evaluation_run(
-            evaluation_run_id=run_id,
-            model_version=model.model_version,
-            dataset_start=start_date,
-            dataset_end=end_date,
-            horizon_bars=evaluation_config.horizon_bars,
-            ticker_count=len(tickers),
-            snapshot_count=snapshot_count,
-            split_config_json=json.dumps(asdict(split_config), sort_keys=True),
-            status="RUNNING",
-            notes=f"enabled_sources={','.join(enabled_sources)}",
-        )
+        if len(unique_snapshots) < 3:
+            raise ValueError(
+                "V2.3 evaluation requires at least 3 unique snapshot dates "
+                "for TRAIN/VALIDATION/TEST"
+            )
 
         events = []
         for ticker in tickers:
@@ -282,8 +264,35 @@ def main() -> None:
                     )
                 )
 
-        event_df = events_to_dataframe(run_id, events)
-        metric_df = metrics_to_dataframe(run_id, events)
+    event_df = events_to_dataframe(run_id, events)
+    metric_df = metrics_to_dataframe(run_id, events)
+
+    # Persist all evaluation artifacts atomically in one short writer UoW.
+    with DuckDBUnitOfWork(factory) as uow:
+        if uow.connection is None or uow.rs_evaluations is None:
+            raise RuntimeError("UnitOfWork did not initialize R/S evaluation dependencies.")
+        repository = uow.rs_evaluations
+        repository.upsert_model_version(
+            model_version=model.model_version,
+            parent_version=model.parent_version,
+            status="CANDIDATE" if model.model_version != RS_MODEL_VERSION else "BASELINE",
+            signature=model.signature,
+            config_json=model.canonical_json(),
+            complexity_score=calculate_complexity_score(model),
+            notes=model.notes,
+        )
+        repository.upsert_evaluation_run(
+            evaluation_run_id=run_id,
+            model_version=model.model_version,
+            dataset_start=start_date,
+            dataset_end=end_date,
+            horizon_bars=evaluation_config.horizon_bars,
+            ticker_count=len(tickers),
+            snapshot_count=snapshot_count,
+            split_config_json=json.dumps(asdict(split_config), sort_keys=True),
+            status="COMPLETED",
+            notes=f"enabled_sources={','.join(enabled_sources)}",
+        )
         repository.replace_events(run_id, event_df)
         repository.replace_metrics(run_id, metric_df)
         repository.mark_evaluation_run_complete(run_id)
