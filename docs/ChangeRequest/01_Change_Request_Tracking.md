@@ -56,6 +56,7 @@ Không bắt buộc tạo Change Request riêng cho minor typo, isolated bug fix
 | **CR-RS-V2.0-20260901** | **R/S Ladder V2.0** | Architecture / Calculation Engine / Data Model / UI | MA + BB LEVEL providers, RSI CONFIRMATION, SourceRole/SourceFamily, family-based confluence, ValueSemantic/Unit metadata | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — 10/10 pytest + DuckDB + MWG smoke + semantic safety + NiceGUI** | [CR_RS_Ladder_V2_0.md](./CR_RS_Ladder_V2_0.md) | PR #4 / `7ebd6bcb9d0d4faff117f4bff0d99c98c223238b` |
 | **CR-RS-V2.1-20260902** | **R/S Ladder V2.1** | Architecture / Calculation Engine / UI | ATR-adaptive clustering/neutral, Swing H/L, Previous W/M H/L, 52W H/L, point-in-time confirmed_at, structural quality | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — preflight 5/5 + pytest 17/17 + MA regression + ATR adaptive + structural/no-look-ahead + NiceGUI** | [CR_RS_Ladder_V2_1.md](./CR_RS_Ladder_V2_1.md) | PR #5 / `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3` |
 | **CR-RS-V2.2-20260902** | **R/S Ladder V2.2** | Architecture / Calculation Engine / UI | Volume Profile Engine, POC/HVN/LVN, VOLUME_STRUCTURE family cap, volume confirmation, point-in-time profile | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — preflight + pytest/regression + V2.1 compatibility + Volume Profile/no-look-ahead + NiceGUI; loader fix KEPT** | [CR_RS_Ladder_V2_2.md](./CR_RS_Ladder_V2_2.md) | PR #6 / `f2eeb815dc6254f4dc28a1eeb1b2d99e3bf9486c` + fix `cc8aeed278936b6ab87632d7707d544de410376c` |
+| **CR-RS-V2.3-20260902** | **R/S Ladder V2.3** | Architecture / Calculation Engine / Data Model / Operational | Historical evaluation, hit/break/retest, temporal split, cross-ticker/regime metrics, ablation/calibration, complexity penalty, model versioning, Promotion Gate, golden benchmark | **CODE MERGED / DB MIGRATION & VALIDATION PENDING** | — | **PENDING — migration + preflight + pytest + golden + historical evaluation/idempotency + ablation + Promotion Gate dry-run + NiceGUI** | [CR_RS_Ladder_V2_3.md](./CR_RS_Ladder_V2_3.md) | PR #7 / `74da4ec8ed9f733de6849883e9ee6942a71a2508` |
 
 ---
 
@@ -296,32 +297,26 @@ Không dùng Change Request master để thay thế architecture docs hoặc bac
 
 ---
 
-## 9. Next Expected Major Change
+## 9. Current Roadmap Edge
 
-R/S V2.2 đã hoàn tất production deployment và validation PASS.
+R/S V2.3 đã merge code và đang chờ DuckDB migration + production validation.
 
-Major release tiếp theo theo roadmap là:
-
-```text
-R/S V2.3
-```
-
-Scope target:
+V2.3 là major stage cuối cùng hiện được định nghĩa trong roadmap R/S V2.x:
 
 ```text
-Historical evaluation dataset
-Support / Resistance hit metrics
-Break / Retest metrics
-Source ablation
-Family ablation
-Temporal Train / Validation / Test split
-Cross-ticker validation
-Market regime classification
-Weight calibration
-Complexity penalty
-Incremental Promotion Gate
+Historical evaluation
+Ablation
+Calibration
+Promotion Gate
 Model versioning
-Golden benchmark / regression set
+Golden regression benchmark
 ```
 
-V2.2 đã đáp ứng prerequisite cho V2.3: production deployed, local cross-check PASS và Change Request V2.2 đã được chốt.
+Sau khi V2.3 production validation PASS:
+
+- không tự động tạo một version tiếp theo;
+- challenger chỉ có `PROMOTION_APPROVED` khi qua gate;
+- mọi challenger thực sự được deploy phải có Change Request / release riêng;
+- version tiếp theo chỉ được mở khi có requirement/ADR mới.
+
+V2.2 đã đáp ứng prerequisite cho V2.3; V2.3 production status vẫn PENDING cho đến khi `tests/test_R_S_V2_3.md` PASS.
