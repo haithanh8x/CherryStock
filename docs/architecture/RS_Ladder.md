@@ -2496,3 +2496,585 @@ V2.2 is complete when:
 14. MWG real-data smoke PASS;
 15. NiceGUI V2.2 smoke PASS.
 
+---
+
+# 33. V2.3 Evaluation, Calibration & Model Governance Contract
+
+V2.3 does **not** replace the V2.2 runtime source/scoring behavior by itself.
+
+Its purpose is to add a reproducible evidence layer around the production R/S model:
+
+```text
+R/S Runtime Snapshot
+      │
+      ▼
+Historical Evaluation
+      │
+      ├── Hit / Touch
+      ├── Break
+      ├── Retest
+      ├── Hold
+      ├── Favorable / Adverse excursion
+      ├── Temporal split
+      ├── Ticker scope
+      └── Market regime
+      │
+      ▼
+Calibration / Ablation
+      │
+      ├── Source ablation
+      ├── Family ablation
+      ├── Weight challengers
+      └── Complexity penalty
+      │
+      ▼
+Incremental Promotion Gate
+      │
+      ├── VALIDATION improvement
+      ├── TEST non-regression
+      ├── Regime non-regression
+      └── Complexity guardrail
+      │
+      ▼
+PROMOTION_APPROVED
+      │
+      └── explicit later deployment/release required
+```
+
+A Promotion Gate approval must **not** silently change the production runtime configuration.
+
+## 33.1 Runtime Model Version
+
+R/S result now exposes:
+
+```text
+model_version
+```
+
+Default:
+
+```text
+RS_V2_3_BASELINE
+```
+
+The baseline preserves the production behavior introduced through V2.2.
+
+Model-version tagging exists so every evaluation event can be traced back to the exact model/config being evaluated.
+
+## 33.2 Model Specification
+
+Canonical evaluation model contract:
+
+```text
+RSModelSpec
+├── model_version
+├── enabled_sources
+├── strength_config
+├── volume_profile_config
+├── structural_config
+├── parent_version
+└── notes
+```
+
+Every model spec produces a deterministic signature:
+
+```text
+SHA-256(canonical JSON)[:16]
+```
+
+Source ordering does not change the signature.
+
+## 33.3 Evaluation Event
+
+Each evaluated ranked level creates one `LevelEvaluationEvent`:
+
+```text
+model_version
+ticker
+as_of_date
+
+level_rank
+level_type
+level_price
+strength_score
+
+horizon_end_date
+
+touched
+touch_date
+
+broken
+break_date
+
+retested
+retest_date
+
+held
+bars_to_touch
+
+max_favorable_pct
+max_adverse_pct
+
+source_count
+source_family_count
+sources
+source_families
+
+regime
+split
+```
+
+Evaluation uses future bars only to label outcomes.
+
+The R/S snapshot itself must still be calculated strictly point-in-time at `as_of_date`.
+
+## 33.4 Forward Label Definitions
+
+Default evaluation horizon:
+
+```text
+20 trading bars
+```
+
+### Touch
+
+A level is touched when the future bar High/Low range intersects:
+
+```text
+level ± touch_tolerance_pct
+```
+
+Default:
+
+```text
+0.5%
+```
+
+### Break
+
+Support break:
+
+```text
+Close < Level × (1 - break_tolerance_pct)
+```
+
+Resistance break:
+
+```text
+Close > Level × (1 + break_tolerance_pct)
+```
+
+Default break tolerance:
+
+```text
+0.5%
+```
+
+### Retest
+
+After a confirmed break, a later bar must intersect:
+
+```text
+level ± retest_tolerance_pct
+```
+
+Default:
+
+```text
+0.5%
+```
+
+Retest uses its own tolerance and must not reuse touch tolerance implicitly.
+
+### Hold
+
+```text
+Touched = TRUE
+AND
+Broken = FALSE
+within evaluation horizon
+```
+
+## 33.5 Evaluation Metrics
+
+Aggregated metrics:
+
+```text
+event_count
+touch_count
+break_count
+retest_count
+hold_count
+
+touch_rate
+break_rate_given_touch
+retest_rate_given_break
+hold_rate_given_touch
+
+avg_bars_to_touch
+
+avg_favorable_pct
+avg_adverse_pct
+directional_edge_pct
+
+quality_score
+```
+
+Current composite quality:
+
+```text
+35% Touch Rate
+35% Hold Rate Given Touch
+10% Retest Rate Given Break
+20% Directional Edge Component
+```
+
+This composite is an evaluation objective, not a runtime Strength score.
+
+## 33.6 Temporal Split
+
+Default split:
+
+```text
+TRAIN       60%
+VALIDATION  20%
+TEST        20%
+```
+
+Splits are chronological and never randomized.
+
+Model selection/calibration may inspect TRAIN.
+
+Promotion decisions require independent VALIDATION and TEST evidence.
+
+## 33.7 Market Regime
+
+Regime classification uses only observations available at/before each `as_of_date`.
+
+Current categories:
+
+```text
+BULL_LOW_VOL
+BULL_HIGH_VOL
+
+BEAR_LOW_VOL
+BEAR_HIGH_VOL
+
+RANGE_LOW_VOL
+RANGE_HIGH_VOL
+
+UNKNOWN
+```
+
+Default regime lookback:
+
+```text
+60 bars
+```
+
+Default trend threshold:
+
+```text
+±8%
+```
+
+Default high-volatility daily return standard-deviation threshold:
+
+```text
+2.5%
+```
+
+Promotion Gate may reject a challenger if a material regime degrades beyond policy tolerance.
+
+## 33.8 Source / Family Ablation
+
+Canonical source-family mapping:
+
+```text
+MA              → TREND_AVERAGE
+BB              → VOLATILITY_BAND
+
+SWING           → MARKET_STRUCTURE
+PREVIOUS_HL     → MARKET_STRUCTURE
+52W_HL          → MARKET_STRUCTURE
+
+VOLUME_PROFILE  → VOLUME_STRUCTURE
+
+ATR             → VOLATILITY_CONTEXT
+RSI             → MOMENTUM_CONFIRMATION
+```
+
+V2.3 can generate:
+
+```text
+FULL
+
+DROP_SOURCE_<SOURCE>
+
+DROP_FAMILY_<FAMILY>
+```
+
+Ablation variants use the same historical dataset/split/horizon as the baseline.
+
+## 33.9 Calibration and Complexity Penalty
+
+Calibration candidates are ranked by:
+
+```text
+PenalizedScore
+=
+QualityScore
+-
+ComplexityLambda × ComplexityScore
+```
+
+Default complexity proxy includes:
+
+- number of enabled provider sources;
+- number of Strength config overrides;
+- number of Volume Profile config overrides;
+- number of structural config overrides.
+
+Purpose:
+
+> A slightly more accurate model should not automatically beat a materially more complex model.
+
+## 33.10 Incremental Promotion Gate
+
+Default policy:
+
+```text
+min_validation_events = 200
+min_test_events       = 100
+
+min_validation_quality_delta = +0.02
+min_test_quality_delta       =  0.00
+
+max_regime_quality_degradation = 0.05
+max_complexity_delta           = 0.15
+```
+
+A challenger is approved only when all mandatory conditions pass.
+
+Output:
+
+```text
+PromotionDecision
+├── promote
+├── validation_quality_delta
+├── test_quality_delta
+├── complexity_delta
+├── worst_regime_delta
+└── reasons[]
+```
+
+## 33.11 Promotion Approval vs Runtime Deployment
+
+Critical governance rule:
+
+```text
+Promotion Gate PASS
+      ↓
+PROMOTION_APPROVED
+      ≠
+automatic production model switch
+```
+
+The script:
+
+```text
+scripts/promote_rs_v2_3_model.py
+```
+
+defaults to dry-run.
+
+With `--apply`, it records the Promotion Gate audit and marks the challenger:
+
+```text
+PROMOTION_APPROVED
+```
+
+It does **not** change the runtime default config.
+
+A later explicit release/change must deploy an approved challenger.
+
+## 33.12 Historical Evaluation Persistence
+
+V2.3 introduces:
+
+```text
+dim_rs_model_version
+cal_rs_evaluation_run
+cal_rs_evaluation_event
+cal_rs_evaluation_metric
+sys_rs_model_promotion_audit
+```
+
+Ownership:
+
+```text
+dim_* = model/config registry
+cal_* = calculated evaluation artifacts
+sys_* = governance/audit
+```
+
+Migration:
+
+```text
+src/DuckDB/sql/rs_v2_3_evaluation_governance.sql
+```
+
+The migration is additive and idempotent.
+
+## 33.13 Persistence Idempotency
+
+Evaluation persistence uses stable keys.
+
+Events:
+
+```text
+EvaluationRunId / Ticker / AsOfDate / LevelRank
+```
+
+Metrics:
+
+```text
+EvaluationRunId / ScopeType / ScopeKey / MetricCode
+```
+
+Rerunning persistence for the same `EvaluationRunId` replaces that run's events/metrics instead of accumulating duplicates.
+
+## 33.14 Writer-Lock Contract
+
+Historical model evaluation can be long-running.
+
+Therefore:
+
+```text
+Historical calculations
+    = read-only connection
+
+Persistence
+    = short writer UnitOfWork
+```
+
+V2.3 must not hold a DuckDB writer transaction throughout the historical backtest.
+
+## 33.15 Cross-Ticker Evaluation
+
+The evaluation runner accepts multiple tickers:
+
+```text
+--tickers MWG,FPT,HPG
+```
+
+Metrics are persisted at:
+
+```text
+OVERALL
+SPLIT
+TICKER
+REGIME
+LEVEL_TYPE
+```
+
+This enables detection of a model that improves aggregate results while degrading individual tickers or regimes.
+
+## 33.16 Golden Regression Benchmark
+
+Golden benchmark definition:
+
+```text
+tests/fixtures/rs_v2_3_golden_cases.json
+```
+
+Runner:
+
+```text
+scripts/run_rs_v2_3_golden.py
+```
+
+Golden invariants include:
+
+- deterministic rank naming;
+- proximity ordering;
+- Strength in [0,100];
+- source_family_count <= source_count;
+- no future source_date;
+- no future confirmed_at;
+- support below current price;
+- resistance above current price.
+
+The golden benchmark checks runtime-contract regressions; it is separate from statistical model evaluation.
+
+## 33.17 Physical Implementation
+
+```text
+src/calcEngine/levelLadder.py
+    RS_MODEL_VERSION
+    LevelLadderResult.model_version
+
+src/calcEngine/rsEvaluation.py
+    EvaluationConfig
+    TemporalSplitConfig
+    RSModelSpec
+    LevelEvaluationEvent
+    EvaluationMetrics
+    AblationVariant
+    PromotionPolicy
+    PromotionDecision
+    CalibrationScore
+    event labeling
+    aggregation
+    temporal split
+    regime classification
+    ablation generation
+    calibration ranking
+    complexity penalty
+    promotion gate
+    golden invariant validation
+    batch DataFrame contracts
+
+src/cherrystock/infrastructure/database/repositories/
+    rs_evaluation_repository.py
+
+src/cherrystock/infrastructure/database/unit_of_work.py
+    rs_evaluations repository
+
+scripts/run_rs_v2_3_evaluation.py
+scripts/promote_rs_v2_3_model.py
+scripts/run_rs_v2_3_golden.py
+
+src/DuckDB/sql/rs_v2_3_evaluation_governance.sql
+src/DuckDB/sql/rs_v2_3_preflight.sql
+
+tests/test_rs_evaluation.py
+tests/test_R_S_V2_3.md
+tests/fixtures/rs_v2_3_golden_cases.json
+```
+
+## 33.18 V2.3 Acceptance Criteria
+
+V2.3 is complete when:
+
+1. V2.0–V2.2 runtime regressions remain PASS.
+2. runtime result exposes deterministic `model_version`.
+3. event labels support touch/break/retest/hold.
+4. outcome bars may be future, but signal generation remains point-in-time.
+5. temporal split is chronological.
+6. regime classification is point-in-time.
+7. cross-ticker metrics are available.
+8. source and family ablation variants are reproducible.
+9. calibration applies a complexity penalty.
+10. Promotion Gate validates VALIDATION + TEST + regimes + complexity.
+11. Promotion Gate is dry-run by default.
+12. approved challenger is not auto-deployed.
+13. evaluation persistence is idempotent.
+14. historical calculation does not hold a long writer lock.
+15. DuckDB migration PASS.
+16. read-only preflight PASS.
+17. focused V2.3 pytest PASS.
+18. golden benchmark PASS.
+19. baseline multi-ticker historical evaluation persists events/metrics.
+20. NiceGUI V2.3 smoke PASS.
+

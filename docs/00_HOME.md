@@ -49,6 +49,7 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 - [[adr/ADR-004-rs-v2-source-semantics|ADR-004 R/S V2.0 Source Semantics]]
 - [[adr/ADR-005-rs-v2-1-adaptive-structural|ADR-005 R/S V2.1 Adaptive Structural Levels]]
 - [[adr/ADR-006-rs-v2-2-volume-profile|ADR-006 R/S V2.2 Volume Profile Domain]]
+- [[adr/ADR-007-rs-v2-3-evaluation-governance|ADR-007 R/S V2.3 Evaluation Governance]]
 - [[../.github/instructions/chart.instructions|Chart Instructions]]
 
 ### Crawlers / Data Ingestion

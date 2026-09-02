@@ -1,0 +1,20 @@
+{
+  "benchmark": "RS_V2_3_GOLDEN_20260902",
+  "model_version": "RS_V2_3_BASELINE",
+  "cases": [
+    {"ticker": "MWG", "as_of_date": "2026-06-30"},
+    {"ticker": "MWG", "as_of_date": "2026-07-31"},
+    {"ticker": "MWG", "as_of_date": "2026-08-15"},
+    {"ticker": "MWG", "as_of_date": "2026-08-28"}
+  ],
+  "required_invariants": [
+    "support ranks are S1..Sn in nearest-first order",
+    "resistance ranks are R1..Rn in nearest-first order",
+    "0 <= strength <= 100",
+    "source_family_count <= source_count",
+    "source_date <= as_of_date",
+    "confirmed_at <= as_of_date",
+    "support price < current price",
+    "resistance price > current price"
+  ]
+}
