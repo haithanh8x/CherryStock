@@ -372,6 +372,250 @@ Canonical research horizons:
 
 Each horizon keeps separate baseline/ablation/effectiveness evidence. V2.4 does not average horizons into a runtime weight.
 
+## 14.1 How Historical Evaluation Actually Works
+
+Historical evaluation is not a daily live prediction loop. It is a point-in-time backtest over selected historical snapshots.
+
+The canonical flow is:
+
+```text
+historical trading dates
+        ↓
+select snapshot dates using snapshot_step
+        ↓
+build R/S ladder using information available at that snapshot only
+        ↓
+observe future market bars over H5 / H10 / H20 / H40
+        ↓
+label historical outcomes
+        ↓
+aggregate thousands of events
+        ↓
+derive historical rates / quality / source effectiveness
+```
+
+### Snapshot cadence
+
+With:
+
+```text
+snapshot_step = 5
+```
+
+the evaluator does not rebuild the ladder on every trading date.
+
+Conceptually:
+
+```text
+D1
+D2
+D3
+D4
+D5
+D6
+D7
+...
+
+sampled snapshots:
+
+D1
+D6
+D11
+D16
+...
+```
+
+Warm-up filtering is applied after this sampling step. If a sampled date does not have enough point-in-time history for an enabled provider, that sampled date is skipped; the cadence is not rebased.
+
+### Meaning of H5 / H10 / H20 / H40
+
+```text
+H5  = evaluate the next 5 market trading bars
+H10 = evaluate the next 10 market trading bars
+H20 = evaluate the next 20 market trading bars
+H40 = evaluate the next 40 market trading bars
+```
+
+These are trading bars, not calendar days.
+
+Approximate interpretation:
+
+```text
+H5  ≈ very short term
+H10 ≈ short term
+H20 ≈ roughly one trading month
+H40 ≈ roughly two trading months
+```
+
+The horizons are not four different R/S models. They are four future observation windows applied to the same point-in-time R/S signal.
+
+### Example
+
+Assume this historical snapshot:
+
+```text
+Ticker       MWG
+Snapshot     2026-05-04
+CurrentPrice 58
+S1           55
+R1           62
+```
+
+The ladder is calculated using only data available on or before 2026-05-04.
+
+For H20, the evaluator then observes the next 20 trading bars and asks questions such as:
+
+```text
+Did price touch S1 or R1?
+If touched, did the level hold?
+Did price break through the level?
+If broken, was there a retest?
+After the interaction, did price move in the expected direction?
+```
+
+The same historical snapshot can be evaluated independently under H5, H10, H20 and H40.
+
+### Event labels
+
+At event level, evaluation records concepts such as:
+
+```text
+Ticker
+AsOfDate
+LevelRank
+LevelType
+HorizonBars
+Touched
+Held
+Broken
+Retested
+DirectionalEdgePct
+Strength
+Source lineage
+Regime
+Temporal split
+```
+
+For example:
+
+```text
+MWG / 2026-05-04 / R1 / H20
+Touched = TRUE
+Held    = TRUE
+Broken  = FALSE
+Retested= FALSE
+```
+
+Another event may be:
+
+```text
+MWG / 2026-05-19 / S1 / H20
+Touched = TRUE
+Held    = FALSE
+Broken  = TRUE
+Retested= TRUE
+```
+
+### Historical rates
+
+After many historical events have been labeled, the evaluator aggregates them into empirical rates such as:
+
+```text
+Touch Rate
+Hold Rate
+Break Rate
+Retest Rate
+Directional Edge
+LEVEL_QUALITY
+STRENGTH_BRIER
+```
+
+Illustrative example:
+
+```text
+historical resistance events = 1,000
+
+Touch Rate                  = 42%
+Hold Rate given touch       = 68%
+Break Rate given touch      = 32%
+Retest Rate given break     = 47%
+```
+
+This can be interpreted as historical empirical evidence, for example:
+
+```text
+P_historical(Break | Touch, horizon=H20) ≈ 32%
+```
+
+### Historical rate is not the same as a current predictive probability
+
+V2.4 does not currently claim:
+
+```text
+MWG current R1 = 62
+Probability of breaking R1 within H20 = 27%
+```
+
+unless a dedicated calibrated predictive layer is added.
+
+Current V2.4 outputs are primarily:
+
+```text
+historical event outcomes
+historical conditional rates
+quality metrics
+source marginal lift
+source effectiveness
+promotion evidence
+```
+
+Therefore:
+
+```text
+historical empirical rate
+    !=
+calibrated per-level forecast probability
+```
+
+A future probability-calibration layer could use the historical event dataset to produce current-level forecasts such as:
+
+```text
+P(Break R1 within H20)
+P(Hold S1 within H10)
+P(Retest after break within H20)
+```
+
+but that is outside the current V2.4 contract.
+
+### Why the largest horizon reserves future bars
+
+To label an H40 snapshot correctly, the evaluator needs 40 later trading bars.
+
+Therefore:
+
+```text
+latest raw data date
+    !=
+latest safe evaluation snapshot date
+```
+
+The monthly orchestrator chooses an evaluation end that leaves enough future bars for the largest requested horizon.
+
+Example:
+
+```text
+evaluation snapshot date
+2026-07-03
+        ↓
+40 later market trading bars
+        ↓
+latest observed market date
+2026-08-28
+```
+
+This avoids immature/censored outcome labels and look-ahead leakage.
+
+
 ## 15. Performance and Operational Strategy
 
 1. Reuse persisted V2.3 evaluation events/metrics.
