@@ -460,7 +460,7 @@ def _indicator_source_specs(connection) -> set[SourceSpec]:
         WHERE "IndicatorCode" IN ('MA', 'BB', 'ATR', 'RSI')
           AND "ConfigIsEnabled" = TRUE
           AND "IndicatorIsActive" = TRUE
-          AND "ComponentIsActive" = TRUE
+          AND COALESCE("ComponentIsActive", TRUE) = TRUE
           AND "Timeframe" IN ('D', 'W', 'M')
         ORDER BY "IndicatorCode", "ConfigCode", "ComponentCode";
         """
