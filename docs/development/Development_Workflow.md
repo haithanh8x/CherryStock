@@ -30,11 +30,29 @@ Read in order:
 1. .github/copilot-instructions.md
 2. .github/agents/CherryMon.agent.md
 3. intent-specific agent:
+   - BusinessAnalyst.agent.md for requirement analysis/backlog
    - SolutionArchitect.agent.md for architecture/design
+   - Indicator_Management.agent.md for concrete indicator lifecycle
+   - GeneralCoding.agent.md for clear general implementation
    - TestEngineer.agent.md for test design/execution
 4. matching .github/instructions/*.instructions.md
-5. related docs/architecture/*.md / docs/adr/*.md
+5. related requirement/architecture/ADR/domain materials routed from docs/00_HOME.md
 6. implementation + nearest tests
+
+## Standard handoff
+
+~~~text
+BusinessAnalyst (when needed)
+→ READY_FOR_DESIGN / READY_FOR_IMPLEMENTATION
+→ SolutionArchitect (when needed)
+→ APPROVED_FOR_IMPLEMENTATION
+→ GeneralCoding or authoritative domain agent
+→ IMPLEMENTED_PENDING_VALIDATION
+→ TestEngineer
+→ PASS / FAIL / BLOCKED / REGRESSION
+~~~
+
+Small, explicit changes may route directly to General Coding. No role self-approves the downstream role's outcome.
 
 ## Bounded execution rule
 
@@ -58,13 +76,19 @@ Rules:
 
 This is especially important when using fast/small models such as Flash-class LLMs.
 
-## Documentation ownership
+## Role and material ownership
+- requirement/backlog readiness → BusinessAnalyst.agent.md + docs/backlog/requirements/**
+- architecture/design readiness → SolutionArchitect.agent.md + docs/architecture/** / docs/adr/**
+- general implementation readiness → GeneralCoding.agent.md + src/** / scripts/** / affected canonical docs
+- concrete indicator lifecycle → Indicator_Management.agent.md
+- independent validation verdict → TestEngineer.agent.md + tests/**
 - AI/developer behavior → .github/**
 - system architecture/specification → docs/architecture/**
 - architecture decision/rationale → docs/adr/**
 - implementation → src/**
 - validation → tests/**
 - operational/init/migration entry points → scripts/**
+- non-obvious implementation guidance only → docs/development/implementation-notes/**
 
 Test runbooks under tests/*.md must be finite execution instructions, not open-ended investigation documents.
 
