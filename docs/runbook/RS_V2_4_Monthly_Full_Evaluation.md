@@ -193,6 +193,12 @@ DatasetEnd matches
 +
 HorizonBars matches
 +
+TickerCount matches
++
+SnapshotCount matches
++
+completed event ticker universe matches
++
 include/exclude source contract matches
 ~~~
 
@@ -207,13 +213,13 @@ It does not silently reuse incompatible evidence.
 Default prefix:
 
 ~~~text
-RSV24FULL_<YYYYMM>_E<evaluation_end>
+RSV24FULL_<YYYYMM>_E<evaluation_end>_S<snapshot_step>_U<universe_hash>
 ~~~
 
 Example:
 
 ~~~text
-RSV24FULL_202609_E20260708
+RSV24FULL_202609_E20260708_S5_U1A2B3C4D
 ~~~
 
 Examples of child runs:
