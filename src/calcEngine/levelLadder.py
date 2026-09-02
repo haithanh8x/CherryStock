@@ -1,8 +1,8 @@
-"""Support / Resistance Level Ladder V2.0.
+"""Support / Resistance Level Ladder V2.1.
 
-V2.0 extends the MA-only ladder with Bollinger Band price levels and RSI
-confirmation while keeping Indicator Engine public views as the only
-technical-indicator read contracts. Database access is read-only; calculation
+V2.1 extends the multi-source ladder with ATR-adaptive clustering, structural
+price levels and point-in-time safety while keeping Indicator Engine public
+views as the only technical-indicator read contracts. Database access is read-only; calculation
 and rendering remain separate.
 """
 
@@ -12,7 +12,7 @@ import json
 import logging
 import math
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
@@ -35,9 +35,12 @@ SOURCE_ROLE_CONFIRMATION = "CONFIRMATION"
 SOURCE_FAMILY_TREND_AVERAGE = "TREND_AVERAGE"
 SOURCE_FAMILY_VOLATILITY_BAND = "VOLATILITY_BAND"
 SOURCE_FAMILY_MOMENTUM_CONFIRMATION = "MOMENTUM_CONFIRMATION"
+SOURCE_FAMILY_MARKET_STRUCTURE = "MARKET_STRUCTURE"
+SOURCE_FAMILY_VOLATILITY_CONTEXT = "VOLATILITY_CONTEXT"
 
 VALUE_SEMANTIC_PRICE_LEVEL = "PRICE_LEVEL"
 VALUE_SEMANTIC_OSCILLATOR = "OSCILLATOR"
+VALUE_SEMANTIC_VOLATILITY_DISTANCE = "VOLATILITY_DISTANCE"
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,23 @@ class CurrentPrice:
     ticker: str
     as_of_date: date
     price: float
+
+
+@dataclass(frozen=True)
+class MarketContext:
+    ticker: str
+    as_of_date: date
+    source_code: str
+    source_family: str
+    timeframe: str | None
+    indicator_code: str
+    config_id: int
+    config_code: str
+    component_code: str
+    value: float
+    unit: str | None
+    source_date: date
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -75,6 +95,7 @@ class LevelCandidate:
     config_code: str | None
     component_code: str | None
     source_date: date
+    confirmed_at: date | None = None
     source_role: str = SOURCE_ROLE_LEVEL
     source_family: str = "UNCLASSIFIED"
     value_semantic: str = VALUE_SEMANTIC_PRICE_LEVEL
@@ -89,6 +110,7 @@ class NormalizedLevel:
     timeframe: str | None
     weight: float
     source_date: date
+    confirmed_at: date
     config_id: int | None
     config_code: str | None
     component_code: str | None
@@ -120,6 +142,7 @@ class ScoredLevel:
     touch_score: float
     recency_score: float
     confirmation_score: float
+    structural_quality_score: float
     touch_count: int
 
 
@@ -150,6 +173,9 @@ class LevelLadderResult:
     downside_to_s1_pct: float | None
     risk_reward_ratio: float | None
     confirmations: tuple[ConfirmationContext, ...] = ()
+    market_contexts: tuple[MarketContext, ...] = ()
+    cluster_threshold_pct_used: float | None = None
+    neutral_threshold_pct_used: float | None = None
 
 
 @dataclass(frozen=True)
@@ -159,6 +185,7 @@ class StrengthConfig:
     touch_weight: float = 0.25
     recency_weight: float = 0.15
     confirmation_weight: float = 0.10
+    structural_quality_weight: float = 0.15
     family_confluence_target: int = 3
     touch_target: int = 4
     touch_tolerance_pct: float = 0.003
@@ -174,6 +201,18 @@ class StrengthConfig:
     )
     rsi_oversold: float = 30.0
     rsi_overbought: float = 70.0
+    atr_cluster_multiplier: float = 0.50
+    atr_neutral_multiplier: float = 0.15
+    structural_recency_days: int = 180
+
+
+@dataclass(frozen=True)
+class StructuralSourceConfig:
+    swing_left: int = 3
+    swing_right: int = 3
+    swing_lookback_bars: int = 252
+    swing_max_candidates_each: int = 12
+    historical_lookback_days: int = 370
 
 
 def _normalize_ticker(ticker: str) -> str:
