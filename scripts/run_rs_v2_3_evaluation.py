@@ -18,7 +18,7 @@ import json
 import sys
 import uuid
 from dataclasses import asdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -121,7 +121,11 @@ def _ensure_v23_tables(connection) -> None:
         )
 
 
-def _load_raw_history(connection, tickers: tuple[str, ...], end_date: date) -> pd.DataFrame:
+def _load_raw_history(
+    connection,
+    tickers: tuple[str, ...],
+    future_end_date: date,
+) -> pd.DataFrame:
     placeholders = ",".join("?" for _ in tickers)
     return connection.execute(
         f"""
@@ -131,7 +135,7 @@ def _load_raw_history(connection, tickers: tuple[str, ...], end_date: date) -> p
           AND "Date" <= ?
         ORDER BY "Ticker", "Date";
         """,
-        [*tickers, end_date],
+        [*tickers, future_end_date],
     ).df()
 
 
@@ -192,11 +196,15 @@ def main() -> None:
         repository = uow.rs_evaluations
         _ensure_v23_tables(connection)
 
-        history = _load_raw_history(connection, tickers, end_date)
+        future_end_date = end_date + timedelta(
+            days=max(60, evaluation_config.horizon_bars * 4)
+        )
+        history = _load_raw_history(connection, tickers, future_end_date)
         if history.empty:
             raise RuntimeError("No raw_stock_eod history found for requested tickers")
 
         snapshot_dates: list[date] = []
+        snapshot_count = 0
         ticker_frames: dict[str, pd.DataFrame] = {}
         for ticker in tickers:
             frame = history[history["Ticker"] == ticker].copy()
@@ -210,6 +218,7 @@ def main() -> None:
                 & (frame["Date"].dt.date <= end_date)
             ]
             sampled = eligible.iloc[:: args.snapshot_step]
+            snapshot_count += len(sampled)
             snapshot_dates.extend(pd.Timestamp(value).date() for value in sampled["Date"])
 
         split_map = assign_temporal_splits(snapshot_dates, config=split_config)
@@ -231,7 +240,7 @@ def main() -> None:
             dataset_end=end_date,
             horizon_bars=evaluation_config.horizon_bars,
             ticker_count=len(tickers),
-            snapshot_count=len(unique_snapshots),
+            snapshot_count=snapshot_count,
             split_config_json=json.dumps(asdict(split_config), sort_keys=True),
             status="RUNNING",
             notes=f"enabled_sources={','.join(enabled_sources)}",
@@ -286,7 +295,7 @@ def main() -> None:
                 "model_version": model.model_version,
                 "signature": model.signature,
                 "tickers": list(tickers),
-                "snapshots": len(unique_snapshots),
+                "snapshots": snapshot_count,
                 "events": len(events),
                 "metrics": len(metric_df),
             },
