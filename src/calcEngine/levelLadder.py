@@ -1,8 +1,7 @@
-"""Support / Resistance Level Ladder V2.1.
+"""Support / Resistance Level Ladder V2.2.
 
-V2.1 extends the multi-source ladder with ATR-adaptive clustering, structural
-price levels and point-in-time safety while keeping Indicator Engine public
-views as the only technical-indicator read contracts. Database access is read-only; calculation
+V2.2 extends the ladder with a dedicated Volume Profile domain (POC/HVN/LVN)
+and volume confirmation while preserving V2.1 adaptive and point-in-time contracts. Database access is read-only; calculation
 and rendering remain separate.
 """
 
@@ -16,6 +15,11 @@ from datetime import date, timedelta
 from typing import Any, Iterable, Sequence
 
 import pandas as pd
+
+try:
+    from calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
+except ModuleNotFoundError:
+    from src.calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
 
 try:
     from Ults.DuckLib import DuckDBManager
@@ -37,6 +41,8 @@ SOURCE_FAMILY_VOLATILITY_BAND = "VOLATILITY_BAND"
 SOURCE_FAMILY_MOMENTUM_CONFIRMATION = "MOMENTUM_CONFIRMATION"
 SOURCE_FAMILY_MARKET_STRUCTURE = "MARKET_STRUCTURE"
 SOURCE_FAMILY_VOLATILITY_CONTEXT = "VOLATILITY_CONTEXT"
+SOURCE_FAMILY_VOLUME_STRUCTURE = "VOLUME_STRUCTURE"
+SOURCE_FAMILY_VOLUME_CONFIRMATION = "VOLUME_CONFIRMATION"
 
 VALUE_SEMANTIC_PRICE_LEVEL = "PRICE_LEVEL"
 VALUE_SEMANTIC_OSCILLATOR = "OSCILLATOR"
@@ -80,7 +86,17 @@ class ConfirmationContext:
     component_code: str
     value: float
     source_date: date
+    reference_price: float | None = None
+    unit: str | None = None
+    source_type: str = "INDICATOR"
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ProviderBundle:
+    candidates: tuple["LevelCandidate", ...] = ()
+    confirmations: tuple[ConfirmationContext, ...] = ()
+    market_contexts: tuple[MarketContext, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -143,6 +159,7 @@ class ScoredLevel:
     recency_score: float
     confirmation_score: float
     structural_quality_score: float
+    volume_confirmation_score: float
     touch_count: int
 
 
@@ -186,7 +203,8 @@ class StrengthConfig:
     recency_weight: float = 0.15
     confirmation_weight: float = 0.10
     structural_quality_weight: float = 0.15
-    family_confluence_target: int = 3
+    volume_confirmation_weight: float = 0.10
+    family_confluence_target: int = 4
     touch_target: int = 4
     touch_tolerance_pct: float = 0.003
     recency_days: int = 180
@@ -198,6 +216,9 @@ class StrengthConfig:
     )
     bb_component_weights: dict[str, float] = field(
         default_factory=lambda: {"LOWER": 1.0, "MIDDLE": 0.8, "UPPER": 1.0}
+    )
+    volume_profile_weights: dict[str, float] = field(
+        default_factory=lambda: {"POC": 1.30, "HVN": 1.10, "LVN": 0.70}
     )
     rsi_oversold: float = 30.0
     rsi_overbought: float = 70.0
