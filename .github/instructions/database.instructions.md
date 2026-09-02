@@ -4,7 +4,21 @@ applyTo: "**/*.py,**/*.sql"
 
 # Database / DuckDB Instructions
 
-This file is the owner of CherryStock database-access, SQL, transaction and data-quality rules.
+This file defines mandatory database-access, SQL, transaction and data-quality execution rules.
+
+Canonical knowledge:
+- `docs/architecture/Data_Architecture.md`
+- `docs/reference/DB_Metadata.md`
+- `docs/adr/ADR-001-duckdb-connection.md`
+- relevant runbooks under `docs/runbook/`
+
+## Agent routing
+- Unclear database requirement, scope or acceptance criteria → `.github/agents/BusinessAnalyst.agent.md`.
+- Broad data architecture, Source-of-Truth, schema-boundary or migration design → `.github/agents/SolutionArchitect.agent.md`.
+- Clear database implementation following existing contracts → `.github/agents/GeneralCoding.agent.md`.
+- Test design/execution or independent validation → `.github/agents/TestEngineer.agent.md`.
+
+General Coding MUST read the canonical documents above, update them when an approved contract changes, and end with `IMPLEMENTED_PENDING_VALIDATION`.
 
 ## Connection policy
 - Do not call `duckdb.connect()` / `duckdb.close()` directly in normal application workflow.
