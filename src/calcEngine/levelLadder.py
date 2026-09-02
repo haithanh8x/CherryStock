@@ -372,7 +372,7 @@ def load_price_history(
         raise ValueError("history limit must be > 0")
     df = connection.execute(
         """
-        SELECT "Date", "High", "Low", "Close"
+        SELECT "Date", "High", "Low", "Close", "Volume"
         FROM "CherryMon"."main"."raw_stock_eod"
         WHERE "Ticker" = ? AND "Date" <= ?
         ORDER BY "Date" DESC
@@ -709,10 +709,11 @@ def _load_structural_history(
         [ticker, start_date, as_of_date],
     ).df()
     if df.empty:
-        return pd.DataFrame(columns=["Date", "High", "Low", "Close"])
+        return pd.DataFrame(columns=["Date", "High", "Low", "Close", "Volume"])
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    for column in ("High", "Low", "Close"):
-        df[column] = pd.to_numeric(df[column], errors="coerce")
+    for column in ("High", "Low", "Close", "Volume"):
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
     return (
         df.dropna(subset=["Date", "High", "Low"])
         .sort_values("Date")
@@ -998,6 +999,102 @@ def load_52w_level_candidates(
             structure_kind="LOW_52W",
         ),
     ]
+
+
+
+
+
+def load_volume_profile_bundle(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    volume_profile_config: VolumeProfileConfig | None = None,
+) -> ProviderBundle:
+    """Build POC/HVN/LVN levels and volume confirmations in one profile pass."""
+    del timeframes
+    config = volume_profile_config or VolumeProfileConfig()
+    history = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=max(540, config.window_bars * 3),
+    )
+    if "Volume" not in history.columns:
+        raise ValueError("Volume Profile requires Volume in raw_stock_eod")
+    profile = build_volume_profile_from_history(
+        history,
+        as_of_date=as_of_date,
+        config=config,
+    )
+
+    nodes = [profile.poc, *profile.hvn, *profile.lvn]
+    candidates: list[LevelCandidate] = []
+    confirmations: list[ConfirmationContext] = []
+    counters = {"POC": 0, "HVN": 0, "LVN": 0}
+
+    for node in nodes:
+        counters[node.node_type] += 1
+        suffix = (
+            node.node_type
+            if node.node_type == "POC"
+            else f"{node.node_type}_{counters[node.node_type]:02d}"
+        )
+        source_code = f"VP_{suffix}"
+        metadata = {
+            "node_type": node.node_type,
+            "volume_share": node.volume_share,
+            "relative_volume": node.relative_volume,
+            "profile_score": node.score,
+            "window_start": profile.window_start.isoformat(),
+            "window_end": profile.window_end.isoformat(),
+            "profile_bars": profile.bars,
+            "profile_bins": profile.bins,
+        }
+        candidates.append(
+            LevelCandidate(
+                ticker=ticker.upper(),
+                price=node.price,
+                source_type="VOLUME_PROFILE",
+                source_code=source_code,
+                timeframe="D",
+                indicator_code=None,
+                config_id=None,
+                config_code=None,
+                component_code=node.node_type,
+                source_date=profile.window_end,
+                confirmed_at=profile.window_end,
+                source_role=SOURCE_ROLE_LEVEL,
+                source_family=SOURCE_FAMILY_VOLUME_STRUCTURE,
+                value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+                metadata=metadata,
+            )
+        )
+        confirmations.append(
+            ConfirmationContext(
+                ticker=ticker.upper(),
+                as_of_date=as_of_date,
+                source_code=f"{source_code}_CONF",
+                source_family=SOURCE_FAMILY_VOLUME_CONFIRMATION,
+                timeframe="D",
+                indicator_code="VOLUME_PROFILE",
+                config_id=0,
+                config_code="VOLUME_PROFILE",
+                component_code=node.node_type,
+                value=node.score,
+                source_date=profile.window_end,
+                reference_price=node.price,
+                unit="SCORE",
+                source_type="VOLUME_PROFILE",
+                metadata=metadata,
+            )
+        )
+
+    return ProviderBundle(
+        candidates=tuple(candidates),
+        confirmations=tuple(confirmations),
+    )
 
 
 def _source_provider_registry() -> dict[str, dict[str, Any]]:
