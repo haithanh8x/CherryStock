@@ -161,6 +161,18 @@ def _events_for_source(
     return result
 
 
+def _events_for_family(
+    events: Sequence[LevelEvaluationEvent],
+    source_family: str,
+) -> list[LevelEvaluationEvent]:
+    family = str(source_family).upper()
+    return [
+        event
+        for event in events
+        if family in {str(value).upper() for value in event.source_families}
+    ]
+
+
 def _regime_quality(
     events: Sequence[LevelEvaluationEvent],
 ) -> dict[str, float]:
@@ -291,8 +303,15 @@ def calculate_source_effectiveness(
     validation_lift = base_val.quality_score - drop_val.quality_score
     test_lift = base_test.quality_score - drop_test.quality_score
 
+    normalized_scope = str(scope_type).upper()
     mode = attribution_mode or (
-        ATTRIBUTION_LEVEL_LINEAGE if role == ROLE_LEVEL else ATTRIBUTION_MARGINAL_ONLY
+        ATTRIBUTION_FAMILY_ABLATION
+        if normalized_scope == "SOURCE_FAMILY"
+        else (
+            ATTRIBUTION_LEVEL_LINEAGE
+            if role == ROLE_LEVEL
+            else ATTRIBUTION_MARGINAL_ONLY
+        )
     )
 
     touch_rate: float | None = None
@@ -303,7 +322,11 @@ def calculate_source_effectiveness(
     lineage_count = 0
 
     if role == ROLE_LEVEL:
-        lineage = _events_for_source(baseline, source_key)
+        lineage = (
+            _events_for_family(baseline, source_family)
+            if normalized_scope == "SOURCE_FAMILY"
+            else _events_for_source(baseline, source_key)
+        )
         lineage_oos = [event for event in lineage if event.split in {"VALIDATION", "TEST"}]
         lineage_val = _split_metrics(lineage, "VALIDATION")
         lineage_test = _split_metrics(lineage, "TEST")
@@ -382,7 +405,7 @@ def calculate_source_effectiveness(
 
     return SourceEffectivenessRecord(
         ticker=ticker_code,
-        scope_type=str(scope_type).upper(),
+        scope_type=normalized_scope,
         source_key=canonical_source_key(source_key),
         source_family=str(source_family).upper(),
         source_role=role,
