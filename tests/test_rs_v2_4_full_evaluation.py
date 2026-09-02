@@ -127,7 +127,6 @@ def test_family_ablation_keeps_full_family_membership_when_config_selection_is_n
     groups = module._family_groups(
         full_catalog,
         selected,
-        skip_source_keys=(),
     )
 
     assert groups[("TREND_AVERAGE", "LEVEL")] == ("MA20_D", "MA50_D")
