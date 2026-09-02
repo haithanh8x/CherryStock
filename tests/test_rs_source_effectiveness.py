@@ -25,6 +25,7 @@ def _event(
     split: str,
     regime: str,
     quality_case: str = "good",
+    strength_score: float = 70.0,
     sources: tuple[str, ...] = ("MA50_D",),
     families: tuple[str, ...] = ("TREND_AVERAGE",),
 ) -> LevelEvaluationEvent:
@@ -45,7 +46,7 @@ def _event(
         level_rank="S1",
         level_type="SUPPORT",
         level_price=100.0,
-        strength_score=70.0,
+        strength_score=strength_score,
         horizon_end_date=date(2026, 1, 30),
         touched=touched,
         touch_date=date(2026, 1, 5) if touched else None,
@@ -71,6 +72,7 @@ def _events(
     *,
     source: str = "MA50_D",
     quality_case: str = "good",
+    strength_score: float = 70.0,
 ) -> list[LevelEvaluationEvent]:
     result = []
     for split in ("VALIDATION", "TEST"):
@@ -82,6 +84,7 @@ def _events(
                         split=split,
                         regime=regime,
                         quality_case=quality_case,
+                        strength_score=strength_score,
                         sources=(source,),
                     )
                 )
@@ -106,6 +109,7 @@ def _record(
         source_role="LEVEL",
         horizon_bars=20,
         attribution_mode="LEVEL_LINEAGE",
+        marginal_metric="LEVEL_QUALITY",
         lineage_event_count=20,
         validation_event_count=10,
         test_event_count=10,
@@ -198,8 +202,18 @@ def test_level_effectiveness_uses_lineage_and_is_bounded() -> None:
 
 
 def test_confirmation_effectiveness_does_not_fabricate_level_metrics() -> None:
-    baseline = _events("MWG", source="MA50_D", quality_case="good")
-    ablation = _events("MWG", source="MA50_D", quality_case="break")
+    baseline = _events(
+        "MWG",
+        source="MA50_D",
+        quality_case="good",
+        strength_score=90.0,
+    )
+    ablation = _events(
+        "MWG",
+        source="MA50_D",
+        quality_case="good",
+        strength_score=50.0,
+    )
     record = calculate_source_effectiveness(
         ticker="MWG",
         scope_type="SOURCE_CONFIG",
@@ -219,6 +233,9 @@ def test_confirmation_effectiveness_does_not_fabricate_level_metrics() -> None:
         ),
     )
 
+    assert record.marginal_metric == "STRENGTH_BRIER"
+    assert record.validation_marginal_lift > 0
+    assert record.test_marginal_lift > 0
     assert record.touch_rate is None
     assert record.hold_rate_given_touch is None
     assert record.break_rate_given_touch is None
@@ -342,4 +359,5 @@ def test_effectiveness_dataframe_has_persistence_contract() -> None:
     assert dataframe.iloc[0]["EffectivenessRunId"] == "RUN1"
     assert dataframe.iloc[0]["SourceKey"] == "MA50_D"
     assert dataframe.iloc[0]["Recommendation"] == "CORE"
+    assert dataframe.iloc[0]["MarginalMetric"] == "LEVEL_QUALITY"
     assert "EvidenceJson" in dataframe.columns
