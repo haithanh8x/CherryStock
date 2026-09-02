@@ -1090,13 +1090,50 @@ def _weighted_price(levels: Sequence[NormalizedLevel]) -> float:
     return sum(level.price * max(level.weight, 0.0) for level in levels) / total
 
 
+def resolve_adaptive_thresholds(
+    *,
+    current_price: CurrentPrice,
+    market_contexts: Sequence[MarketContext],
+    min_cluster_pct: float,
+    min_neutral_pct: float,
+    strength_config: StrengthConfig | None = None,
+) -> tuple[float, float]:
+    """Resolve V2.1 cluster/neutral percentages from ATR14_D with percent floors."""
+    config = strength_config or StrengthConfig()
+    cluster_floor = _validate_pct("cluster_threshold_pct", min_cluster_pct, 0.10)
+    neutral_floor = _validate_pct("neutral_threshold_pct", min_neutral_pct, 0.10)
+    if config.atr_cluster_multiplier < 0 or config.atr_neutral_multiplier < 0:
+        raise ValueError("ATR multipliers must be >= 0")
+
+    eligible = [
+        context
+        for context in market_contexts
+        if context.indicator_code == "ATR"
+        and context.timeframe == "D"
+        and context.source_date <= current_price.as_of_date
+        and context.value > 0
+    ]
+    if not eligible:
+        return cluster_floor, neutral_floor
+
+    context = max(eligible, key=lambda item: item.source_date)
+    atr_pct = float(context.value) / current_price.price
+    if not math.isfinite(atr_pct) or atr_pct <= 0:
+        return cluster_floor, neutral_floor
+
+    return (
+        max(cluster_floor, atr_pct * config.atr_cluster_multiplier),
+        max(neutral_floor, atr_pct * config.atr_neutral_multiplier),
+    )
+
+
 def cluster_levels(
     levels: Sequence[NormalizedLevel],
     *,
     cluster_threshold_pct: float = 0.01,
 ) -> list[LevelZone]:
     """Group nearby levels into deterministic zones."""
-    threshold = _validate_pct("cluster_threshold_pct", cluster_threshold_pct)
+    threshold = _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
     if not levels:
         return []
     clusters: list[list[NormalizedLevel]] = []
@@ -1129,7 +1166,7 @@ def classify_zones(
     current_price: CurrentPrice,
     neutral_threshold_pct: float = 0.003,
 ) -> list[LevelZone]:
-    neutral = _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.02)
+    neutral = _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.10)
     result: list[LevelZone] = []
     for zone in zones:
         distance = (
@@ -1195,6 +1232,31 @@ def _rsi_confirmation_score(
     return weighted_total / weight_sum if weight_sum > 0 else 0.0
 
 
+def _structural_quality_score(
+    zone: LevelZone,
+    *,
+    current_price: CurrentPrice,
+    config: StrengthConfig,
+) -> tuple[float, bool]:
+    structural = [
+        source
+        for source in zone.sources
+        if source.source_family == SOURCE_FAMILY_MARKET_STRUCTURE
+    ]
+    if not structural:
+        return 0.0, False
+    if config.structural_recency_days <= 0:
+        raise ValueError("structural_recency_days must be > 0")
+
+    scores = []
+    for source in structural:
+        age = max((current_price.as_of_date - source.source_date).days, 0)
+        scores.append(
+            max(0.0, 1.0 - age / float(config.structural_recency_days)) * 100.0
+        )
+    return sum(scores) / len(scores), True
+
+
 def score_zones(
     zones: Sequence[LevelZone],
     *,
@@ -1203,7 +1265,7 @@ def score_zones(
     strength_config: StrengthConfig | None = None,
     confirmations: Sequence[ConfirmationContext] = (),
 ) -> list[ScoredLevel]:
-    """Strength V2.0 uses family diversity plus optional RSI confirmation."""
+    """Strength V2.1 adds structural quality while preserving family diversity."""
     config = strength_config or StrengthConfig()
     base_weights = (
         config.confluence_weight,
@@ -1211,7 +1273,11 @@ def score_zones(
         config.touch_weight,
         config.recency_weight,
     )
-    all_weights = (*base_weights, config.confirmation_weight)
+    all_weights = (
+        *base_weights,
+        config.confirmation_weight,
+        config.structural_quality_weight,
+    )
     if any(w < 0 for w in all_weights) or sum(base_weights) <= 0:
         raise ValueError("Strength weights must be non-negative and base weights sum to > 0")
     if config.family_confluence_target <= 0:
@@ -1250,6 +1316,11 @@ def score_zones(
         age = max((current_price.as_of_date - latest).days, 0)
         recency = max(0.0, 1.0 - age / float(config.recency_days)) * 100.0
         confirmation = _rsi_confirmation_score(zone, confirmations, config)
+        structural_quality, has_structural = _structural_quality_score(
+            zone,
+            current_price=current_price,
+            config=config,
+        )
 
         weighted_score = (
             confluence * config.confluence_weight
@@ -1261,6 +1332,11 @@ def score_zones(
         if confirmations and zone.level_type in {"SUPPORT", "RESISTANCE"}:
             weighted_score += confirmation * config.confirmation_weight
             effective_weight += config.confirmation_weight
+        if has_structural:
+            weighted_score += (
+                structural_quality * config.structural_quality_weight
+            )
+            effective_weight += config.structural_quality_weight
 
         score = weighted_score / effective_weight
         result.append(
@@ -1272,6 +1348,7 @@ def score_zones(
                 touch_score=round(touch, 2),
                 recency_score=round(recency, 2),
                 confirmation_score=round(confirmation, 2),
+                structural_quality_score=round(structural_quality, 2),
                 touch_count=touches,
             )
         )
