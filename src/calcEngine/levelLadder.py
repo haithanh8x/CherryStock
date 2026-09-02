@@ -106,6 +106,17 @@ class ProviderBundle:
 
 
 @dataclass(frozen=True)
+class ResearchIndicatorSpec:
+    """Explicit research-only adapter contract for one Indicator Engine config."""
+
+    config_code: str
+    component_code: str
+    source_role: str
+    source_family: str
+    expected_value_semantic: str
+
+
+@dataclass(frozen=True)
 class LevelCandidate:
     ticker: str
     price: float
@@ -486,6 +497,210 @@ def _require_value_semantic(
             f"expected={expected!r}, actual={semantic!r}"
         )
     return semantic
+
+
+def _validate_research_indicator_spec(spec: ResearchIndicatorSpec) -> ResearchIndicatorSpec:
+    config_code = str(spec.config_code).strip().upper()
+    component_code = str(spec.component_code).strip().upper()
+    source_role = str(spec.source_role).strip().upper()
+    source_family = str(spec.source_family).strip().upper()
+    semantic = str(spec.expected_value_semantic).strip().upper()
+    if not config_code or not component_code or not source_family or not semantic:
+        raise ValueError("research indicator spec fields must be non-empty")
+    if source_role not in {
+        SOURCE_ROLE_LEVEL,
+        SOURCE_ROLE_CONTEXT,
+        SOURCE_ROLE_CONFIRMATION,
+    }:
+        raise ValueError(f"Unsupported research source role: {source_role}")
+    if source_role == SOURCE_ROLE_LEVEL and semantic != VALUE_SEMANTIC_PRICE_LEVEL:
+        raise ValueError(
+            "Research LEVEL source must require ValueSemantic=PRICE_LEVEL"
+        )
+    return ResearchIndicatorSpec(
+        config_code=config_code,
+        component_code=component_code,
+        source_role=source_role,
+        source_family=source_family,
+        expected_value_semantic=semantic,
+    )
+
+
+def _research_source_code(config_code: str, component_code: str) -> str:
+    return (
+        config_code
+        if component_code == "VALUE"
+        else f"{config_code}:{component_code}"
+    )
+
+
+def load_research_indicator_bundle(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    specs: Sequence[ResearchIndicatorSpec],
+) -> ProviderBundle:
+    """Load explicit research configs from Indicator Engine public SSOT.
+
+    This adapter is never registered in the production provider registry.
+    """
+    normalized_specs = tuple(_validate_research_indicator_spec(spec) for spec in specs)
+    if not normalized_specs:
+        return ProviderBundle()
+
+    _validate_public_views(connection)
+    config_codes = tuple(sorted({spec.config_code for spec in normalized_specs}))
+    component_codes = tuple(sorted({spec.component_code for spec in normalized_specs}))
+    config_placeholders = ", ".join("?" for _ in config_codes)
+    component_placeholders = ", ".join("?" for _ in component_codes)
+
+    df = connection.execute(
+        f"""
+        WITH ranked AS (
+            SELECT
+                val."Ticker",
+                val."Date",
+                val."ConfigId",
+                val."ComponentCode",
+                val."Value",
+                cfg."ConfigCode",
+                cfg."IndicatorCode",
+                cfg."Timeframe",
+                cfg."Parameters",
+                cfg."ValueSemantic",
+                cfg."Unit",
+                ROW_NUMBER() OVER (
+                    PARTITION BY val."ConfigId", val."ComponentCode"
+                    ORDER BY val."Date" DESC
+                ) AS rn
+            FROM "CherryMon"."main"."vw_Ticker_indicators" val
+            INNER JOIN "CherryMon"."main"."vw_Indicator_config" cfg
+                ON cfg."ConfigId" = val."ConfigId"
+               AND cfg."ComponentCode" = val."ComponentCode"
+            WHERE val."Ticker" = ?
+              AND val."Date" <= ?
+              AND cfg."ConfigCode" IN ({config_placeholders})
+              AND val."ComponentCode" IN ({component_placeholders})
+              AND cfg."ConfigIsEnabled" = TRUE
+              AND cfg."IndicatorIsActive" = TRUE
+              AND COALESCE(cfg."ComponentIsActive", TRUE) = TRUE
+              AND val."Value" IS NOT NULL
+        )
+        SELECT
+            "Ticker", "Date", "ConfigId", "ComponentCode", "Value",
+            "ConfigCode", "IndicatorCode", "Timeframe", "Parameters",
+            "ValueSemantic", "Unit"
+        FROM ranked
+        WHERE rn = 1
+        ORDER BY "ConfigCode", "ComponentCode"
+        """,
+        [ticker, as_of_date, *config_codes, *component_codes],
+    ).df()
+
+    rows = {
+        (str(row.ConfigCode).upper(), str(row.ComponentCode).upper()): row
+        for row in df.itertuples(index=False)
+    }
+
+    candidates: list[LevelCandidate] = []
+    confirmations: list[ConfirmationContext] = []
+    contexts: list[MarketContext] = []
+
+    for spec in normalized_specs:
+        key = (spec.config_code, spec.component_code)
+        row = rows.get(key)
+        if row is None:
+            raise ValueError(
+                "Research indicator config/component has no active point-in-time value: "
+                f"{spec.config_code}/{spec.component_code}"
+            )
+        semantic = _require_value_semantic(
+            row,
+            expected=spec.expected_value_semantic,
+        )
+        value = float(row.Value)
+        if not math.isfinite(value):
+            raise ValueError(
+                f"Invalid research indicator value for {spec.config_code}: {row.Value!r}"
+            )
+
+        source_code = _research_source_code(spec.config_code, spec.component_code)
+        source_date = pd.Timestamp(row.Date).date()
+        metadata = {
+            "research_only": True,
+            "parameters": _parse_parameters(row.Parameters),
+            "value_semantic": semantic,
+            "unit": str(row.Unit) if row.Unit is not None else None,
+        }
+
+        if spec.source_role == SOURCE_ROLE_LEVEL:
+            if value <= 0:
+                raise ValueError(
+                    f"Research PRICE_LEVEL must be > 0: {source_code}={value}"
+                )
+            candidates.append(
+                LevelCandidate(
+                    ticker=str(row.Ticker).upper(),
+                    price=value,
+                    source_type="RESEARCH_INDICATOR",
+                    source_code=source_code,
+                    timeframe=str(row.Timeframe).upper(),
+                    indicator_code=str(row.IndicatorCode).upper(),
+                    config_id=int(row.ConfigId),
+                    config_code=str(row.ConfigCode),
+                    component_code=str(row.ComponentCode).upper(),
+                    source_date=source_date,
+                    confirmed_at=source_date,
+                    source_role=SOURCE_ROLE_LEVEL,
+                    source_family=spec.source_family,
+                    value_semantic=semantic,
+                    metadata=metadata,
+                )
+            )
+        elif spec.source_role == SOURCE_ROLE_CONTEXT:
+            contexts.append(
+                MarketContext(
+                    ticker=str(row.Ticker).upper(),
+                    as_of_date=as_of_date,
+                    source_code=source_code,
+                    source_family=spec.source_family,
+                    timeframe=str(row.Timeframe).upper(),
+                    indicator_code=str(row.IndicatorCode).upper(),
+                    config_id=int(row.ConfigId),
+                    config_code=str(row.ConfigCode),
+                    component_code=str(row.ComponentCode).upper(),
+                    value=value,
+                    unit=str(row.Unit) if row.Unit is not None else None,
+                    source_date=source_date,
+                    metadata=metadata,
+                )
+            )
+        else:
+            confirmations.append(
+                ConfirmationContext(
+                    ticker=str(row.Ticker).upper(),
+                    as_of_date=as_of_date,
+                    source_code=source_code,
+                    source_family=spec.source_family,
+                    timeframe=str(row.Timeframe).upper(),
+                    indicator_code=str(row.IndicatorCode).upper(),
+                    config_id=int(row.ConfigId),
+                    config_code=str(row.ConfigCode),
+                    component_code=str(row.ComponentCode).upper(),
+                    value=value,
+                    source_date=source_date,
+                    unit=str(row.Unit) if row.Unit is not None else None,
+                    source_type="RESEARCH_INDICATOR",
+                    metadata=metadata,
+                )
+            )
+
+    return ProviderBundle(
+        candidates=tuple(candidates),
+        confirmations=tuple(confirmations),
+        market_contexts=tuple(contexts),
+    )
 
 
 def load_ma_level_candidates(
@@ -1660,6 +1875,7 @@ def build_level_ladder(
     volume_profile_config: VolumeProfileConfig | None = None,
     included_source_keys: tuple[str, ...] | None = None,
     excluded_source_keys: tuple[str, ...] | None = None,
+    research_indicator_specs: tuple[ResearchIndicatorSpec, ...] | None = None,
     model_version: str = RS_MODEL_VERSION,
     connection: Any | None = None,
 ) -> LevelLadderResult:
@@ -1734,6 +1950,35 @@ def build_level_ladder(
                 raise RuntimeError(
                     f"Unsupported provider role in V2.4 registry: {spec.get('role')}"
                 )
+
+        if research_indicator_specs:
+            research_bundle = load_research_indicator_bundle(
+                con,
+                ticker=normalized_ticker,
+                as_of_date=current.as_of_date,
+                specs=research_indicator_specs,
+            )
+            existing_codes = {
+                str(value.source_code).upper()
+                for value in [*candidates, *confirmations, *market_contexts]
+            }
+            research_codes = {
+                str(value.source_code).upper()
+                for value in [
+                    *research_bundle.candidates,
+                    *research_bundle.confirmations,
+                    *research_bundle.market_contexts,
+                ]
+            }
+            collisions = existing_codes & research_codes
+            if collisions:
+                raise ValueError(
+                    "Research indicator source collides with existing R/S provider: "
+                    f"{sorted(collisions)}"
+                )
+            candidates.extend(research_bundle.candidates)
+            confirmations.extend(research_bundle.confirmations)
+            market_contexts.extend(research_bundle.market_contexts)
 
         candidates = filter_source_objects(
             candidates,
