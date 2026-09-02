@@ -1,79 +1,57 @@
-"""CherryStock monthly runner.
-
-`run.py` is the daily operational pipeline.
-`runMonthly.py` is the entry point for heavier jobs that should run monthly.
-
-Phase 1 monthly job:
-    scripts/run_rs_v2_4_full_evaluation.py
-
-Usage:
-    python runMonthly.py
-
-All CLI arguments are forwarded to the current monthly job, for example:
-    python runMonthly.py --plan-only
-    python runMonthly.py --tickers MWG,FPT,HPG --horizons 20 --plan-only
-    python runMonthly.py --run-month 2026-09
-"""
-
-from __future__ import annotations
-
-import subprocess
 import sys
-from pathlib import Path
-from time import perf_counter
+import io
+
+from src.Ults.Timing import timeit
+from src.Orchestrator.rs_v2_4_full_evaluation import main as run_rs_v2_4_full_evaluation
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+def _run_all_steps() -> None:
+    """
+    Chạy toàn bộ monthly jobs theo thứ tự cấu hình.
 
-MONTHLY_JOBS: tuple[dict[str, object], ...] = (
-    {
-        "key": "rs_v2_4_full_evaluation",
-        "title": "R/S V2.4 Full Source Effectiveness Evaluation",
-        "script": PROJECT_ROOT / "scripts" / "run_rs_v2_4_full_evaluation.py",
-        "forward_cli_args": True,
-    },
-)
+    Giai đoạn 1:
+    - R/S V2.4 Full Source Effectiveness Evaluation
 
-
-def _run_job(job: dict[str, object], cli_args: list[str]) -> None:
-    """Run one monthly job as a child process and fail fast on errors."""
-    script = Path(job["script"])
-    if not script.exists():
-        raise FileNotFoundError(f"Monthly job script not found: {script}")
-
-    command = [sys.executable, str(script)]
-    if bool(job.get("forward_cli_args", False)):
-        command.extend(cli_args)
-
-    print(f"▶ {job['title']}")
-    print(f"  Script: {script.relative_to(PROJECT_ROOT)}")
-
-    started = perf_counter()
-    subprocess.run(
-        command,
-        cwd=PROJECT_ROOT,
-        check=True,
+    Sau này có thể bổ sung thêm monthly jobs vào tuple steps bên dưới,
+    tương tự cơ chế Run All của run.py.
+    """
+    steps = (
+        (
+            "R/S V2.4 Full Source Effectiveness Evaluation",
+            run_rs_v2_4_full_evaluation,
+        ),
     )
-    elapsed = perf_counter() - started
 
-    print(f"✓ {job['title']} completed in {elapsed:.1f}s")
+    for index, (title, step) in enumerate(steps, start=1):
+        print(f"[{index}/{len(steps)}] ▶ {title}")
+        step()
+        print(f"[{index}/{len(steps)}] ✓ {title}")
 
 
-def main() -> None:
-    """Run all configured monthly jobs sequentially."""
-    cli_args = sys.argv[1:]
+@timeit
+def main():
+    """
+    CherryStock monthly runner.
 
-    print("CherryStock Monthly Run")
-    print(f"Jobs: {len(MONTHLY_JOBS)}")
+    Chạy thủ công mỗi tháng bằng:
+        python runMonthly.py
+    """
+    print("CherryStock Monthly Run All")
 
-    total_started = perf_counter()
-    for index, job in enumerate(MONTHLY_JOBS, start=1):
-        print(f"\n[{index}/{len(MONTHLY_JOBS)}]")
-        _run_job(job, cli_args)
+    _run_all_steps()
 
-    elapsed = perf_counter() - total_started
-    print(f"\n✓ Monthly Run completed in {elapsed:.1f}s")
+    print("✓ Monthly Run All hoàn tất.")
 
 
 if __name__ == "__main__":
+    sys.stdout = io.TextIOWrapper(
+        sys.stdout.buffer,
+        encoding="utf-8",
+        line_buffering=True,
+    )
+    sys.stderr = io.TextIOWrapper(
+        sys.stderr.buffer,
+        encoding="utf-8",
+        line_buffering=True,
+    )
     main()
