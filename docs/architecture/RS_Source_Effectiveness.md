@@ -384,11 +384,19 @@ Each horizon keeps separate baseline/ablation/effectiveness evidence. V2.4 does 
 
 ### Monthly full evaluation
 
-Canonical operational entry point:
+Canonical operational service:
+
+~~~text
+src/Orchestrator/rs_v2_4_full_evaluation.py
+~~~
+
+Stable CLI entry point:
 
 ~~~text
 scripts/run_rs_v2_4_full_evaluation.py
 ~~~
+
+The CLI wrapper delegates to the Orchestrator service; it contains no duplicated R/S calculation/business logic.
 
 The monthly orchestrator:
 
