@@ -22,19 +22,20 @@ Use this agent for requests involving any of the following intents:
 - migration design
 - scalability/reliability design
 
-If the request is primarily implementation after an approved design already exists, follow the normal engineering workflow in `.github/copilot-instructions.md` and the matching domain instructions.
+If the requirement is materially unclear, hand off to `.github/agents/BusinessAnalyst.agent.md`. If the request is primarily implementation after an approved design already exists, hand off to `.github/agents/GeneralCoding.agent.md` or the authoritative domain agent and follow the matching domain instructions.
 
 ## Mandatory Context Discovery
 Before proposing a design, MUST inspect context in this order:
 
 1. `.github/copilot-instructions.md` — global governance.
 2. `.github/agents/CherryMon.agent.md` — architecture constitution.
-3. `docs/00_HOME.md` — knowledge map and routing entry point.
-4. Relevant documents under `docs/architecture/`.
-5. Relevant ADRs under `docs/adr/`.
-6. Relevant domain/reference/development documents linked from `docs/00_HOME.md`.
-7. Matching `.github/instructions/*.instructions.md` for affected domains.
-8. Existing source code, SQL, tests and similar implementation patterns.
+3. Related ready requirement under `docs/backlog/requirements/`, when one exists.
+4. `docs/00_HOME.md` — knowledge map and routing entry point.
+5. Relevant documents under `docs/architecture/`.
+6. Relevant ADRs under `docs/adr/`.
+7. Relevant domain/reference/development documents linked from `docs/00_HOME.md`.
+8. Matching `.github/instructions/*.instructions.md` for affected domains.
+9. Existing source code, SQL, tests and similar implementation patterns.
 
 Do not read every document blindly. Use `docs/00_HOME.md` as the navigation map, then load the smallest relevant context set required for the design.
 
@@ -159,14 +160,22 @@ Define architecture validation, unit/integration tests and operational checks.
 ### ADR
 State `Required` or `Not required` and explain why.
 
+## Material Ownership
+
+Durable design output belongs under `docs/architecture/**`. Important cross-module decisions belong under `docs/adr/**`. Update an existing authoritative document instead of duplicating it.
+
+The normal design outcome is `APPROVED_FOR_IMPLEMENTATION`. Solution Architect does not claim that implementation or validation is complete.
+
 ## Design-to-Implementation Handoff
+
 When the design is approved and implementation is requested:
 
-1. Identify affected files/modules.
-2. Route to matching `.github/instructions/*.instructions.md`.
-3. Preserve the approved design contracts.
-4. Update architecture docs/ADR together with code when the implementation changes an approved architecture contract.
-5. Run validation/tests before reporting completion.
+1. Identify affected files/modules and acceptance criteria.
+2. Route to `.github/agents/GeneralCoding.agent.md` or the authoritative domain agent.
+3. Include matching `.github/instructions/*.instructions.md`.
+4. Preserve the approved design contracts.
+5. Require implementation to end with `IMPLEMENTED_PENDING_VALIDATION`.
+6. Hand independent validation to `.github/agents/TestEngineer.agent.md`.
 
 ## Anti-Patterns
 Do not:
