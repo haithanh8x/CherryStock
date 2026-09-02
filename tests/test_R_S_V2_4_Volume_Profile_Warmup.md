@@ -25,7 +25,7 @@ Must confirm:
 The runbook itself lives on `main`. The production bug fix is isolated on:
 
 ~~~text
-fix/rs-evaluation-volume-profile-warmup
+fix/rs-evaluation-volume-profile-warmup-code
 ~~~
 
 Start from repository root and synchronize `main` first:
@@ -40,14 +40,14 @@ Then fetch and switch to the bug-fix branch:
 
 ~~~powershell
 git fetch origin
-git switch fix/rs-evaluation-volume-profile-warmup
-git pull origin fix/rs-evaluation-volume-profile-warmup
+git switch fix/rs-evaluation-volume-profile-warmup-code
+git pull origin fix/rs-evaluation-volume-profile-warmup-code
 ~~~
 
 Expected active branch while executing Sequences 1-9:
 
 ~~~text
-fix/rs-evaluation-volume-profile-warmup
+fix/rs-evaluation-volume-profile-warmup-code
 ~~~
 
 ## Files Under Test
