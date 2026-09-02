@@ -8,6 +8,9 @@ ALTER TABLE "CherryMon"."main"."cal_rs_evaluation_run"
 ALTER TABLE "CherryMon"."main"."cal_rs_evaluation_run"
     ADD COLUMN IF NOT EXISTS "ExcludeSourceKeysJson" VARCHAR;
 
+ALTER TABLE "CherryMon"."main"."cal_rs_evaluation_run"
+    ADD COLUMN IF NOT EXISTS "ResearchIndicatorSpecsJson" VARCHAR;
+
 CREATE TABLE IF NOT EXISTS "CherryMon"."main"."cal_rs_source_effectiveness_run" (
     "EffectivenessRunId" VARCHAR PRIMARY KEY,
     "ScopeType" VARCHAR NOT NULL,
