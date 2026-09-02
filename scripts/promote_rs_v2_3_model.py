@@ -238,15 +238,11 @@ def main() -> None:
             notes="Applied by scripts/promote_rs_v2_3_model.py",
         )
         repository.set_model_status(
-            decision.baseline_version,
-            status="SUPERSEDED",
-        )
-        repository.set_model_status(
             decision.challenger_version,
-            status="PRODUCTION",
-            promoted=True,
+            status="PROMOTION_APPROVED",
+            promoted=False,
         )
-    print(f"Applied promotion decision: {decision_id}")
+    print(f"Recorded promotion approval: {decision_id}")
 
 
 if __name__ == "__main__":
