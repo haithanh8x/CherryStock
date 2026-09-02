@@ -3,7 +3,7 @@
 - **Change ID:** CR-RS-V2.1-20260902
 - **Release:** R/S Ladder V2.1
 - **Date:** 2026-09-02
-- **Status:** **CODE MERGED / PRODUCTION VALIDATION PENDING**
+- **Status:** **PRODUCTION DEPLOYED / VALIDATED 2026-09-02**
 - **Repository:** CherryStock
 - **Pull Request:** #5 — feat: upgrade R/S Ladder to V2.1 adaptive structural architecture
 - **Main merge commit:** `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3`
@@ -423,22 +423,23 @@ Required before production sign-off:
 | Source code merged to main | PASS |
 | PR #5 | MERGED |
 | DuckDB DDL migration | NOT REQUIRED |
-| DuckDB read-only preflight | GENERATED / PENDING EXECUTION |
+| DuckDB read-only preflight | PASS (executed 2026-09-02) |
 | Automated tests added | PASS |
-| Local pytest execution | PENDING |
-| ATR real-data validation | PENDING |
-| Structural real-data validation | PENDING |
-| Historical no-lookahead smoke | PENDING |
-| NiceGUI V2.1 smoke | PENDING |
-| Production deployment | PENDING |
+| Local pytest execution | PASS (17 passed) |
+| ATR real-data validation | PASS (cluster 1.3077% / neutral 0.3923% adaptive) |
+| Structural real-data validation | PASS (SWING / PREVIOUS_HL / 52W_HL) |
+| Historical no-lookahead smoke | PASS (2026-08-15, 2026-07-31, 2026-06-30) |
+| NiceGUI V2.1 smoke | PASS (header, Min Cluster %, MARKET_STRUCTURE families) |
+| Production deployment | PASS |
 
 Current state:
 
 ```text
 CODE MERGED
 NO DATABASE MIGRATION REQUIRED
-PRODUCTION PREFLIGHT PENDING
-PRODUCTION VALIDATION PENDING
+PRODUCTION PREFLIGHT PASS
+PRODUCTION VALIDATION PASS
+PRODUCTION DEPLOYED
 ```
 
 Do not classify V2.1 as Production Ready until the local runbook returns PASS.
