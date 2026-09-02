@@ -131,6 +131,20 @@ class PromotionDecision:
     reasons: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class CalibrationScore:
+    model_version: str
+    quality_score: float
+    complexity_score: float
+    penalized_score: float
+
+
+@dataclass(frozen=True)
+class GoldenInvariantResult:
+    passed: bool
+    errors: tuple[str, ...]
+
+
 def _validate_eval_config(config: EvaluationConfig) -> None:
     if config.horizon_bars <= 0:
         raise ValueError("horizon_bars must be > 0")
@@ -556,3 +570,165 @@ def metrics_by_scope(
             continue
         groups.setdefault(str(value), []).append(event)
     return {key: aggregate_evaluation(value) for key, value in sorted(groups.items())}
+
+
+def rank_calibration_candidates(
+    models: Sequence[RSModelSpec],
+    metrics: Mapping[str, EvaluationMetrics],
+    *,
+    complexity_lambda: float = 0.10,
+) -> tuple[CalibrationScore, ...]:
+    if complexity_lambda < 0:
+        raise ValueError("complexity_lambda must be >= 0")
+    scores: list[CalibrationScore] = []
+    for model in models:
+        if model.model_version not in metrics:
+            raise ValueError(f"missing metrics for model {model.model_version}")
+        complexity = calculate_complexity_score(model)
+        quality = metrics[model.model_version].quality_score
+        penalized = quality - complexity_lambda * complexity
+        scores.append(
+            CalibrationScore(
+                model_version=model.model_version,
+                quality_score=round(quality, 6),
+                complexity_score=round(complexity, 6),
+                penalized_score=round(penalized, 6),
+            )
+        )
+    return tuple(
+        sorted(scores, key=lambda item: (-item.penalized_score, item.model_version))
+    )
+
+
+def validate_golden_ladder_invariants(result: Any) -> GoldenInvariantResult:
+    errors: list[str] = []
+    supports = list(result.support_levels)
+    resistances = list(result.resistance_levels)
+
+    for idx, level in enumerate(supports, start=1):
+        if level.rank != f"S{idx}":
+            errors.append(f"support rank mismatch: expected S{idx}, got {level.rank}")
+        if not 0 <= float(level.strength_score) <= 100:
+            errors.append(f"{level.rank} strength outside [0,100]")
+        if int(level.source_family_count) > int(level.source_count):
+            errors.append(f"{level.rank} family_count > source_count")
+        for source in level.sources:
+            if source.source_date > result.as_of_date:
+                errors.append(f"{level.rank} future source_date: {source.source_code}")
+            if source.confirmed_at > result.as_of_date:
+                errors.append(f"{level.rank} future confirmed_at: {source.source_code}")
+
+    for idx, level in enumerate(resistances, start=1):
+        if level.rank != f"R{idx}":
+            errors.append(f"resistance rank mismatch: expected R{idx}, got {level.rank}")
+        if not 0 <= float(level.strength_score) <= 100:
+            errors.append(f"{level.rank} strength outside [0,100]")
+        if int(level.source_family_count) > int(level.source_count):
+            errors.append(f"{level.rank} family_count > source_count")
+        for source in level.sources:
+            if source.source_date > result.as_of_date:
+                errors.append(f"{level.rank} future source_date: {source.source_code}")
+            if source.confirmed_at > result.as_of_date:
+                errors.append(f"{level.rank} future confirmed_at: {source.source_code}")
+
+    support_prices = [float(level.price) for level in supports]
+    resistance_prices = [float(level.price) for level in resistances]
+    if support_prices != sorted(support_prices, reverse=True):
+        errors.append("support prices are not proximity ordered descending")
+    if resistance_prices != sorted(resistance_prices):
+        errors.append("resistance prices are not proximity ordered ascending")
+
+    if any(price >= float(result.current_price) for price in support_prices):
+        errors.append("support contains price >= current_price")
+    if any(price <= float(result.current_price) for price in resistance_prices):
+        errors.append("resistance contains price <= current_price")
+
+    return GoldenInvariantResult(passed=not errors, errors=tuple(errors))
+
+
+def events_to_dataframe(
+    evaluation_run_id: str,
+    events: Sequence[LevelEvaluationEvent],
+) -> pd.DataFrame:
+    columns = [
+        "EvaluationRunId", "ModelVersion", "Ticker", "AsOfDate", "LevelRank",
+        "LevelType", "LevelPrice", "StrengthScore", "HorizonEndDate", "Touched",
+        "TouchDate", "Broken", "BreakDate", "Retested", "RetestDate", "Held",
+        "BarsToTouch", "MaxFavorablePct", "MaxAdversePct", "SourceCount",
+        "SourceFamilyCount", "SourcesJson", "SourceFamiliesJson", "Regime", "Split",
+    ]
+    rows = []
+    for event in events:
+        rows.append(
+            {
+                "EvaluationRunId": evaluation_run_id,
+                "ModelVersion": event.model_version,
+                "Ticker": event.ticker,
+                "AsOfDate": event.as_of_date,
+                "LevelRank": event.level_rank,
+                "LevelType": event.level_type,
+                "LevelPrice": event.level_price,
+                "StrengthScore": event.strength_score,
+                "HorizonEndDate": event.horizon_end_date,
+                "Touched": event.touched,
+                "TouchDate": event.touch_date,
+                "Broken": event.broken,
+                "BreakDate": event.break_date,
+                "Retested": event.retested,
+                "RetestDate": event.retest_date,
+                "Held": event.held,
+                "BarsToTouch": event.bars_to_touch,
+                "MaxFavorablePct": event.max_favorable_pct,
+                "MaxAdversePct": event.max_adverse_pct,
+                "SourceCount": event.source_count,
+                "SourceFamilyCount": event.source_family_count,
+                "SourcesJson": json.dumps(list(event.sources), sort_keys=True),
+                "SourceFamiliesJson": json.dumps(
+                    list(event.source_families), sort_keys=True
+                ),
+                "Regime": event.regime,
+                "Split": event.split,
+            }
+        )
+    return pd.DataFrame(rows, columns=columns)
+
+
+def metrics_to_dataframe(
+    evaluation_run_id: str,
+    events: Sequence[LevelEvaluationEvent],
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+
+    def add(scope_type: str, scope_key: str, value: EvaluationMetrics) -> None:
+        metric_map = asdict(value)
+        sample_size = int(value.event_count)
+        for metric_code, metric_value in metric_map.items():
+            if metric_code == "event_count":
+                continue
+            rows.append(
+                {
+                    "EvaluationRunId": evaluation_run_id,
+                    "ScopeType": scope_type,
+                    "ScopeKey": scope_key,
+                    "MetricCode": metric_code,
+                    "MetricValue": metric_value,
+                    "SampleSize": sample_size,
+                }
+            )
+
+    add("OVERALL", "ALL", aggregate_evaluation(events))
+    for field, scope_type in (
+        ("split", "SPLIT"),
+        ("ticker", "TICKER"),
+        ("regime", "REGIME"),
+        ("level_type", "LEVEL_TYPE"),
+    ):
+        for key, value in metrics_by_scope(events, field=field).items():
+            add(scope_type, key, value)
+
+    columns = [
+        "EvaluationRunId", "ScopeType", "ScopeKey",
+        "MetricCode", "MetricValue", "SampleSize",
+    ]
+    return pd.DataFrame(rows, columns=columns)
+
