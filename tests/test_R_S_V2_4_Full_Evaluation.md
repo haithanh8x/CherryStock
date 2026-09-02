@@ -100,6 +100,7 @@ start
 evaluation_end
 latest_data_date
 future_outcome_bars_reserved = 40
+universe_filter = raw_lstTicker.status='Y'
 ticker_count > 0
 horizons = 5,10,20,40
 promotion_mode = dry-run
@@ -113,6 +114,8 @@ evaluation_end < latest_data_date
 ~~~
 
 No baseline/effectiveness child run should execute in plan-only mode.
+
+PASS also requires that the plan reports `raw_lstTicker.status='Y'` as the universe filter. Inactive tickers must not be part of the resolved default universe.
 
 ## Sequence 5 — Focused One-source Smoke
 
