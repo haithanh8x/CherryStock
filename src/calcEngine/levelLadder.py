@@ -616,6 +616,369 @@ def load_rsi_confirmation_contexts(
     return contexts
 
 
+def load_atr_market_contexts(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+) -> list[MarketContext]:
+    """ATR provider: V2.1 uses ATR14_D as volatility context for adaptive distances."""
+    del timeframes
+    df = _load_latest_indicator_rows(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        indicator_code="ATR",
+        timeframes=("D",),
+        component_codes=("VALUE",),
+    )
+
+    contexts: list[MarketContext] = []
+    for row in df.itertuples(index=False):
+        _require_value_semantic(
+            row, expected=VALUE_SEMANTIC_VOLATILITY_DISTANCE
+        )
+        value = float(row.Value)
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(
+                f"Invalid ATR value for ConfigId={row.ConfigId}: {row.Value!r}"
+            )
+        contexts.append(
+            MarketContext(
+                ticker=str(row.Ticker).upper(),
+                as_of_date=as_of_date,
+                source_code=str(row.ConfigCode),
+                source_family=SOURCE_FAMILY_VOLATILITY_CONTEXT,
+                timeframe=str(row.Timeframe).upper(),
+                indicator_code="ATR",
+                config_id=int(row.ConfigId),
+                config_code=str(row.ConfigCode),
+                component_code=str(row.ComponentCode).upper(),
+                value=value,
+                unit=str(row.Unit) if row.Unit is not None else None,
+                source_date=pd.Timestamp(row.Date).date(),
+                metadata={"parameters": _parse_parameters(row.Parameters)},
+            )
+        )
+    return contexts
+
+
+def _load_structural_history(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    lookback_days: int,
+) -> pd.DataFrame:
+    if lookback_days <= 0:
+        raise ValueError("lookback_days must be > 0")
+    start_date = as_of_date - timedelta(days=int(lookback_days))
+    df = connection.execute(
+        """
+        SELECT "Date", "High", "Low", "Close"
+        FROM "CherryMon"."main"."raw_stock_eod"
+        WHERE "Ticker" = ?
+          AND "Date" >= ?
+          AND "Date" <= ?
+          AND "High" IS NOT NULL
+          AND "Low" IS NOT NULL
+        ORDER BY "Date"
+        """,
+        [ticker, start_date, as_of_date],
+    ).df()
+    if df.empty:
+        return pd.DataFrame(columns=["Date", "High", "Low", "Close"])
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    for column in ("High", "Low", "Close"):
+        df[column] = pd.to_numeric(df[column], errors="coerce")
+    return (
+        df.dropna(subset=["Date", "High", "Low"])
+        .sort_values("Date")
+        .reset_index(drop=True)
+    )
+
+
+def load_swing_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    structural_config: StructuralSourceConfig | None = None,
+) -> list[LevelCandidate]:
+    """Confirmed daily swing highs/lows with explicit pivot_date and confirmed_at."""
+    del timeframes
+    config = structural_config or StructuralSourceConfig()
+    if config.swing_left <= 0 or config.swing_right <= 0:
+        raise ValueError("swing_left and swing_right must be > 0")
+    if config.swing_max_candidates_each <= 0:
+        raise ValueError("swing_max_candidates_each must be > 0")
+
+    df = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=max(config.historical_lookback_days, 500),
+    )
+    if len(df) < config.swing_left + config.swing_right + 1:
+        return []
+
+    if len(df) > config.swing_lookback_bars + config.swing_left + config.swing_right:
+        df = df.iloc[
+            -(config.swing_lookback_bars + config.swing_left + config.swing_right):
+        ].reset_index(drop=True)
+
+    highs: list[LevelCandidate] = []
+    lows: list[LevelCandidate] = []
+    left = config.swing_left
+    right = config.swing_right
+
+    for index in range(left, len(df) - right):
+        row = df.iloc[index]
+        pivot_date = pd.Timestamp(row["Date"]).date()
+        confirmed_at = pd.Timestamp(df.iloc[index + right]["Date"]).date()
+        if confirmed_at > as_of_date:
+            continue
+
+        left_highs = df.iloc[index - left:index]["High"]
+        right_highs = df.iloc[index + 1:index + right + 1]["High"]
+        left_lows = df.iloc[index - left:index]["Low"]
+        right_lows = df.iloc[index + 1:index + right + 1]["Low"]
+
+        high = float(row["High"])
+        low = float(row["Low"])
+        common_metadata = {
+            "pivot_date": pivot_date.isoformat(),
+            "confirmed_at": confirmed_at.isoformat(),
+            "left": left,
+            "right": right,
+        }
+
+        if high > float(left_highs.max()) and high >= float(right_highs.max()):
+            highs.append(
+                LevelCandidate(
+                    ticker=ticker.upper(),
+                    price=high,
+                    source_type="STRUCTURAL",
+                    source_code=f"SWING_HIGH_{pivot_date:%Y%m%d}",
+                    timeframe="D",
+                    indicator_code=None,
+                    config_id=None,
+                    config_code=None,
+                    component_code=None,
+                    source_date=pivot_date,
+                    confirmed_at=confirmed_at,
+                    source_role=SOURCE_ROLE_LEVEL,
+                    source_family=SOURCE_FAMILY_MARKET_STRUCTURE,
+                    value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+                    metadata={**common_metadata, "structure_kind": "SWING_HIGH"},
+                )
+            )
+
+        if low < float(left_lows.min()) and low <= float(right_lows.min()):
+            lows.append(
+                LevelCandidate(
+                    ticker=ticker.upper(),
+                    price=low,
+                    source_type="STRUCTURAL",
+                    source_code=f"SWING_LOW_{pivot_date:%Y%m%d}",
+                    timeframe="D",
+                    indicator_code=None,
+                    config_id=None,
+                    config_code=None,
+                    component_code=None,
+                    source_date=pivot_date,
+                    confirmed_at=confirmed_at,
+                    source_role=SOURCE_ROLE_LEVEL,
+                    source_family=SOURCE_FAMILY_MARKET_STRUCTURE,
+                    value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+                    metadata={**common_metadata, "structure_kind": "SWING_LOW"},
+                )
+            )
+
+    highs = sorted(highs, key=lambda item: item.source_date, reverse=True)[
+        :config.swing_max_candidates_each
+    ]
+    lows = sorted(lows, key=lambda item: item.source_date, reverse=True)[
+        :config.swing_max_candidates_each
+    ]
+    return sorted(
+        [*highs, *lows],
+        key=lambda item: (item.price, item.source_code),
+    )
+
+
+def _period_level_candidate(
+    *,
+    ticker: str,
+    source_code: str,
+    price: float,
+    source_date: date,
+    confirmed_at: date,
+    timeframe: str,
+    structure_kind: str,
+) -> LevelCandidate:
+    if not math.isfinite(price) or price <= 0:
+        raise ValueError(f"Invalid structural level {source_code}: {price!r}")
+    return LevelCandidate(
+        ticker=ticker.upper(),
+        price=price,
+        source_type="STRUCTURAL",
+        source_code=source_code,
+        timeframe=timeframe,
+        indicator_code=None,
+        config_id=None,
+        config_code=None,
+        component_code=None,
+        source_date=source_date,
+        confirmed_at=confirmed_at,
+        source_role=SOURCE_ROLE_LEVEL,
+        source_family=SOURCE_FAMILY_MARKET_STRUCTURE,
+        value_semantic=VALUE_SEMANTIC_PRICE_LEVEL,
+        metadata={"structure_kind": structure_kind},
+    )
+
+
+def load_previous_period_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    structural_config: StructuralSourceConfig | None = None,
+) -> list[LevelCandidate]:
+    """Previous completed week/month H/L only; never uses the current partial period."""
+    del timeframes
+    config = structural_config or StructuralSourceConfig()
+    df = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=config.historical_lookback_days,
+    )
+    if df.empty:
+        return []
+
+    result: list[LevelCandidate] = []
+    current_week_start = as_of_date - timedelta(days=as_of_date.weekday())
+    previous_week = df[df["Date"].dt.date < current_week_start].copy()
+    if not previous_week.empty:
+        iso = previous_week["Date"].dt.isocalendar()
+        previous_week["_iso_year"] = iso.year
+        previous_week["_iso_week"] = iso.week
+        latest_key = previous_week[["_iso_year", "_iso_week"]].iloc[-1]
+        group = previous_week[
+            (previous_week["_iso_year"] == latest_key["_iso_year"])
+            & (previous_week["_iso_week"] == latest_key["_iso_week"])
+        ]
+        source_date = pd.Timestamp(group["Date"].max()).date()
+        result.extend(
+            [
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_WEEK_HIGH",
+                    price=float(group["High"].max()),
+                    source_date=source_date,
+                    confirmed_at=current_week_start,
+                    timeframe="W",
+                    structure_kind="PREVIOUS_WEEK_HIGH",
+                ),
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_WEEK_LOW",
+                    price=float(group["Low"].min()),
+                    source_date=source_date,
+                    confirmed_at=current_week_start,
+                    timeframe="W",
+                    structure_kind="PREVIOUS_WEEK_LOW",
+                ),
+            ]
+        )
+
+    current_month_start = as_of_date.replace(day=1)
+    previous_month = df[df["Date"].dt.date < current_month_start].copy()
+    if not previous_month.empty:
+        previous_month["_period"] = previous_month["Date"].dt.to_period("M")
+        latest_period = previous_month["_period"].iloc[-1]
+        group = previous_month[previous_month["_period"] == latest_period]
+        source_date = pd.Timestamp(group["Date"].max()).date()
+        result.extend(
+            [
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_MONTH_HIGH",
+                    price=float(group["High"].max()),
+                    source_date=source_date,
+                    confirmed_at=current_month_start,
+                    timeframe="M",
+                    structure_kind="PREVIOUS_MONTH_HIGH",
+                ),
+                _period_level_candidate(
+                    ticker=ticker,
+                    source_code="PREV_MONTH_LOW",
+                    price=float(group["Low"].min()),
+                    source_date=source_date,
+                    confirmed_at=current_month_start,
+                    timeframe="M",
+                    structure_kind="PREVIOUS_MONTH_LOW",
+                ),
+            ]
+        )
+    return result
+
+
+def load_52w_level_candidates(
+    connection: Any,
+    *,
+    ticker: str,
+    as_of_date: date,
+    timeframes: Sequence[str] = SUPPORTED_TIMEFRAMES,
+    structural_config: StructuralSourceConfig | None = None,
+) -> list[LevelCandidate]:
+    """Rolling 52-week high/low using only observations available at as_of_date."""
+    del timeframes
+    config = structural_config or StructuralSourceConfig()
+    df = _load_structural_history(
+        connection,
+        ticker=ticker,
+        as_of_date=as_of_date,
+        lookback_days=config.historical_lookback_days,
+    )
+    if df.empty:
+        return []
+
+    window_start = as_of_date - timedelta(days=365)
+    window = df[df["Date"].dt.date >= window_start]
+    if window.empty:
+        return []
+
+    high_index = window["High"].idxmax()
+    low_index = window["Low"].idxmin()
+    high_date = pd.Timestamp(window.loc[high_index, "Date"]).date()
+    low_date = pd.Timestamp(window.loc[low_index, "Date"]).date()
+    return [
+        _period_level_candidate(
+            ticker=ticker,
+            source_code="HIGH_52W",
+            price=float(window.loc[high_index, "High"]),
+            source_date=high_date,
+            confirmed_at=as_of_date,
+            timeframe="D",
+            structure_kind="HIGH_52W",
+        ),
+        _period_level_candidate(
+            ticker=ticker,
+            source_code="LOW_52W",
+            price=float(window.loc[low_index, "Low"]),
+            source_date=low_date,
+            confirmed_at=as_of_date,
+            timeframe="D",
+            structure_kind="LOW_52W",
+        ),
+    ]
+
+
 def _source_provider_registry() -> dict[str, dict[str, Any]]:
     """Return the V2.0 provider registry without coupling the core pipeline to sources."""
     return {
