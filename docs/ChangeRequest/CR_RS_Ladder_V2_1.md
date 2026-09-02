@@ -3,7 +3,10 @@
 - **Change ID:** CR-RS-V2.1-20260902
 - **Release:** R/S Ladder V2.1
 - **Date:** 2026-09-02
-- **Status:** **PRODUCTION DEPLOYED / VALIDATED 2026-09-02**
+- **Production deployment date:** 2026-09-02
+- **Status:** **PRODUCTION DEPLOYED / VALIDATED**
+- **Final verdict:** **PASS**
+- **Final action:** **KEEP**
 - **Repository:** CherryStock
 - **Pull Request:** #5 — feat: upgrade R/S Ladder to V2.1 adaptive structural architecture
 - **Main merge commit:** `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3`
@@ -376,7 +379,7 @@ MARKET_STRUCTURE
 
 ---
 
-## 11. Validation Scope
+## 11. Validation Evidence
 
 Focused automated test:
 
@@ -401,16 +404,117 @@ Production runbook:
 tests/test_R_S_V2_1.md
 ```
 
-Required before production sign-off:
+Production validation completed successfully on 2026-09-02.
 
-1. DuckDB preflight PASS.
-2. pytest PASS.
-3. MA-only regression PASS.
-4. ATR adaptive smoke PASS.
-5. structural-provider smoke PASS.
-6. default V2.1 MWG smoke PASS.
-7. historical point-in-time comparison PASS.
-8. NiceGUI smoke PASS.
+### Seq 1 — Git sync: PASS
+
+Main contained merge commit `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3`.
+
+### Seq 2 — DuckDB preflight: PASS — 5/5
+
+Read-only preflight via MCP validated:
+
+- ATR14_D ConfigId=37.
+- ValueSemantic=VOLATILITY_DISTANCE.
+- Unit=PRICE.
+- all active flags TRUE.
+- ATR coverage=1,112,839 records / 349 tickers / 0 NULL.
+- max ATR date=2026-08-28.
+- MWG ATR14_D=1.9615 at 2026-08-28.
+- MWG raw_stock_eod=256 records in one-year window.
+- 0 NULL High/Low/Close.
+- latest eligible date=2026-08-28.
+
+### Seq 3 — pytest: PASS
+
+```text
+17 passed
+```
+
+### Seq 4 — MA-only regression: PASS
+
+```text
+S1=73.36
+R1=76.70
+cluster floor=1.0%
+neutral floor=0.3%
+```
+
+Only TREND_AVERAGE sources were present.
+
+### Seq 5 — ATR adaptive smoke: PASS
+
+```text
+ATRPercent = 1.9615 / 75 = 2.615%
+Cluster    = 1.3077%
+Neutral    = 0.3923%
+```
+
+Values match the configured ATR formula exactly.
+
+### Seq 6 — Structural providers: PASS
+
+Validated:
+
+```text
+SWING
+PREVIOUS_HL
+52W_HL
+```
+
+All structural candidates satisfy:
+
+```text
+source_date <= as_of_date
+confirmed_at <= as_of_date
+source_family = MARKET_STRUCTURE
+value_semantic = PRICE_LEVEL
+```
+
+Runtime correctly rejects unsupported aliases and reports the supported source set.
+
+### Seq 7 — Default V2.1 MWG smoke: PASS
+
+```text
+AsOfDate=2026-08-28
+CurrentPrice=75.0
+
+S1=73.28 | Strength=79.87 | 9 sources | 3 families
+R1=76.68 | Strength=71.53 | 3 sources | 2 families
+```
+
+RSI appears only in confirmations; ATR appears only in contexts. All proximity, family-count and strength-range invariants PASS.
+
+### Seq 8 — Historical point-in-time: PASS
+
+Validated dates:
+
+```text
+2026-08-15
+2026-07-31
+2026-06-30
+```
+
+Result: **0 look-ahead violations**.
+
+### Seq 9 — NiceGUI smoke: PASS
+
+Validated:
+
+- V2.1 header;
+- Min Cluster % control;
+- full ladder render;
+- current price marker;
+- MARKET_STRUCTURE family;
+- SWING/PREV_MONTH/PREV_WEEK lineage;
+- Refresh.
+
+Final result:
+
+```text
+FINAL VERDICT: PASS
+ACTION: KEEP
+```
 
 ---
 
@@ -442,30 +546,34 @@ PRODUCTION VALIDATION PASS
 PRODUCTION DEPLOYED
 ```
 
-Do not classify V2.1 as Production Ready until the local runbook returns PASS.
+V2.1 has completed the local runbook with PASS and is classified as **PRODUCTION READY / PRODUCTION DEPLOYED**.
 
 ---
 
-## 13. Deployment Sequence
+## 13. Production Deployment Record
 
 ```text
-1. git pull origin main
-2. run src/DuckDB/sql/rs_v2_1_preflight.sql
-3. python -m pytest tests/test_rs_ladder.py -v
-4. MA-only regression smoke
-5. ATR adaptive smoke
-6. structural provider smoke
-7. default V2.1 MWG smoke
-8. historical point-in-time comparison
-9. NiceGUI smoke
-10. update this Change Request to PRODUCTION DEPLOYED only if all PASS
+1. git pull origin main                          PASS
+2. DuckDB read-only preflight                    PASS — 5/5
+3. pytest                                        PASS — 17/17
+4. MA-only regression                            PASS
+5. ATR adaptive smoke                            PASS
+6. structural provider smoke                     PASS
+7. default V2.1 MWG smoke                        PASS
+8. historical point-in-time comparison           PASS
+9. NiceGUI smoke                                 PASS
+10. production rollout                           PASS
 ```
+
+No DDL migration, data migration or rollback was required.
 
 ---
 
 ## 14. Rollback
 
-If V2.1 validation fails, V2.0-compatible source subsets remain available.
+No rollback was required during deployment.
+
+For contingency use, if a future V2.1 regression occurs, V2.0-compatible source subsets remain available.
 
 Temporary indicator-only fallback:
 
@@ -532,7 +640,34 @@ family, so multiple structural observations do not become independent families.
 
 ---
 
-## 16. References
+## 16. Production Notes
+
+Canonical runtime source keys:
+
+```text
+MA
+BB
+SWING
+PREVIOUS_HL
+52W_HL
+ATR
+RSI
+```
+
+Do not use aliases such as `PREVIOUS_PERIOD` or `FIFTY_TWO_WEEK`; runtime intentionally rejects unsupported keys and returns the supported-source list.
+
+Database impact:
+
+```text
+DDL migration:       NOT REQUIRED
+Data migration:      NOT REQUIRED
+Preflight SQL:       READ ONLY
+Rollback DB action:  NOT REQUIRED
+```
+
+---
+
+## 17. References
 
 Architecture:
 
