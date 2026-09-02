@@ -35,6 +35,22 @@ class _MarketDateConnection:
         return _Rows([(value,) for value in self._dates])
 
 
+class _IndicatorConfigConnection:
+    def execute(self, sql, params=None):
+        assert '"vw_Indicator_config"' in sql
+        return _Rows(
+            [
+                ("MA20_D", "MA", "D", "VALUE", '{"length":20}', "PRICE_LEVEL"),
+                ("MA250_D", "MA", "D", "VALUE", '{"length":250}', "PRICE_LEVEL"),
+                ("BB20_2_D", "BB", "D", "LOWER", '{"length":20}', "PRICE_LEVEL"),
+                ("ATR14_D", "ATR", "D", "VALUE", '{"length":14}', "VOLATILITY_DISTANCE"),
+                ("ATR14_W", "ATR", "W", "VALUE", '{"length":14}', "VOLATILITY_DISTANCE"),
+                ("RSI14_D", "RSI", "D", "VALUE", '{"length":14}', "OSCILLATOR"),
+                ("RSI14_W", "RSI", "W", "VALUE", '{"length":14}', "OSCILLATOR"),
+            ]
+        )
+
+
 def test_parse_horizons_is_sorted_unique_and_positive() -> None:
     assert module._parse_horizons("20,5,20,40") == (5, 20, 40)
 
@@ -73,6 +89,21 @@ def test_explicit_end_rejects_immature_future_outcomes() -> None:
             lookback_years=3,
             freshness_bars=5,
         )
+
+
+def test_indicator_catalog_matches_current_runtime_provider_contracts() -> None:
+    specs = module._indicator_source_specs(_IndicatorConfigConnection())
+    by_key = {item.source_key: item for item in specs}
+
+    assert "MA20_D" in by_key
+    assert "MA250_D" not in by_key
+    assert "BB20_2_D:LOWER" in by_key
+    assert "ATR14_D" in by_key
+    assert "ATR14_W" not in by_key
+    assert "RSI14_D" in by_key
+    assert "RSI14_W" in by_key
+    assert by_key["ATR14_D"].source_role == "CONTEXT"
+    assert by_key["RSI14_W"].source_role == "CONFIRMATION"
 
 
 def test_default_run_prefix_changes_when_universe_changes() -> None:
