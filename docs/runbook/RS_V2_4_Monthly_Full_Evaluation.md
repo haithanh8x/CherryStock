@@ -156,6 +156,38 @@ Inactive tickers remain in historical EOD storage but are excluded from new mont
 
 Explicit `--tickers` overrides are also validated against the same active/history/freshness eligibility set.
 
+### Historical provider warm-up
+
+Ticker eligibility and snapshot eligibility are separate contracts.
+
+A ticker can have >=500 bars over the complete evaluation dataset while its earliest snapshot inside the requested window still has insufficient point-in-time history for a provider.
+
+Current hard warm-up contract:
+
+~~~text
+VOLUME_PROFILE
+min_records = 30 valid positive-volume OHLCV bars
+lookback    = max(540 calendar days, window_bars * 3)
+~~~
+
+Historical evaluation therefore:
+
+~~~text
+sample every N bars from requested window
+        ↓
+check enabled-provider warm-up at each sampled date
+        ↓
+skip immature sampled dates
+        ↓
+evaluate only mature point-in-time snapshots
+~~~
+
+The sampling cadence remains anchored to the original requested window; warm-up filtering does not re-base or shift the cadence.
+
+The monthly `expected_snapshot_count` uses the same shared warm-up selector as the historical evaluator so plan, persistence and resume metadata remain consistent.
+
+This does not change live R/S runtime behavior. Direct Volume Profile calculation with insufficient history still fails its normal validation contract.
+
 ## Plan Before Running
 
 To resolve the current evaluation window and universe without launching historical child jobs:
