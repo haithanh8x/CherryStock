@@ -54,6 +54,131 @@ For the largest default horizon H40, the evaluation end is the trading date that
 
 Therefore the latest raw market date is not automatically used as the evaluation snapshot end.
 
+## Understanding Snapshots and Horizons
+
+The monthly evaluator does not test every trading date by default.
+
+With:
+
+```text
+Snapshot step = 5
+```
+
+it samples approximately every fifth trading bar:
+
+```text
+snapshot #1
++5 trading bars
+snapshot #2
++5 trading bars
+snapshot #3
+...
+```
+
+For each sampled historical date, the system:
+
+```text
+1. calculates the R/S ladder point-in-time;
+2. freezes that signal;
+3. looks forward over a selected horizon;
+4. labels what actually happened to the level.
+```
+
+Default horizons:
+
+| Horizon | Meaning |
+|---|---|
+| H5 | next 5 trading bars |
+| H10 | next 10 trading bars |
+| H20 | next 20 trading bars |
+| H40 | next 40 trading bars |
+
+The horizons are future observation windows, not different model versions.
+
+### What is evaluated
+
+For each historical S/R level, the evaluator records behavior such as:
+
+```text
+Touch
+Hold
+Break
+Retest
+Directional Edge
+```
+
+Example:
+
+```text
+Snapshot
+Ticker = MWG
+Date   = 2026-05-04
+S1     = 55
+R1     = 62
+```
+
+Under H20, the evaluator checks the next 20 market trading bars to determine whether S1/R1 were touched, held, broken or retested.
+
+### What the percentages mean
+
+After many historical events are collected, the framework calculates empirical historical rates.
+
+Example:
+
+```text
+Touch Rate             = 42%
+Hold Rate given touch  = 68%
+Break Rate given touch = 32%
+Retest Rate given break= 47%
+```
+
+These percentages summarize historical evidence.
+
+They do not automatically mean:
+
+```text
+Current MWG R1 has exactly 32% probability of breaking.
+```
+
+Current V2.4 does not provide a calibrated per-current-level probability model.
+
+The correct distinction is:
+
+```text
+Historical Rate
+    = observed frequency in historical evaluation events
+
+Predictive Probability
+    = calibrated forecast for a specific current ticker/level/horizon
+```
+
+Only the first is currently part of the V2.4 evaluation contract.
+
+A future probability-calibration layer may use these historical events to estimate outputs such as:
+
+```text
+P(Break R1 within H20)
+P(Hold S1 within H10)
+P(Retest after break within H20)
+```
+
+but such probabilities must not be inferred directly from aggregate historical rates without calibration.
+
+### Why H40 changes evaluation_end
+
+If H40 is requested, each snapshot requires 40 future market bars to label its outcome.
+
+Therefore the evaluator intentionally reserves 40 later trading bars and moves evaluation_end backward from latest_data_date.
+
+This is required to avoid:
+
+```text
+immature outcomes
+censored labels
+look-ahead leakage
+```
+
+
 ## Monthly Flow
 
 ~~~text
