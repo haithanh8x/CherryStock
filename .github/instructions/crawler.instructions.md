@@ -4,7 +4,20 @@ applyTo: "src/CrawlStock/**/*.py,src/Orchestrator/**/*.py,scripts/*crawl*.py"
 
 # Crawler / Ingestion Instructions
 
-This file owns rules for external-data ingestion pipelines.
+This file defines mandatory rules for external-data ingestion pipelines.
+
+Canonical knowledge:
+- `docs/architecture/Data_Architecture.md`
+- relevant source/integration architecture under `docs/architecture/`
+- operational guidance under `docs/runbook/`
+
+## Agent routing
+- Unclear source behavior, data requirement, freshness rule, scope or acceptance criteria → `.github/agents/BusinessAnalyst.agent.md`.
+- New ingestion architecture, integration contract or cross-pipeline design → `.github/agents/SolutionArchitect.agent.md`.
+- Clear crawler/ingestion implementation following approved contracts → `.github/agents/GeneralCoding.agent.md`.
+- Test design/execution or independent data-pipeline validation → `.github/agents/TestEngineer.agent.md`.
+
+General Coding MUST preserve documented source and persistence contracts, update canonical materials when an approved contract changes, and end with `IMPLEMENTED_PENDING_VALIDATION`.
 
 ## Pipeline contract
 Preferred flow:
