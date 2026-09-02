@@ -5,6 +5,7 @@
 `docs/backlog/` is the canonical Markdown backlog for planned engineering work that has not yet become an implemented system contract.
 
 Use backlog documents to record:
+- analyzed business/functional requirements under `requirements/`;
 - technical debt;
 - architecture refactors;
 - planned migrations;
@@ -58,22 +59,31 @@ Large items may be split into their own Markdown file when implementation tracki
 
 ## Current Backlogs
 
+- [[requirements/README|Requirements Backlog]]
+- [[requirements/REQUIREMENT_TEMPLATE|Requirement Template]]
 - [[Architecture_Backlog|Architecture Backlog]]
+- [[Harness_Backlog|Agent Harness Backlog]]
 
 ## Workflow
 
 ```text
-Idea / Review
+Idea / User Request
     ↓
-docs/backlog/**
+BusinessAnalyst when clarification/material analysis is required
+    ↓
+docs/backlog/requirements/REQ-*.md
+    ↓
+READY_FOR_DESIGN or READY_FOR_IMPLEMENTATION
     ↓
 Architecture/design if needed
     ↓
 docs/architecture/** + docs/adr/**
     ↓
-Implementation
+GeneralCoding or authoritative domain implementation
     ↓
-tests / validation
+IMPLEMENTED_PENDING_VALIDATION
+    ↓
+TestEngineer / tests / validation
     ↓
 DONE
 ```
