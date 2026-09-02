@@ -1831,3 +1831,304 @@ V2.0 is complete when:
 10. Focused automated tests pass.
 11. Production DuckDB migration and real-data cross-check pass before rollout.
 
+---
+
+# 31. V2.1 Implementation Contract
+
+V2.1 extends V2.0 with volatility-aware distance rules and observed market-structure levels.
+
+## 31.1 Default V2.1 Source Set
+
+```text
+LEVEL
+├── MA                         TREND_AVERAGE
+├── BB LOWER/MIDDLE/UPPER      VOLATILITY_BAND
+└── MARKET_STRUCTURE
+    ├── Swing High / Low
+    ├── Previous Week H/L
+    ├── Previous Month H/L
+    └── 52W High / Low
+
+CONTEXT
+└── ATR14_D                    VOLATILITY_CONTEXT
+
+CONFIRMATION
+└── RSI14 D/W/M                MOMENTUM_CONFIRMATION
+```
+
+Default `build_level_ladder()` enables all registered V2.1 providers.
+
+Explicit source subsets remain supported for regression and ablation.
+
+## 31.2 ATR Adaptive Distance
+
+ATR is context only and never enters price clustering as a level.
+
+Primary context:
+
+```text
+ATR14_D
+```
+
+Formula:
+
+```text
+ATRPercent
+    = ATR14_D / CurrentPrice
+
+ClusterThresholdPct
+    = max(
+        MinClusterPct,
+        ATRPercent × ATRClusterMultiplier
+      )
+
+NeutralThresholdPct
+    = max(
+        MinNeutralPct,
+        ATRPercent × ATRNeutralMultiplier
+      )
+```
+
+Current implementation defaults:
+
+```text
+MinClusterPct       = 1.0%
+MinNeutralPct       = 0.3%
+ATRClusterMultiplier = 0.50
+ATRNeutralMultiplier = 0.15
+```
+
+If ATR context is unavailable for a historical date, V2.1 falls back to the configured minimum percent thresholds. This fallback is explicit and deterministic.
+
+The actual thresholds used are exposed on `LevelLadderResult`:
+
+```text
+cluster_threshold_pct_used
+neutral_threshold_pct_used
+market_contexts
+```
+
+## 31.3 Point-in-Time Contract
+
+Every structural candidate carries:
+
+```text
+source_date
+confirmed_at
+```
+
+Invariant:
+
+```text
+source_date <= as_of_date
+confirmed_at <= as_of_date
+```
+
+Any candidate with future `confirmed_at` must fail before normalization.
+
+### Swing
+
+```text
+pivot_date
+    = date where local high/low occurs
+
+confirmed_at
+    = date of the right-side confirmation bar
+```
+
+Default Swing parameters:
+
+```text
+left  = 3 bars
+right = 3 bars
+lookback = 252 bars
+max candidates each side = 12
+```
+
+A pivot is not usable before enough right-side bars exist.
+
+### Previous Week H/L
+
+Only the last completed ISO week before the current week may be used.
+
+Current partial week must never contribute to `PREV_WEEK_HIGH/LOW`.
+
+### Previous Month H/L
+
+Only the last completed calendar month before the current month may be used.
+
+Current partial month must never contribute to `PREV_MONTH_HIGH/LOW`.
+
+### 52W High/Low
+
+Calculated from:
+
+```text
+as_of_date - 365 days
+        ↓
+as_of_date
+```
+
+using only raw bars with `Date <= as_of_date`.
+
+## 31.4 Structural Source Contract
+
+Structural candidates are created directly from `raw_stock_eod` and do not pass through Indicator Engine.
+
+```text
+raw_stock_eod
+      │
+      ├── SwingProvider
+      ├── PreviousPeriodProvider
+      └── 52WProvider
+             │
+             ▼
+       LevelCandidate[]
+```
+
+Common semantics:
+
+```text
+source_type   = STRUCTURAL
+source_role   = LEVEL
+source_family = MARKET_STRUCTURE
+value_semantic = PRICE_LEVEL
+```
+
+No new DuckDB object is required for these runtime providers in V2.1.
+
+## 31.5 Strength V2.1 Refinement
+
+V2.1 keeps:
+
+- family diversity;
+- timeframe confluence;
+- touch quality;
+- recency;
+- RSI confirmation.
+
+and adds:
+
+```text
+StructuralQuality
+```
+
+StructuralQuality is recency-sensitive evidence from MARKET_STRUCTURE sources.
+
+The structural component is included only when a zone actually contains structural evidence, so indicator-only V2.0 levels are not automatically penalized.
+
+Strength remains confidence only.
+
+Invariant:
+
+```text
+Strength MUST NOT change proximity rank.
+```
+
+## 31.6 Backward Compatibility
+
+V2.0-compatible source subsets remain valid.
+
+MA-only regression:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("MA",),
+)
+```
+
+V2.0-like indicator-only comparison:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("MA", "BB", "RSI"),
+)
+```
+
+V2.1 indicator + ATR without structure:
+
+```python
+build_level_ladder(
+    "MWG",
+    enabled_sources=("MA", "BB", "ATR", "RSI"),
+)
+```
+
+## 31.7 DuckDB Impact
+
+V2.1 requires **no new schema migration**.
+
+Existing production prerequisites are already satisfied by V2.0 + ATR onboarding:
+
+```text
+ATR14_D config
+ATR VALUE semantic = VOLATILITY_DISTANCE
+ATR Unit = PRICE
+vw_Indicator_config exposes ValueSemantic / Unit
+vw_Ticker_indicators contains ATR14_D backfill
+raw_stock_eod contains historical OHLCV
+```
+
+Read-only preflight:
+
+```text
+src/DuckDB/sql/rs_v2_1_preflight.sql
+```
+
+must be used before production smoke/deployment.
+
+## 31.8 Physical Implementation
+
+```text
+src/calcEngine/levelLadder.py
+    MarketContext
+    confirmed_at on LevelCandidate / NormalizedLevel
+    StructuralSourceConfig
+    load_atr_market_contexts()
+    load_swing_level_candidates()
+    load_previous_period_level_candidates()
+    load_52w_level_candidates()
+    resolve_adaptive_thresholds()
+    structural quality scoring
+    V2.1 provider registry / orchestration
+
+src/webapp/NiceGUI_chart.py
+    V2.1 header
+    Min Cluster % floor
+    actual adaptive threshold notification
+
+src/Chart/levelLadderChart.py
+    V2.1 empty state
+
+src/DuckDB/sql/rs_v2_1_preflight.sql
+    read-only production preflight
+
+tests/test_rs_ladder.py
+    V2.0 regression + V2.1 unit contracts
+
+tests/test_R_S_V2_1.md
+    local production cross-check
+```
+
+## 31.9 V2.1 Acceptance Criteria
+
+V2.1 is complete when:
+
+1. V2.0 focused tests remain PASS.
+2. ATR14_D is loaded as CONTEXT, never LEVEL.
+3. Adaptive cluster threshold uses max(percent floor, ATR distance).
+4. Adaptive neutral threshold uses max(percent floor, ATR distance).
+5. Swing candidates are unavailable before `confirmed_at`.
+6. Previous Week levels exclude the current partial week.
+7. Previous Month levels exclude the current partial month.
+8. 52W levels use only bars at/before `as_of_date`.
+9. Structural sources use MARKET_STRUCTURE family.
+10. StructuralQuality can change Strength but never proximity rank.
+11. Default V2.1 output preserves `source_family_count <= source_count`.
+12. S1/R1 remain nearest eligible zones.
+13. NiceGUI renders V2.1 without V2.0 stale text.
+14. Read-only DuckDB preflight PASS.
+15. Real-data MWG cross-check PASS before production rollout.
+
