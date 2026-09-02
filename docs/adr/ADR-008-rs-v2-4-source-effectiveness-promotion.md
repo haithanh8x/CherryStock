@@ -40,6 +40,8 @@ LEVEL sources may use direct event lineage plus marginal baseline-vs-ablation li
 
 CONTEXT and CONFIRMATION sources use marginal-only attribution. V2.4 must not fabricate price-level touch/hold/retest statistics for non-LEVEL roles.
 
+CONTEXT marginal lift uses the V2.3 level-quality objective because context can change level geometry. CONFIRMATION marginal lift uses a Brier-derived Strength predictive score because confirmation may change Strength while preserving level price/rank.
+
 ### 5. Incremental OOS lift is the primary promotion evidence
 
 Standalone source quality is supplementary. Global promotion requires VALIDATION/TEST evidence and cannot be authorized from TRAIN-only performance.
