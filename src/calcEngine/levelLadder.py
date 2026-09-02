@@ -1098,7 +1098,7 @@ def load_volume_profile_bundle(
 
 
 def _source_provider_registry() -> dict[str, dict[str, Any]]:
-    """Return the V2.1 provider registry without coupling the core pipeline to sources."""
+    """Return the V2.2 provider registry without coupling the core pipeline to sources."""
     return {
         "MA": {
             "role": SOURCE_ROLE_LEVEL,
@@ -1127,6 +1127,12 @@ def _source_provider_registry() -> dict[str, dict[str, Any]]:
             "family": SOURCE_FAMILY_MARKET_STRUCTURE,
             "loader": load_52w_level_candidates,
             "uses_structural_config": True,
+        },
+        "VOLUME_PROFILE": {
+            "kind": "BUNDLE",
+            "family": SOURCE_FAMILY_VOLUME_STRUCTURE,
+            "loader": load_volume_profile_bundle,
+            "uses_volume_profile_config": True,
         },
         "ATR": {
             "role": SOURCE_ROLE_CONTEXT,
@@ -1181,6 +1187,10 @@ def normalize_levels(
             )
         elif candidate.indicator_code == "BB":
             source_weight = config.bb_component_weights.get(
+                candidate.component_code or "", 1.0
+            )
+        elif candidate.source_family == SOURCE_FAMILY_VOLUME_STRUCTURE:
+            source_weight = config.volume_profile_weights.get(
                 candidate.component_code or "", 1.0
             )
         result.append(
