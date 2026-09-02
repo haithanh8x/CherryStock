@@ -29,6 +29,18 @@ When the physical repository differs from this high-level map, follow the actual
 5. Source-of-Truth objects must be explicit; downstream consumers should use the declared public view/contract instead of internal persistence tables when one exists.
 6. New cross-cutting architecture decisions should be captured in `docs/adr/`.
 
+## Agent Harness routing
+
+The executable router is `../copilot-instructions.md`. The canonical role, outcome, handoff and material map is `docs/architecture/agent-harness/README.md`.
+
+- Requirement readiness and backlog → `BusinessAnalyst.agent.md`
+- Architecture/design readiness → `SolutionArchitect.agent.md`
+- Concrete indicator lifecycle → `Indicator_Management.agent.md`
+- Clear general implementation → `GeneralCoding.agent.md`
+- Independent validation verdict → `TestEngineer.agent.md`
+
+The default repository agent orchestrates each request. Do not require every task to pass through every role.
+
 ## Domain instruction routing
 For detailed rules, use the domain owner file:
 
@@ -86,7 +98,7 @@ CherryStock repository Markdown is the engineering knowledge Single Source of Tr
 ```text
 GitHub repository
     ├── .github/               AI governance
-    ├── docs/                  architecture / ADR / development knowledge
+    ├── docs/                  requirements / architecture / ADR / development knowledge
     ├── src/                   implementation
     ├── tests/                 validation
     └── scripts/               execution/migration utilities
