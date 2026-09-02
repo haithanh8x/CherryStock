@@ -75,6 +75,26 @@ def test_explicit_end_rejects_immature_future_outcomes() -> None:
         )
 
 
+def test_default_run_prefix_changes_when_universe_changes() -> None:
+    first = module._build_run_prefix(
+        None,
+        "202609",
+        date(2026, 7, 1),
+        ("FPT", "MWG"),
+        5,
+    )
+    second = module._build_run_prefix(
+        None,
+        "202609",
+        date(2026, 7, 1),
+        ("HPG", "MWG"),
+        5,
+    )
+
+    assert first != second
+    assert "_S5_U" in first
+
+
 def test_ablation_model_version_is_order_independent_and_membership_sensitive() -> None:
     first = module._ablation_model_version(
         "SOURCE_FAMILY",
@@ -165,9 +185,12 @@ def test_resume_compatibility_blocks_reusing_different_ablation() -> None:
         "dataset_start": date(2024, 1, 1),
         "dataset_end": date(2026, 6, 30),
         "horizon_bars": 20,
+        "ticker_count": 3,
+        "snapshot_count": 30,
         "status": "COMPLETED",
         "include_keys": (),
         "exclude_keys": ("MA20_D",),
+        "event_tickers": ("FPT", "HPG", "MWG"),
     }
     window = module.EvaluationWindow(
         start_date=date(2024, 1, 1),
@@ -183,4 +206,6 @@ def test_resume_compatibility_blocks_reusing_different_ablation() -> None:
             window,
             20,
             ("MA50_D",),
+            ("FPT", "HPG", "MWG"),
+            30,
         )
