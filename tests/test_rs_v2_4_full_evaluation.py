@@ -36,6 +36,22 @@ class _MarketDateConnection:
         return _Rows([(value,) for value in self._dates])
 
 
+class _ActiveTickerConnection:
+    def __init__(self):
+        self.sql = ""
+        self.params = None
+
+    def execute(self, sql, params=None):
+        self.sql = sql
+        self.params = params
+        return _Rows(
+            [
+                ("FPT", 700, date(2023, 7, 4), date(2026, 8, 28)),
+                ("MWG", 710, date(2023, 7, 4), date(2026, 8, 28)),
+            ]
+        )
+
+
 class _IndicatorConfigConnection:
     def execute(self, sql, params=None):
         assert '"vw_Indicator_config"' in sql
@@ -50,6 +66,35 @@ class _IndicatorConfigConnection:
                 ("RSI14_W", "RSI", "W", "VALUE", '{"length":14}', "OSCILLATOR"),
             ]
         )
+
+
+def test_resolve_tickers_filters_raw_lstTicker_status_y() -> None:
+    connection = _ActiveTickerConnection()
+    window = module.EvaluationWindow(
+        start_date=date(2023, 7, 4),
+        evaluation_end=date(2026, 7, 3),
+        latest_data_date=date(2026, 8, 28),
+        freshness_cutoff=date(2026, 8, 21),
+    )
+
+    tickers = module._resolve_tickers(
+        connection,
+        window,
+        explicit_tickers=(),
+        min_history_bars=500,
+        max_tickers=None,
+    )
+
+    assert tickers == ("FPT", "MWG")
+    assert '"raw_lstTicker"' in connection.sql
+    assert 'ticker."status" = \'Y\'' in connection.sql
+    assert 'ticker."Ticker" = eod."Ticker"' in connection.sql
+    assert connection.params == [
+        window.start_date,
+        window.latest_data_date,
+        500,
+        window.freshness_cutoff,
+    ]
 
 
 def test_parse_horizons_is_sorted_unique_and_positive() -> None:
