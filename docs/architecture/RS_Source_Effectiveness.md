@@ -209,6 +209,20 @@ MarginalScore = clamp(0.5 + MeanOOSLift / 0.05, 0, 1)
 
 CONTEXT and CONFIRMATION are not price levels and must not receive fabricated touch/hold/retest metrics.
 
+Marginal metric is role-aware:
+
+```text
+CONTEXT
+    → LEVEL_QUALITY lift
+      because context can alter clustering / neutral-zone geometry
+
+CONFIRMATION
+    → STRENGTH_BRIER lift
+      because confirmation may change Strength without changing S1/R1 geometry
+```
+
+`STRENGTH_BRIER` uses touched events and evaluates whether `Strength / 100` predicts the probability that the touched level holds. This prevents a confirmation-only indicator such as RSI from being incorrectly judged as zero-value merely because level prices/ranks do not move.
+
 Role-aware marginal-only score:
 
 ```text
