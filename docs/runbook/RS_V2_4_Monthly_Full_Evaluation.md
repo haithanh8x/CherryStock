@@ -4,13 +4,19 @@
 
 Operational runbook for the monthly full-universe R/S V2.4 Source Effectiveness refresh.
 
-Primary entry point:
+Primary CLI entry point:
 
 ~~~text
 scripts/run_rs_v2_4_full_evaluation.py
 ~~~
 
-This is an orchestration script. It reuses:
+Orchestration implementation:
+
+~~~text
+src/Orchestrator/rs_v2_4_full_evaluation.py
+~~~
+
+The script is a thin wrapper. The Orchestrator service reuses:
 
 ~~~text
 scripts/run_rs_v2_3_evaluation.py
@@ -126,6 +132,8 @@ LEVEL source-config evaluation requires that the canonical source appears in bas
 CONTEXT and CONFIRMATION sources remain eligible without direct LEVEL lineage because they are evaluated marginally.
 
 For SOURCE_FAMILY ablation, the full discovered family membership is excluded, not only one selected config.
+
+`--skip-source-keys` suppresses config-level evaluation for those keys; it does not weaken a SOURCE_FAMILY ablation by removing family members from the exclusion set.
 
 ## Plan Before Running
 
