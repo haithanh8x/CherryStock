@@ -54,7 +54,7 @@ Không bắt buộc tạo Change Request riêng cho minor typo, isolated bug fix
 | Change ID | Release / Change | Type | Scope | Status | Production Date | Validation | Change Request | PR / Commit |
 |---|---|---|---|---|---|---|---|---|
 | **CR-RS-V2.0-20260901** | **R/S Ladder V2.0** | Architecture / Calculation Engine / Data Model / UI | MA + BB LEVEL providers, RSI CONFIRMATION, SourceRole/SourceFamily, family-based confluence, ValueSemantic/Unit metadata | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — 10/10 pytest + DuckDB + MWG smoke + semantic safety + NiceGUI** | [CR_RS_Ladder_V2_0.md](./CR_RS_Ladder_V2_0.md) | PR #4 / `7ebd6bcb9d0d4faff117f4bff0d99c98c223238b` |
-| **CR-RS-V2.1-20260902** | **R/S Ladder V2.1** | Architecture / Calculation Engine / UI | ATR-adaptive clustering/neutral, Swing H/L, Previous W/M H/L, 52W H/L, point-in-time confirmed_at, structural quality | **CODE MERGED / VALIDATION PENDING** | — | **PENDING — DuckDB preflight + pytest + MWG structural/no-lookahead + NiceGUI** | [CR_RS_Ladder_V2_1.md](./CR_RS_Ladder_V2_1.md) | PR #5 / `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3` |
+| **CR-RS-V2.1-20260902** | **R/S Ladder V2.1** | Architecture / Calculation Engine / UI | ATR-adaptive clustering/neutral, Swing H/L, Previous W/M H/L, 52W H/L, point-in-time confirmed_at, structural quality | **PRODUCTION DEPLOYED** | **2026-09-02** | **PASS — preflight 5/5 + pytest 17/17 + MA regression + ATR adaptive + structural/no-look-ahead + NiceGUI** | [CR_RS_Ladder_V2_1.md](./CR_RS_Ladder_V2_1.md) | PR #5 / `1d1b82b7023c3ae1142c6c449fc538278ffbe0a3` |
 
 ---
 
@@ -297,9 +297,9 @@ Không dùng Change Request master để thay thế architecture docs hoặc bac
 
 ## 9. Next Expected Major Change
 
-R/S V2.1 đã được merge và đang ở giai đoạn production validation.
+R/S V2.1 đã hoàn tất production deployment và validation PASS.
 
-Sau khi V2.1 PASS và production deployed, major release tiếp theo theo roadmap là:
+Major release tiếp theo theo roadmap là:
 
 ```text
 R/S V2.2
@@ -318,4 +318,4 @@ Volume-family cap
 Performance optimization
 ```
 
-V2.2 không được bắt đầu production rollout trước khi V2.1 hoàn tất local cross-check và Change Request V2.1 được chốt PASS.
+V2.1 đã đáp ứng prerequisite cho V2.2: production deployed, local cross-check PASS và Change Request V2.1 đã được chốt.
