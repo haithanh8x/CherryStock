@@ -372,7 +372,7 @@ Canonical research horizons:
 
 Each horizon keeps separate baseline/ablation/effectiveness evidence. V2.4 does not average horizons into a runtime weight.
 
-## 15. Performance Strategy
+## 15. Performance and Operational Strategy
 
 1. Reuse persisted V2.3 evaluation events/metrics.
 2. Do not recalculate a compatible baseline unnecessarily.
@@ -381,6 +381,49 @@ Each horizon keeps separate baseline/ablation/effectiveness evidence. V2.4 does 
 5. Compute per-ticker effectiveness in memory.
 6. Persist results in one short writer transaction.
 7. Read latest results through the public view.
+
+### Monthly full evaluation
+
+Canonical operational entry point:
+
+~~~text
+scripts/run_rs_v2_4_full_evaluation.py
+~~~
+
+The monthly orchestrator:
+
+~~~text
+resolve eligible ticker universe
+        ↓
+reserve future outcome bars
+        ↓
+baseline × H5/H10/H20/H40
+        ↓
+source-config ablation/effectiveness
+        ↓
+source-family ablation/effectiveness
+        ↓
+Source Promotion Gate dry-run
+        ↓
+vw_RS_Source_Effectiveness
+~~~
+
+Rules:
+
+- full evaluation is a research/governance workload, not a daily runtime workload;
+- default cadence is monthly, with event-driven reruns after material source/model changes;
+- the latest raw market date is reserved for outcome observation; the evaluation end must leave enough later trading bars for the largest requested horizon;
+- one compatible baseline per horizon is reused across source/family ablations;
+- deterministic run IDs plus metadata compatibility checks provide resumable execution;
+- SOURCE_CONFIG LEVEL evaluation requires observable baseline lineage;
+- SOURCE_FAMILY ablation removes the full discovered family membership;
+- promotion defaults to dry-run and never changes runtime weights/providers.
+
+Operational procedure:
+
+~~~text
+docs/runbook/RS_V2_4_Monthly_Full_Evaluation.md
+~~~
 
 ## 16. Failure / Blocking Rules
 
