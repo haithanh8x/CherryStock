@@ -6,9 +6,25 @@ AI agents MUST use this page to discover relevant engineering knowledge before a
 
 ## AI Governance
 - [[../.github/copilot-instructions|Copilot Instructions]]
+- [[architecture/agent-harness/README|Agent Harness Architecture]]
 - [[../.github/agents/CherryMon.agent|CherryMon Architecture Constitution]]
+- [[../.github/agents/BusinessAnalyst.agent|Business Analyst Agent]]
 - [[../.github/agents/SolutionArchitect.agent|Solution Architect Agent]]
+- [[../.github/agents/Indicator_Management.agent|Indicator Management Agent]]
+- [[../.github/agents/GeneralCoding.agent|General Coding Agent]]
 - [[../.github/agents/TestEngineer.agent|Test Engineer Agent]]
+
+## Requirement / Backlog Routing
+
+When the request involves requirement analysis, clarification, scope, business rules, acceptance criteria, impact discovery, backlog creation/refinement or decomposition:
+
+1. Read `../.github/agents/BusinessAnalyst.agent.md`.
+2. Review existing materials under `backlog/requirements/`.
+3. Follow the smallest relevant domain/architecture links below.
+4. Store durable requirement output under `docs/backlog/requirements/`.
+5. End with `DRAFT`, `NEEDS_CLARIFICATION`, `READY_FOR_DESIGN`, `READY_FOR_IMPLEMENTATION` or `BLOCKED`.
+
+A small explicit implementation request does not require a new backlog document.
 
 ## Design / Architecture Routing
 
@@ -64,6 +80,7 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 Testing requests should use the Test Engineer Agent first, then the testing instructions. Test execution must be bounded: one objective/hypothesis at a time, finite retry budget, explicit terminal verdict, and STOP after the objective is decided.
 
 ## Architecture
+- [[architecture/agent-harness/README|Agent Harness Architecture]]
 - [[architecture/Second_Brain|Second Brain Architecture]]
 - [[architecture/Indicator_Engine|Indicator Engine]]
 - [[architecture/Data_Architecture|Data Architecture]]
@@ -89,12 +106,17 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 
 ## Backlog
 - [[backlog/README|Backlog Guide]]
+- [[backlog/requirements/README|Requirements Backlog]]
+- [[backlog/requirements/REQUIREMENT_TEMPLATE|Requirement Template]]
 - [[backlog/Architecture_Backlog|Architecture Backlog]]
+- [[backlog/Harness_Backlog|Agent Harness Backlog]]
 
 Backlog documents record planned work and technical debt only. They are not the Source of Truth for current runtime behavior.
 
 ## Development
+- [[development/README|Development Materials]]
 - [[development/Development_Workflow|Development Workflow]]
+- [[development/implementation-notes/README|Implementation Notes]]
 
 ## Knowledge Ownership
 
@@ -102,11 +124,15 @@ Backlog documents record planned work and technical debt only. They are not the 
 |---|---|---|
 | Global AI governance | .github/copilot-instructions.md | Repository-wide AI/developer behavior |
 | Architecture constitution | .github/agents/CherryMon.agent.md | Stable CherryStock architecture principles |
+| Agent Harness architecture | docs/architecture/agent-harness/** | Role ownership, routing, handoffs and material locations |
+| Requirement workflow | .github/agents/BusinessAnalyst.agent.md | Requirement quality, backlog readiness and acceptance criteria |
 | Design workflow | .github/agents/SolutionArchitect.agent.md | How AI researches and produces architecture/design |
+| General implementation workflow | .github/agents/GeneralCoding.agent.md | Focused implementation and validation handoff |
 | Test workflow | .github/agents/TestEngineer.agent.md | How AI designs/executes focused tests and terminates bounded investigations |
 | Domain execution rules | .github/instructions/*.instructions.md | MUST/MUST NOT rules for implementation |
 | System architecture | docs/architecture/** | How the system works |
 | Architecture decisions | docs/adr/** | Why important decisions were made |
+| Requirement backlog | docs/backlog/requirements/** | Business/functional requirements and readiness state |
 | Engineering backlog | docs/backlog/** | Planned work, technical debt and migration tracking |
 | Domain/reference knowledge | linked docs / legacy references | Terms, metadata and supporting knowledge |
 | Implementation | src/** | Runtime source code |
