@@ -253,6 +253,8 @@ def evaluate_ranked_level(
 
     touch_low = price * (1.0 - cfg.touch_tolerance_pct)
     touch_high = price * (1.0 + cfg.touch_tolerance_pct)
+    retest_low = price * (1.0 - cfg.retest_tolerance_pct)
+    retest_high = price * (1.0 + cfg.retest_tolerance_pct)
 
     touch_idx: int | None = None
     break_idx: int | None = None
@@ -263,6 +265,7 @@ def evaluate_ranked_level(
         low = float(row["Low"])
         close = float(row["Close"])
         touches = low <= touch_high and high >= touch_low
+        retests = low <= retest_high and high >= retest_low
         if touch_idx is None and touches:
             touch_idx = int(idx)
 
@@ -275,7 +278,7 @@ def evaluate_ranked_level(
                 break_idx = int(idx)
                 continue
 
-        if break_idx is not None and idx > break_idx and retest_idx is None and touches:
+        if break_idx is not None and idx > break_idx and retest_idx is None and retests:
             retest_idx = int(idx)
 
     def date_at(index: int | None) -> date | None:
