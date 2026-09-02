@@ -1408,16 +1408,24 @@ def build_level_ladder_from_data(
     max_resistance_levels: int = 3,
     strength_config: StrengthConfig | None = None,
     confirmations: Sequence[ConfirmationContext] = (),
+    market_contexts: Sequence[MarketContext] = (),
 ) -> LevelLadderResult:
-    """Pure calculation pipeline used by production and focused tests."""
+    """Pure V2.1 pipeline with optional ATR-adaptive distance context."""
+    cluster_pct_used, neutral_pct_used = resolve_adaptive_thresholds(
+        current_price=current_price,
+        market_contexts=market_contexts,
+        min_cluster_pct=cluster_threshold_pct,
+        min_neutral_pct=neutral_threshold_pct,
+        strength_config=strength_config,
+    )
     normalized = normalize_levels(
         candidates, current_price=current_price, strength_config=strength_config
     )
-    zones = cluster_levels(normalized, cluster_threshold_pct=cluster_threshold_pct)
+    zones = cluster_levels(normalized, cluster_threshold_pct=cluster_pct_used)
     zones = classify_zones(
         zones,
         current_price=current_price,
-        neutral_threshold_pct=neutral_threshold_pct,
+        neutral_threshold_pct=neutral_pct_used,
     )
     scored = score_zones(
         zones,
@@ -1452,6 +1460,9 @@ def build_level_ladder_from_data(
         downside_to_s1_pct=round(downside, 4) if downside is not None else None,
         risk_reward_ratio=round(rr, 4) if rr is not None else None,
         confirmations=tuple(confirmations),
+        market_contexts=tuple(market_contexts),
+        cluster_threshold_pct_used=round(cluster_pct_used, 6),
+        neutral_threshold_pct_used=round(neutral_pct_used, 6),
     )
 
 
@@ -1468,11 +1479,11 @@ def build_level_ladder(
     strength_config: StrengthConfig | None = None,
     connection: Any | None = None,
 ) -> LevelLadderResult:
-    """Build R/S Ladder V2.0 from registered LEVEL and CONFIRMATION providers."""
+    """Build R/S Ladder V2.1 from LEVEL, CONTEXT and CONFIRMATION providers."""
     normalized_ticker = _normalize_ticker(ticker)
     normalized_timeframes = _validate_timeframes(timeframes)
-    _validate_pct("cluster_threshold_pct", cluster_threshold_pct)
-    _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.02)
+    _validate_pct("cluster_threshold_pct", cluster_threshold_pct, 0.10)
+    _validate_pct("neutral_threshold_pct", neutral_threshold_pct, 0.10)
     if max_support_levels <= 0 or max_resistance_levels <= 0:
         raise ValueError("max_support_levels and max_resistance_levels must be > 0")
 
@@ -1485,12 +1496,12 @@ def build_level_ladder(
     unsupported = sources - set(registry)
     if unsupported:
         raise ValueError(
-            f"Unsupported R/S V2.0 sources: {sorted(unsupported)}; "
+            f"Unsupported R/S V2.1 sources: {sorted(unsupported)}; "
             f"supported={sorted(registry)}"
         )
 
     LOGGER.info(
-        "RS Ladder V2.0 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster=%.4f",
+        "RS Ladder V2.1 start | ticker=%s as_of=%s timeframes=%s sources=%s cluster_floor=%.4f",
         normalized_ticker,
         as_of_date,
         normalized_timeframes,
@@ -1504,6 +1515,7 @@ def build_level_ladder(
         )
         candidates: list[LevelCandidate] = []
         confirmations: list[ConfirmationContext] = []
+        market_contexts: list[MarketContext] = []
 
         for source in sorted(sources):
             spec = registry[source]
@@ -1515,22 +1527,25 @@ def build_level_ladder(
             )
             if spec["role"] == SOURCE_ROLE_LEVEL:
                 candidates.extend(loaded)
+            elif spec["role"] == SOURCE_ROLE_CONTEXT:
+                market_contexts.extend(loaded)
             elif spec["role"] == SOURCE_ROLE_CONFIRMATION:
                 confirmations.extend(loaded)
             else:
                 raise RuntimeError(
-                    f"Unsupported provider role in V2.0 registry: {spec['role']}"
+                    f"Unsupported provider role in V2.1 registry: {spec['role']}"
                 )
 
         history = load_price_history(
             con, ticker=normalized_ticker, as_of_date=current.as_of_date
         )
         LOGGER.info(
-            "RS Ladder V2.0 inputs | ticker=%s date=%s candidates=%d "
-            "confirmations=%d history=%d",
+            "RS Ladder V2.1 inputs | ticker=%s date=%s candidates=%d "
+            "contexts=%d confirmations=%d history=%d",
             normalized_ticker,
             current.as_of_date,
             len(candidates),
+            len(market_contexts),
             len(confirmations),
             len(history),
         )
@@ -1544,12 +1559,16 @@ def build_level_ladder(
             max_resistance_levels=max_resistance_levels,
             strength_config=strength_config,
             confirmations=confirmations,
+            market_contexts=market_contexts,
         )
         LOGGER.info(
-            "RS Ladder V2.0 success | ticker=%s supports=%d resistances=%d",
+            "RS Ladder V2.1 success | ticker=%s supports=%d resistances=%d "
+            "cluster=%.4f neutral=%.4f",
             normalized_ticker,
             len(result.support_levels),
             len(result.resistance_levels),
+            result.cluster_threshold_pct_used or cluster_threshold_pct,
+            result.neutral_threshold_pct_used or neutral_threshold_pct,
         )
         return result
 
@@ -1560,5 +1579,5 @@ def build_level_ladder(
         with DuckDBManager(read_only=True) as con:
             return calculate(con)
     except Exception:
-        LOGGER.exception("RS Ladder V2.0 failed | ticker=%s", normalized_ticker)
+        LOGGER.exception("RS Ladder V2.1 failed | ticker=%s", normalized_ticker)
         raise
