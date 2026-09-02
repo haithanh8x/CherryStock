@@ -1,16 +1,16 @@
 ---
 id: REQ-0022
 title: R/S V2.4 Source Effectiveness & Indicator Promotion Framework
-status: READY_FOR_DESIGN
+status: DONE
 priority: P0
 owner: BusinessAnalyst
-primary_next_owner: SolutionArchitect
+primary_next_owner: None
 related:
-  architecture: docs/architecture/RS_Ladder.md
-  adr: docs/adr/ADR-007-rs-v2-3-evaluation-governance.md
-  implementation:
-  test:
-  change_request:
+  architecture: docs/architecture/RS_Source_Effectiveness.md
+  adr: docs/adr/ADR-008-rs-v2-4-source-effectiveness-promotion.md
+  implementation: PR #8 / 45a7324825afc0e2d32a166a90dcbc17fe5fb1ac
+  test: tests/test_R_S_V2_4.md
+  change_request: docs/ChangeRequest/CR_RS_Ladder_V2_4.md
 ---
 
 # REQ-0022 — R/S V2.4 Source Effectiveness & Indicator Promotion Framework
@@ -475,9 +475,12 @@ Policy thresholds are configurable architecture parameters and may be calibrated
 REQUIREMENT HANDOFF
 Requirement ID: REQ-0022
 Outcome: Define R/S V2.4 Source Effectiveness & Indicator Promotion Framework
-Status: READY_FOR_DESIGN
-Primary next owner: SolutionArchitect
+Status: DONE
+Primary next owner: None
 Material: docs/backlog/requirements/REQ-0022-rs-v2-4-source-effectiveness.md
-Open questions: None blocking
+Implementation: PR #8 / 45a7324825afc0e2d32a166a90dcbc17fe5fb1ac
+Validation: PASS — tests/test_R_S_V2_4.md
+Change Request: docs/ChangeRequest/CR_RS_Ladder_V2_4.md
+Open questions: None
 Acceptance criteria count: 28
 ```
