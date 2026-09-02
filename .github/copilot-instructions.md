@@ -27,6 +27,50 @@ Nếu có conflict giữa instructions, phải nêu conflict và ưu tiên rule 
 
 ## Intent routing
 
+### Routing tối giản
+
+The default repository agent is the task orchestrator. It preserves the user's objective, classifies the primary intent, selects one authoritative owner and controls handoff until a terminal state is reached.
+
+```mermaid
+flowchart TD
+    U["User request"] --> O["Default Orchestrator"]
+    O --> R{"Primary intent"}
+
+    R -->|Requirement unclear| BA["BusinessAnalyst"]
+    R -->|Architecture or design| SA["SolutionArchitect"]
+    R -->|Indicator lifecycle| IM["Indicator Management"]
+    R -->|Clear implementation| GC["GeneralCoding"]
+    R -->|Test or validation| TE["TestEngineer"]
+
+    BA -->|READY_FOR_DESIGN| SA
+    BA -->|READY_FOR_IMPLEMENTATION| GC
+    SA -->|APPROVED_FOR_IMPLEMENTATION| GC
+    SA -->|Indicator domain implementation| IM
+    IM -->|IMPLEMENTED_PENDING_VALIDATION| TE
+    GC -->|IMPLEMENTED_PENDING_VALIDATION| TE
+
+    TE -->|PASS| DONE["Complete"]
+    TE -->|FAIL or REGRESSION| FIX["Controlled fix decision"]
+    FIX -->|Approved repair| GC
+    FIX -->|Stop| STOP["Report to user"]
+
+    BA -->|BLOCKED| STOP
+    SA -->|BLOCKED| STOP
+    IM -->|BLOCKED| STOP
+    GC -->|BLOCKED| STOP
+    TE -->|BLOCKED| STOP
+```
+
+Routing principles:
+
+- Do not require every request to pass through every agent.
+- Select one authoritative owner for the current outcome.
+- A small, explicit and contract-preserving change routes directly to `GeneralCoding`.
+- A concrete indicator lifecycle change routes directly to `Indicator_Management`; broad Indicator Engine redesign routes to `SolutionArchitect`.
+- Implementation outcomes requiring verification hand off to `TestEngineer`.
+- `PASS` completes the task. `BLOCKED` stops execution and is reported to the user.
+- `FAIL` or `REGRESSION` does not automatically loop; repair requires an explicit controlled decision within the retry budget.
+
 ### Mandatory Agent Selection
 
 Before executing a task, classify its primary intent and select the authoritative agent below. Do not bypass a mandatory specialist agent when its scope matches.
