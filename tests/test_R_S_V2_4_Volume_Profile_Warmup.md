@@ -20,7 +20,23 @@ Must confirm:
 - rerun can REUSE the completed H5 baseline;
 - no R/S scoring, Source Effectiveness or Promotion Gate logic changes.
 
-## Branch
+## Branch Setup
+
+The runbook itself lives on `main`. The production bug fix is isolated on:
+
+~~~text
+fix/rs-evaluation-volume-profile-warmup
+~~~
+
+Start from repository root and synchronize `main` first:
+
+~~~powershell
+git fetch origin
+git switch main
+git pull origin main
+~~~
+
+Then fetch and switch to the bug-fix branch:
 
 ~~~powershell
 git fetch origin
@@ -28,7 +44,7 @@ git switch fix/rs-evaluation-volume-profile-warmup
 git pull origin fix/rs-evaluation-volume-profile-warmup
 ~~~
 
-Expected branch:
+Expected active branch while executing Sequences 1-9:
 
 ~~~text
 fix/rs-evaluation-volume-profile-warmup
@@ -341,3 +357,24 @@ Action: KEEP
 ~~~
 
 After PASS, PR #11 is eligible to merge. Do not merge before local validation PASS.
+
+## Final Step — Return Local Repository to main
+
+After the local agent has completed the validation and captured the Final Verdict, always return the local working copy to `main`.
+
+Run:
+
+~~~powershell
+git fetch origin
+git switch main
+git pull origin main
+~~~
+
+Final expected state:
+
+~~~text
+current branch = main
+working tree = clean, except pre-existing user diagnostic files if any
+~~~
+
+Do not leave the local repository on the bug-fix branch after validation.
