@@ -4,7 +4,21 @@ applyTo: "src/calcEngine/**/*.py,scripts/*indicator*.py,src/DuckDB/**/*indicator
 
 # Indicator Engine Instructions
 
-This file owns operational rules for onboarding, calculating and validating technical indicators.
+This file defines mandatory operational rules for onboarding, calculating and validating technical indicators.
+
+Canonical knowledge:
+- `docs/architecture/Indicator_Engine.md`
+- `docs/adr/ADR-002-indicator-source-of-truth.md`
+- generated metadata under `docs/reference/`
+
+## Agent routing
+- Concrete indicator onboarding, configuration, activation, repair, backfill, deactivation or deletion → `.github/agents/Indicator_Management.agent.md`.
+- Broad Indicator Engine architecture or cross-module redesign → `.github/agents/SolutionArchitect.agent.md`.
+- Clear supporting code change that preserves the approved Indicator Engine contract and is not an indicator lifecycle operation → `.github/agents/GeneralCoding.agent.md`.
+- Materially unclear indicator business requirement → `.github/agents/BusinessAnalyst.agent.md`.
+- Independent validation → `.github/agents/TestEngineer.agent.md`.
+
+Indicator lifecycle ownership has priority over General Coding. A broad redesign has Solution Architect ownership. General Coding may implement approved supporting changes and must end with `IMPLEMENTED_PENDING_VALIDATION`.
 
 ## Source-of-Truth contracts
 - `dim_indicator`: indicator master definition.
@@ -80,10 +94,10 @@ At minimum verify:
 - public view exposes expected columns/records.
 
 ## Architecture reference
-The current detailed operational reference remains at:
-- `.github/agents/Instructions/Indicator_Engine.md`
-
-The architecture-facing entry point is:
+The canonical architecture-facing entry point is:
 - `docs/architecture/Indicator_Engine.md`
 
-When those documents are consolidated later, `docs/architecture/Indicator_Engine.md` should become the specification owner and this file should remain only operational AI/developer policy.
+The legacy detailed operational reference remains at:
+- `.github/agents/Instructions/Indicator_Engine.md`
+
+Do not add new architecture content to this instruction file. Update the canonical document or an ADR when the approved contract changes.
