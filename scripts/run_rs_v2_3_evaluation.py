@@ -100,7 +100,7 @@ def _ensure_v23_tables(connection) -> None:
         """
         SELECT table_name
         FROM information_schema.tables
-        WHERE table_catalog = 'CherryMon'
+        WHERE lower(table_catalog) = 'cherrymon'
           AND table_schema = 'main'
           AND table_name IN (
               'dim_rs_model_version',
