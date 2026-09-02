@@ -21,6 +21,34 @@ Nếu có conflict giữa instructions, phải nêu conflict và ưu tiên rule 
 
 ## Intent routing
 
+### Mandatory Agent Selection
+
+Before executing a task, classify its primary intent and select the authoritative agent below. Do not bypass a mandatory specialist agent when its scope matches.
+
+| Primary intent | Authoritative agent |
+| --- | --- |
+| Onboard, add, activate, modify, repair, deactivate, or delete a technical indicator, its components, metadata, parameter/config family, or D/W/M configuration | `.github/agents/Indicator_Management.agent.md` |
+| Architecture, system design, solution design, technical design, structural refactor, integration design, data architecture, MCP architecture, or AI/agent architecture | `.github/agents/SolutionArchitect.agent.md` |
+| Test design, test execution, validation, regression, reproduction, cross-check, acceptance, performance, or execution verification | `.github/agents/TestEngineer.agent.md` |
+
+Agent selection defines WHO owns the task. Matching `.github/instructions/*.instructions.md` files still define domain rules, and `docs/**` remains the engineering knowledge Source of Truth.
+
+### Indicator Management
+
+For onboarding a new indicator or modifying any existing indicator lifecycle artifact, MUST follow `.github/agents/Indicator_Management.agent.md` before making metadata, calculation, backfill, activation, deactivation, or deletion changes.
+
+This includes:
+- new indicator or new output component;
+- changes to indicator definition, calculation parameters, warmup, metadata, or library mapping;
+- new or modified parameter/config family;
+- changes to D/W/M configuration coverage;
+- activation, repair, targeted backfill, deactivation, or permanent deletion;
+- validation of `dim_indicator`, `dim_indicator_component`, `dim_indicator_config`, `vw_Indicator_config`, or `vw_Ticker_indicators` as part of an indicator lifecycle change.
+
+`Indicator_Management.agent.md` is the authoritative owner for indicator lifecycle operations. Do not implement these changes directly through the general implementation workflow.
+
+A broad redesign of the Indicator Engine remains owned by `SolutionArchitect.agent.md`; the Solution Architect MUST consult the Indicator Management contract for indicator-domain constraints. A request to design or onboard one concrete indicator remains owned by `Indicator_Management.agent.md`.
+
 ### Design / Architecture
 For architecture, system design, solution design, component design, technical design, data model, workflow design, integration design, architecture refactor, migration design or similar requests:
 
@@ -46,9 +74,30 @@ Testing tasks MUST be finite and bounded:
 ### Implementation
 For implementation requests, use the normal engineering workflow below and matching domain instructions. If implementation follows an approved architecture design, preserve the approved contracts and update docs/ADR when the implementation changes them.
 
+## Agent ownership and handoff
+
+When multiple agents appear relevant, use this ownership priority:
+
+1. Domain-specific agent for a concrete domain lifecycle operation.
+2. Solution Architect for broad architecture or cross-module design.
+3. Test Engineer for independent validation and test-focused work.
+4. General engineering workflow only when no specialist owns the primary intent.
+
+Default handoff:
+- Indicator lifecycle change: `Indicator_Management` → implementation/backfill → `TestEngineer` validation.
+- Architecture change: `SolutionArchitect` → implementation/domain owner → `TestEngineer` validation.
+- Test-only request: `TestEngineer` owns the task and returns a finite verdict.
+
+Examples:
+- "Thêm / onboard indicator RSI" → `Indicator_Management.agent.md`.
+- "Thiết kế indicator RSI mới" → `Indicator_Management.agent.md`; consult architecture rules only when needed.
+- "Thiết kế lại Indicator Engine" → `SolutionArchitect.agent.md`; consult Indicator Management for lifecycle constraints.
+- "Test Indicator Engine sau refactor" → `TestEngineer.agent.md`.
+
 ## Domain routing
 - Database / DuckDB / SQL / transaction / data quality → .github/instructions/database.instructions.md
-- Technical indicators / indicator metadata / refresh engine → .github/instructions/indicators.instructions.md
+- Technical indicator lifecycle / metadata / components / config families / activation / backfill / deactivation / deletion → .github/agents/Indicator_Management.agent.md + .github/instructions/indicators.instructions.md
+- Broad Indicator Engine architecture or cross-module redesign → .github/agents/SolutionArchitect.agent.md + .github/instructions/indicators.instructions.md
 - Chart / visualization / UI chart contracts → .github/instructions/chart.instructions.md
 - Crawlers / ingestion / external data sources → .github/instructions/crawler.instructions.md
 - Tests / validation / execution verification → .github/instructions/testing.instructions.md + .github/agents/TestEngineer.agent.md
@@ -62,13 +111,15 @@ Related legacy/domain knowledge currently referenced by the knowledge map may st
 Before implementation:
 1. Identify affected domain(s).
 2. Read CherryMon.agent.md.
-3. If the request is design/architecture, route through SolutionArchitect.agent.md first.
-4. If the request is test design/execution, route through TestEngineer.agent.md first.
-5. Read matching domain instruction(s).
-6. Read docs/00_HOME.md and related architecture/specification/ADR documents.
-7. Inspect existing implementation and similar patterns.
-8. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
-9. Propose the smallest compatible change.
+3. Select the mandatory specialist using the Intent routing and ownership priority above.
+4. If the request is a concrete indicator lifecycle change, route through Indicator_Management.agent.md first.
+5. If the request is broad design/architecture, route through SolutionArchitect.agent.md first.
+6. If the request is test design/execution, route through TestEngineer.agent.md first.
+7. Read matching domain instruction(s).
+8. Read docs/00_HOME.md and related architecture/specification/ADR documents.
+9. Inspect existing implementation and similar patterns.
+10. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
+11. Propose the smallest compatible change.
 
 During implementation:
 - Reuse existing utilities/services/repositories before creating abstractions.
