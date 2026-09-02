@@ -37,7 +37,7 @@ python scripts/run_rs_v2_4_full_evaluation.py
 Default behavior:
 
 ~~~text
-Universe              eligible raw_stock_eod tickers
+Universe              raw_lstTicker.status='Y' ∩ eligible raw_stock_eod tickers
 Minimum history       500 bars
 Freshness tolerance   5 market trading bars
 Lookback              3 years
@@ -61,7 +61,10 @@ Resolve latest market date
         ↓
 Reserve future outcome bars
         ↓
-Resolve eligible ticker universe
+Resolve active ticker universe
+raw_lstTicker.status='Y'
+        ↓
+Apply history + freshness eligibility
         ↓
 Baseline H5 / H10 / H20 / H40
         ↓
@@ -135,6 +138,24 @@ For SOURCE_FAMILY ablation, the full discovered family membership is excluded, n
 
 `--skip-source-keys` suppresses config-level evaluation for those keys; it does not weaken a SOURCE_FAMILY ablation by removing family members from the exclusion set.
 
+### Active ticker universe
+
+The monthly default universe is:
+
+~~~text
+raw_lstTicker.status = 'Y'
+        ∩
+ticker has raw_stock_eod history
+        ∩
+minimum history bars satisfied
+        ∩
+freshness gate satisfied
+~~~
+
+Inactive tickers remain in historical EOD storage but are excluded from new monthly full-evaluation runs.
+
+Explicit `--tickers` overrides are also validated against the same active/history/freshness eligibility set.
+
 ## Plan Before Running
 
 To resolve the current evaluation window and universe without launching historical child jobs:
@@ -151,6 +172,7 @@ start
 evaluation_end
 latest_data_date
 future_outcome_bars_reserved
+universe_filter = raw_lstTicker.status='Y'
 ticker_count
 horizons
 scopes
