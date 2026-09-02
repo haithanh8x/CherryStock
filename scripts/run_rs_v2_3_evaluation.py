@@ -100,9 +100,15 @@ def _ensure_v23_tables(connection) -> None:
         """
         SELECT table_name
         FROM information_schema.tables
+<<<<<<< HEAD
         WHERE lower(table_catalog) = 'cherrymon'
           AND table_schema = 'main'
           AND table_name IN (
+=======
+        WHERE lower(table_catalog) = lower('CherryMon')
+          AND lower(table_schema) = lower('main')
+          AND lower(table_name) IN (
+>>>>>>> 1b4c3ad (auto-sync: 2026-09-02 13:31:44)
               'dim_rs_model_version',
               'cal_rs_evaluation_run',
               'cal_rs_evaluation_event',
@@ -111,8 +117,8 @@ def _ensure_v23_tables(connection) -> None:
           );
         """
     ).fetchall()
-    found = {row[0] for row in rows}
-    missing = required - found
+    found = {str(row[0]).lower() for row in rows}
+    missing = {name.lower() for name in required} - found
     if missing:
         raise RuntimeError(
             "R/S V2.3 evaluation tables missing: "
