@@ -111,7 +111,7 @@ def _record(
         attribution_mode="LEVEL_LINEAGE",
         marginal_metric="LEVEL_QUALITY",
         lineage_event_count=20,
-        validation_event_count=10,
+        validation_event_count=20,
         test_event_count=10,
         touch_rate=0.7,
         hold_rate_given_touch=0.8,
