@@ -1050,6 +1050,7 @@ def main() -> None:
                     "evaluation_end": window.evaluation_end.isoformat(),
                     "latest_data_date": window.latest_data_date.isoformat(),
                     "future_outcome_bars_reserved": max(horizons),
+                    "universe_filter": "raw_lstTicker.status='Y'",
                     "ticker_count": len(tickers),
                     "tickers_preview": list(tickers[:20]),
                     "expected_snapshot_count": expected_snapshot_count,
