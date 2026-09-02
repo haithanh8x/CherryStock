@@ -149,6 +149,35 @@ def test_support_break_and_retest_event() -> None:
     assert event.held is False
 
 
+
+def test_retest_uses_dedicated_tolerance() -> None:
+    future = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                ["2026-01-02", "2026-01-05", "2026-01-06"]
+            ),
+            "High": [100.5, 99.0, 100.5],
+            "Low": [99.5, 97.0, 100.4],
+            "Close": [100.0, 98.0, 100.45],
+        }
+    )
+    event = evaluate_ranked_level(
+        model_version="M1",
+        ticker="MWG",
+        as_of_date=AS_OF,
+        level=_level(100.0),
+        future_history=future,
+        config=EvaluationConfig(
+            horizon_bars=3,
+            touch_tolerance_pct=0.01,
+            break_tolerance_pct=0.005,
+            retest_tolerance_pct=0.001,
+        ),
+    )
+
+    assert event.broken is True
+    assert event.retested is False
+
 def test_aggregate_metrics_is_deterministic() -> None:
     future = pd.DataFrame(
         {
