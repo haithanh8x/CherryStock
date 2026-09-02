@@ -154,6 +154,37 @@ FIX ONCE
 STOP
 ~~~
 
+## Validation Depth Routing
+
+Use the canonical validation-depth policy in:
+
+~~~text
+.github/instructions/testing.instructions.md
+→ Validation Depth — Minimum Sufficient Evidence
+~~~
+
+Before designing a runbook, classify the task as exactly one of:
+
+~~~text
+BUG FAST VALIDATION
+INTEGRATION VALIDATION
+FULL RELEASE / MONTHLY VALIDATION
+~~~
+
+A narrow bug defaults to BUG FAST VALIDATION.
+
+Do not promote a bug test into full-universe, multi-horizon, UI, ablation, effectiveness or monthly execution merely to increase confidence. Escalate only when the canonical testing policy requires broader evidence.
+
+For bug runbooks, prefer the minimum sufficient pattern:
+
+~~~text
+focused test
++ nearest regression/golden boundary
++ minimal real-data reproduction when needed
++ diff scope
++ finite verdict
+~~~
+
 ## Test Design Workflow
 
 ### Phase 1 — Define
