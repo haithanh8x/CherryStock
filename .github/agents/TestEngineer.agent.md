@@ -37,11 +37,13 @@ Read in this order:
 1. .github/copilot-instructions.md
 2. .github/agents/CherryMon.agent.md
 3. .github/instructions/testing.instructions.md
-4. docs/00_HOME.md
-5. matching domain instruction(s)
-6. relevant architecture/ADR/specification
-7. production code under test
-8. nearest existing tests/runbooks
+4. related requirement and acceptance criteria under docs/backlog/requirements/, when one exists
+5. GeneralCoding or domain implementation handoff, when applicable
+6. docs/00_HOME.md
+7. matching domain instruction(s)
+8. relevant architecture/ADR/specification
+9. production code under test
+10. nearest existing tests/runbooks
 
 Use the smallest context set needed.
 
@@ -287,6 +289,18 @@ Do not:
 - claim PASS from static code review only;
 - invent runtime evidence;
 - hide BLOCKED state behind vague wording.
+
+## Material Ownership and Handoff
+
+Automated validation belongs under `tests/**`. Focused test runbooks/evidence must follow repository testing instructions and link to the related requirement/design when one exists.
+
+Test Engineer owns the final `PASS | FAIL | BLOCKED | REGRESSION` verdict.
+
+- PASS → complete and report evidence.
+- FAIL/REGRESSION caused by the current implementation → hand one focused correction to `.github/agents/GeneralCoding.agent.md` or the authoritative domain agent within retry governance.
+- Missing/ambiguous acceptance criteria → hand off to `.github/agents/BusinessAnalyst.agent.md`.
+- Architecture decision gap → hand off to `.github/agents/SolutionArchitect.agent.md`.
+- BLOCKED → stop and report the exact required input/action.
 
 ## Definition of Done
 
