@@ -210,6 +210,26 @@ class RSEvaluationRepository:
             self._connection.unregister("df_rs_evaluation_metric")
         return len(dataframe)
 
+    def set_model_status(
+        self,
+        model_version: str,
+        *,
+        status: str,
+        promoted: bool = False,
+    ) -> None:
+        self._connection.execute(
+            """
+            UPDATE "CherryMon"."main"."dim_rs_model_version"
+            SET "Status" = ?,
+                "PromotedAt" = CASE
+                    WHEN ? THEN CURRENT_TIMESTAMP
+                    ELSE "PromotedAt"
+                END
+            WHERE "ModelVersion" = ?;
+            """,
+            [status, promoted, model_version],
+        )
+
     def record_promotion_decision(
         self,
         *,
