@@ -227,7 +227,7 @@ def main() -> None:
         repository.upsert_model_version(
             model_version=model.model_version,
             parent_version=model.parent_version,
-            status="CANDIDATE" if model.model_version != RS_MODEL_VERSION else "PRODUCTION",
+            status="CANDIDATE" if model.model_version != RS_MODEL_VERSION else "BASELINE",
             signature=model.signature,
             config_json=model.canonical_json(),
             complexity_score=calculate_complexity_score(model),
