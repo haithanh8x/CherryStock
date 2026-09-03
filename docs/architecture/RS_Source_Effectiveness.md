@@ -1,4 +1,4 @@
-# R/S V2.4 — Source Effectiveness & Indicator Promotion Architecture
+# R/S V2.4 — Kiến trúc Source Effectiveness & Indicator Promotion
 
 - **Requirement:** REQ-0022
 - **Status:** APPROVED_FOR_IMPLEMENTATION
@@ -8,26 +8,26 @@
 
 ---
 
-## 1. Context
+## 1. Bối cảnh
 
-R/S V2.3 already provides historical events, chronological TRAIN/VALIDATION/TEST, regime metrics, cross-ticker evaluation, ablation primitives, model versioning, model Promotion Gate and a golden benchmark.
+R/S V2.3 đã cung cấp historical events, chronological TRAIN/VALIDATION/TEST, regime metrics, cross-ticker evaluation, ablation primitives, model versioning, model Promotion Gate và golden benchmark.
 
-V2.4 answers a narrower question:
+V2.4 tập trung trả lời câu hỏi cụ thể hơn:
 
-> For a given ticker and source/config, does that source add out-of-sample predictive value after controlling for the current model, and is that evidence strong enough to approve future R/S integration?
+> Với một ticker và một source/config cụ thể, source đó có tạo thêm giá trị dự báo Out-of-Sample sau khi đã kiểm soát theo current model hay không, và mức bằng chứng đó có đủ mạnh để phê duyệt cho việc tích hợp R/S trong tương lai hay không?
 
-Runtime Strength and Source Effectiveness remain separate concepts.
+`Runtime Strength` và `Source Effectiveness` là hai khái niệm khác nhau.
 
 ```text
 Runtime Strength
-    = confidence in a current R/S zone
+    = mức độ tin cậy/chất lượng của một vùng R/S hiện tại
 
 Source Effectiveness
-    = historical evidence that one source/config adds predictive value
-      for a ticker/horizon after controlling for the current model
+    = bằng chứng lịch sử cho thấy một source/config có tạo thêm predictive value
+      cho một ticker/horizon sau khi đã kiểm soát theo current model
 ```
 
-## 2. Proposed Architecture
+## 2. Kiến trúc tổng thể
 
 ```text
 R/S Runtime Providers
@@ -64,17 +64,17 @@ Recommendation   Source Promotion Gate
 vw_RS_Source_Effectiveness
 ```
 
-V2.4 never automatically mutates runtime registration, runtime weights or Indicator Engine metadata.
+V2.4 tuyệt đối không tự động thay đổi runtime registration, runtime weights hay Indicator Engine metadata.
 
 ## 3. Stable Source Identity
 
-New pure module:
+Module thuần mới:
 
 ```text
 src/calcEngine/rsSourceIdentity.py
 ```
 
-Examples:
+Ví dụ:
 
 ```text
 MA50_D                 → MA50_D
@@ -89,44 +89,44 @@ VP_LVN_01              → VP_LVN
 VP_HVN_01_CONF         → VP_HVN
 ```
 
-Unknown non-empty source codes normalize to uppercase exact codes. Blank source codes fail explicitly.
+Các source code không rỗng nhưng chưa biết trước sẽ được normalize thành uppercase exact code. Blank source code phải fail rõ ràng.
 
 ## 4. Research Source Filters
 
-`build_level_ladder()` gains backward-compatible optional research filters:
+`build_level_ladder()` bổ sung các research filters tùy chọn nhưng vẫn backward-compatible:
 
 ```python
 included_source_keys=None
 excluded_source_keys=None
 ```
 
-Rules:
+Quy tắc:
 
-- defaults preserve V2.3 runtime behavior;
-- include/exclude use canonical source identity;
-- the same filtering applies to LEVEL candidates, CONTEXT contexts and CONFIRMATION contexts;
-- include and exclude sets may not overlap;
-- filters are research/evaluation controls, not a production source switch.
+- mặc định phải giữ nguyên behavior của V2.3 runtime;
+- include/exclude sử dụng canonical source identity;
+- cùng cơ chế filtering áp dụng cho LEVEL candidates, CONTEXT contexts và CONFIRMATION contexts;
+- include set và exclude set không được overlap;
+- đây là research/evaluation controls, không phải production source switch.
 
-Examples:
+Ví dụ:
 
 ```python
-# isolate MA50_D inside MA provider
+# cô lập MA50_D bên trong MA provider
 enabled_sources=("MA",)
 included_source_keys=("MA50_D",)
 
-# full model minus MA50_D
+# full model nhưng bỏ MA50_D
 excluded_source_keys=("MA50_D",)
 
-# remove only RSI14_D confirmation
+# chỉ bỏ RSI14_D confirmation
 excluded_source_keys=("RSI14_D",)
 ```
 
-## 5. V2.3 Evaluation Reproducibility Extension
+## 5. Mở rộng khả năng tái lập V2.3 Evaluation
 
-`RSModelSpec` and `cal_rs_evaluation_run` record include/exclude source keys so source-config research produces a distinct deterministic model signature.
+`RSModelSpec` và `cal_rs_evaluation_run` lưu include/exclude source keys để source-config research tạo ra một deterministic model signature riêng biệt.
 
-Additive columns:
+Các column được bổ sung:
 
 ```text
 cal_rs_evaluation_run
@@ -136,13 +136,13 @@ cal_rs_evaluation_run
 
 ## 6. Source Effectiveness Engine
 
-New module:
+Module mới:
 
 ```text
 src/calcEngine/rsSourceEffectiveness.py
 ```
 
-Primary contracts:
+Các contract chính:
 
 ```text
 SourceEffectivenessPolicy
@@ -151,14 +151,14 @@ SourcePromotionPolicy
 SourcePromotionDecision
 ```
 
-Supported scopes:
+Các scope được hỗ trợ:
 
 ```text
 SOURCE_CONFIG
 SOURCE_FAMILY
 ```
 
-Supported attribution modes:
+Các attribution mode được hỗ trợ:
 
 ```text
 LEVEL_LINEAGE
@@ -166,11 +166,55 @@ MARGINAL_ONLY
 FAMILY_ABLATION
 ```
 
-## 7. LEVEL Effectiveness Formula
+### SOURCE_CONFIG và SOURCE_FAMILY khác nhau như thế nào?
 
-LEVEL sources use direct historical event lineage plus baseline-vs-ablation marginal lift.
+`SOURCE_CONFIG` dùng để đánh giá một source/config cụ thể.
 
-Default positive components:
+Ví dụ:
+
+```text
+MA20_D
+MA50_D
+MA100_D
+BB20_2_D:LOWER
+RSI14_D
+VP_POC
+```
+
+Câu hỏi cần trả lời:
+
+> Source cụ thể này có tạo ra giá trị lịch sử cho R/S hay không?
+
+`SOURCE_FAMILY` dùng để đánh giá cả một nhóm source có cùng vai trò/ngữ nghĩa.
+
+Ví dụ:
+
+```text
+TREND_AVERAGE
+VOLATILITY_BAND
+MARKET_STRUCTURE
+VOLUME_STRUCTURE
+```
+
+Câu hỏi cần trả lời:
+
+> Nếu bỏ toàn bộ family này khỏi R/S model thì model tốt lên hay xấu đi?
+
+Một family có thể bao gồm nhiều source/config. Vì vậy:
+
+```text
+SOURCE_CONFIG
+    = đánh giá từng source riêng lẻ
+
+SOURCE_FAMILY
+    = đánh giá cả nhóm source cùng lúc
+```
+
+## 7. Công thức LEVEL Effectiveness
+
+Các source có `SourceRole = LEVEL` sử dụng direct historical event lineage kết hợp với marginal lift giữa baseline và ablation.
+
+Các positive component mặc định:
 
 ```text
 Hold Rate                25%
@@ -184,21 +228,21 @@ Marginal Contribution    10%
                          100%
 ```
 
-Penalties:
+Các penalty:
 
 ```text
 Break Penalty
 Complexity Penalty
 ```
 
-Directional edge normalization:
+Chuẩn hóa Directional Edge:
 
 ```text
 DirectionalEdgeScore
 = clamp(0.5 + DirectionalEdgePct / 20, 0, 1)
 ```
 
-Marginal contribution normalization:
+Chuẩn hóa Marginal Contribution:
 
 ```text
 MeanOOSLift = (ValidationLift + TestLift) / 2
@@ -207,23 +251,26 @@ MarginalScore = clamp(0.5 + MeanOOSLift / 0.05, 0, 1)
 
 ## 8. CONTEXT / CONFIRMATION Effectiveness
 
-CONTEXT and CONFIRMATION are not price levels and must not receive fabricated touch/hold/retest metrics.
+`CONTEXT` và `CONFIRMATION` không phải price level, vì vậy không được tạo giả các metric Touch/Hold/Retest.
 
-Marginal metric is role-aware:
+Marginal metric phụ thuộc vào SourceRole:
 
 ```text
 CONTEXT
     → LEVEL_QUALITY lift
-      because context can alter clustering / neutral-zone geometry
+      vì context có thể thay đổi clustering / neutral-zone geometry
 
 CONFIRMATION
     → STRENGTH_BRIER lift
-      because confirmation may change Strength without changing S1/R1 geometry
+      vì confirmation có thể thay đổi Strength
+      mà không thay đổi geometry của S1/R1
 ```
 
-`STRENGTH_BRIER` uses touched events and evaluates whether `Strength / 100` predicts the probability that the touched level holds. This prevents a confirmation-only indicator such as RSI from being incorrectly judged as zero-value merely because level prices/ranks do not move.
+`STRENGTH_BRIER` sử dụng các touched events và đánh giá xem `Strength / 100` dự báo khả năng touched level giữ được tốt đến đâu.
 
-Role-aware marginal-only score:
+Điều này ngăn một confirmation-only indicator như RSI bị đánh giá sai là không có giá trị chỉ vì level price/rank không thay đổi.
+
+Công thức role-aware marginal-only score:
 
 ```text
 Validation Lift Score    35%
@@ -234,39 +281,43 @@ Regime Stability         15%
                          100%
 ```
 
-Recommendations remain role preserving:
+Recommendation vẫn phải giữ đúng SourceRole:
 
 ```text
 CONTEXT       → CONTEXT_ONLY / RESEARCH / DROP
 CONFIRMATION  → CONFIRM_ONLY / RESEARCH / DROP
 ```
 
-## 9. Temporal and Regime Stability
+## 9. Temporal Stability và Regime Stability
 
-LEVEL temporal stability:
-
-```text
-1 - clamp(abs(ValidationQuality - TestQuality) / 0.10, 0, 1)
-```
-
-Marginal-only temporal stability:
+Với `LEVEL`:
 
 ```text
-1 - clamp(abs(ValidationLift - TestLift) / 0.05, 0, 1)
+TemporalStability
+= 1 - clamp(abs(ValidationQuality - TestQuality) / 0.10, 0, 1)
 ```
 
-Regime stability:
+Với marginal-only:
+
+```text
+TemporalStability
+= 1 - clamp(abs(ValidationLift - TestLift) / 0.05, 0, 1)
+```
+
+Regime Stability:
 
 ```text
 RegimeRange = max(RegimeQualityOrLift) - min(RegimeQualityOrLift)
-RegimeStability = 1 - clamp(RegimeRange / 0.20, 0, 1)
+
+RegimeStability
+= 1 - clamp(RegimeRange / 0.20, 0, 1)
 ```
 
-If fewer than two usable regimes exist, RegimeStability is NULL and the score re-normalizes over available evidence. Promotion breadth checks remain separate.
+Nếu có ít hơn hai usable regimes, `RegimeStability = NULL` và score được re-normalize trên phần evidence có sẵn. Promotion breadth checks vẫn được đánh giá riêng.
 
 ## 10. Recommendation Contract
 
-LEVEL defaults:
+Mặc định cho `LEVEL`:
 
 ```text
 CORE
@@ -280,17 +331,17 @@ SUPPORTING
   test lift >= 0
 
 RESEARCH
-  score >= 55 or insufficient breadth
+  score >= 55 hoặc insufficient breadth/sample
 
 DROP
-  score < 55 or materially negative TEST lift
+  score < 55 hoặc materially negative TEST lift
 ```
 
-CONFIRMATION and CONTEXT use role-specific CONFIRM_ONLY / CONTEXT_ONLY recommendations instead of being converted into LEVEL sources.
+`CONFIRMATION` và `CONTEXT` sử dụng recommendation đúng role là `CONFIRM_ONLY` / `CONTEXT_ONLY`, thay vì bị chuyển thành LEVEL source.
 
 ## 11. Source Promotion Gate
 
-Promotion is cross-ticker governance. It is not the same as a per-ticker recommendation.
+Promotion là governance ở cấp cross-ticker. Nó không giống với Recommendation của một row per-ticker.
 
 Default policy:
 
@@ -306,7 +357,7 @@ max_complexity_delta        = 0.15
 max_negative_test_lift      = -0.01
 ```
 
-Outcomes:
+Các outcome:
 
 ```text
 APPROVED_FOR_INTEGRATION
@@ -315,13 +366,23 @@ RESEARCH
 REJECTED
 ```
 
-Even with an explicit apply action, V2.4 writes governance/audit metadata only. It MUST NOT alter indicator dimensions/configs, provider registry, runtime source set, Strength weights or production deployment.
+Ngay cả khi có explicit apply action, V2.4 chỉ ghi governance/audit metadata.
 
-Concrete indicator lifecycle changes remain owned by Indicator Management.
+V2.4 không được tự động thay đổi:
+
+```text
+Indicator dimensions/configs
+provider registry
+runtime source set
+Strength weights
+production deployment
+```
+
+Các thay đổi concrete indicator lifecycle vẫn thuộc ownership của Indicator Management.
 
 ## 12. Persistence Model
 
-V2.4 adds:
+V2.4 bổ sung:
 
 ```text
 cal_rs_source_effectiveness_run
@@ -330,81 +391,83 @@ sys_rs_source_promotion_audit
 vw_RS_Source_Effectiveness
 ```
 
-`cal_rs_source_effectiveness_run` grain:
+Grain của `cal_rs_source_effectiveness_run`:
 
 ```text
 EffectivenessRunId
 ```
 
-`cal_rs_source_effectiveness` grain:
+Grain của `cal_rs_source_effectiveness`:
 
 ```text
 EffectivenessRunId / Ticker / ScopeType / SourceKey / HorizonBars
 ```
 
-Result fields include attribution mode, OOS samples, LEVEL metrics when applicable, validation/test quality, marginal lifts, temporal/regime stability, complexity delta, score, recommendation and evidence JSON.
+Các result field bao gồm attribution mode, OOS samples, LEVEL metrics khi áp dụng được, validation/test quality, marginal lifts, temporal/regime stability, complexity delta, score, recommendation và evidence JSON.
 
-`sys_rs_source_promotion_audit` stores decision evidence/policy/reasons but is never a hot runtime configuration switch.
+`sys_rs_source_promotion_audit` lưu decision evidence/policy/reasons nhưng không bao giờ là hot runtime configuration switch.
 
 ## 13. Public Read SSOT
 
-Public latest-effectiveness contract:
+Public contract để đọc latest Source Effectiveness:
 
 ```text
 vw_RS_Source_Effectiveness
 ```
 
-It exposes the latest COMPLETED effectiveness row per:
+View chỉ expose row `COMPLETED` mới nhất theo grain:
 
 ```text
 Ticker / ScopeType / SourceKey / HorizonBars
 ```
 
-Consumers should use the view rather than internal cal_* tables.
+Consumer nên đọc view này thay vì đọc trực tiếp các internal `cal_*` tables.
 
 ## 14. Multi-Horizon Strategy
 
-Canonical research horizons:
+Canonical research horizons hiện tại:
 
 ```text
 5, 10, 20, 40 trading bars
 ```
 
-Each horizon keeps separate baseline/ablation/effectiveness evidence. V2.4 does not average horizons into a runtime weight.
+Mỗi horizon giữ evidence baseline/ablation/effectiveness riêng.
 
-## 14.1 How Historical Evaluation Actually Works
+V2.4 không tự động average các horizon thành runtime weight.
 
-Historical evaluation is not a daily live prediction loop. It is a point-in-time backtest over selected historical snapshots.
+## 14.1 Historical Evaluation thực sự hoạt động như thế nào?
 
-The canonical flow is:
+Historical evaluation không phải daily live prediction loop. Đây là point-in-time backtest trên các historical snapshot được chọn.
+
+Luồng chuẩn:
 
 ```text
 historical trading dates
         ↓
-select snapshot dates using snapshot_step
+chọn snapshot dates theo snapshot_step
         ↓
-build R/S ladder using information available at that snapshot only
+build R/S ladder chỉ bằng dữ liệu có tại snapshot đó
         ↓
-observe future market bars over H5 / H10 / H20 / H40
+quan sát future market bars theo H5 / H10 / H20 / H40
         ↓
 label historical outcomes
         ↓
-aggregate thousands of events
+aggregate hàng nghìn events
         ↓
-derive historical rates / quality / source effectiveness
+tính historical rates / quality / source effectiveness
 ```
 
 ### Snapshot cadence
 
-With:
+Với:
 
 ```text
 snapshot_step = 5
 ```
 
-the evaluator does not rebuild the ladder on every trading date.
+evaluator không rebuild ladder ở mọi trading date.
 
-Conceptually:
+Ví dụ khái niệm:
 
 ```text
 D1
@@ -425,33 +488,37 @@ D16
 ...
 ```
 
-Warm-up filtering is applied after this sampling step. If a sampled date does not have enough point-in-time history for an enabled provider, that sampled date is skipped; the cadence is not rebased.
+Warm-up filtering được áp dụng sau bước sampling.
 
-### Meaning of H5 / H10 / H20 / H40
+Nếu một sampled date chưa có đủ point-in-time history cho một enabled provider, sampled date đó bị skip; cadence không bị re-base.
+
+### Ý nghĩa H5 / H10 / H20 / H40
 
 ```text
-H5  = evaluate the next 5 market trading bars
-H10 = evaluate the next 10 market trading bars
-H20 = evaluate the next 20 market trading bars
-H40 = evaluate the next 40 market trading bars
+H5  = đánh giá 5 market trading bars tiếp theo
+H10 = đánh giá 10 market trading bars tiếp theo
+H20 = đánh giá 20 market trading bars tiếp theo
+H40 = đánh giá 40 market trading bars tiếp theo
 ```
 
-These are trading bars, not calendar days.
+Đây là trading bars, không phải calendar days.
 
-Approximate interpretation:
+Có thể hiểu gần đúng:
 
 ```text
 H5  ≈ very short term
 H10 ≈ short term
-H20 ≈ roughly one trading month
-H40 ≈ roughly two trading months
+H20 ≈ khoảng 1 tháng giao dịch
+H40 ≈ khoảng 2 tháng giao dịch
 ```
 
-The horizons are not four different R/S models. They are four future observation windows applied to the same point-in-time R/S signal.
+Các horizon không phải bốn model R/S khác nhau.
 
-### Example
+Đây là bốn future observation window áp dụng cho cùng một point-in-time R/S signal.
 
-Assume this historical snapshot:
+### Ví dụ
+
+Giả sử historical snapshot:
 
 ```text
 Ticker       MWG
@@ -461,23 +528,23 @@ S1           55
 R1           62
 ```
 
-The ladder is calculated using only data available on or before 2026-05-04.
+R/S Ladder chỉ được tính bằng dữ liệu có sẵn đến ngày 2026-05-04.
 
-For H20, the evaluator then observes the next 20 trading bars and asks questions such as:
+Với H20, evaluator quan sát 20 trading bars tiếp theo và trả lời các câu hỏi:
 
 ```text
-Did price touch S1 or R1?
-If touched, did the level hold?
-Did price break through the level?
-If broken, was there a retest?
-After the interaction, did price move in the expected direction?
+Giá có Touch S1/R1 không?
+Nếu Touch thì level có Hold không?
+Giá có Break qua level không?
+Nếu Break thì có Retest không?
+Sau interaction, giá có đi theo hướng kỳ vọng không?
 ```
 
-The same historical snapshot can be evaluated independently under H5, H10, H20 and H40.
+Cùng một historical snapshot có thể được đánh giá độc lập ở H5, H10, H20 và H40.
 
 ### Event labels
 
-At event level, evaluation records concepts such as:
+Ở event level, evaluation lưu các concept:
 
 ```text
 Ticker
@@ -496,7 +563,7 @@ Regime
 Temporal split
 ```
 
-For example:
+Ví dụ:
 
 ```text
 MWG / 2026-05-04 / R1 / H20
@@ -506,7 +573,7 @@ Broken  = FALSE
 Retested= FALSE
 ```
 
-Another event may be:
+Một event khác:
 
 ```text
 MWG / 2026-05-19 / S1 / H20
@@ -518,7 +585,7 @@ Retested= TRUE
 
 ### Historical rates
 
-After many historical events have been labeled, the evaluator aggregates them into empirical rates such as:
+Sau khi có nhiều historical events, evaluator aggregate thành các empirical rates:
 
 ```text
 Touch Rate
@@ -530,7 +597,7 @@ LEVEL_QUALITY
 STRENGTH_BRIER
 ```
 
-Illustrative example:
+Ví dụ minh họa:
 
 ```text
 historical resistance events = 1,000
@@ -541,24 +608,24 @@ Break Rate given touch      = 32%
 Retest Rate given break     = 47%
 ```
 
-This can be interpreted as historical empirical evidence, for example:
+Có thể diễn giải đây là historical empirical evidence:
 
 ```text
 P_historical(Break | Touch, horizon=H20) ≈ 32%
 ```
 
-### Historical rate is not the same as a current predictive probability
+### Historical rate không phải current predictive probability
 
-V2.4 does not currently claim:
+V2.4 hiện không được phép kết luận:
 
 ```text
 MWG current R1 = 62
 Probability of breaking R1 within H20 = 27%
 ```
 
-unless a dedicated calibrated predictive layer is added.
+trừ khi có thêm một dedicated calibrated predictive layer.
 
-Current V2.4 outputs are primarily:
+Current V2.4 output chủ yếu là:
 
 ```text
 historical event outcomes
@@ -569,7 +636,7 @@ source effectiveness
 promotion evidence
 ```
 
-Therefore:
+Vì vậy:
 
 ```text
 historical empirical rate
@@ -577,7 +644,7 @@ historical empirical rate
 calibrated per-level forecast probability
 ```
 
-A future probability-calibration layer could use the historical event dataset to produce current-level forecasts such as:
+Một future probability-calibration layer có thể sử dụng historical event dataset để tạo:
 
 ```text
 P(Break R1 within H20)
@@ -585,13 +652,13 @@ P(Hold S1 within H10)
 P(Retest after break within H20)
 ```
 
-but that is outside the current V2.4 contract.
+nhưng đây chưa nằm trong current V2.4 contract.
 
-### Why the largest horizon reserves future bars
+### Vì sao horizon lớn nhất phải reserve future bars?
 
-To label an H40 snapshot correctly, the evaluator needs 40 later trading bars.
+Để label đúng một H40 snapshot, evaluator cần 40 later trading bars.
 
-Therefore:
+Vì vậy:
 
 ```text
 latest raw data date
@@ -599,9 +666,9 @@ latest raw data date
 latest safe evaluation snapshot date
 ```
 
-The monthly orchestrator chooses an evaluation end that leaves enough future bars for the largest requested horizon.
+Monthly orchestrator chọn evaluation end sao cho vẫn còn đủ future bars cho horizon lớn nhất.
 
-Example:
+Ví dụ:
 
 ```text
 evaluation snapshot date
@@ -613,74 +680,77 @@ latest observed market date
 2026-08-28
 ```
 
-This avoids immature/censored outcome labels and look-ahead leakage.
+Mục tiêu là tránh:
 
+```text
+immature outcomes
+censored labels
+look-ahead leakage
+```
 
-## 14.2 Decision Playbook — Six Evidence-Driven Decision Scenarios
+## 14.2 Decision Playbook — Sáu kịch bản ra quyết định dựa trên dữ liệu
 
-The public decision surface is:
+Public decision surface:
 
 ```text
 "CherryMon"."main"."vw_RS_Source_Effectiveness"
 ```
 
-The view answers questions about **historical source effectiveness** at this grain:
+View trả lời câu hỏi về **historical source effectiveness** theo grain:
 
 ```text
 Ticker / ScopeType / SourceKey / HorizonBars
 ```
 
-Decision rules below use the current V2.4 default policy unless explicitly marked as a future/research use case.
+Các decision rule dưới đây sử dụng current V2.4 default policy, trừ nơi được ghi rõ là future/research use case.
 
-Important interpretation boundary:
+Boundary cần nhớ:
 
 ```text
 Source Effectiveness
-    = evidence about whether a source/config/family historically adds value
+    = bằng chứng một source/config/family có historically add value hay không
 
 Runtime Strength
-    = current quality/confidence score of an R/S level
+    = chất lượng/độ tin cậy hiện tại của một R/S level
 
 Horizon Probability
-    = calibrated probability for a current R/S level over a future horizon
-      (not implemented in V2.4)
+    = calibrated probability của một current R/S level trong future horizon
+      (chưa được implement trong V2.4)
 ```
 
-Therefore this view can directly support source-governance decisions, but it must not be interpreted as a direct probability forecast for the current S1/R1.
+Do đó view này hỗ trợ trực tiếp source-governance decision, nhưng không được hiểu là direct probability forecast cho S1/R1 hiện tại.
 
-### Common evidence fields
+### Các evidence field dùng chung
 
-The following fields are used repeatedly across the six decision scenarios:
-
-| Field | Decision meaning |
+| Field | Ý nghĩa khi ra quyết định |
 |---|---|
-| `Ticker` | which symbol the evidence applies to |
-| `ScopeType` | whether the evidence is for one config/source or a whole family |
+| `Ticker` | ticker mà evidence áp dụng |
+| `ScopeType` | evidence cho một source/config hay cả family |
 | `SourceKey` | canonical source/config identity |
-| `SourceFamily` | broader source family |
+| `SourceFamily` | source family rộng hơn |
 | `SourceRole` | LEVEL / CONTEXT / CONFIRMATION |
-| `HorizonBars` | future evaluation window in trading bars |
-| `AttributionMode` | how contribution was attributed |
-| `MarginalMetric` | LEVEL_QUALITY or STRENGTH_BRIER |
-| `LineageEventCount` | historical lineage coverage for LEVEL sources |
-| `ValidationEventCount` | validation OOS sample size |
-| `TestEventCount` | final test OOS sample size |
-| `TouchRate` | historical fraction of LEVEL events touched within the horizon |
-| `HoldRateGivenTouch` | historical hold rate conditional on touch |
-| `BreakRateGivenTouch` | historical break rate conditional on touch |
-| `RetestRateGivenBreak` | historical retest rate conditional on break |
-| `DirectionalEdgePct` | average favorable move minus average adverse move |
-| `ValidationQuality` | role-aware baseline quality on VALIDATION |
-| `TestQuality` | role-aware baseline quality on TEST |
-| `ValidationMarginalLift` | baseline minus ablation quality on VALIDATION |
-| `TestMarginalLift` | baseline minus ablation quality on TEST |
-| `TemporalStability` | stability between VALIDATION and TEST |
-| `RegimeStability` | stability across market regimes |
-| `ComplexityDelta` | additional model complexity attributable to the source |
-| `EffectivenessScore` | composite 0-100 source-effectiveness score |
+| `HorizonBars` | future evaluation window tính theo trading bars |
+| `AttributionMode` | phương pháp quy attribution/contribution |
+| `MarginalMetric` | LEVEL_QUALITY hoặc STRENGTH_BRIER |
+| `LineageEventCount` | historical lineage coverage của LEVEL source |
+| `ValidationEventCount` | Validation OOS sample size |
+| `TestEventCount` | final Test OOS sample size |
+| `TouchRate` | tỷ lệ LEVEL historical events được touch trong horizon |
+| `HoldRateGivenTouch` | tỷ lệ hold conditional on touch |
+| `BreakRateGivenTouch` | tỷ lệ break conditional on touch |
+| `RetestRateGivenBreak` | tỷ lệ retest conditional on break |
+| `DirectionalEdgePct` | average favorable move trừ average adverse move |
+| `ValidationQuality` | role-aware baseline quality trên VALIDATION |
+| `TestQuality` | role-aware baseline quality trên TEST |
+| `ValidationMarginalLift` | baseline quality trừ ablation quality trên VALIDATION |
+| `TestMarginalLift` | baseline quality trừ ablation quality trên TEST |
+| `TemporalStability` | mức ổn định giữa VALIDATION và TEST |
+| `RegimeStability` | mức ổn định giữa các market regime |
+| `ComplexityDelta` | model complexity tăng thêm do source |
+| `EffectivenessScore` | composite source-effectiveness score 0-100 |
 | `Recommendation` | per-ticker/source/horizon decision label |
-| `EvidenceJson` | regime evidence and policy used for the score |
-| `CompletedAt` | timestamp of the latest completed evidence row |
+| `EvidenceJson` | regime evidence và policy dùng để tính score |
+| `CompletedAt` | timestamp của latest completed evidence row |
 
 Default sample thresholds:
 
@@ -689,7 +759,7 @@ ValidationEventCount >= 20
 TestEventCount       >= 10
 ```
 
-Default positive evidence thresholds used by source promotion:
+Default positive evidence thresholds trong Source Promotion:
 
 ```text
 EffectivenessScore      >= 65
@@ -700,21 +770,21 @@ RegimeStability         >= 0.60
 ComplexityDelta         <= 0.15
 ```
 
-A material negative TEST result is:
+Material negative TEST result:
 
 ```text
 TestMarginalLift < -0.01
 ```
 
-and should be treated as strong negative evidence.
+nên được coi là strong negative evidence.
 
 ---
 
-### Scenario 1 — Decide whether to keep, research or remove one indicator/source config
+### Scenario 1 — Quyết định giữ, tiếp tục research hay loại một indicator/source config
 
-**Business question**
+**Câu hỏi nghiệp vụ**
 
-> Does one concrete source/config such as MA50_D, BB20_2_D:LOWER, RSI14_D or VP_POC add enough historical value to remain a candidate for the R/S model?
+> Một source/config cụ thể như MA50_D, BB20_2_D:LOWER, RSI14_D hay VP_POC có tạo đủ historical value để tiếp tục giữ làm candidate trong R/S model hay không?
 
 **Primary filter**
 
@@ -740,7 +810,7 @@ Recommendation
 ComplexityDelta
 ```
 
-For a `LEVEL` source, also inspect:
+Nếu là `LEVEL`, cần đọc thêm:
 
 ```text
 LineageEventCount
@@ -758,11 +828,11 @@ Strong candidate:
 ```text
 ValidationEventCount >= 20
 TestEventCount       >= 10
-EffectivenessScore   >= 75                 # strong LEVEL evidence
+EffectivenessScore   >= 75
 ValidationLift       >= +0.01
 TestLift             >= 0
-TemporalStability    high, preferably >= 0.70
-RegimeStability      high, preferably >= 0.60
+TemporalStability    >= 0.70
+RegimeStability      >= 0.60
 Recommendation       = CORE
 ```
 
@@ -774,7 +844,7 @@ TestMarginalLift   >= 0
 Recommendation     = SUPPORTING
 ```
 
-For role-preserving non-LEVEL sources:
+Với non-LEVEL source:
 
 ```text
 CONFIRMATION → CONFIRM_ONLY
@@ -786,7 +856,7 @@ Research only:
 ```text
 Recommendation = RESEARCH
 OR insufficient OOS sample
-OR score/lift is promising but regime breadth is weak
+OR score/lift có tín hiệu tốt nhưng regime breadth còn yếu
 ```
 
 Removal candidate:
@@ -797,7 +867,7 @@ OR TestMarginalLift < -0.01
 OR repeated negative TEST lift across horizons/tickers
 ```
 
-**Example**
+**Ví dụ**
 
 ```text
 Ticker                  MWG
@@ -815,20 +885,20 @@ EffectivenessScore      79.6
 Recommendation          CORE
 ```
 
-Decision:
+Kết luận:
 
 ```text
-KEEP as a strong integration candidate for MWG/H20.
-Do not interpret 79.6 as 79.6% probability.
+KEEP như một strong integration candidate cho MWG/H20.
+Không được hiểu 79.6 là 79.6% probability.
 ```
 
 ---
 
-### Scenario 2 — Decide whether an entire source family is still worth keeping
+### Scenario 2 — Quyết định giữ hay loại cả một SourceFamily
 
-**Business question**
+**Câu hỏi nghiệp vụ**
 
-> Does an entire family such as TREND_AVERAGE, VOLATILITY_BAND, MARKET_STRUCTURE or VOLUME_STRUCTURE add enough value to justify its complexity?
+> Cả family như TREND_AVERAGE, VOLATILITY_BAND, MARKET_STRUCTURE hoặc VOLUME_STRUCTURE có tạo đủ giá trị để justify complexity hay không?
 
 **Primary filter**
 
@@ -837,7 +907,7 @@ ScopeType = 'SOURCE_FAMILY'
 AND SourceFamily = <candidate family>
 ```
 
-Typical attribution:
+Attribution thường là:
 
 ```text
 AttributionMode = FAMILY_ABLATION
@@ -860,7 +930,7 @@ Recommendation
 EvidenceJson
 ```
 
-For LEVEL families, also inspect historical geometry metrics when present:
+Với LEVEL family, đọc thêm nếu có:
 
 ```text
 TouchRate
@@ -872,27 +942,26 @@ DirectionalEdgePct
 
 **Decision logic**
 
-Keep the family as strategically useful when:
+Giữ family khi việc ablate family làm model xấu đi:
 
 ```text
-family ablation makes the model worse
-→ ValidationMarginalLift > 0
-→ TestMarginalLift       >= 0
+ValidationMarginalLift > 0
+TestMarginalLift       >= 0
 
-and evidence is stable:
-→ TemporalStability >= 0.70
-→ RegimeStability   >= 0.60
+và:
+TemporalStability >= 0.70
+RegimeStability   >= 0.60
 ```
 
-Question the family when:
+Cần xem xét lại family nếu:
 
 ```text
 ValidationMarginalLift ≈ 0
 TestMarginalLift       ≈ 0
-ComplexityDelta         is material
+ComplexityDelta         đáng kể
 ```
 
-This means the family may be adding moving parts without adding measurable OOS value.
+Điều này có thể có nghĩa family đang thêm moving parts nhưng không thêm measurable OOS value.
 
 Strong removal/research signal:
 
@@ -900,29 +969,31 @@ Strong removal/research signal:
 TestMarginalLift < -0.01
 ```
 
-because removing the family improves TEST quality.
+vì bỏ family ra lại làm TEST quality tốt hơn.
 
-**Important**
+**Lưu ý**
 
-A family can be weak globally while one config inside it is useful for selected tickers. Therefore:
+Một family có thể yếu globally nhưng một config bên trong vẫn hữu ích cho một số ticker.
+
+Vì vậy:
 
 ```text
 SOURCE_FAMILY weak
-    does not automatically imply
-every SOURCE_CONFIG in that family must be deleted
+    không đồng nghĩa
+mọi SOURCE_CONFIG trong family đều phải xóa
 ```
 
-Always cross-check Scenario 1 before removing a family from research scope.
+Luôn cross-check Scenario 1 trước khi loại cả family khỏi research scope.
 
 ---
 
-### Scenario 3 — Build ticker-specific source profiles
+### Scenario 3 — Xây ticker-specific source profile
 
-**Business question**
+**Câu hỏi nghiệp vụ**
 
-> Which indicators/sources work best for MWG versus FPT, HPG, VIC, etc.?
+> Source nào phù hợp nhất cho MWG, FPT, HPG, VIC...?
 
-The view is already per ticker, so it can reveal that one source is useful for one symbol but not another.
+View vốn đã có grain theo ticker, vì vậy có thể phát hiện cùng một source nhưng hiệu quả khác nhau trên từng mã.
 
 **Primary grouping**
 
@@ -955,24 +1026,22 @@ Recommendation
 Ticker-specific positive source:
 
 ```text
-for a given Ticker:
-    EffectivenessScore >= 65
-    ValidationMarginalLift >= +0.01
-    TestMarginalLift >= 0
-    TemporalStability >= 0.70
-    RegimeStability >= 0.60
-    sufficient OOS sample
+EffectivenessScore >= 65
+ValidationMarginalLift >= +0.01
+TestMarginalLift >= 0
+TemporalStability >= 0.70
+RegimeStability >= 0.60
+sufficient OOS sample
 ```
 
 Ticker-specific weak source:
 
 ```text
-for that Ticker:
-    Recommendation in (RESEARCH, DROP)
-    or TestMarginalLift < 0
+Recommendation in (RESEARCH, DROP)
+OR TestMarginalLift < 0
 ```
 
-**Example**
+**Ví dụ**
 
 ```text
 MA50_D / H20
@@ -993,33 +1062,34 @@ HPG:
     DROP
 ```
 
-Decision:
+Kết luận:
 
 ```text
-Do not assume MA50_D has one universal quality level.
-It may be:
-    strong for MWG,
-    supporting for FPT,
-    harmful for HPG.
+Không được giả định MA50_D có một quality chung cho mọi ticker.
+
+Nó có thể:
+    mạnh với MWG,
+    supporting với FPT,
+    có hại với HPG.
 ```
 
-This scenario is the foundation for a future Adaptive Indicator Engine.
+Scenario này là nền tảng cho một future Adaptive Indicator Engine.
 
 **Governance boundary**
 
-V2.4 does not automatically change provider registration by ticker. The view supplies evidence only.
+V2.4 không tự động thay đổi provider registration theo ticker. View chỉ cung cấp evidence.
 
 ---
 
-### Scenario 4 — Research evidence-based weights for future Strength scoring
+### Scenario 4 — Nghiên cứu evidence-based weight cho future Strength scoring
 
-**Business question**
+**Câu hỏi nghiệp vụ**
 
-> Instead of treating every source as equally informative, can historical effectiveness be used to propose better source weights when calculating current R/S Strength?
+> Thay vì coi mọi source đóng góp ngang nhau, có thể dùng historical effectiveness để đề xuất weight tốt hơn khi tính current R/S Strength hay không?
 
-This is a **future/research use case**, not current V2.4 runtime behavior.
+Đây là **future/research use case**, chưa phải current V2.4 runtime behavior.
 
-V2.4 explicitly does not automatically mutate runtime Strength weights.
+V2.4 không tự động mutate runtime Strength weights.
 
 **Candidate input columns**
 
@@ -1038,7 +1108,7 @@ ComplexityDelta
 Recommendation
 ```
 
-For LEVEL sources, additional evidence:
+Với LEVEL source, thêm:
 
 ```text
 HoldRateGivenTouch
@@ -1046,7 +1116,7 @@ BreakRateGivenTouch
 DirectionalEdgePct
 ```
 
-**Candidate eligibility rule before a source is allowed to influence a future weight**
+**Candidate eligibility trước khi một source được phép ảnh hưởng future weight**
 
 ```text
 ValidationEventCount >= 20
@@ -1055,7 +1125,7 @@ TestMarginalLift     >= 0
 Recommendation       not in (RESEARCH, DROP)
 ```
 
-Prefer sources with:
+Ưu tiên source có:
 
 ```text
 high EffectivenessScore
@@ -1067,7 +1137,7 @@ low ComplexityDelta
 
 **Illustrative research transformation only**
 
-A future weighting layer might derive a normalized research weight from:
+Một future weighting layer có thể xây normalized research weight từ:
 
 ```text
 EffectivenessScore
@@ -1076,7 +1146,7 @@ EffectivenessScore
 × regime stability
 ```
 
-For example conceptually:
+Ví dụ khái niệm:
 
 ```text
 RawWeight
@@ -1085,28 +1155,33 @@ RawWeight
     × StabilityFactor
 ```
 
-followed by normalization across sources contributing to the same current R/S zone.
+sau đó normalize giữa các source cùng đóng góp vào một current R/S zone.
 
-This formula is intentionally not part of V2.4 production contract yet.
+Công thức này cố ý chưa nằm trong V2.4 production contract.
 
-**Decision**
+**Kết luận**
 
 ```text
-Use Source Effectiveness to nominate/compare candidate weights.
-Do not directly write EffectivenessScore into runtime Strength.
-Do not interpret EffectivenessScore as probability.
-Require a separate architecture decision + regression validation before changing Strength weighting.
+Source Effectiveness chỉ dùng để nominate/compare candidate weights.
+
+Không được:
+- ghi EffectivenessScore trực tiếp thành Runtime Strength;
+- hiểu EffectivenessScore là probability;
+- tự động thay đổi Strength weighting.
+
+Mọi thay đổi Runtime Strength weighting phải có
+architecture decision + regression validation riêng.
 ```
 
 ---
 
-### Scenario 5 — Provide training features for a future Horizon Probability model
+### Scenario 5 — Làm training features cho future Horizon Probability model
 
-**Business question**
+**Câu hỏi nghiệp vụ**
 
-> Can historical source-effectiveness evidence help estimate P(Hold), P(Break) or P(Retest) for a current R/S level over a specific horizon?
+> Historical source-effectiveness evidence có thể giúp ước lượng P(Hold), P(Break), P(Retest) cho current R/S level theo một horizon cụ thể hay không?
 
-Yes as **input evidence**, but V2.4 does not currently provide calibrated current-level probabilities.
+Có thể dùng làm **input evidence**, nhưng V2.4 hiện chưa cung cấp calibrated current-level probability.
 
 **Relevant columns**
 
@@ -1120,7 +1195,7 @@ SourceRole
 HorizonBars
 ```
 
-Historical behavior features for LEVEL sources:
+Historical behavior features cho LEVEL:
 
 ```text
 TouchRate
@@ -1145,7 +1220,7 @@ EffectivenessScore
 Recommendation
 ```
 
-Potential current-state features must come from the runtime R/S ladder, not this view:
+Các current-state feature phải đến từ runtime R/S ladder, không phải view này:
 
 ```text
 current LevelPrice
@@ -1154,32 +1229,32 @@ current Strength
 distance from current price
 current source lineage
 current regime/context
-level age/lifecycle when implemented
+level age/lifecycle khi được implement
 ```
 
-**Correct modeling boundary**
+**Boundary đúng về modeling**
 
-Historical rate:
+Nếu:
 
 ```text
 HoldRateGivenTouch = 0.72
 ```
 
-means:
+thì chỉ có nghĩa:
 
 ```text
-72% of historical touched events in this evidence cohort held
+72% historical touched events trong evidence cohort đã Hold
 ```
 
-It does **not** mean:
+Không có nghĩa:
 
 ```text
 P(current R1 holds over H20) = 72%
 ```
 
-A future calibration model must combine current-level features with historical evidence and validate calibration out of sample.
+Future calibration model phải kết hợp current-level features với historical evidence và validate calibration Out-of-Sample.
 
-**Candidate outputs of the future layer**
+**Candidate output của future layer**
 
 ```text
 P(Touch current R1 within H)
@@ -1188,17 +1263,17 @@ P(Break current R1 | Touch, H)
 P(Retest | Break, H)
 ```
 
-where H can be any configured research horizon, including future choices such as H60/H250, provided the historical evaluator has enough future outcome bars.
+Trong đó H có thể là bất kỳ configured research horizon nào, kể cả các horizon tương lai như H60/H250, với điều kiện historical evaluator có đủ future outcome bars.
 
 ---
 
-### Scenario 6 — Support an actual current R/S trading decision
+### Scenario 6 — Hỗ trợ quyết định trên current R/S level
 
-**Business question**
+**Câu hỏi nghiệp vụ**
 
-> When the current ladder shows S1/R1, how should a user combine current Strength and historical source-effectiveness evidence to decide whether the level deserves attention?
+> Khi current ladder hiển thị S1/R1, nên kết hợp current Strength và historical Source Effectiveness như thế nào để đánh giá level có đáng chú ý không?
 
-This scenario requires combining two different evidence layers:
+Scenario này cần kết hợp hai lớp evidence:
 
 ```text
 Current R/S Ladder
@@ -1206,7 +1281,7 @@ Current R/S Ladder
 vw_RS_Source_Effectiveness
 ```
 
-**Current ladder supplies**
+**Current ladder cung cấp**
 
 ```text
 Ticker
@@ -1218,18 +1293,21 @@ current SourceFamily composition
 current market context
 ```
 
-**Source-effectiveness view supplies**
+**Source Effectiveness view cung cấp**
+
+Với từng contributing `SourceKey / SourceFamily / HorizonBars`:
 
 ```text
-for each contributing SourceKey / SourceFamily / HorizonBars:
-
 EffectivenessScore
 Recommendation
 TestMarginalLift
 TemporalStability
 RegimeStability
+```
 
-and for LEVEL sources:
+Với LEVEL source:
+
+```text
 TouchRate
 HoldRateGivenTouch
 BreakRateGivenTouch
@@ -1237,9 +1315,9 @@ RetestRateGivenBreak
 DirectionalEdgePct
 ```
 
-**Evidence pattern for a higher-confidence current level**
+**Pattern cho current level có confidence cao hơn**
 
-A current R/S level deserves more confidence when several independent contributing sources have:
+Một current R/S level đáng tin cậy hơn khi nhiều independent contributing source có:
 
 ```text
 Recommendation in:
@@ -1254,20 +1332,20 @@ RegimeStability   >= 0.60
 sufficient OOS samples
 ```
 
-and LEVEL contributors also show favorable historical behavior:
+và LEVEL contributors có favorable historical behavior:
 
 ```text
-HoldRateGivenTouch relatively high
-BreakRateGivenTouch relatively low
+HoldRateGivenTouch tương đối cao
+BreakRateGivenTouch tương đối thấp
 DirectionalEdgePct > 0
 ```
 
-**Evidence pattern for caution**
+**Pattern cần thận trọng**
 
 ```text
-current Strength is high
-BUT
-major contributing sources have:
+current Strength cao
+NHƯNG
+major contributing sources có:
     DROP / RESEARCH
     negative TestMarginalLift
     poor TemporalStability
@@ -1275,28 +1353,28 @@ major contributing sources have:
     insufficient OOS sample
 ```
 
-Interpretation:
+Cách hiểu:
 
 ```text
-The current geometric/confluence Strength may be high,
-but historical evidence for the underlying sources is weak or unstable.
+Current geometry/confluence có thể đang mạnh,
+nhưng historical evidence của underlying sources lại yếu hoặc không ổn định.
 ```
 
-This is a reason to reduce confidence, not a direct sell/buy rule.
+Đây là lý do để giảm confidence, không phải direct BUY/SELL rule.
 
 **Illustrative decision matrix**
 
-| Current Strength | Source evidence | Interpretation |
+| Current Strength | Source evidence | Cách hiểu |
 |---|---|---|
-| High | Strong/stable OOS evidence | strongest research-supported R/S case |
-| High | Weak/negative source evidence | structurally strong now, historically questionable |
-| Medium | Strong source evidence | may deserve attention despite moderate current confluence |
-| Low | Strong source evidence | source historically useful, but current level geometry is weak |
-| Low | Weak source evidence | lowest-priority level |
+| Cao | Strong/stable OOS evidence | R/S case được historical evidence hỗ trợ mạnh nhất |
+| Cao | Weak/negative source evidence | cấu trúc hiện tại mạnh nhưng historical reliability đáng nghi |
+| Trung bình | Strong source evidence | vẫn đáng chú ý dù current confluence chỉ trung bình |
+| Thấp | Strong source evidence | source historically tốt nhưng current level geometry yếu |
+| Thấp | Weak source evidence | level có priority thấp nhất |
 
 **Critical boundary**
 
-The view must not be used alone to generate:
+View này không được dùng một mình để tạo:
 
 ```text
 BUY
@@ -1306,71 +1384,67 @@ exact target
 current Hold/Break probability
 ```
 
-until the relevant runtime decision/calibration layer exists.
+cho đến khi có runtime decision/calibration layer tương ứng.
 
 ---
 
-### Decision summary
+### Tổng hợp 6 decision scenario
 
-The six decision scenarios map to the view as follows:
-
-| # | Decision | Primary Scope | Most important fields | Directly supported by V2.4? |
+| # | Decision | Primary Scope | Field quan trọng nhất | V2.4 hỗ trợ trực tiếp? |
 |---|---|---|---|---|
-| 1 | Keep/drop one indicator config | SOURCE_CONFIG | Score, Recommendation, Val/Test Lift, Stability, sample | YES |
-| 2 | Keep/drop a source family | SOURCE_FAMILY | Family Ablation Lift, Stability, Complexity, Score | YES |
-| 3 | Ticker-specific source selection | per Ticker + SOURCE_CONFIG | Score, Test Lift, Recommendation, Stability | YES as evidence; no auto-runtime mutation |
-| 4 | Source weighting for Strength | SOURCE_CONFIG/FAMILY | Score, Lift, Stability, Complexity | RESEARCH INPUT ONLY |
-| 5 | Horizon Probability | per Ticker/Source/Horizon | historical rates + reliability fields | TRAINING INPUT ONLY; no calibrated probability yet |
-| 6 | Current R/S decision support | current ladder + view | Strength + source lineage + effectiveness evidence | PARTIAL; decision-support evidence only |
+| 1 | Giữ/loại một indicator config | SOURCE_CONFIG | Score, Recommendation, Val/Test Lift, Stability, sample | YES |
+| 2 | Giữ/loại một SourceFamily | SOURCE_FAMILY | Family Ablation Lift, Stability, Complexity, Score | YES |
+| 3 | Ticker-specific source selection | per Ticker + SOURCE_CONFIG | Score, Test Lift, Recommendation, Stability | YES ở mức evidence; chưa auto-runtime |
+| 4 | Source weighting cho Strength | SOURCE_CONFIG/FAMILY | Score, Lift, Stability, Complexity | RESEARCH INPUT ONLY |
+| 5 | Horizon Probability | per Ticker/Source/Horizon | historical rates + reliability fields | TRAINING INPUT ONLY; chưa calibrated |
+| 6 | Current R/S decision support | current ladder + view | Strength + source lineage + effectiveness evidence | PARTIAL; chỉ decision-support evidence |
 
-### Recommended evidence priority
+### Thứ tự ưu tiên evidence
 
-When fields conflict, use this order:
+Khi các field cho tín hiệu mâu thuẫn, ưu tiên:
 
 ```text
 1. TEST evidence
 2. sufficient OOS sample
 3. Validation/Test consistency
-4. regime stability
-5. marginal lift
-6. composite EffectivenessScore
-7. historical touch/hold/break/retest statistics
-8. TRAIN evidence only as background
+4. Regime Stability
+5. Marginal Lift
+6. EffectivenessScore
+7. historical Touch/Hold/Break/Retest statistics
+8. TRAIN evidence chỉ dùng làm background
 ```
 
-Do not promote a source merely because `EffectivenessScore` is high if the TEST evidence is materially negative or sample size is insufficient.
+Không promote một source chỉ vì `EffectivenessScore` cao nếu TEST evidence materially negative hoặc sample chưa đủ.
 
-
-
-## 15. Performance and Operational Strategy
+## 15. Performance và Operational Strategy
 
 1. Reuse persisted V2.3 evaluation events/metrics.
-2. Do not recalculate a compatible baseline unnecessarily.
-3. Run source-config ablations only for candidates being investigated.
-4. Load run events set-wise.
-5. Compute per-ticker effectiveness in memory.
-6. Persist results in one short writer transaction.
-7. Read latest results through the public view.
+2. Không recalculates compatible baseline nếu không cần thiết.
+3. Chỉ chạy source-config ablation cho candidate đang được nghiên cứu.
+4. Load run events theo set-based.
+5. Compute per-ticker effectiveness trong memory.
+6. Persist result trong một short writer transaction.
+7. Đọc latest result qua public view.
 
 ### Monthly full evaluation
 
 Canonical operational service:
 
-~~~text
+```text
 src/Orchestrator/rs_v2_4_full_evaluation.py
-~~~
+```
 
 Stable CLI entry point:
 
-~~~text
+```text
 scripts/run_rs_v2_4_full_evaluation.py
-~~~
+```
 
-The CLI wrapper delegates to the Orchestrator service; it contains no duplicated R/S calculation/business logic.
+CLI wrapper delegate sang Orchestrator service; không được duplicate R/S calculation/business logic.
 
-The monthly orchestrator:
+Monthly orchestrator:
 
-~~~text
+```text
 resolve eligible ticker universe
         ↓
 reserve future outcome bars
@@ -1384,46 +1458,53 @@ source-family ablation/effectiveness
 Source Promotion Gate dry-run
         ↓
 vw_RS_Source_Effectiveness
-~~~
+```
 
-Rules:
+Quy tắc:
 
-- full evaluation is a research/governance workload, not a daily runtime workload;
-- default cadence is monthly, with event-driven reruns after material source/model changes;
-- the latest raw market date is reserved for outcome observation; the evaluation end must leave enough later trading bars for the largest requested horizon;
-- one compatible baseline per horizon is reused across source/family ablations;
-- deterministic run IDs plus metadata compatibility checks provide resumable execution;
-- SOURCE_CONFIG LEVEL evaluation requires observable baseline lineage;
-- SOURCE_FAMILY ablation removes the full discovered family membership;
-- promotion defaults to dry-run and never changes runtime weights/providers.
+- full evaluation là research/governance workload, không phải daily runtime workload;
+- default cadence là monthly, có thể event-driven rerun sau material source/model changes;
+- latest raw market date được reserve cho outcome observation; evaluation end phải để lại đủ later trading bars cho largest requested horizon;
+- một compatible baseline per horizon được reuse giữa các source/family ablation;
+- deterministic run IDs + metadata compatibility checks hỗ trợ resumable execution;
+- SOURCE_CONFIG LEVEL evaluation yêu cầu observable baseline lineage;
+- SOURCE_FAMILY ablation phải remove toàn bộ discovered family membership;
+- promotion mặc định dry-run và không thay đổi runtime weights/providers.
 
 Operational procedure:
 
-~~~text
+```text
 docs/runbook/RS_V2_4_Monthly_Full_Evaluation.md
-~~~
+```
 
 ## 16. Failure / Blocking Rules
 
-BLOCK when baseline and ablation datasets, horizons or split contracts are incompatible; a required run is not COMPLETED; required OOS splits are absent; or a LEVEL source cannot be found in lineage.
+BLOCK khi:
 
-Insufficient regime breadth or sample size yields RESEARCH rather than silent TRAIN-only approval.
+- baseline và ablation datasets/horizons/split contracts không compatible;
+- required run chưa `COMPLETED`;
+- required OOS split bị thiếu;
+- LEVEL source không tồn tại trong historical lineage.
+
+Insufficient regime breadth hoặc sample size phải đưa về `RESEARCH`, không được silent approve dựa trên TRAIN-only evidence.
 
 ## 17. Compatibility
 
-With no include/exclude source filters, V2.4 preserves V2.3 runtime behavior and golden outputs.
+Khi không truyền include/exclude source filters, V2.4 phải giữ nguyên V2.3 runtime behavior và golden outputs.
 
-The V2.3 model Promotion Gate remains unchanged. V2.4 introduces a separate Source Promotion Gate.
+V2.3 model Promotion Gate giữ nguyên.
+
+V2.4 chỉ bổ sung một Source Promotion Gate riêng biệt.
 
 ## 18. Migration
 
-Generate additive/idempotent migration:
+Additive/idempotent migration:
 
 ```text
 src/DuckDB/sql/rs_v2_4_source_effectiveness.sql
 ```
 
-Execute outside read-only MCP using:
+Thực thi bên ngoài read-only MCP bằng:
 
 ```text
 scripts/run_rs_v2_4_migration.py
@@ -1431,15 +1512,35 @@ scripts/run_rs_v2_4_migration.py
 
 ## 19. Validation Strategy
 
-Unit tests cover canonical identity, filters, role-aware scoring, score bounds, temporal/regime stability, negative TEST protection, recommendations, global/ticker-selective promotion and persistence dataframe contracts.
+Unit tests phải cover:
 
-Regression requires V2.3 golden benchmark and existing R/S tests to remain PASS when research filters are not supplied.
+```text
+canonical identity
+filters
+role-aware scoring
+score bounds
+temporal/regime stability
+negative TEST protection
+recommendations
+global/ticker-selective promotion
+persistence dataframe contracts
+```
 
-Integration validation covers baseline/ablation compatibility, effectiveness persistence, public view, idempotency and promotion dry-run.
+Regression yêu cầu V2.3 golden benchmark và existing R/S tests vẫn PASS khi không supply research filters.
+
+Integration validation phải cover baseline/ablation compatibility, effectiveness persistence, public view, idempotency và promotion dry-run.
 
 ## 20. ADR
 
-**Required** because V2.4 introduces stable source identity, research filters in the R/S API, a source-specific promotion governance layer, new persistence/public SSOT and an explicit non-deploying approval boundary.
+**Required** vì V2.4 đưa vào:
+
+```text
+stable source identity
+research filters trong R/S API
+source-specific promotion governance layer
+new persistence/public SSOT
+explicit non-deploying approval boundary
+```
 
 ADR:
 
