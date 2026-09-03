@@ -616,6 +616,732 @@ latest observed market date
 This avoids immature/censored outcome labels and look-ahead leakage.
 
 
+## 14.2 Decision Playbook — Six Evidence-Driven Decision Scenarios
+
+The public decision surface is:
+
+```text
+"CherryMon"."main"."vw_RS_Source_Effectiveness"
+```
+
+The view answers questions about **historical source effectiveness** at this grain:
+
+```text
+Ticker / ScopeType / SourceKey / HorizonBars
+```
+
+Decision rules below use the current V2.4 default policy unless explicitly marked as a future/research use case.
+
+Important interpretation boundary:
+
+```text
+Source Effectiveness
+    = evidence about whether a source/config/family historically adds value
+
+Runtime Strength
+    = current quality/confidence score of an R/S level
+
+Horizon Probability
+    = calibrated probability for a current R/S level over a future horizon
+      (not implemented in V2.4)
+```
+
+Therefore this view can directly support source-governance decisions, but it must not be interpreted as a direct probability forecast for the current S1/R1.
+
+### Common evidence fields
+
+The following fields are used repeatedly across the six decision scenarios:
+
+| Field | Decision meaning |
+|---|---|
+| `Ticker` | which symbol the evidence applies to |
+| `ScopeType` | whether the evidence is for one config/source or a whole family |
+| `SourceKey` | canonical source/config identity |
+| `SourceFamily` | broader source family |
+| `SourceRole` | LEVEL / CONTEXT / CONFIRMATION |
+| `HorizonBars` | future evaluation window in trading bars |
+| `AttributionMode` | how contribution was attributed |
+| `MarginalMetric` | LEVEL_QUALITY or STRENGTH_BRIER |
+| `LineageEventCount` | historical lineage coverage for LEVEL sources |
+| `ValidationEventCount` | validation OOS sample size |
+| `TestEventCount` | final test OOS sample size |
+| `TouchRate` | historical fraction of LEVEL events touched within the horizon |
+| `HoldRateGivenTouch` | historical hold rate conditional on touch |
+| `BreakRateGivenTouch` | historical break rate conditional on touch |
+| `RetestRateGivenBreak` | historical retest rate conditional on break |
+| `DirectionalEdgePct` | average favorable move minus average adverse move |
+| `ValidationQuality` | role-aware baseline quality on VALIDATION |
+| `TestQuality` | role-aware baseline quality on TEST |
+| `ValidationMarginalLift` | baseline minus ablation quality on VALIDATION |
+| `TestMarginalLift` | baseline minus ablation quality on TEST |
+| `TemporalStability` | stability between VALIDATION and TEST |
+| `RegimeStability` | stability across market regimes |
+| `ComplexityDelta` | additional model complexity attributable to the source |
+| `EffectivenessScore` | composite 0-100 source-effectiveness score |
+| `Recommendation` | per-ticker/source/horizon decision label |
+| `EvidenceJson` | regime evidence and policy used for the score |
+| `CompletedAt` | timestamp of the latest completed evidence row |
+
+Default sample thresholds:
+
+```text
+ValidationEventCount >= 20
+TestEventCount       >= 10
+```
+
+Default positive evidence thresholds used by source promotion:
+
+```text
+EffectivenessScore      >= 65
+ValidationMarginalLift  >= +0.01
+TestMarginalLift        >= 0.00
+TemporalStability       >= 0.70
+RegimeStability         >= 0.60
+ComplexityDelta         <= 0.15
+```
+
+A material negative TEST result is:
+
+```text
+TestMarginalLift < -0.01
+```
+
+and should be treated as strong negative evidence.
+
+---
+
+### Scenario 1 — Decide whether to keep, research or remove one indicator/source config
+
+**Business question**
+
+> Does one concrete source/config such as MA50_D, BB20_2_D:LOWER, RSI14_D or VP_POC add enough historical value to remain a candidate for the R/S model?
+
+**Primary filter**
+
+```sql
+ScopeType = 'SOURCE_CONFIG'
+AND SourceKey = <candidate source>
+```
+
+**Primary columns**
+
+```text
+SourceRole
+AttributionMode
+MarginalMetric
+ValidationEventCount
+TestEventCount
+ValidationMarginalLift
+TestMarginalLift
+TemporalStability
+RegimeStability
+EffectivenessScore
+Recommendation
+ComplexityDelta
+```
+
+For a `LEVEL` source, also inspect:
+
+```text
+LineageEventCount
+TouchRate
+HoldRateGivenTouch
+BreakRateGivenTouch
+RetestRateGivenBreak
+DirectionalEdgePct
+```
+
+**Decision pattern**
+
+Strong candidate:
+
+```text
+ValidationEventCount >= 20
+TestEventCount       >= 10
+EffectivenessScore   >= 75                 # strong LEVEL evidence
+ValidationLift       >= +0.01
+TestLift             >= 0
+TemporalStability    high, preferably >= 0.70
+RegimeStability      high, preferably >= 0.60
+Recommendation       = CORE
+```
+
+Useful but secondary:
+
+```text
+EffectivenessScore >= 65
+TestMarginalLift   >= 0
+Recommendation     = SUPPORTING
+```
+
+For role-preserving non-LEVEL sources:
+
+```text
+CONFIRMATION → CONFIRM_ONLY
+CONTEXT      → CONTEXT_ONLY
+```
+
+Research only:
+
+```text
+Recommendation = RESEARCH
+OR insufficient OOS sample
+OR score/lift is promising but regime breadth is weak
+```
+
+Removal candidate:
+
+```text
+Recommendation = DROP
+OR TestMarginalLift < -0.01
+OR repeated negative TEST lift across horizons/tickers
+```
+
+**Example**
+
+```text
+Ticker                  MWG
+SourceKey               MA50_D
+ScopeType               SOURCE_CONFIG
+SourceRole              LEVEL
+HorizonBars             20
+ValidationEventCount    34
+TestEventCount          18
+ValidationMarginalLift  +0.028
+TestMarginalLift        +0.017
+TemporalStability       0.82
+RegimeStability         0.73
+EffectivenessScore      79.6
+Recommendation          CORE
+```
+
+Decision:
+
+```text
+KEEP as a strong integration candidate for MWG/H20.
+Do not interpret 79.6 as 79.6% probability.
+```
+
+---
+
+### Scenario 2 — Decide whether an entire source family is still worth keeping
+
+**Business question**
+
+> Does an entire family such as TREND_AVERAGE, VOLATILITY_BAND, MARKET_STRUCTURE or VOLUME_STRUCTURE add enough value to justify its complexity?
+
+**Primary filter**
+
+```sql
+ScopeType = 'SOURCE_FAMILY'
+AND SourceFamily = <candidate family>
+```
+
+Typical attribution:
+
+```text
+AttributionMode = FAMILY_ABLATION
+```
+
+**Primary columns**
+
+```text
+SourceFamily
+HorizonBars
+ValidationEventCount
+TestEventCount
+ValidationMarginalLift
+TestMarginalLift
+TemporalStability
+RegimeStability
+ComplexityDelta
+EffectivenessScore
+Recommendation
+EvidenceJson
+```
+
+For LEVEL families, also inspect historical geometry metrics when present:
+
+```text
+TouchRate
+HoldRateGivenTouch
+BreakRateGivenTouch
+RetestRateGivenBreak
+DirectionalEdgePct
+```
+
+**Decision logic**
+
+Keep the family as strategically useful when:
+
+```text
+family ablation makes the model worse
+→ ValidationMarginalLift > 0
+→ TestMarginalLift       >= 0
+
+and evidence is stable:
+→ TemporalStability >= 0.70
+→ RegimeStability   >= 0.60
+```
+
+Question the family when:
+
+```text
+ValidationMarginalLift ≈ 0
+TestMarginalLift       ≈ 0
+ComplexityDelta         is material
+```
+
+This means the family may be adding moving parts without adding measurable OOS value.
+
+Strong removal/research signal:
+
+```text
+TestMarginalLift < -0.01
+```
+
+because removing the family improves TEST quality.
+
+**Important**
+
+A family can be weak globally while one config inside it is useful for selected tickers. Therefore:
+
+```text
+SOURCE_FAMILY weak
+    does not automatically imply
+every SOURCE_CONFIG in that family must be deleted
+```
+
+Always cross-check Scenario 1 before removing a family from research scope.
+
+---
+
+### Scenario 3 — Build ticker-specific source profiles
+
+**Business question**
+
+> Which indicators/sources work best for MWG versus FPT, HPG, VIC, etc.?
+
+The view is already per ticker, so it can reveal that one source is useful for one symbol but not another.
+
+**Primary grouping**
+
+```text
+group by:
+    Ticker
+    SourceKey
+    HorizonBars
+```
+
+**Primary columns**
+
+```text
+Ticker
+SourceKey
+SourceFamily
+SourceRole
+HorizonBars
+ValidationEventCount
+TestEventCount
+TestMarginalLift
+TemporalStability
+RegimeStability
+EffectivenessScore
+Recommendation
+```
+
+**Decision pattern**
+
+Ticker-specific positive source:
+
+```text
+for a given Ticker:
+    EffectivenessScore >= 65
+    ValidationMarginalLift >= +0.01
+    TestMarginalLift >= 0
+    TemporalStability >= 0.70
+    RegimeStability >= 0.60
+    sufficient OOS sample
+```
+
+Ticker-specific weak source:
+
+```text
+for that Ticker:
+    Recommendation in (RESEARCH, DROP)
+    or TestMarginalLift < 0
+```
+
+**Example**
+
+```text
+MA50_D / H20
+
+MWG:
+    Score     78
+    TestLift +0.025
+    CORE
+
+FPT:
+    Score     67
+    TestLift +0.006
+    SUPPORTING
+
+HPG:
+    Score     51
+    TestLift -0.018
+    DROP
+```
+
+Decision:
+
+```text
+Do not assume MA50_D has one universal quality level.
+It may be:
+    strong for MWG,
+    supporting for FPT,
+    harmful for HPG.
+```
+
+This scenario is the foundation for a future Adaptive Indicator Engine.
+
+**Governance boundary**
+
+V2.4 does not automatically change provider registration by ticker. The view supplies evidence only.
+
+---
+
+### Scenario 4 — Research evidence-based weights for future Strength scoring
+
+**Business question**
+
+> Instead of treating every source as equally informative, can historical effectiveness be used to propose better source weights when calculating current R/S Strength?
+
+This is a **future/research use case**, not current V2.4 runtime behavior.
+
+V2.4 explicitly does not automatically mutate runtime Strength weights.
+
+**Candidate input columns**
+
+```text
+Ticker
+SourceKey
+SourceFamily
+SourceRole
+HorizonBars
+EffectivenessScore
+ValidationMarginalLift
+TestMarginalLift
+TemporalStability
+RegimeStability
+ComplexityDelta
+Recommendation
+```
+
+For LEVEL sources, additional evidence:
+
+```text
+HoldRateGivenTouch
+BreakRateGivenTouch
+DirectionalEdgePct
+```
+
+**Candidate eligibility rule before a source is allowed to influence a future weight**
+
+```text
+ValidationEventCount >= 20
+TestEventCount       >= 10
+TestMarginalLift     >= 0
+Recommendation       not in (RESEARCH, DROP)
+```
+
+Prefer sources with:
+
+```text
+high EffectivenessScore
+high TestMarginalLift
+high TemporalStability
+high RegimeStability
+low ComplexityDelta
+```
+
+**Illustrative research transformation only**
+
+A future weighting layer might derive a normalized research weight from:
+
+```text
+EffectivenessScore
+× OOS marginal contribution
+× temporal stability
+× regime stability
+```
+
+For example conceptually:
+
+```text
+RawWeight
+    = ScoreFactor
+    × LiftFactor
+    × StabilityFactor
+```
+
+followed by normalization across sources contributing to the same current R/S zone.
+
+This formula is intentionally not part of V2.4 production contract yet.
+
+**Decision**
+
+```text
+Use Source Effectiveness to nominate/compare candidate weights.
+Do not directly write EffectivenessScore into runtime Strength.
+Do not interpret EffectivenessScore as probability.
+Require a separate architecture decision + regression validation before changing Strength weighting.
+```
+
+---
+
+### Scenario 5 — Provide training features for a future Horizon Probability model
+
+**Business question**
+
+> Can historical source-effectiveness evidence help estimate P(Hold), P(Break) or P(Retest) for a current R/S level over a specific horizon?
+
+Yes as **input evidence**, but V2.4 does not currently provide calibrated current-level probabilities.
+
+**Relevant columns**
+
+Identity/context:
+
+```text
+Ticker
+SourceKey
+SourceFamily
+SourceRole
+HorizonBars
+```
+
+Historical behavior features for LEVEL sources:
+
+```text
+TouchRate
+HoldRateGivenTouch
+BreakRateGivenTouch
+RetestRateGivenBreak
+DirectionalEdgePct
+```
+
+Reliability features:
+
+```text
+ValidationEventCount
+TestEventCount
+ValidationQuality
+TestQuality
+ValidationMarginalLift
+TestMarginalLift
+TemporalStability
+RegimeStability
+EffectivenessScore
+Recommendation
+```
+
+Potential current-state features must come from the runtime R/S ladder, not this view:
+
+```text
+current LevelPrice
+current LevelType / Rank
+current Strength
+distance from current price
+current source lineage
+current regime/context
+level age/lifecycle when implemented
+```
+
+**Correct modeling boundary**
+
+Historical rate:
+
+```text
+HoldRateGivenTouch = 0.72
+```
+
+means:
+
+```text
+72% of historical touched events in this evidence cohort held
+```
+
+It does **not** mean:
+
+```text
+P(current R1 holds over H20) = 72%
+```
+
+A future calibration model must combine current-level features with historical evidence and validate calibration out of sample.
+
+**Candidate outputs of the future layer**
+
+```text
+P(Touch current R1 within H)
+P(Hold current R1 | Touch, H)
+P(Break current R1 | Touch, H)
+P(Retest | Break, H)
+```
+
+where H can be any configured research horizon, including future choices such as H60/H250, provided the historical evaluator has enough future outcome bars.
+
+---
+
+### Scenario 6 — Support an actual current R/S trading decision
+
+**Business question**
+
+> When the current ladder shows S1/R1, how should a user combine current Strength and historical source-effectiveness evidence to decide whether the level deserves attention?
+
+This scenario requires combining two different evidence layers:
+
+```text
+Current R/S Ladder
+    +
+vw_RS_Source_Effectiveness
+```
+
+**Current ladder supplies**
+
+```text
+Ticker
+current S/R level price
+LevelRank: S1/S2/R1/R2/...
+current Strength
+current source lineage
+current SourceFamily composition
+current market context
+```
+
+**Source-effectiveness view supplies**
+
+```text
+for each contributing SourceKey / SourceFamily / HorizonBars:
+
+EffectivenessScore
+Recommendation
+TestMarginalLift
+TemporalStability
+RegimeStability
+
+and for LEVEL sources:
+TouchRate
+HoldRateGivenTouch
+BreakRateGivenTouch
+RetestRateGivenBreak
+DirectionalEdgePct
+```
+
+**Evidence pattern for a higher-confidence current level**
+
+A current R/S level deserves more confidence when several independent contributing sources have:
+
+```text
+Recommendation in:
+    CORE
+    SUPPORTING
+    CONFIRM_ONLY
+    CONTEXT_ONLY
+
+TestMarginalLift >= 0
+TemporalStability >= 0.70
+RegimeStability   >= 0.60
+sufficient OOS samples
+```
+
+and LEVEL contributors also show favorable historical behavior:
+
+```text
+HoldRateGivenTouch relatively high
+BreakRateGivenTouch relatively low
+DirectionalEdgePct > 0
+```
+
+**Evidence pattern for caution**
+
+```text
+current Strength is high
+BUT
+major contributing sources have:
+    DROP / RESEARCH
+    negative TestMarginalLift
+    poor TemporalStability
+    poor RegimeStability
+    insufficient OOS sample
+```
+
+Interpretation:
+
+```text
+The current geometric/confluence Strength may be high,
+but historical evidence for the underlying sources is weak or unstable.
+```
+
+This is a reason to reduce confidence, not a direct sell/buy rule.
+
+**Illustrative decision matrix**
+
+| Current Strength | Source evidence | Interpretation |
+|---|---|---|
+| High | Strong/stable OOS evidence | strongest research-supported R/S case |
+| High | Weak/negative source evidence | structurally strong now, historically questionable |
+| Medium | Strong source evidence | may deserve attention despite moderate current confluence |
+| Low | Strong source evidence | source historically useful, but current level geometry is weak |
+| Low | Weak source evidence | lowest-priority level |
+
+**Critical boundary**
+
+The view must not be used alone to generate:
+
+```text
+BUY
+SELL
+exact stop loss
+exact target
+current Hold/Break probability
+```
+
+until the relevant runtime decision/calibration layer exists.
+
+---
+
+### Decision summary
+
+The six decision scenarios map to the view as follows:
+
+| # | Decision | Primary Scope | Most important fields | Directly supported by V2.4? |
+|---|---|---|---|---|
+| 1 | Keep/drop one indicator config | SOURCE_CONFIG | Score, Recommendation, Val/Test Lift, Stability, sample | YES |
+| 2 | Keep/drop a source family | SOURCE_FAMILY | Family Ablation Lift, Stability, Complexity, Score | YES |
+| 3 | Ticker-specific source selection | per Ticker + SOURCE_CONFIG | Score, Test Lift, Recommendation, Stability | YES as evidence; no auto-runtime mutation |
+| 4 | Source weighting for Strength | SOURCE_CONFIG/FAMILY | Score, Lift, Stability, Complexity | RESEARCH INPUT ONLY |
+| 5 | Horizon Probability | per Ticker/Source/Horizon | historical rates + reliability fields | TRAINING INPUT ONLY; no calibrated probability yet |
+| 6 | Current R/S decision support | current ladder + view | Strength + source lineage + effectiveness evidence | PARTIAL; decision-support evidence only |
+
+### Recommended evidence priority
+
+When fields conflict, use this order:
+
+```text
+1. TEST evidence
+2. sufficient OOS sample
+3. Validation/Test consistency
+4. regime stability
+5. marginal lift
+6. composite EffectivenessScore
+7. historical touch/hold/break/retest statistics
+8. TRAIN evidence only as background
+```
+
+Do not promote a source merely because `EffectivenessScore` is high if the TEST evidence is materially negative or sample size is insufficient.
+
+
+
 ## 15. Performance and Operational Strategy
 
 1. Reuse persisted V2.3 evaluation events/metrics.
