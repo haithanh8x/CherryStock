@@ -572,77 +572,23 @@ Current     → approximately 0
 
 Tính độ mạnh của từng Support / Resistance zone độc lập với proximity ranking.
 
-Runtime `StrengthScore` hiện tại trong `src/calcEngine/levelLadder.py` được tổng hợp từ các component sau:
-
-| Score | Mục tiêu | Default weight | Công thức | Ví dụ |
-|---|---|---:|---|---|
-| `SourceConfluenceScore` | Đo mức độ hội tụ của các `SourceFamily` độc lập tại cùng một R/S zone | `0.35` | `min(SourceFamilyCount / 3, 1) × 100` | 3 family khác nhau cùng hội tụ → `100`; chỉ 1 family → `33.33` |
-| `TimeframeScore` | Đo mức độ xác nhận của level trên nhiều timeframe | `0.25` | `min(sum(unique TimeframeWeight) / 4.5, 1) × 100`, với `D=1.0, W=1.5, M=2.0` | Có `D + W` → `(1.0 + 1.5) / 4.5 × 100 = 55.56` |
-| `TouchScore` | Đo số lần giá đã tương tác với R/S zone trong historical price history | `0.25` | `min(TouchCount / 4, 1) × 100` | 3 touch → `75`; từ 4 touch trở lên → `100` |
-| `RecencyScore` | Đo mức độ mới của source gần nhất tạo nên level | `0.15` | `max(0, 1 - AgeDays / 180) × 100` | Source mới nhất cách 30 ngày → `83.33` |
-| `ConfirmationScore` | Đo mức confirmation của RSI đối với SUPPORT / RESISTANCE hiện tại | `0.10` nếu có RSI | SUPPORT: `(50 - RSI) / (50 - 30) × 100`; RESISTANCE: `(RSI - 50) / (70 - 50) × 100`; clamp về `0..100`, sau đó weighted theo timeframe | SUPPORT có RSI = 30 → `100`; RSI = 40 → `50`; RESISTANCE có RSI = 70 → `100` |
-| `StructuralQualityScore` | Đo độ mới của các source thuộc `MARKET_STRUCTURE` | `0.15` nếu có structural source | Với mỗi structural source: `max(0, 1 - AgeDays / 180) × 100`, sau đó lấy average | `SWING_HIGH` mới 30 ngày và `PREV_MONTH_HIGH` mới 60 ngày → khoảng `75` |
-| `VolumeConfirmationScore` | Đo mức xác nhận volume quanh chính R/S zone | `0.10` nếu có volume confirmation | Lấy confirmation context có `reference_price` nằm trong zone ± tolerance, lấy `max(value)` và clamp về `0..100` | Có volume confirmation quanh zone với score `82` → `82` |
-
-Base Strength formula:
+V1 model:
 
 ```text
-BaseStrength =
-      SourceConfluenceScore × 0.35
-    + TimeframeScore        × 0.25
-    + TouchScore            × 0.25
-    + RecencyScore          × 0.15
+StrengthScore =
+      SourceConfluenceScore
+    + TimeframeScore
+    + TouchScore
+    + RecencyScore
 ```
 
-Nếu không có additional component thì tổng base weight = `1.0`, vì vậy `BaseStrength = StrengthScore`.
-
-Khi có RSI / structural / volume confirmation, runtime hiện tại sử dụng cơ chế re-normalize:
+Future model có thể bổ sung:
 
 ```text
-WeightedScore =
-      SourceConfluenceScore   × 0.35
-    + TimeframeScore          × 0.25
-    + TouchScore              × 0.25
-    + RecencyScore            × 0.15
-    + ConfirmationScore       × 0.10   nếu có RSI
-    + StructuralQualityScore  × 0.15   nếu có structural source
-    + VolumeConfirmationScore × 0.10   nếu có volume confirmation
-
-EffectiveWeight =
-      1.00
-    + 0.10 nếu có RSI
-    + 0.15 nếu có structural source
-    + 0.10 nếu có volume confirmation
-
-StrengthScore = WeightedScore / EffectiveWeight
-```
-
-Ví dụ:
-
-```text
-SourceConfluenceScore   = 100
-TimeframeScore          = 55.56
-TouchScore              = 75
-RecencyScore            = 83.33
-ConfirmationScore       = 70
-StructuralQualityScore  = 80
-VolumeConfirmationScore = 75
-
-WeightedScore ≈ 106.64
-EffectiveWeight = 1.35
-StrengthScore ≈ 78.99
-```
-
-Lưu ý:
-
-```text
-SourceConfluenceScore
-    = mức độ hội tụ của SourceFamily hiện tại
-
-Source Effectiveness
-    = historical OOS evidence của từng source/config
-
-Hai khái niệm này hiện chưa được nối trực tiếp với nhau trong Runtime Strength.
+VolumeScore
+RejectionScore
+ATRContextScore
+HistoricalBreakScore
 ```
 
 ## 10.2 Input
