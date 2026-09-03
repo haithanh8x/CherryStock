@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-01T09:53:19.120993+00:00
+- Generated at: 2026-09-03T09:12:52.277967+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 36
+- Table/view count: 45
 
 ## Schemas
 
@@ -28,10 +28,16 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`cal_Indexes` (BASE TABLE)
 - `main`.`cal_Trends` (BASE TABLE)
 - `main`.`cal_indicator_values` (BASE TABLE)
+- `main`.`cal_rs_evaluation_event` (BASE TABLE)
+- `main`.`cal_rs_evaluation_metric` (BASE TABLE)
+- `main`.`cal_rs_evaluation_run` (BASE TABLE)
+- `main`.`cal_rs_source_effectiveness` (BASE TABLE)
+- `main`.`cal_rs_source_effectiveness_run` (BASE TABLE)
 - `main`.`dimCalendar` (BASE TABLE)
 - `main`.`dim_indicator` (BASE TABLE)
 - `main`.`dim_indicator_component` (BASE TABLE)
 - `main`.`dim_indicator_config` (BASE TABLE)
+- `main`.`dim_rs_model_version` (BASE TABLE)
 - `main`.`raw_active_eod` (BASE TABLE)
 - `main`.`raw_bctc_cdkt` (BASE TABLE)
 - `main`.`raw_bctc_cstc` (BASE TABLE)
@@ -55,10 +61,13 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`raw_warrant_eod` (BASE TABLE)
 - `main`.`raw_warrant_intraday` (BASE TABLE)
 - `main`.`sys_data_quality_audit` (BASE TABLE)
+- `main`.`sys_rs_model_promotion_audit` (BASE TABLE)
+- `main`.`sys_rs_source_promotion_audit` (BASE TABLE)
 - `main`.`t` (BASE TABLE)
 - `main`.`vw_ACCCNNTD` (VIEW)
 - `main`.`vw_ACCCNNTD_Price` (VIEW)
 - `main`.`vw_Indicator_config` (VIEW)
+- `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
 - `main`.`vw_Ticker_indicators` (VIEW)
 
@@ -98,6 +107,121 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ComponentCode` | `VARCHAR` | `NO` | `` |
 | `Value` | `DOUBLE` | `YES` | `` |
 | `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_rs_evaluation_event (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `EvaluationRunId` | `VARCHAR` | `NO` | `` |
+| `ModelVersion` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `AsOfDate` | `DATE` | `NO` | `` |
+| `LevelRank` | `VARCHAR` | `NO` | `` |
+| `LevelType` | `VARCHAR` | `NO` | `` |
+| `LevelPrice` | `DOUBLE` | `NO` | `` |
+| `StrengthScore` | `DOUBLE` | `YES` | `` |
+| `HorizonEndDate` | `DATE` | `YES` | `` |
+| `Touched` | `BOOLEAN` | `YES` | `` |
+| `TouchDate` | `DATE` | `YES` | `` |
+| `Broken` | `BOOLEAN` | `YES` | `` |
+| `BreakDate` | `DATE` | `YES` | `` |
+| `Retested` | `BOOLEAN` | `YES` | `` |
+| `RetestDate` | `DATE` | `YES` | `` |
+| `Held` | `BOOLEAN` | `YES` | `` |
+| `BarsToTouch` | `INTEGER` | `YES` | `` |
+| `MaxFavorablePct` | `DOUBLE` | `YES` | `` |
+| `MaxAdversePct` | `DOUBLE` | `YES` | `` |
+| `SourceCount` | `INTEGER` | `YES` | `` |
+| `SourceFamilyCount` | `INTEGER` | `YES` | `` |
+| `SourcesJson` | `VARCHAR` | `YES` | `` |
+| `SourceFamiliesJson` | `VARCHAR` | `YES` | `` |
+| `Regime` | `VARCHAR` | `YES` | `` |
+| `Split` | `VARCHAR` | `YES` | `` |
+| `CreatedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+
+### main.cal_rs_evaluation_metric (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `EvaluationRunId` | `VARCHAR` | `NO` | `` |
+| `ScopeType` | `VARCHAR` | `NO` | `` |
+| `ScopeKey` | `VARCHAR` | `NO` | `` |
+| `MetricCode` | `VARCHAR` | `NO` | `` |
+| `MetricValue` | `DOUBLE` | `YES` | `` |
+| `SampleSize` | `INTEGER` | `YES` | `` |
+| `CreatedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+
+### main.cal_rs_evaluation_run (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `EvaluationRunId` | `VARCHAR` | `NO` | `` |
+| `ModelVersion` | `VARCHAR` | `NO` | `` |
+| `DatasetStart` | `DATE` | `YES` | `` |
+| `DatasetEnd` | `DATE` | `YES` | `` |
+| `HorizonBars` | `INTEGER` | `NO` | `` |
+| `TickerCount` | `INTEGER` | `YES` | `` |
+| `SnapshotCount` | `INTEGER` | `YES` | `` |
+| `SplitConfigJson` | `VARCHAR` | `YES` | `` |
+| `Status` | `VARCHAR` | `NO` | `` |
+| `CreatedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+| `CompletedAt` | `TIMESTAMP` | `YES` | `` |
+| `Notes` | `VARCHAR` | `YES` | `` |
+| `IncludeSourceKeysJson` | `VARCHAR` | `YES` | `` |
+| `ExcludeSourceKeysJson` | `VARCHAR` | `YES` | `` |
+| `ResearchIndicatorSpecsJson` | `VARCHAR` | `YES` | `` |
+
+### main.cal_rs_source_effectiveness (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `EffectivenessRunId` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `ScopeType` | `VARCHAR` | `NO` | `` |
+| `SourceKey` | `VARCHAR` | `NO` | `` |
+| `SourceFamily` | `VARCHAR` | `NO` | `` |
+| `SourceRole` | `VARCHAR` | `NO` | `` |
+| `HorizonBars` | `INTEGER` | `NO` | `` |
+| `AttributionMode` | `VARCHAR` | `NO` | `` |
+| `MarginalMetric` | `VARCHAR` | `NO` | `` |
+| `LineageEventCount` | `INTEGER` | `YES` | `` |
+| `ValidationEventCount` | `INTEGER` | `YES` | `` |
+| `TestEventCount` | `INTEGER` | `YES` | `` |
+| `TouchRate` | `DOUBLE` | `YES` | `` |
+| `HoldRateGivenTouch` | `DOUBLE` | `YES` | `` |
+| `BreakRateGivenTouch` | `DOUBLE` | `YES` | `` |
+| `RetestRateGivenBreak` | `DOUBLE` | `YES` | `` |
+| `DirectionalEdgePct` | `DOUBLE` | `YES` | `` |
+| `ValidationQuality` | `DOUBLE` | `YES` | `` |
+| `TestQuality` | `DOUBLE` | `YES` | `` |
+| `ValidationMarginalLift` | `DOUBLE` | `YES` | `` |
+| `TestMarginalLift` | `DOUBLE` | `YES` | `` |
+| `TemporalStability` | `DOUBLE` | `YES` | `` |
+| `RegimeStability` | `DOUBLE` | `YES` | `` |
+| `ComplexityDelta` | `DOUBLE` | `YES` | `` |
+| `EffectivenessScore` | `DOUBLE` | `YES` | `` |
+| `Recommendation` | `VARCHAR` | `NO` | `` |
+| `EvidenceJson` | `VARCHAR` | `YES` | `` |
+| `CreatedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+
+### main.cal_rs_source_effectiveness_run (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `EffectivenessRunId` | `VARCHAR` | `NO` | `` |
+| `ScopeType` | `VARCHAR` | `NO` | `` |
+| `SourceKey` | `VARCHAR` | `NO` | `` |
+| `SourceFamily` | `VARCHAR` | `NO` | `` |
+| `SourceRole` | `VARCHAR` | `NO` | `` |
+| `HorizonBars` | `INTEGER` | `NO` | `` |
+| `BaselineRunId` | `VARCHAR` | `NO` | `` |
+| `AblationRunId` | `VARCHAR` | `NO` | `` |
+| `StandaloneRunId` | `VARCHAR` | `YES` | `` |
+| `PolicyJson` | `VARCHAR` | `NO` | `` |
+| `Status` | `VARCHAR` | `NO` | `` |
+| `CreatedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+| `CompletedAt` | `TIMESTAMP` | `YES` | `` |
+| `Notes` | `VARCHAR` | `YES` | `` |
 
 ### main.dimCalendar (BASE TABLE)
 
@@ -162,6 +286,20 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Description` | `VARCHAR` | `YES` | `` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 | `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.dim_rs_model_version (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ModelVersion` | `VARCHAR` | `NO` | `` |
+| `ParentVersion` | `VARCHAR` | `YES` | `` |
+| `Status` | `VARCHAR` | `NO` | `` |
+| `Signature` | `VARCHAR` | `NO` | `` |
+| `ConfigJson` | `VARCHAR` | `NO` | `` |
+| `ComplexityScore` | `DOUBLE` | `YES` | `` |
+| `CreatedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+| `PromotedAt` | `TIMESTAMP` | `YES` | `` |
+| `Notes` | `VARCHAR` | `YES` | `` |
 
 ### main.raw_active_eod (BASE TABLE)
 
@@ -592,6 +730,50 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `errors` | `JSON` | `YES` | `` |
 | `warnings` | `JSON` | `YES` | `` |
 
+### main.sys_rs_model_promotion_audit (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `DecisionId` | `VARCHAR` | `NO` | `` |
+| `BaselineVersion` | `VARCHAR` | `NO` | `` |
+| `ChallengerVersion` | `VARCHAR` | `NO` | `` |
+| `EvaluationRunId` | `VARCHAR` | `YES` | `` |
+| `Promote` | `BOOLEAN` | `NO` | `` |
+| `ValidationQualityDelta` | `DOUBLE` | `YES` | `` |
+| `TestQualityDelta` | `DOUBLE` | `YES` | `` |
+| `ComplexityDelta` | `DOUBLE` | `YES` | `` |
+| `WorstRegimeDelta` | `DOUBLE` | `YES` | `` |
+| `ReasonsJson` | `VARCHAR` | `YES` | `` |
+| `PolicyJson` | `VARCHAR` | `YES` | `` |
+| `DecidedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+| `Notes` | `VARCHAR` | `YES` | `` |
+
+### main.sys_rs_source_promotion_audit (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `DecisionId` | `VARCHAR` | `NO` | `` |
+| `EffectivenessRunId` | `VARCHAR` | `NO` | `` |
+| `SourceKey` | `VARCHAR` | `NO` | `` |
+| `SourceFamily` | `VARCHAR` | `NO` | `` |
+| `SourceRole` | `VARCHAR` | `NO` | `` |
+| `HorizonBars` | `INTEGER` | `NO` | `` |
+| `Outcome` | `VARCHAR` | `NO` | `` |
+| `TickerCount` | `INTEGER` | `YES` | `` |
+| `PositiveTickerCount` | `INTEGER` | `YES` | `` |
+| `PositiveTickerRatio` | `DOUBLE` | `YES` | `` |
+| `AvgEffectivenessScore` | `DOUBLE` | `YES` | `` |
+| `AvgValidationLift` | `DOUBLE` | `YES` | `` |
+| `AvgTestLift` | `DOUBLE` | `YES` | `` |
+| `AvgTemporalStability` | `DOUBLE` | `YES` | `` |
+| `AvgRegimeStability` | `DOUBLE` | `YES` | `` |
+| `MaxComplexityDelta` | `DOUBLE` | `YES` | `` |
+| `ReasonsJson` | `VARCHAR` | `YES` | `` |
+| `PolicyJson` | `VARCHAR` | `NO` | `` |
+| `Applied` | `BOOLEAN` | `NO` | `CAST('f' AS BOOLEAN)` |
+| `DecidedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
+| `Notes` | `VARCHAR` | `YES` | `` |
+
 ### main.t (BASE TABLE)
 
 | Column | Type | Nullable | Default |
@@ -661,6 +843,39 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Unit` | `VARCHAR` | `YES` | `` |
 | `IsPrimary` | `BOOLEAN` | `YES` | `` |
 | `ComponentIsActive` | `BOOLEAN` | `YES` | `` |
+
+### main.vw_RS_Source_Effectiveness (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `ScopeType` | `VARCHAR` | `YES` | `` |
+| `SourceKey` | `VARCHAR` | `YES` | `` |
+| `SourceFamily` | `VARCHAR` | `YES` | `` |
+| `SourceRole` | `VARCHAR` | `YES` | `` |
+| `HorizonBars` | `INTEGER` | `YES` | `` |
+| `AttributionMode` | `VARCHAR` | `YES` | `` |
+| `MarginalMetric` | `VARCHAR` | `YES` | `` |
+| `LineageEventCount` | `INTEGER` | `YES` | `` |
+| `ValidationEventCount` | `INTEGER` | `YES` | `` |
+| `TestEventCount` | `INTEGER` | `YES` | `` |
+| `TouchRate` | `DOUBLE` | `YES` | `` |
+| `HoldRateGivenTouch` | `DOUBLE` | `YES` | `` |
+| `BreakRateGivenTouch` | `DOUBLE` | `YES` | `` |
+| `RetestRateGivenBreak` | `DOUBLE` | `YES` | `` |
+| `DirectionalEdgePct` | `DOUBLE` | `YES` | `` |
+| `ValidationQuality` | `DOUBLE` | `YES` | `` |
+| `TestQuality` | `DOUBLE` | `YES` | `` |
+| `ValidationMarginalLift` | `DOUBLE` | `YES` | `` |
+| `TestMarginalLift` | `DOUBLE` | `YES` | `` |
+| `TemporalStability` | `DOUBLE` | `YES` | `` |
+| `RegimeStability` | `DOUBLE` | `YES` | `` |
+| `ComplexityDelta` | `DOUBLE` | `YES` | `` |
+| `EffectivenessScore` | `DOUBLE` | `YES` | `` |
+| `Recommendation` | `VARCHAR` | `YES` | `` |
+| `EvidenceJson` | `VARCHAR` | `YES` | `` |
+| `EffectivenessRunId` | `VARCHAR` | `YES` | `` |
+| `CompletedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.vw_Ticker (VIEW)
 
