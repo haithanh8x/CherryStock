@@ -116,6 +116,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[reference/DB_Metadata|DB Metadata]]
 
 ## Backlog
+- [[backlog/Backlog_Status|Backlog Status Dashboard]]
 - [[backlog/README|Backlog Guide]]
 - [[backlog/requirements/README|Requirements Backlog]]
 - [[backlog/requirements/REQUIREMENT_TEMPLATE|Requirement Template]]
