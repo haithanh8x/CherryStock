@@ -67,7 +67,6 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
-- [[architecture/SmartMoneyScore|SmartMoneyScore]]
 - [[architecture/RS_Source_Effectiveness|R/S Source Effectiveness Architecture]]
 - [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 - [[adr/ADR-004-rs-v2-source-semantics|ADR-004 R/S V2.0 Source Semantics]]
@@ -93,6 +92,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[architecture/Second_Brain|Second Brain Architecture]]
 - [[architecture/Indicator_Engine|Indicator Engine]]
 - [[architecture/Data_Architecture|Data Architecture]]
+- [[architecture/SmartMoneyScore|SmartMoneyScore]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
@@ -101,6 +101,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
 - [[adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
 - [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
+- [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
 
 ## Runbooks
 - [[runbook/MCP_DuckDB|CherryStock Local DuckDB MCP]]
