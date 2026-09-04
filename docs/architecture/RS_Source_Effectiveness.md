@@ -16,16 +16,9 @@ V2.4 tập trung trả lời câu hỏi cụ thể hơn:
 
 > Với một ticker và một source/config cụ thể, source đó có tạo thêm giá trị dự báo Out-of-Sample sau khi đã kiểm soát theo current model hay không, và mức bằng chứng đó có đủ mạnh để phê duyệt cho việc tích hợp R/S trong tương lai hay không?
 
-`Runtime Strength` và `Source Effectiveness` là hai khái niệm khác nhau.
+`Runtime Strength` = mức độ tin cậy/chất lượng của một vùng R/S hiện tại
 
-```text
-Runtime Strength
-    = mức độ tin cậy/chất lượng của một vùng R/S hiện tại
-
-Source Effectiveness
-    = bằng chứng lịch sử cho thấy một source/config có tạo thêm predictive value
-      cho một ticker/horizon sau khi đã kiểm soát theo current model
-```
+`Source Effectiveness` = bằng chứng lịch sử cho thấy một source/config có tạo thêm predictive value, tăng mức độ tin cậy cho một ticker/horizon sau khi đã kiểm soát theo current model
 
 ## 2. Kiến trúc tổng thể
 
@@ -66,7 +59,90 @@ vw_RS_Source_Effectiveness
 
 V2.4 tuyệt đối không tự động thay đổi runtime registration, runtime weights hay Indicator Engine metadata.
 
+- ### `V2.3 Baseline` & `V2.3 Ablation` 
+là hai phiên bản model được chạy song song để đo xem một source có thực sự đóng góp giá trị hay không.
+
+V2.3 Baseline = model đầy đủ, có source đang đánh giá
+
+V2.3 Ablation = model gần như giống hệt Baseline nhưng bỏ source đó ra
+
+Ví dụ đánh giá MA50_D: 
+
+- Baseline có = (MA20_D, MA50_D, SWING_HIGH, VP_POC, RSI14_D)
+
+- Ablation không có MA50_D =  (MA20_D, SWING_HIGH, VP_POC, RSI14_D)
+
+Tính toán `Baseline TestQuality` = 0.72 và `Ablation TestQuality` = 0.69 thì `TestMarginalLift` = Baseline - Ablation = 0.72 - 0.69 = `+0.03` có nghĩa MA50_D thì model tốt hơn khoảng 0.03 quality unit trên TEST
+
+Nếu ngược lại: Baseline = 0.70 và Ablation = 0.73 thì TestMarginalLift = `-0.03`, Bỏ MA50_D ra thì model còn tốt hơn. MA50_D có thể đang làm model kém đi
+
+Với `SOURCE_FAMILY` thì Ablation rộng hơn. Ví dụ đánh giá TREND_AVERAGE: 
+- Baseline = có MA20_D + MA50_D + MA100_D + MA200_D
+- Family Ablation = bỏ toàn bộ TREND_AVERAGE
+
+`LEVEL` = "Source này tạo ra level tốt không?"
+
+`CONTEXT` = "Nếu bỏ context này, geometry/quality model có xấu đi không?"
+
+`CONFIRMATION` = "Nếu bỏ confirmation này, Strength còn dự báo tốt không?"
+
+- ### `Recommendation` 
+là quyết định ở từng row cụ thể của `vw_RS_Source_Effectiveness`, tức theo grain: `Ticker / SourceKey / HorizonBars` với các value CORE / SUPPORTING / CONFIRM_ONLY / CONTEXT_ONLY / RESEARCH / DROP ví dụ `MWG / MA50_D / H20` 
+
+```text
+EffectivenessScore  = 78 
+TestMarginalLift    = +0.022 
+Recommendation      = CORE
+```
+
+```sql
+SELECT
+    "Ticker",
+    "SourceKey",
+    "HorizonBars",
+    "EffectivenessScore",
+    "Recommendation"
+FROM "CherryMon"."main"."vw_RS_Source_Effectiveness"
+WHERE 1=1
+ORDER BY
+    "Ticker",
+    "SourceKey",
+    "HorizonBars";
+```
+
+- ### `Source Promotion Gate` 
+là quyết định ở cấp cross-ticker / governance Source này có đủ tốt trên nhiều ticker và đủ ổn định để được phê duyệt cho bước tích hợp tiếp theo hay chưa?
+
+Ví dụ MA50_D có MWG  → CORE ; FPT  → SUPPORTING ; HPG  → CORE ; VIC  → RESEARCH ; SSI  → SUPPORTING sau đó Source Promotion Gate aggregate các evidence này và kiểm tra policy rồi mới ra một outcome APPROVED_FOR_INTEGRATION / TICKER_SELECTIVE / RESEARCH  / REJECTED
+
+```sql
+SELECT
+    "SourceKey",
+    "SourceFamily",
+    "SourceRole",
+    "HorizonBars",
+    "Outcome",
+    "TickerCount",
+    "PositiveTickerCount",
+    ROUND("PositiveTickerRatio" * 100, 2) AS "PositiveTickerRatioPct",
+    ROUND("AvgEffectivenessScore", 2) AS "AvgEffectivenessScore",
+    ROUND("AvgValidationLift", 4) AS "AvgValidationLift",
+    ROUND("AvgTestLift", 4) AS "AvgTestLift",
+    ROUND("AvgTemporalStability", 4) AS "AvgTemporalStability",
+    ROUND("AvgRegimeStability", 4) AS "AvgRegimeStability",
+    ROUND("MaxComplexityDelta", 4) AS "MaxComplexityDelta",
+    "Applied",
+    "DecidedAt",
+    "ReasonsJson"
+FROM "CherryMon"."main"."sys_rs_source_promotion_audit"
+ORDER BY
+    "SourceKey",
+    "HorizonBars",
+    "DecidedAt" DESC;
+```
+
 ## 3. Stable Source Identity
+
 
 Module thuần mới:
 
