@@ -60,6 +60,10 @@ Every proposed architecture should:
 - Define dependencies and direction of dependency.
 - Separate data access, business logic, validation, orchestration and presentation concerns.
 - Define persistence, connection and transaction boundaries where applicable.
+- Explicitly model data whenever the design creates, changes, persists, derives or exposes structured data.
+- For each affected dataset/table/view/entity, define its purpose, grain, keys, relationships, important attributes, ownership, lifecycle and downstream consumers.
+- Distinguish logical data model from physical persistence design; do not jump directly to tables without first stating the business/entity model when that distinction matters.
+- Validate proposed physical schemas against `docs/reference/DB_Metadata.md` and existing database conventions before introducing new objects or columns.
 - Define idempotency and rerun behavior for data workflows.
 - Define failure handling, blocking vs warning conditions and observability requirements.
 - Consider backward compatibility and migration impact.
@@ -92,6 +96,7 @@ Document the current architecture relevant to the request:
 - data flow
 - dependencies
 - persistence/contracts
+- current data model: entities/datasets, grain, keys, relationships, important attributes and ownership
 - known constraints
 - current pain point or gap
 
@@ -104,6 +109,13 @@ Define:
 - data flow
 - dependency direction
 - state/persistence model
+- logical data model and physical data model where structured data is affected
+- entity/dataset purpose and grain
+- primary/business/foreign keys and uniqueness rules
+- relationships/cardinality and referential expectations
+- important attributes, types/nullability/default semantics where relevant
+- ownership, Source of Truth, lineage and downstream consumers
+- retention/history/versioning strategy where relevant
 - error/failure handling
 - observability
 - compatibility/migration
@@ -113,6 +125,9 @@ Define:
 Before finalizing:
 - Confirm no existing component already owns the responsibility.
 - Confirm no Source-of-Truth duplication is introduced.
+- Confirm every affected persisted/exposed dataset has an explicit grain, key strategy and ownership.
+- Confirm relationships, lineage and downstream impact are understood before schema changes are approved.
+- Confirm the proposed model is consistent with `docs/reference/DB_Metadata.md`, naming conventions and existing public views where applicable.
 - Confirm the design respects domain instructions.
 - Identify affected documentation.
 - Decide whether an ADR is required.
@@ -145,6 +160,31 @@ For each component define:
 - Persistence/state
 - Failure behavior
 
+### Data Model
+This section is mandatory whenever the design creates, changes, persists, derives or exposes structured data.
+
+Describe both the logical model and physical model when applicable.
+
+For each affected entity/dataset/table/view define:
+- Purpose / business meaning
+- Source of Truth / owner
+- Grain — exactly what one row/record represents
+- Primary key or business key
+- Foreign keys and relationships
+- Cardinality
+- Important attributes/columns
+- Data type, nullability and default semantics where contract-relevant
+- Uniqueness and integrity rules
+- History/versioning/effective-date strategy where relevant
+- Lineage: upstream sources and derivation
+- Downstream consumers/public views
+- Persistence lifecycle, retention and cleanup where relevant
+- Migration/backfill impact
+
+Use a Mermaid ER diagram or equivalent relationship diagram for non-trivial models. Do not use a diagram as a substitute for the textual grain/key/ownership definitions.
+
+Before proposing a physical database change, compare the target model with `docs/reference/DB_Metadata.md` and the canonical data architecture. Reuse existing objects when ownership and grain already match.
+
 ### Data Flow
 Describe the end-to-end flow and important boundaries.
 
@@ -163,6 +203,8 @@ State `Required` or `Not required` and explain why.
 ## Material Ownership
 
 Durable design output belongs under `docs/architecture/**`. Important cross-module decisions belong under `docs/adr/**`. Update an existing authoritative document instead of duplicating it.
+
+Data-model contracts are architecture material. Persist durable logical/physical model definitions, grain, keys, relationships, ownership and lineage in the relevant `docs/architecture/**` document. Treat `docs/reference/DB_Metadata.md` as generated evidence of the current physical database structure, not as the place to author the target design.
 
 The normal design outcome is `APPROVED_FOR_IMPLEMENTATION`. Solution Architect does not claim that implementation or validation is complete.
 
@@ -184,6 +226,8 @@ Do not:
 - Copy long architecture explanations into `.github/instructions/`.
 - Duplicate the same architecture rule across multiple documents.
 - Create a new table/service/module when an existing owner can be extended cleanly.
+- Propose a table/view/schema without defining its grain, key strategy, ownership and relationships.
+- Treat column lists alone as a complete data model.
 - Introduce a second Source of Truth for the same concept.
 - Claim compatibility without checking current callers/consumers.
 - Claim a design is implemented when only documentation has been changed.
