@@ -60,6 +60,10 @@ Key governance boundary:
 - Missing Source Effectiveness is UNASSESSED, not DROP.
 - Confident Strength is a confidence-adjusted score, not a calibrated Hold/Break probability.
 
+## Other active requirements
+
+- [[REQ-0025-smart-money-score|REQ-0025 — Ticker-level SmartMoneyScore]] — state-aware, explainable Smart Money behavioral scoring with independent confidence; architecture approved for implementation.
+
 ## Traceability
 
 When available, link:
