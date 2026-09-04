@@ -59,6 +59,7 @@ Large items may be split into their own Markdown file when implementation tracki
 
 ## Current Backlogs
 
+- [[Backlog_Status|Backlog Status Dashboard]] — consolidated current status across Requirements, Architecture and Agent Harness backlogs.
 - [[requirements/README|Requirements Backlog]]
 - [[requirements/REQUIREMENT_TEMPLATE|Requirement Template]]
 - [[Architecture_Backlog|Architecture Backlog]]
