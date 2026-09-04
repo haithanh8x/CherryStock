@@ -57,10 +57,17 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 - [[../.github/instructions/indicators.instructions|Indicator Instructions]]
 - [[../.github/agents/Instructions/Indicator_Engine|Legacy Detailed Indicator Engine Reference]]
 
+### Smart Money / Flow Analytics
+- [[backlog/requirements/REQ-0025-smart-money-score|REQ-0025 Ticker-level SmartMoneyScore]]
+- [[architecture/SmartMoneyScore|SmartMoneyScore Architecture]]
+- [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
+- Uses [[architecture/Data_Architecture|Data Architecture]] and may consume [[architecture/Indicator_Engine|Indicator Engine]] through public indicator contracts.
+
 ### Chart / Visualization
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
+- [[architecture/SmartMoneyScore|SmartMoneyScore]]
 - [[architecture/RS_Source_Effectiveness|R/S Source Effectiveness Architecture]]
 - [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 - [[adr/ADR-004-rs-v2-source-semantics|ADR-004 R/S V2.0 Source Semantics]]
