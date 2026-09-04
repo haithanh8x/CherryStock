@@ -34,6 +34,32 @@ Every requirement must define the business objective, scope, business rules, obs
 
 A requirement describes WHAT and WHY. Technical design describes HOW and belongs under `docs/architecture/**` and `docs/adr/**`.
 
+## Current R/S roadmap
+
+```text
+REQ-0022 / V2.4
+Source Effectiveness & Indicator Promotion
+        ↓
+REQ-0023 / V2.5
+Historical Reliability & Confident Strength Shadow
+        ↓
+V2.5 TEST/OOS Promotion Gate
+        ↓
+REQ-0024 / V2.6
+Production Confidence Integration
+```
+
+- [[REQ-0022-rs-v2-4-source-effectiveness|REQ-0022 — R/S V2.4 Source Effectiveness & Indicator Promotion Framework]]
+- [[REQ-0023-rs-v2-5-historical-confidence-shadow|REQ-0023 — R/S V2.5 Historical Reliability & Confident Strength Shadow]]
+- [[REQ-0024-rs-v2-6-production-confidence-integration|REQ-0024 — R/S V2.6 Production Confidence Integration]]
+
+Key governance boundary:
+
+- V2.5 is shadow/research and MUST NOT change production Current Strength, R1/S1 ranking or level visibility.
+- V2.6 production integration is blocked until V2.5 demonstrates sufficient role-appropriate positive evidence, coverage, OOS quality and stability.
+- Missing Source Effectiveness is UNASSESSED, not DROP.
+- Confident Strength is a confidence-adjusted score, not a calibrated Hold/Break probability.
+
 ## Traceability
 
 When available, link:
