@@ -7,6 +7,12 @@ or provider registration.
 Default:
     python scripts/run_rs_v2_4_full_evaluation.py
 
+    python scripts/run_rs_v2_4_full_evaluation.py `
+    --tickers MWG `
+    --only-source-keys MA20_D,MA50_D,MA100_D,MA200_D,MA20_W,MA50_W,MA100_W,MA200_W,MA20_M,MA50_M,MA100_M,MA200_M `
+    --scopes SOURCE_CONFIG `
+    --horizons 5,10,20,60
+
 Focused smoke:
     python scripts/run_rs_v2_4_full_evaluation.py ^
         --tickers MWG,FPT,HPG ^
