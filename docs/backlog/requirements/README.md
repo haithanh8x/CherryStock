@@ -50,8 +50,8 @@ Production Confidence Integration
 ```
 
 - [[REQ-0022-rs-v2-4-source-effectiveness|REQ-0022 — R/S V2.4 Source Effectiveness & Indicator Promotion Framework]]
-- [[REQ-0023-rs-v2-5-historical-confidence-shadow|REQ-0023 — R/S V2.5 Historical Reliability & Confident Strength Shadow]]
-- [[REQ-0024-rs-v2-6-production-confidence-integration|REQ-0024 — R/S V2.6 Production Confidence Integration]]
+- [[REQ-0023-rs-v2-5-historical-reliability-confident-strength|REQ-0023 — R/S V2.5 Historical Reliability & Confident Strength Shadow Evaluation]]
+- [[REQ-0024-rs-v2-6-production-confident-strength|REQ-0024 — R/S V2.6 Production Confident Strength Integration]]
 
 Key governance boundary:
 
