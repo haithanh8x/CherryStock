@@ -1,6 +1,10 @@
 {
   "servers": {
-    "flint": {
+    "cherrymon-duckdb": {
+      "command": "C:/Program1/Python/Python313/python.exe",
+      "args": ["c:/Github/CherryStock/src/mcp_server/duckdb_mcp.py"]
+    },    
+	"flint": {
       "type": "stdio",
       "command": "node",
       "args": [
