@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "flint": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/packages/flint-mcp/dist/cli.js"
+      ]
+    }
+  }
+}
