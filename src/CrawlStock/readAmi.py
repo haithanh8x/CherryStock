@@ -1,13 +1,16 @@
 import struct
 import pandas as pd
+import numpy as np
 import os
+import re
 import threading
 import time
 
 from Ults.DuckLib import DuckDBManager
 from Ults.Timing import timeit, toggle_print
 from datetime import datetime, timedelta
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Sequence
 from Ults.lstFiles import list_files_in_folder
 from Ults.lstPara import DATAFILE_PATH, AMIBROKER_AFL_PATH, AMIBROKER_LOG_PATH
 
@@ -41,6 +44,25 @@ class DuckDBMarketDataSyncAdapter:
         from_last_day: int | None = None,
     ) -> None:
         upsert_stock_eod(
+            folder_path=str(folder_path),
+            table_name=table_name,
+            from_last_day=from_last_day,
+            connection=self._connection,
+        )
+
+    def reset_intraday_targets(self, table_names: Sequence[str]) -> None:
+        reset_amibroker_intraday_tables(
+            table_names=table_names,
+            connection=self._connection,
+        )
+
+    def upsert_intraday(
+        self,
+        folder_path,
+        table_name: str,
+        from_last_day: int | None = None,
+    ) -> None:
+        upsert_amibroker_intraday(
             folder_path=str(folder_path),
             table_name=table_name,
             from_last_day=from_last_day,
@@ -216,6 +238,360 @@ def upsert_stock_eod(
         if owns_connection:
             DuckDBManager.close_connection(con)
     
+
+_AMIBROKER_INTRADAY_DTYPE = np.dtype(
+    [
+        ("Date", "<i4"),
+        ("RawTime", "<i4"),
+        ("Open", "<f4"),
+        ("High", "<f4"),
+        ("Low", "<f4"),
+        ("Close", "<f4"),
+        ("Volume", "<f4"),
+        ("OpenInt", "<f4"),
+    ]
+)
+
+
+def _quote_table_identifier(table_name: str) -> str:
+    """Quote a trusted simple DuckDB table identifier."""
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table_name) is None:
+        raise ValueError(f"Invalid table name: {table_name!r}")
+    return f'"{table_name}"'
+
+
+def _normalize_from_date_int(from_date=None) -> int | None:
+    if from_date is None:
+        return None
+    if isinstance(from_date, str):
+        return int(from_date.replace("-", "").replace("/", ""))
+    if isinstance(from_date, datetime):
+        return int(from_date.strftime("%Y%m%d"))
+    raise TypeError("from_date must be None, str, or datetime")
+
+
+def _decode_intraday_time(raw_time: pd.Series) -> pd.DataFrame:
+    """
+    Decode the second 32-bit field used by FireAnt/AmiBroker intraday records.
+
+    Supported numeric forms:
+    - HHMM
+    - HHMMSS
+    - HHMMSSmmm
+
+    RawTime is persisted unchanged even after decoding so the source value remains
+    auditable. Duplicate timestamps are handled separately by TickSeq.
+    """
+    values = raw_time.astype("int64").to_numpy()
+    if np.any(values < 0):
+        bad = values[values < 0][:5].tolist()
+        raise ValueError(f"Negative AmiBroker intraday RawTime values: {bad}")
+
+    hours = np.zeros(len(values), dtype=np.int64)
+    minutes = np.zeros(len(values), dtype=np.int64)
+    seconds = np.zeros(len(values), dtype=np.int64)
+    millis = np.zeros(len(values), dtype=np.int64)
+
+    mask_hhmm = values <= 2359
+    mask_hhmmss = (values > 2359) & (values <= 235959)
+    mask_hhmmssmmm = (values > 235959) & (values <= 235959999)
+    mask_unknown = ~(mask_hhmm | mask_hhmmss | mask_hhmmssmmm)
+
+    # HHMM
+    hours[mask_hhmm] = values[mask_hhmm] // 100
+    minutes[mask_hhmm] = values[mask_hhmm] % 100
+
+    # HHMMSS
+    hours[mask_hhmmss] = values[mask_hhmmss] // 10000
+    minutes[mask_hhmmss] = (values[mask_hhmmss] // 100) % 100
+    seconds[mask_hhmmss] = values[mask_hhmmss] % 100
+
+    # HHMMSSmmm
+    hours[mask_hhmmssmmm] = values[mask_hhmmssmmm] // 10000000
+    minutes[mask_hhmmssmmm] = (values[mask_hhmmssmmm] // 100000) % 100
+    seconds[mask_hhmmssmmm] = (values[mask_hhmmssmmm] // 1000) % 100
+    millis[mask_hhmmssmmm] = values[mask_hhmmssmmm] % 1000
+
+    invalid = (
+        mask_unknown
+        | (hours > 23)
+        | (minutes > 59)
+        | (seconds > 59)
+        | (millis > 999)
+    )
+    if np.any(invalid):
+        bad = values[invalid][:10].tolist()
+        raise ValueError(
+            "Unsupported AmiBroker intraday RawTime encoding. "
+            f"Examples: {bad}. Expected HHMM, HHMMSS, or HHMMSSmmm."
+        )
+
+    return pd.DataFrame(
+        {
+            "Hour": hours,
+            "Minute": minutes,
+            "Second": seconds,
+            "Millisecond": millis,
+        }
+    )
+
+
+@toggle_print(allow_print=False)
+def read_amibroker_intraday_dat(file_path, from_date=None):
+    """
+    Read one FireAnt/AmiBroker 32-byte intraday .dat file at tick grain.
+
+    Binary layout verified against the current FireAnt data files:
+        int32 Date (YYYYMMDD)
+        int32 RawTime
+        float Open
+        float High
+        float Low
+        float Close
+        float Volume
+        float OpenInt
+
+    FireAnt intraday is tick-level. OpenInt is preserved exactly as source data;
+    for Vietnamese stocks/futures FireAnt documents values 1/2/3 as active
+    sell/buy/both transaction classifications.
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"Không tìm thấy file Intraday: {file_path}")
+
+    file_size = file_path.stat().st_size
+    record_size = _AMIBROKER_INTRADAY_DTYPE.itemsize
+    if file_size % record_size != 0:
+        raise ValueError(
+            f"File {file_path} có size {file_size} không chia hết cho "
+            f"record size {record_size}."
+        )
+
+    records = np.fromfile(file_path, dtype=_AMIBROKER_INTRADAY_DTYPE)
+    if records.size == 0:
+        return pd.DataFrame(
+            columns=[
+                "Date",
+                "DateTime",
+                "RawTime",
+                "TickSeq",
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "OpenInt",
+            ]
+        )
+
+    valid_date = (records["Date"] >= 19900101) & (records["Date"] <= 20501231)
+    records = records[valid_date]
+
+    from_date_int = _normalize_from_date_int(from_date)
+    if from_date_int is not None:
+        records = records[records["Date"] >= from_date_int]
+
+    if records.size == 0:
+        return pd.DataFrame()
+
+    df = pd.DataFrame.from_records(records)
+    time_parts = _decode_intraday_time(df["RawTime"])
+
+    base_date = pd.to_datetime(df["Date"].astype(str), format="%Y%m%d", errors="raise")
+    df["DateTime"] = (
+        base_date
+        + pd.to_timedelta(time_parts["Hour"], unit="h")
+        + pd.to_timedelta(time_parts["Minute"], unit="m")
+        + pd.to_timedelta(time_parts["Second"], unit="s")
+        + pd.to_timedelta(time_parts["Millisecond"], unit="ms")
+    )
+
+    # Preserve same-timestamp ticks deterministically in original file order.
+    df["TickSeq"] = (
+        df.groupby(["Date", "RawTime"], sort=False, dropna=False)
+        .cumcount()
+        .astype("int64")
+    )
+
+    prices = ["Open", "High", "Low", "Close", "OpenInt"]
+    for column in prices:
+        df[column] = pd.to_numeric(df[column], errors="raise").astype("float64")
+
+    volume = pd.to_numeric(df["Volume"], errors="raise")
+    if (~np.isfinite(volume.to_numpy())).any() or (volume < 0).any():
+        raise ValueError(f"Invalid Volume values detected in {file_path}")
+    if not np.allclose(volume.to_numpy(), np.rint(volume.to_numpy()), atol=1e-6):
+        raise ValueError(f"Non-integer tick Volume values detected in {file_path}")
+    df["Volume"] = np.rint(volume.to_numpy()).astype("int64")
+
+    df["Date"] = base_date.dt.date
+
+    return df[
+        [
+            "Date",
+            "DateTime",
+            "RawTime",
+            "TickSeq",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+            "OpenInt",
+        ]
+    ]
+
+
+def _list_intraday_dat_files(folder_path: str | Path) -> list[Path]:
+    """
+    Discover .dat files recursively.
+
+    Recursive discovery also supports FireAnt/MetaKit installations that group
+    intraday symbols into alphabetic subdirectories.
+    """
+    folder = Path(folder_path)
+    if not folder.exists():
+        raise FileNotFoundError(f"Không tìm thấy thư mục Intraday: {folder}")
+    return sorted(path for path in folder.rglob("*.dat") if path.is_file())
+
+
+def _create_intraday_table(con, table_name: str) -> None:
+    table = _quote_table_identifier(table_name)
+    con.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {table} (
+            Ticker VARCHAR NOT NULL,
+            Date DATE NOT NULL,
+            DateTime TIMESTAMP NOT NULL,
+            RawTime INTEGER NOT NULL,
+            TickSeq BIGINT NOT NULL,
+            Open DOUBLE,
+            High DOUBLE,
+            Low DOUBLE,
+            Close DOUBLE,
+            Volume BIGINT,
+            OpenInt DOUBLE,
+            PRIMARY KEY (Ticker, Date, RawTime, TickSeq)
+        );
+        """
+    )
+
+
+def reset_amibroker_intraday_tables(
+    table_names: Sequence[str],
+    connection=None,
+) -> None:
+    """Drop all configured intraday targets before a full/init reload."""
+    con = connection or DuckDBManager.get_connection()
+    owns_connection = connection is None
+    try:
+        for table_name in table_names:
+            table = _quote_table_identifier(table_name)
+            print(f"-> Init Intraday: DROP TABLE IF EXISTS {table_name}")
+            con.execute(f"DROP TABLE IF EXISTS {table};")
+    finally:
+        if owns_connection:
+            DuckDBManager.close_connection(con)
+
+
+@timeit
+@toggle_print(allow_print=False)
+def upsert_amibroker_intraday(
+    folder_path: str,
+    table_name: str,
+    from_last_day: Optional[int] = None,
+    connection=None,
+):
+    """
+    Load one FireAnt/AmiBroker intraday source folder into one tick-level table.
+
+    Unlike EOD, intraday keeps every tick. It never collapses data to (Ticker, Date).
+    """
+    con = connection or DuckDBManager.get_connection()
+    owns_connection = connection is None
+    table = _quote_table_identifier(table_name)
+
+    try:
+        files = _list_intraday_dat_files(folder_path)
+        if not files:
+            raise RuntimeError(f"Không tìm thấy file .dat trong: {folder_path}")
+
+        from_date = None
+        if from_last_day is not None:
+            from_date = datetime.now() - timedelta(days=from_last_day)
+
+        _create_intraday_table(con, table_name)
+
+        total_rows = 0
+        loaded_files = 0
+
+        for file_path in files:
+            ticker = file_path.stem
+            df_intraday_tmp = read_amibroker_intraday_dat(
+                file_path,
+                from_date=from_date,
+            )
+            if df_intraday_tmp is None or df_intraday_tmp.empty:
+                continue
+
+            df_intraday_tmp.insert(0, "Ticker", ticker)
+
+            con.register("df_intraday_tmp", df_intraday_tmp)
+            try:
+                con.execute(
+                    f"""
+                    INSERT INTO {table} (
+                        Ticker,
+                        Date,
+                        DateTime,
+                        RawTime,
+                        TickSeq,
+                        Open,
+                        High,
+                        Low,
+                        Close,
+                        Volume,
+                        OpenInt
+                    )
+                    SELECT
+                        Ticker,
+                        Date,
+                        DateTime,
+                        RawTime,
+                        TickSeq,
+                        Open,
+                        High,
+                        Low,
+                        Close,
+                        Volume,
+                        OpenInt
+                    FROM df_intraday_tmp
+                    ON CONFLICT (Ticker, Date, RawTime, TickSeq)
+                    DO UPDATE SET
+                        DateTime = EXCLUDED.DateTime,
+                        Open = EXCLUDED.Open,
+                        High = EXCLUDED.High,
+                        Low = EXCLUDED.Low,
+                        Close = EXCLUDED.Close,
+                        Volume = EXCLUDED.Volume,
+                        OpenInt = EXCLUDED.OpenInt;
+                    """
+                )
+            finally:
+                con.unregister("df_intraday_tmp")
+
+            total_rows += len(df_intraday_tmp)
+            loaded_files += 1
+
+        print(
+            f"[✔] {table_name}: loaded/upserted {total_rows:,} ticks "
+            f"from {loaded_files:,}/{len(files):,} files."
+        )
+    finally:
+        if owns_connection:
+            DuckDBManager.close_connection(con)
+
+
 @timeit
 @toggle_print(allow_print=False)
 def syncAmibroker_EOD(from_last_day: Optional[int] = None, connection=None): 
@@ -228,12 +604,29 @@ def syncAmibroker_EOD(from_last_day: Optional[int] = None, connection=None):
 
 @timeit
 @toggle_print(allow_print=False)
-def syncAmibroker_Intraday(from_last_day: Optional[int] = None, connection=None):
+def syncAmibroker_Intraday(
+    from_last_day: Optional[int] = None,
+    connection=None,
+    reset: Optional[bool] = None,
+):
+    """
+    Sync all four FireAnt/AmiBroker Intraday sources:
+    futures, index, stock and warrant.
+
+    Default behavior:
+    - from_last_day=None -> init/full reload and reset all four target tables first.
+    - from_last_day=N    -> incremental upsert for the most recent N calendar days.
+
+    Pass reset explicitly only when an operator needs to override that default.
+    """
+    should_reset = (from_last_day is None) if reset is None else reset
+
     sync_port: MarketDataSyncPort = DuckDBMarketDataSyncAdapter(connection=connection)
     service = SyncAmiBrokerMarketDataService(sync_port=sync_port)
     service.sync_intraday(
         intraday_targets=settings.amibroker_intraday_targets,
         from_last_day=from_last_day,
+        reset=should_reset,
     )
 
 @timeit
