@@ -36,6 +36,7 @@ The executable router is `../copilot-instructions.md`. The canonical role, outco
 - Requirement readiness and backlog → `BusinessAnalyst.agent.md`
 - Architecture/design readiness → `SolutionArchitect.agent.md`
 - Concrete indicator lifecycle → `Indicator_Management.agent.md`
+- Chart recommendation and Flint authoring → `Chart.agent.md`
 - Clear general implementation → `GeneralCoding.agent.md`
 - Independent validation verdict → `TestEngineer.agent.md`
 

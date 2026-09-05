@@ -16,6 +16,7 @@ Trước khi sửa code hoặc thiết kế, đọc instructions theo thứ tự
    - .github/agents/BusinessAnalyst.agent.md cho requirement analysis, clarification, acceptance criteria và backlog.
    - .github/agents/SolutionArchitect.agent.md cho architecture/design.
    - .github/agents/Indicator_Management.agent.md cho concrete indicator lifecycle.
+   - .github/agents/Chart.agent.md cho chart recommendation, visualization selection và Flint authoring/rendering.
    - .github/agents/GeneralCoding.agent.md cho clear general implementation.
    - .github/agents/TestEngineer.agent.md cho test design, validation runbook, reproduce bug, performance test hoặc execution verification.
 4. Matching .github/instructions/*.instructions.md — domain-specific policy.
@@ -39,6 +40,7 @@ flowchart TD
     R -->|Requirement unclear| BA["BusinessAnalyst"]
     R -->|Architecture or design| SA["SolutionArchitect"]
     R -->|Indicator lifecycle| IM["Indicator Management"]
+    R -->|Chart recommendation / Flint authoring| CH["Chart"]
     R -->|Clear implementation| GC["GeneralCoding"]
     R -->|Test or validation| TE["TestEngineer"]
 
@@ -47,6 +49,8 @@ flowchart TD
     SA -->|APPROVED_FOR_IMPLEMENTATION| GC
     SA -->|Indicator domain implementation| IM
     IM -->|IMPLEMENTED_PENDING_VALIDATION| TE
+    CH -->|Production integration requested| GC
+    CH -->|Recommendation/spec/render ready| DONE
     GC -->|IMPLEMENTED_PENDING_VALIDATION| TE
 
     TE -->|PASS| DONE["Complete"]
@@ -57,6 +61,7 @@ flowchart TD
     BA -->|BLOCKED| STOP
     SA -->|BLOCKED| STOP
     IM -->|BLOCKED| STOP
+    CH -->|BLOCKED| STOP
     GC -->|BLOCKED| STOP
     TE -->|BLOCKED| STOP
 ```
@@ -67,6 +72,8 @@ Routing principles:
 - Select one authoritative owner for the current outcome.
 - A small, explicit and contract-preserving change routes directly to `GeneralCoding`.
 - A concrete indicator lifecycle change routes directly to `Indicator_Management`; broad Indicator Engine redesign routes to `SolutionArchitect`.
+- Chart-type recommendation, analytical visualization mapping and Flint authoring/rendering route directly to `Chart`.
+- Production chart/UI integration after the chart decision is ready routes to `GeneralCoding`; reusable chart architecture remains `SolutionArchitect`.
 - Implementation outcomes requiring verification hand off to `TestEngineer`.
 - `PASS` completes the task. `BLOCKED` stops execution and is reported to the user.
 - `FAIL` or `REGRESSION` does not automatically loop; repair requires an explicit controlled decision within the retry budget.
@@ -79,6 +86,7 @@ Before executing a task, classify its primary intent and select the authoritativ
 | --- | --- |
 | Requirement analysis, clarification, scope, business rules, acceptance criteria, backlog creation/refinement or requirement decomposition | `.github/agents/BusinessAnalyst.agent.md` |
 | Onboard, add, activate, modify, repair, deactivate, or delete a technical indicator, its components, metadata, parameter/config family, or D/W/M configuration | `.github/agents/Indicator_Management.agent.md` |
+| Recommend/compare a chart, map an analytical question to a visualization, author a Flint ChartAssemblyInput, or validate/render/compile a chart with Flint | `.github/agents/Chart.agent.md` |
 | Architecture, system design, solution design, technical design, structural refactor, integration design, data architecture, MCP architecture, or AI/agent architecture | `.github/agents/SolutionArchitect.agent.md` |
 | Clear implementation, focused bug fix, contract-preserving refactor, code/config/SQL/script/documentation change not owned end-to-end by a domain agent | `.github/agents/GeneralCoding.agent.md` |
 | Test design, test execution, validation, regression, reproduction, cross-check, acceptance, performance, or execution verification | `.github/agents/TestEngineer.agent.md` |
@@ -108,6 +116,15 @@ This includes:
 `Indicator_Management.agent.md` is the authoritative owner for indicator lifecycle operations. Do not implement these changes directly through the general implementation workflow.
 
 A broad redesign of the Indicator Engine remains owned by `SolutionArchitect.agent.md`; the Solution Architect MUST consult the Indicator Management contract for indicator-domain constraints. A request to design or onboard one concrete indicator remains owned by `Indicator_Management.agent.md`.
+
+### Chart / Visualization
+For chart-type recommendation, visualization comparison, analytical mapping, Flint `ChartAssemblyInput` authoring, or Flint chart validation/rendering/compilation:
+
+MUST follow `.github/agents/Chart.agent.md`, `.github/skills/chart-authoring/SKILL.md`, and `.github/instructions/chart.instructions.md`.
+
+Chart selection MUST start from the analytical question and data contract. ECharts, Vega-Lite and Chart.js example galleries are reference catalogs; Flint is the generation contract.
+
+If the request changes reusable chart architecture or cross-page contracts, route to `SolutionArchitect.agent.md`. If the chart decision/spec is ready and production code integration is requested, hand off to `GeneralCoding.agent.md`.
 
 ### Design / Architecture
 For architecture, system design, solution design, component design, technical design, data model, workflow design, integration design, architecture refactor, migration design or similar requests:
@@ -142,7 +159,7 @@ General Coding normally ends with `IMPLEMENTED_PENDING_VALIDATION` and hands off
 
 When multiple agents appear relevant, use this ownership priority:
 
-1. Domain-specific agent for a concrete domain lifecycle operation.
+1. Domain-specific agent for a concrete domain lifecycle or specialized authoring operation, including Indicator Management and Chart.
 2. Business Analyst when requirement quality/readiness is the primary objective.
 3. Solution Architect for broad architecture or cross-module design.
 4. General Coding for clear implementation not owned end-to-end by a domain agent.
@@ -153,6 +170,7 @@ Default handoff:
 - Requirement needing design: `BusinessAnalyst` → `SolutionArchitect` → `GeneralCoding` or domain owner → `TestEngineer`.
 - Clear implementation: `GeneralCoding` → `IMPLEMENTED_PENDING_VALIDATION` → `TestEngineer`.
 - Indicator lifecycle change: `Indicator_Management` → implementation/backfill → `TestEngineer` validation.
+- Chart advice/render: `Chart` → `CHART_RECOMMENDATION_READY` / `CHART_SPEC_READY` / `CHART_RENDERED`; hand to `GeneralCoding` only when production integration is requested.
 - Test-only request: `TestEngineer` owns the task and returns a finite verdict.
 
 Examples:
@@ -161,6 +179,9 @@ Examples:
 - "Thêm / onboard indicator RSI" → `Indicator_Management.agent.md`.
 - "Thiết kế indicator RSI mới" → `Indicator_Management.agent.md`; consult architecture rules only when needed.
 - "Thiết kế lại Indicator Engine" → `SolutionArchitect.agent.md`; consult Indicator Management for lifecycle constraints.
+- "Chart nào phù hợp để xem dòng tiền luân chuyển giữa ngành?" → `Chart.agent.md`.
+- "Render chart này bằng Flint" → `Chart.agent.md`.
+- "Tích hợp chart đã chốt vào page production" → `GeneralCoding.agent.md` + chart instructions.
 - "Test Indicator Engine sau refactor" → `TestEngineer.agent.md`.
 
 ## Domain routing
@@ -169,7 +190,8 @@ Examples:
 - Database / DuckDB / SQL / transaction / data quality → .github/instructions/database.instructions.md
 - Technical indicator lifecycle / metadata / components / config families / activation / backfill / deactivation / deletion → .github/agents/Indicator_Management.agent.md + .github/instructions/indicators.instructions.md
 - Broad Indicator Engine architecture or cross-module redesign → .github/agents/SolutionArchitect.agent.md + .github/instructions/indicators.instructions.md
-- Chart / visualization / UI chart contracts → .github/instructions/chart.instructions.md
+- Chart recommendation / visualization selection / Flint authoring and render → .github/agents/Chart.agent.md + .github/skills/chart-authoring/SKILL.md + .github/instructions/chart.instructions.md
+- Production chart / visualization / UI chart contracts → .github/instructions/chart.instructions.md + owner selected by intent
 - Crawlers / ingestion / external data sources → .github/instructions/crawler.instructions.md
 - Tests / validation / execution verification → .github/instructions/testing.instructions.md + .github/agents/TestEngineer.agent.md
 
@@ -185,14 +207,15 @@ Before implementation:
 3. Select the mandatory specialist using the Intent routing and ownership priority above.
 4. If requirement readiness is the objective or material ambiguity exists, route through BusinessAnalyst.agent.md first.
 5. If the request is a concrete indicator lifecycle change, route through Indicator_Management.agent.md first.
-6. If the request is broad design/architecture, route through SolutionArchitect.agent.md first.
-7. If the request is a clear implementation, route through GeneralCoding.agent.md.
-8. If the request is test design/execution, route through TestEngineer.agent.md first.
-9. Read matching domain instruction(s).
-10. Read docs/00_HOME.md and related requirement/architecture/specification/ADR documents.
-11. Inspect existing implementation and similar patterns.
-12. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
-13. Propose the smallest compatible change.
+6. If the request is chart recommendation, visualization selection or Flint authoring/rendering, route through Chart.agent.md first.
+7. If the request is broad design/architecture, route through SolutionArchitect.agent.md first.
+8. If the request is a clear implementation, route through GeneralCoding.agent.md.
+9. If the request is test design/execution, route through TestEngineer.agent.md first.
+10. Read matching domain instruction(s).
+11. Read docs/00_HOME.md and related requirement/architecture/specification/ADR documents.
+12. Inspect existing implementation and similar patterns.
+13. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
+14. Propose the smallest compatible change.
 
 During implementation:
 - Reuse existing utilities/services/repositories before creating abstractions.
@@ -260,6 +283,7 @@ For implementation work use this concise structure:
 
 For requirement/backlog work, use the output contract defined by .github/agents/BusinessAnalyst.agent.md.
 For design/architecture work, use the output contract defined by .github/agents/SolutionArchitect.agent.md.
+For chart recommendation/Flint authoring work, use the output contract defined by .github/agents/Chart.agent.md.
 For general implementation work, use the output contract defined by .github/agents/GeneralCoding.agent.md.
 For test-design/execution work, use the output contract defined by .github/agents/TestEngineer.agent.md.
 

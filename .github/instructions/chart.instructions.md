@@ -9,15 +9,26 @@ This file defines mandatory chart and visualization implementation rules.
 Canonical knowledge:
 - `docs/architecture/Chart_Architecture.md`
 - `docs/architecture/theme.md`
+- `.github/skills/chart-authoring/SKILL.md`
 - relevant chart/domain architecture and ADR materials routed from `docs/00_HOME.md`
 
 ## Agent routing
-- Unclear visualization requirement, user behavior, scope or acceptance criteria → `.github/agents/BusinessAnalyst.agent.md`.
-- New chart architecture, reusable contract or cross-page design → `.github/agents/SolutionArchitect.agent.md`.
-- Clear chart/UI implementation following approved contracts → `.github/agents/GeneralCoding.agent.md`.
+- Chart-type recommendation, analytical visualization mapping, Flint `ChartAssemblyInput` authoring, Flint validation/rendering/compilation → `.github/agents/Chart.agent.md` + `.github/skills/chart-authoring/SKILL.md`.
+- Materially unclear analytical/business objective, user behavior, scope or acceptance criteria → `.github/agents/BusinessAnalyst.agent.md`.
+- New chart architecture, reusable contract, renderer abstraction or cross-page design → `.github/agents/SolutionArchitect.agent.md`.
+- Clear production chart/UI implementation following an approved chart decision/contract → `.github/agents/GeneralCoding.agent.md`.
 - Test design/execution or independent UI validation → `.github/agents/TestEngineer.agent.md`.
 
-General Coding MUST update the affected canonical chart/theme document when an approved input, output or interaction contract changes, then hand off with `IMPLEMENTED_PENDING_VALIDATION`.
+The Chart Agent owns visualization selection and Flint authoring, not production application integration. General Coding MUST update the affected canonical chart/theme document when an approved input, output or interaction contract changes, then hand off with `IMPLEMENTED_PENDING_VALIDATION`.
+
+## Flint authoring policy
+- MCP server `flint` is the mandatory generation path for Flint-authored charts.
+- Treat ECharts, Vega-Lite and Chart.js example galleries as visualization catalogs; do not copy their backend-native specs as the primary authoring contract.
+- Author Flint semantic input first: `semantic_types` + `chart_spec`, referencing real columns by exact name.
+- Transform aggregation/join/pivot/derived/reshape needs before Flint.
+- Validate generated specs with `flint/validate_chart`.
+- Prefer `flint/create_chart_view` for interactive output; use `flint/render_chart` for static output and `flint/compile_chart` only when backend-native JSON is required.
+- Detailed decision rules and MCP sequence live only in `.github/skills/chart-authoring/SKILL.md`; do not duplicate them here.
 
 ## Responsibilities
 - Separate data acquisition/preparation from rendering.

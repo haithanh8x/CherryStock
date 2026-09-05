@@ -14,6 +14,7 @@ This document is the canonical architecture and ownership map for AI-assisted so
 | Business Analyst | Requirement is complete, testable and ready for design or implementation | `docs/backlog/requirements/REQ-*.md` |
 | Solution Architect | Technical design is approved and implementable | `docs/architecture/**`, `docs/adr/**` |
 | Indicator Management | Concrete indicator lifecycle is implemented/backfilled and ready for independent validation | Existing indicator architecture/specification and lifecycle material |
+| Chart | Visualization decision is explicit and, when requested, a Flint chart/spec is validated and rendered | `.github/skills/chart-authoring/SKILL.md`, Flint chart decision/spec handoff |
 | General Coding | Clear requirement/design is implemented and ready for independent validation | `src/**`, `scripts/**`, affected canonical docs, optional `docs/development/implementation-notes/**` |
 | Test Engineer | Evidence-backed terminal verdict | `tests/**` and focused test/runbook evidence |
 | Default repository agent | Intent classification, routing, handoff and consolidated user response | No duplicate domain material |
@@ -25,6 +26,7 @@ This document is the canonical architecture and ownership map for AI-assisted so
 | Requirement analysis, clarification, acceptance criteria, backlog | `BusinessAnalyst.agent.md` |
 | Architecture/design/cross-module contract | `SolutionArchitect.agent.md` |
 | Concrete indicator lifecycle | `Indicator_Management.agent.md` |
+| Chart recommendation, visualization selection, Flint spec/render | `Chart.agent.md` |
 | Clear general implementation or bug fix | `GeneralCoding.agent.md` |
 | Test strategy, test execution, regression or validation | `TestEngineer.agent.md` |
 
@@ -54,6 +56,18 @@ User request
     → IMPLEMENTED_PENDING_VALIDATION
     → TestEngineer
     → PASS / FAIL / BLOCKED / REGRESSION
+```
+
+Chart advisory/generation:
+
+```text
+User visualization request
+    → Chart
+    → CHART_RECOMMENDATION_READY / CHART_SPEC_READY / CHART_RENDERED
+    → User
+      or
+    → GeneralCoding (when production integration is requested)
+    → TestEngineer
 ```
 
 ## Material Structure
@@ -101,6 +115,7 @@ Each role confirms only its own outcome:
 
 - Business Analyst confirms requirement readiness.
 - Solution Architect confirms design readiness.
+- Chart Agent confirms visualization/Flint authoring readiness, not production implementation correctness.
 - General Coding or a domain agent confirms implementation readiness for validation.
 - Test Engineer confirms the evidence-backed verdict.
 - The user approves product priority, scope and material business decisions.

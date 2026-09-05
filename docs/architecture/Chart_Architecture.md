@@ -17,6 +17,30 @@ reusable chart component
 page / dashboard composition
 ```
 
+## Visualization Decision and Authoring Boundary
+
+Chart selection and one-off Flint authoring are owned by `.github/agents/Chart.agent.md` using `.github/skills/chart-authoring/SKILL.md`.
+
+The boundary is:
+
+```text
+analytical question + data contract
+        ↓
+chart recommendation
+        ↓
+chart-ready transformation (when needed)
+        ↓
+Flint semantic ChartAssemblyInput
+        ↓
+Flint validation/render/compile
+        ↓
+production integration (General Coding, when requested)
+```
+
+ECharts, Vega-Lite and Chart.js example catalogs are used to broaden visualization choices. They do not replace the Flint semantic input contract for generated charts.
+
+A visualization recommendation is not itself a production architecture change. Reusable component contracts, cross-page interaction patterns, renderer abstractions and application integration remain governed by Solution Architect / General Coding according to the Agent Harness.
+
 ## Component contract
 Every reusable chart should make input and output explicit.
 
