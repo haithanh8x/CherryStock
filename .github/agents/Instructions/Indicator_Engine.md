@@ -532,7 +532,7 @@ Nếu smoke test fail, STOP và quay lại PHASE 1.
 Script chuẩn:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\init_refresh_technical_indicators.py
+.\.venv\Scripts\python.exe scripts\initload\init_refresh_technical_indicators.py
 ```
 
 Script gọi:
