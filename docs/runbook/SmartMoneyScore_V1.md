@@ -122,19 +122,41 @@ Memory_t =
 default lambda = 0.90
 ~~~
 
-Daily incremental does not recompute full history. It uses:
+Daily incremental does not recompute full history. It uses two bounded stages:
 
 ~~~text
-target checkpoint
-        ↓
-~70 prior market sessions warmup
-        +
-latest persisted AccumulationMemory before warmup
-        ↓
-recalculate rolling factors + memory
-        ↓
-replace target checkpoint only
+target_start
+    ↑
+~70 market sessions
+    │
+memory_start
+    ↑
+~70 market sessions
+    │
+feature_start
 ~~~
+
+Execution semantics:
+
+~~~text
+feature_start
+    ↓
+mature Return/RS/ALV/CLV/OBV/AD rolling features
+    ↓
+trim to memory_start
+    +
+latest persisted AccumulationMemory before memory_start
+    ↓
+continue accumulation memory deterministically
+    ↓
+calculate state / score / confidence
+    ↓
+replace target_start..source_end only
+~~~
+
+The first window exists to mature the longest 60-session features. The second
+window replays accumulation memory from an exact persisted seed. Keeping these
+boundaries separate is required for full-history/incremental convergence.
 
 Cross-sectional normalization still uses the complete active universe for each
 calculated date, even when --tickers limits persisted ticker rows.
@@ -437,9 +459,9 @@ GitHub Actions workflow:
 Validated on Python 3.13 / DuckDB 1.5.5:
 
 ```text
-Run:        34027453182
-Run number: 4
-Commit:     636b2299c43c2d108d03c29fd9a6e3993c8e59d0
+Run:        34027575109
+Run number: 6
+Commit:     9b352782f237f67938dc25ebcf95fb60de54be46
 Conclusion: SUCCESS
 Tests:      12 passed
 ```
@@ -450,6 +472,8 @@ Coverage includes:
 - pure scoring/unit semantics;
 - OOS evaluation semantics;
 - real SmartMoney schema bootstrap in synthetic DuckDB;
+- schema seed idempotency by executing the schema twice;
+- read-only preflight SQL execution;
 - full historical refresh;
 - public `vw_Ticker_SmartMoney`;
 - missing LimitUp = NULL / UNAVAILABLE;
