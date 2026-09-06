@@ -41,6 +41,7 @@ scripts/validate_smart_money_incremental.py
 
 ~~~text
 tests/test_smart_money_score.py
+tests/test_smart_money_evaluation.py
 tests/test_smart_money_score.md
 ~~~
 
@@ -58,7 +59,7 @@ tests/test_smart_money_score.md
 ### T1 — Focused unit tests
 
 ~~~powershell
-python -m pytest tests/test_smart_money_score.py -v
+python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py -v
 ~~~
 
 Expected: all tests PASS.
@@ -118,6 +119,23 @@ Expected:
 - model identity visible;
 - ConfidenceScore independently visible.
 
+### T7 — OOS evaluation execution
+
+Action:
+
+~~~powershell
+python scripts\evaluate_smart_money_v1.py --horizons 5 10 20
+~~~
+
+Expected:
+
+- TRAIN/VALIDATION/TEST evidence exists when history is sufficient;
+- metrics.csv / monotonicity.csv / summary.json are produced;
+- evaluator performs no database writes;
+- TEST metrics are reported separately from TRAIN.
+
+Predictive quality is reported, not auto-approved.
+
 ## Failure handling
 
 One focused repair is allowed for a current-change failure, then rerun only the
@@ -125,7 +143,7 @@ failed focused test. Do not change unrelated market/indicator code.
 
 ## Stop condition
 
-Stop after T1–T6 have a terminal decision.
+Stop after T1–T7 have a terminal decision.
 
 ## Result format
 
@@ -138,6 +156,7 @@ T3 Preflight: PASS | FAIL
 T4 Convergence: PASS | FAIL
 T5 State semantics: PASS | WARNING | FAIL
 T6 Public contract: PASS | FAIL
+T7 OOS evaluation: PASS | WARNING | FAIL
 
 Verdict: PASS | FAIL | BLOCKED | REGRESSION
 Action: KEEP | FIX ONCE | REVERT | STOP
