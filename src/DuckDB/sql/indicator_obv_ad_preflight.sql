@@ -96,17 +96,20 @@ WHERE cfg.IndicatorCode IN ('OBV', 'AD')
 -- PASS: 0 rows.
 
 -- 7) Public-view sample for SmartMoney consumption.
+-- vw_Ticker_indicators exposes IndicatorCode + Timeframe (not ConfigCode).
 SELECT
     Ticker,
     Date,
-    ConfigCode,
+    ConfigId,
     IndicatorCode,
+    Timeframe,
     ComponentCode,
     Value
 FROM "CherryMon"."main"."vw_Ticker_indicators"
 WHERE Ticker = 'MWG'
-  AND ConfigCode IN ('OBV_D', 'AD_D')
-ORDER BY Date DESC, ConfigCode
+  AND IndicatorCode IN ('OBV', 'AD')
+  AND Timeframe = 'D'
+ORDER BY Date DESC, IndicatorCode
 LIMIT 40;
 
 -- PASS: numeric VALUE rows exist for both daily configs.
