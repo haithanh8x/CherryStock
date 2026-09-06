@@ -43,6 +43,25 @@ python scripts\initload\init_reload_raw_intraday_tables.py
 ```
 
 
+## Rebuild `vw_raw_stock_eod`
+
+Creates or replaces the enriched stock EOD market-limit view.
+
+```powershell
+python scripts\initload\init_reload_vw_raw_stock_eod.py
+```
+
+The view adds Market, ReferencePrice, CeilingPrice, FloorPrice, LimitUp/Down and
+their streaks with provenance/quality fields. Full EOD, full Intraday and combined
+raw reload entry points automatically drop/recreate this dependent view around
+destructive source-table rebuilds.
+
+Read-only validation:
+`src/DuckDB/sql/vw_raw_stock_eod_preflight.sql`
+
+Runbook:
+`docs/runbook/vw_raw_stock_eod.md`
+
 ## Rebuild `vw_Ticker_OHLC_D`
 
 Creates or replaces the daily OHLC + Intraday transaction-flow view.
