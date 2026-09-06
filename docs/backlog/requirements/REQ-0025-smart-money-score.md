@@ -451,7 +451,7 @@ These are calibration/data-source decisions and do not block the V1 architecture
 ## Suggested Routing
 
 - Architecture required: Yes — completed in `docs/architecture/SmartMoneyScore.md`.
-- Primary next owner: `.github/agents/GeneralCoding.agent.md`.
+- Primary next owner: `.github/agents/TestEngineer.agent.md`.
 - Domain instructions:
   - `.github/instructions/database.instructions.md`
   - `.github/instructions/indicators.instructions.md` when consuming indicator SSOT
@@ -462,8 +462,8 @@ These are calibration/data-source decisions and do not block the V1 architecture
 ## Handoff
 
 ```text
-Status: READY_FOR_IMPLEMENTATION
-Primary next owner: GeneralCoding.agent.md
+Status: IMPLEMENTED_PENDING_VALIDATION
+Primary next owner: TestEngineer.agent.md
 Acceptance criteria count: 12
 Blocking questions: None
 Architecture: docs/architecture/SmartMoneyScore.md
@@ -496,6 +496,7 @@ Runtime and persistence:
 Validation materials:
 
 - `tests/test_smart_money_score.py`
+- `tests/test_smart_money_integration.py`
 - `tests/test_smart_money_score.md`
 - `docs/runbook/SmartMoneyScore_V1.md`
 
