@@ -193,6 +193,16 @@ def _create_fixture_database(connection, tmp_path: Path) -> None:
         / "smart_money_v1_schema.sql"
     ).read_text(encoding="utf-8")
     connection.execute(schema_sql)
+    connection.execute(schema_sql)
+
+    model_count = connection.execute(
+        'SELECT COUNT(*) FROM "CherryMon"."main"."dim_smart_money_model" WHERE ModelId = 1'
+    ).fetchone()[0]
+    factor_count = connection.execute(
+        'SELECT COUNT(*) FROM "CherryMon"."main"."dim_smart_money_factor" WHERE IsEnabled = TRUE'
+    ).fetchone()[0]
+    assert int(model_count) == 1
+    assert int(factor_count) == 10
 
 
 def _recent_scores(connection, start_date) -> pd.DataFrame:
@@ -255,6 +265,15 @@ def test_full_refresh_public_view_and_incremental_convergence(tmp_path: Path) ->
             'SELECT COUNT(*) FROM "CherryMon"."main"."vw_Ticker_SmartMoney"'
         ).fetchone()[0]
         assert int(public_count) > 0
+
+        preflight_sql = (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "DuckDB"
+            / "sql"
+            / "smart_money_v1_preflight.sql"
+        ).read_text(encoding="utf-8")
+        connection.execute(preflight_sql)
 
         limit_rows = connection.execute(
             """
