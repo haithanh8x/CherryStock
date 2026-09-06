@@ -524,9 +524,9 @@ GitHub Actions workflow:
 Validated on Python 3.13 / DuckDB 1.5.5:
 
 ```text
-Run:        34027453182
-Run number: 4
-Commit:     636b2299c43c2d108d03c29fd9a6e3993c8e59d0
+Run:        34027575109
+Run number: 6
+Commit:     9b352782f237f67938dc25ebcf95fb60de54be46
 Conclusion: SUCCESS
 Tests:      12 passed
 ```
@@ -537,6 +537,8 @@ Coverage includes:
 - pure scoring/unit semantics;
 - OOS evaluation semantics;
 - real SmartMoney schema bootstrap in synthetic DuckDB;
+- schema seed idempotency;
+- read-only preflight SQL execution;
 - full historical refresh;
 - public `vw_Ticker_SmartMoney`;
 - missing LimitUp = NULL / UNAVAILABLE;
