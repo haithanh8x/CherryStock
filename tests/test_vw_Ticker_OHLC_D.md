@@ -40,9 +40,13 @@ timestamps and market/session semantics first.
 
 - `OpenInt=1` -> SellDown
 - `OpenInt=2` -> BuyUp
-- `OpenInt=3` + 09:00-09:15 -> ATO
-- `OpenInt=3` + 14:30-14:45 -> ATC
+- `OpenInt=3` + 09:00-09:20 -> ATO
+- `OpenInt=3` + 14:30-14:50 -> ATC
 - other `OpenInt=3` -> remains only in TradingValue
+
+Auction windows were verified against raw_stock_intraday `OpenInt=3` tick
+timestamps: matching results publish after the 09:15/14:45 session closes, so
+auction ticks legitimately land up to 09:20:00 and 14:50:00 respectively.
 
 ## Terminal result
 

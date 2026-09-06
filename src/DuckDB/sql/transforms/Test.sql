@@ -1,32 +1,61 @@
-select Industry, sum(Capital)/sum("Shares Outstanding"*EPS) from "CherryMon"."main"."vw_Ticker" 
-where EPS>=0
-group by Industry;
+select * from "CherryMon"."main"."vw_Ticker_OHLC_D" where ticker='MWG' order by date desc;
 
-select sum(Capital)/sum("Shares Outstanding"*EPS) from "CherryMon"."main"."vw_Ticker" 
-where EPS>=0;
-
-select sum(Capital)/sum("Shares Outstanding"*EPS) from "CherryMon"."main"."vw_Ticker" 
-where EPS>=0 and Industry<>'Vingroup' and status='Y';
-
-select * from "CherryMon"."main"."raw_stock_eod" where ticker='MWG' order by date desc;
-
-select * from "CherryMon"."main"."vw_Ticker" where industry='Bán lẻ' and status='Y';
+kiểm tra logic của ATC và ATO trong view "CherryMon"."main"."vw_Ticker_OHLC_D" tại sao không có giá trị, dùng MCP DuckDB để kiểm tra dữ liệu ví dụ như Ticker='MWG' và Date=2026-07-06 thì lại có
 
 
-select IndustryCode, Industry, sum(Capital) Capital from "CherryMon"."main"."vw_Ticker" 
-where Status='Y'
-group by IndustryCode, Industry;
-
-SELECT max("Date/Time") FROM "CherryMon"."main"."raw_stock_fa";
-
-select Ticker, min("Date"), max("Date") from "CherryMon"."main"."raw_commodity_eod" where Ticker='^GCZ' group by Ticker;
-
-select * from "CherryMon"."main"."raw_other_eod" where Ticker='^GCZ';
-
-
-select * from "CherryMon"."main"."cal_Trends" where Ticker='MWG' order by Date desc;
-
-select * from "CherryMon"."main"."dim_indicator";
-select * from "CherryMon"."main"."dim_indicator_component";
-select * from "CherryMon"."main"."dim_indicator_config";
-select * from "CherryMon"."main"."vw_Ticker_indicators" where Ticker='MWG' and date='2026-08-28';
+CREATE OR REPLACE VIEW "CherryMon"."main"."vw_Ticker_OHLC_D" AS
+WITH intraday_daily AS (
+    SELECT
+        i."Ticker",
+        i."Date",
+        CAST(ROUND(SUM(CAST(i."Close" AS DOUBLE) * CAST(i."Volume" AS DOUBLE) * 1000.0)) AS BIGINT) AS "TradingValue",
+        CAST(ROUND(SUM(CASE WHEN i."OpenInt" = 2 THEN CAST(i."Close" AS DOUBLE) * CAST(i."Volume" AS DOUBLE) * 1000.0 ELSE 0.0 END)) AS BIGINT) AS "BuyUp_Val",
+        CAST(SUM(CASE WHEN i."OpenInt" = 2 THEN i."Volume" ELSE 0 END) AS BIGINT) AS "BuyUp_Vol",
+        CAST(ROUND(SUM(CASE WHEN i."OpenInt" = 1 THEN CAST(i."Close" AS DOUBLE) * CAST(i."Volume" AS DOUBLE) * 1000.0 ELSE 0.0 END)) AS BIGINT) AS "SellDown_Val",
+        CAST(SUM(CASE WHEN i."OpenInt" = 1 THEN i."Volume" ELSE 0 END) AS BIGINT) AS "SellDown_Vol",
+        CAST(ROUND(SUM(CASE
+            WHEN i."OpenInt" = 3
+             AND CAST(i."DateTime" AS TIME) >= TIME '09:00:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '09:15:00'
+            THEN CAST(i."Close" AS DOUBLE) * CAST(i."Volume" AS DOUBLE) * 1000.0
+            ELSE 0.0 END)) AS BIGINT) AS "ATO_Val",
+        CAST(SUM(CASE
+            WHEN i."OpenInt" = 3
+             AND CAST(i."DateTime" AS TIME) >= TIME '09:00:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '09:15:00'
+            THEN i."Volume" ELSE 0 END) AS BIGINT) AS "ATO_Vol",
+        CAST(ROUND(SUM(CASE
+            WHEN i."OpenInt" = 3
+             AND CAST(i."DateTime" AS TIME) >= TIME '14:30:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '14:45:00'
+            THEN CAST(i."Close" AS DOUBLE) * CAST(i."Volume" AS DOUBLE) * 1000.0
+            ELSE 0.0 END)) AS BIGINT) AS "ATC_Val",
+        CAST(SUM(CASE
+            WHEN i."OpenInt" = 3
+             AND CAST(i."DateTime" AS TIME) >= TIME '14:30:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '14:45:00'
+            THEN i."Volume" ELSE 0 END) AS BIGINT) AS "ATC_Vol"
+    FROM "CherryMon"."main"."raw_stock_intraday" AS i
+    GROUP BY i."Ticker", i."Date"
+)
+SELECT
+    e."Ticker",
+    e."Date",
+    e."Open",
+    e."High",
+    e."Low",
+    e."Close",
+    e."Volume",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."TradingValue" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "TradingValue",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."BuyUp_Val" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "BuyUp_Val",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."BuyUp_Vol" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "BuyUp_Vol",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."SellDown_Val" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "SellDown_Val",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."SellDown_Vol" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "SellDown_Vol",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."ATO_Val" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "ATO_Val",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."ATO_Vol" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "ATO_Vol",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."ATC_Val" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "ATC_Val",
+    CASE WHEN d."Ticker" IS NOT NULL THEN d."ATC_Vol" WHEN COALESCE(e."Volume", 0) = 0 THEN CAST(0 AS BIGINT) ELSE NULL END AS "ATC_Vol"
+FROM "CherryMon"."main"."raw_stock_eod" AS e
+LEFT JOIN intraday_daily AS d
+    ON d."Ticker" = e."Ticker"
+   AND d."Date" = e."Date";

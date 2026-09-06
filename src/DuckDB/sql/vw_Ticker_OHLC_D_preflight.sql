@@ -84,11 +84,13 @@ FROM recent;
 -- 5) TradingValue must be >= explicitly classified value buckets.
 -- A positive remainder is valid because OpenInt=3 outside ATO/ATC or other
 -- source classifications are intentionally not force-assigned.
+-- Tolerance: 4 buckets are rounded independently (each +/- 0.5), so the sum
+-- can legitimately exceed TradingValue by up to 2 units.
 SELECT
     COUNT(*) AS invalid_value_decomposition_rows
 FROM "CherryMon"."main"."vw_Ticker_OHLC_D"
 WHERE "TradingValue" IS NOT NULL
-  AND "TradingValue" + 1e-9 <
+  AND "TradingValue" + 2.5 <
       COALESCE("BuyUp_Val", 0)
     + COALESCE("SellDown_Val", 0)
     + COALESCE("ATO_Val", 0)
@@ -134,10 +136,10 @@ classified AS (
         *,
         CASE
             WHEN CAST("DateTime" AS TIME) >= TIME '09:00:00'
-             AND CAST("DateTime" AS TIME) <= TIME '09:15:00'
+             AND CAST("DateTime" AS TIME) <= TIME '09:20:00'
             THEN 'ATO'
             WHEN CAST("DateTime" AS TIME) >= TIME '14:30:00'
-             AND CAST("DateTime" AS TIME) <= TIME '14:45:00'
+             AND CAST("DateTime" AS TIME) <= TIME '14:50:00'
             THEN 'ATC'
             ELSE 'UNCLASSIFIED_OI3'
         END AS bucket

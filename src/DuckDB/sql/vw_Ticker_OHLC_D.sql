@@ -11,7 +11,11 @@
 -- Value-unit contract:
 --   AmiBroker stock price is stored in thousand VND/share.
 --   *_Val = ROUND(SUM(tick Close * tick Volume * 1000))::BIGINT
---   All *_Val and *_Vol outputs are integer values with no decimal places.
+--   All *_Val and *_Vol outputs are integer values with no decimal points.
+--
+-- Auction windows (verified against raw_stock_intraday OpenInt=3 tick times):
+--   ATO: 09:00:00 - 09:20:00 (matching results publish after 09:15 close)
+--   ATC: 14:30:00 - 14:50:00 (matching results publish after 14:45 close)
 
 CREATE OR REPLACE VIEW "CherryMon"."main"."vw_Ticker_OHLC_D" AS
 WITH intraday_daily AS (
@@ -26,24 +30,24 @@ WITH intraday_daily AS (
         CAST(ROUND(SUM(CASE
             WHEN i."OpenInt" = 3
              AND CAST(i."DateTime" AS TIME) >= TIME '09:00:00'
-             AND CAST(i."DateTime" AS TIME) <= TIME '09:15:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '09:20:00'
             THEN CAST(i."Close" AS DOUBLE) * CAST(i."Volume" AS DOUBLE) * 1000.0
             ELSE 0.0 END)) AS BIGINT) AS "ATO_Val",
         CAST(SUM(CASE
             WHEN i."OpenInt" = 3
              AND CAST(i."DateTime" AS TIME) >= TIME '09:00:00'
-             AND CAST(i."DateTime" AS TIME) <= TIME '09:15:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '09:20:00'
             THEN i."Volume" ELSE 0 END) AS BIGINT) AS "ATO_Vol",
         CAST(ROUND(SUM(CASE
             WHEN i."OpenInt" = 3
              AND CAST(i."DateTime" AS TIME) >= TIME '14:30:00'
-             AND CAST(i."DateTime" AS TIME) <= TIME '14:45:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '14:50:00'
             THEN CAST(i."Close" AS DOUBLE) * CAST(i."Volume" AS DOUBLE) * 1000.0
             ELSE 0.0 END)) AS BIGINT) AS "ATC_Val",
         CAST(SUM(CASE
             WHEN i."OpenInt" = 3
              AND CAST(i."DateTime" AS TIME) >= TIME '14:30:00'
-             AND CAST(i."DateTime" AS TIME) <= TIME '14:45:00'
+             AND CAST(i."DateTime" AS TIME) <= TIME '14:50:00'
             THEN i."Volume" ELSE 0 END) AS BIGINT) AS "ATC_Vol"
     FROM "CherryMon"."main"."raw_stock_intraday" AS i
     GROUP BY i."Ticker", i."Date"
