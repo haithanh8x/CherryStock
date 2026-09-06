@@ -80,6 +80,111 @@ The generated `docs/reference/DB_Metadata.md` must be refreshed after the local
 database has been init-loaded with this schema; it is not hand-edited ahead of the
 actual database state.
 
+## Enriched stock EOD market-limit view
+
+`main.vw_raw_stock_eod` is the consumer-oriented stock EOD contract for standard-session
+reference prices, price bands and daily limit-up/down state.
+
+Logical grain:
+
+```text
+Ticker + Date
+```
+
+Primary lineage:
+
+```text
+raw_stock_eod
+  └─ OHLCV / OpenInt
+  └─ previous Close for listed-market standard ReferencePrice
+
+raw_stock_fa
+  └─ current Market snapshot (HOSE / HNX / UPCOM)
+
+raw_stock_intraday
+  └─ UPCOM previous eligible-session VWAP proxy
+        ↓
+vw_raw_stock_eod
+```
+
+Public enrichment fields:
+
+```text
+Market
+Market_Source
+Market_IsPointInTime
+ReferencePrice
+ReferencePrice_Source
+ReferencePrice_IsProxy
+PriceBandRate
+PriceBandRuleQuality
+CeilingPrice
+FloorPrice
+LimitUp
+LimitUpStreak
+LimitDown
+LimitDownStreak
+```
+
+Price units remain the same as `raw_stock_eod`: **thousand VND/share**.
+
+Standard-session rules implemented from the current 2026 VNX/HOSE trading rules:
+
+| Market | ReferencePrice | Normal band | Quote unit |
+| --- | --- | ---: | --- |
+| HOSE | nearest previous closing price | +/-7% | 10 / 50 / 100 VND by price level |
+| HNX | nearest previous closing price | +/-10% | 100 VND |
+| UPCOM | nearest previous weighted-average eligible matched price | +/-15% | 100 VND |
+
+Price-band calculation:
+
+```text
+CeilingRaw = ReferencePrice * (1 + band)
+FloorRaw   = ReferencePrice * (1 - band)
+
+CeilingPrice = round DOWN to quote unit
+FloorPrice   = round UP to quote unit
+```
+
+When rounding collapses a limit to ReferencePrice, the exchange one-quote-unit
+adjustment is applied. If ReferencePrice equals the minimum quote unit, FloorPrice
+stays at ReferencePrice.
+
+UPCOM ReferencePrice follows the exchange rule conceptually: weighted-average price
+of regular-lot continuous-matching trades from the nearest previous eligible trading
+session. The current raw Intraday contract does not expose an explicit
+regular-lot/negotiated flag, so CherryStock uses matched ticks with
+`OpenInt IN (1,2,3)`, `Volume >= 100`, and `Volume % 100 = 0` as a best-effort
+regular-lot-compatible subset. This source is explicitly marked
+`UPCOM_INTRADAY_LOT100_VWAP_PROXY`.
+
+`LimitUp` / `LimitDown` mean the **daily Close** equals the derived CeilingPrice
+or FloorPrice. Streak fields count consecutive available EOD observations with the
+same TRUE state.
+
+Quality boundary:
+
+- `raw_stock_fa.Market` is a current snapshot, not point-in-time exchange history;
+- historical `raw_stock_eod` can be corporate-action adjusted;
+- first-trading-day, >=25-session trading-resumption and ex-right/corporate-action
+  special bands are not inferred without event data;
+- therefore `PriceBandRuleQuality='STANDARD_RULE_DERIVED'` is not an authoritative
+  exchange-published daily limit contract.
+
+Current rule references:
+- VNX Decision 22/QD-HDTV dated 16/03/2026 — listed securities;
+- VNX Decision 23/QD-HDTV dated 18/03/2026 — UPCOM;
+- HOSE 2026 trading guide — ordinary +/-7% band and HOSE quote units.
+
+Definition:
+`src/DuckDB/sql/vw_raw_stock_eod.sql`
+
+Validation:
+`src/DuckDB/sql/vw_raw_stock_eod_preflight.sql`
+
+Runbook:
+`docs/runbook/vw_raw_stock_eod.md`
+
 ## Daily ticker OHLC + transaction-flow view
 
 `main.vw_Ticker_OHLC_D` is the consumer-oriented daily contract that combines
