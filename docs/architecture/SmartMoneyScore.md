@@ -40,10 +40,12 @@ Build an explainable, state-aware ticker-level SmartMoneyScore that distinguishe
 ### Existing market-data flow
 
 ```text
-main.raw_stock_eod ------------------┐
-                                    ├─> main.vw_Ticker_OHLC_D
-main.raw_stock_intraday ------------┘            ↓
-                                           Smart Money
+main.raw_stock_eod ------------------┬─> main.vw_Ticker_OHLC_D
+main.raw_stock_intraday --------------┘          │
+                                                 ├─> MarketDataAdapter
+main.raw_stock_eod ------------------┬─> main.vw_raw_stock_eod
+main.raw_stock_intraday ------------┤            │
+main.raw_stock_fa ------------------┘             └─> MarketLimitAdapter
 ```
 
 `main.vw_Ticker_OHLC_D` is the V1 market-data read contract for Smart Money.
@@ -70,14 +72,20 @@ TradingValue behavior:
 
 Directional Intraday fields (BuyUp/SellDown/ATO/ATC) remain optional evidence and are not fabricated for historical dates without Intraday data.
 
-The market-data layer still does **not** provide authoritative point-in-time:
+The market-data layer now exposes **derived standard-rule** market-limit evidence through
+`main.vw_raw_stock_eod`:
 
 - ReferencePrice;
 - CeilingPrice;
 - FloorPrice;
-- Exchange;
-- MarketCap;
-- FreeFloat.
+- LimitUp / LimitUpStreak;
+- LimitDown / LimitDownStreak;
+- Market and provenance/quality fields.
+
+This is not yet an authoritative point-in-time exchange feed. `raw_stock_fa.Market`
+is a current snapshot, UPCOM ReferencePrice uses an Intraday lot-100-compatible VWAP
+proxy, and special-session/corporate-action rules remain unresolved. MarketCap and
+FreeFloat are also not authoritative point-in-time V1 contracts.
 
 ### Existing Indicator Engine
 
@@ -339,28 +347,49 @@ OBV/AD remain optional evidence: failure or missing coverage lowers factor cover
 
 ### Responsibility
 
-Provide authoritative point-in-time:
+Provide point-in-time market-limit evidence with explicit quality/provenance.
+
+### V1 source
+
+`main.vw_raw_stock_eod`.
+
+### V1 contract
 
 ```text
+Market
 ReferencePrice
+ReferencePrice_Source
+ReferencePrice_IsProxy
+PriceBandRate
+PriceBandRuleQuality
 CeilingPrice
 FloorPrice
-Exchange
-IsLimitUp
+LimitUp
+LimitUpStreak
+LimitDown
+LimitDownStreak
 ```
 
-when such a trusted source is introduced.
+### Quality semantics
 
-### V1 behavior
+Current `vw_raw_stock_eod` is a **DERIVED_STANDARD_RULE** source:
 
-Current `raw_stock_eod` does not provide this contract.
+- HOSE/HNX use the nearest previous Close under ordinary-session rules;
+- UPCOM uses the nearest previous eligible Intraday VWAP proxy;
+- ordinary bands are HOSE 7%, HNX 10%, UPCOM 15%;
+- special first-day/resumption/ex-right/corporate-action rules are not fabricated;
+- current Market classification is not point-in-time historical metadata.
 
-Therefore:
+Therefore Smart Money may consume `LimitUp/LimitDown` as optional
+`PARTIAL / DERIVED_STANDARD_RULE` evidence. It MUST NOT label these rows
+`EXACT` or `AUTHORITATIVE`.
 
-- `IsLimitUp` / `LimitUpStreak` remain unavailable when exact market-limit data is absent;
-- Smart Money MUST NOT infer exact limit-up only from a guessed daily percentage;
-- Supply Lock may still be detected from non-limit evidence;
-- missing limit-up evidence reduces factor coverage/Confidence.
+When an exchange-published daily Reference/Ceiling/Floor source is introduced,
+MarketLimitAdapter may promote that source to `EXACT` without changing the public
+SmartMoney output contract.
+
+Supply Lock remains calculable from non-limit evidence when the derived limit
+contract is unavailable or low quality.
 
 ---
 
@@ -1245,16 +1274,21 @@ Relative-liquidity factors must preserve this provenance in DataQuality/Confiden
 
 When a future authoritative TradingValue source is introduced, MarketDataAdapter may promote that source to EXACT without changing RelativeLiquidity factor semantics or downstream public contracts.
 
-### Exact market-limit data
+### Market-limit data
 
-Until an authoritative source exists:
+`main.vw_raw_stock_eod` now provides standard-rule derived
+ReferencePrice/CeilingPrice/FloorPrice and LimitUp/Down streak evidence.
 
-- exact `LimitUpScore` remains unavailable;
-- no guessed ceiling percentage is written as fact;
-- SupplyLock works without it;
-- Confidence is reduced.
+Smart Money may use this evidence only with `PARTIAL / DERIVED_STANDARD_RULE`
+quality. Exact authoritative Limit-Up remains unavailable until a point-in-time
+exchange-published market-limit source is introduced.
 
-When market-limit data is introduced, it plugs into MarketLimitAdapter.
+Confidence must decrease when:
+
+- `PriceBandRuleQuality` is not authoritative;
+- `ReferencePrice_IsProxy = TRUE`;
+- Market is missing or not point-in-time;
+- special-session/corporate-action handling is unresolved.
 
 ## Rollout
 
