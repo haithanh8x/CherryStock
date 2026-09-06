@@ -402,7 +402,8 @@ Then SmartMoneyScore and ConfidenceScore must remain within `0..100`.
 - Technical-indicator outputs may be consumed through `main.vw_Ticker_indicators`.
 - Benchmark time series must be available through an approved market-data source.
 - Exact Trading Value is not currently present in `raw_stock_eod`.
-- Exact reference/ceiling/floor data is not currently present in `raw_stock_eod`.
+- `main.vw_raw_stock_eod` provides derived standard-rule ReferencePrice/CeilingPrice/FloorPrice and LimitUp/Down streak evidence with explicit provenance; it is not an authoritative point-in-time exchange feed.
+- Exact exchange-published reference/ceiling/floor data is not currently present in the raw source layer.
 - Current `raw_lstTicker` metadata does not provide an authoritative market-cap/free-float contract for V1 confidence controls.
 
 ## Constraints
@@ -426,7 +427,7 @@ No blocking business question remains for V1.
 Non-blocking future decisions:
 
 - Which authoritative source should supply exact Trading Value?
-- Which source should supply exchange/reference/ceiling/floor data?
+- Which authoritative point-in-time source should replace/validate the derived `vw_raw_stock_eod` exchange/reference/ceiling/floor contract?
 - Should foreign/proprietary flow become first-class factors in V2?
 - What liquidity thresholds should be promoted from initial defaults after historical evaluation?
 
@@ -436,7 +437,7 @@ These are calibration/data-source decisions and do not block the V1 architecture
 
 - OHLCV-only behavioral proxies can misclassify manipulation or event-driven price gaps as Smart Money.
 - Missing exact Trading Value lowers precision of capital-flow interpretation.
-- Missing market-limit data prevents exact limit-up classification.
+- Derived market-limit data can support partial LimitUp/Down evidence, but current Market snapshot, adjusted EOD history, UPCOM VWAP proxy and special-session gaps prevent authoritative exact historical classification.
 - Strongly correlated factors can double-count the same behavior if weights are not governed.
 - Fixed thresholds may behave differently across market regimes.
 - Very illiquid tickers can generate high price-strength evidence with low capital participation.
