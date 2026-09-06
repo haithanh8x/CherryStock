@@ -15,6 +15,7 @@ from Ults.lstPara import DUCKDB_SQL_PATH
 from calcEngine import calc_fv_Trend
 from calcEngine.calcIndexes import calculate_VNINDEX_NOT_VIN
 from calcEngine.calcIndicators import refresh_technical_indicators
+from calcEngine.smartMoneyScore import refresh_smart_money_score
 
 
 class SyncWritePipelineService:
@@ -30,6 +31,7 @@ class SyncWritePipelineService:
         calc_index: Callable[..., None] = calculate_VNINDEX_NOT_VIN,
         calc_trend: Callable[..., None] = calc_fv_Trend.cal_Moving_Average,
         calc_indicators: Callable[..., dict] = refresh_technical_indicators,
+        calc_smart_money: Callable[..., dict] = refresh_smart_money_score,
         execute_sql: Callable[..., None] = executeDuckSQL,
         validate_dated: Callable[..., dict] = validate_and_persist_data_quality,
         validate_reference: Callable[..., dict] = validate_and_persist_reference_quality,
@@ -43,6 +45,7 @@ class SyncWritePipelineService:
         self._calc_index = calc_index
         self._calc_trend = calc_trend
         self._calc_indicators = calc_indicators
+        self._calc_smart_money = calc_smart_money
         self._execute_sql = execute_sql
         self._validate_dated = validate_dated
         self._validate_reference = validate_reference
