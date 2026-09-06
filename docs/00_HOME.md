@@ -58,6 +58,7 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 - [[../.github/agents/Instructions/Indicator_Engine|Legacy Detailed Indicator Engine Reference]]
 
 ### Smart Money / Flow Analytics
+- [[architecture/AsTraded_Market_Limit|As-Traded Market Limit Architecture]]
 - [[backlog/requirements/REQ-0025-smart-money-score|REQ-0025 Ticker-level SmartMoneyScore]]
 - [[architecture/SmartMoneyScore|SmartMoneyScore Architecture]]
 - [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
@@ -98,12 +99,14 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
 
 ## Architecture Decision Records
+- [[adr/ADR-010-separate-adjusted-as-traded-market-limit|ADR-010 Adjusted vs As-Traded Market Limits]]
 - [[adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
 - [[adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
 - [[adr/ADR-003-centralized-theme-system|ADR-003 Centralized Theme System]]
 - [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
 
 ## Runbooks
+- [[runbook/AsTraded_Market_Limit_Migration|As-Traded Market-Limit Migration]]
 - [[runbook/vw_raw_stock_eod|Enriched Stock EOD Market Limits]]
 - [[runbook/Indicator_OBV_AD|OBV + AD Line Activation and Historical Initload]]
 - [[runbook/MCP_DuckDB|CherryStock Local DuckDB MCP]]
