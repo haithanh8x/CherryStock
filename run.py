@@ -35,7 +35,19 @@ def _run_all_steps(
     Tất cả step dùng chung một writer connection/UoW để đảm bảo cùng transaction.
     Nếu một step lỗi, context manager của DuckDBUnitOfWork sẽ rollback toàn bộ.
     """
-    steps = (
+    def _refresh_smart_money():
+        write_pipeline._execute_sql(
+            con=connection,
+            sql_file_path=str(write_pipeline._sql_dir / "smart_money_v1_schema.sql"),
+            sql_description="Ensure SmartMoney V1 schema",
+        )
+        return write_pipeline._calc_smart_money(
+            from_last_day=days_diff,
+            connection=connection,
+            repository=uow.smart_money,
+        )
+
+    steps = [
         (
             "Đồng bộ AmiBroker EOD",
             lambda: write_pipeline._sync_amibroker_eod(
@@ -95,7 +107,12 @@ def _run_all_steps(
                 repository=uow.indicators,
             ),
         ),
-    )
+    ]
+
+    if settings.smart_money_auto_run:
+        steps.append(("Refresh SmartMoneyScore", _refresh_smart_money))
+    else:
+        print("SmartMoney auto-run: DISABLED (set SMART_MONEY_AUTO_RUN=true only after TestEngineer PASS)")
 
     for index, (title, step) in enumerate(steps, start=1):
         print(f"[{index}/{len(steps)}] ▶ {title}")
