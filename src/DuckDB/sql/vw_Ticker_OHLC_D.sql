@@ -12,6 +12,10 @@
 -- OpenInt=3 outside those windows remains included in TradingValue but is not
 -- force-classified as ATO or ATC.
 --
+-- Missing-data contract:
+--   EOD Volume=0 with no Intraday row => true zero flow/value.
+--   EOD Volume>0 with no Intraday row => NULL (Intraday coverage missing).
+--
 -- Value-unit contract:
 --   *_Val = SUM(tick Close * tick Volume)
 -- The result is in source-price-unit * source-volume-unit. No silent price-scale
@@ -105,15 +109,51 @@ SELECT
     e."Low",
     e."Close",
     e."Volume",
-    d."TradingValue",
-    d."BuyUp_Val",
-    d."BuyUp_Vol",
-    d."SellDown_Val",
-    d."SellDown_Vol",
-    d."ATO_Val",
-    d."ATO_Vol",
-    d."ATC_Val",
-    d."ATC_Vol"
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."TradingValue"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0.0
+        ELSE NULL
+    END AS "TradingValue",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."BuyUp_Val"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0.0
+        ELSE NULL
+    END AS "BuyUp_Val",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."BuyUp_Vol"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0
+        ELSE NULL
+    END AS "BuyUp_Vol",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."SellDown_Val"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0.0
+        ELSE NULL
+    END AS "SellDown_Val",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."SellDown_Vol"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0
+        ELSE NULL
+    END AS "SellDown_Vol",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."ATO_Val"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0.0
+        ELSE NULL
+    END AS "ATO_Val",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."ATO_Vol"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0
+        ELSE NULL
+    END AS "ATO_Vol",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."ATC_Val"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0.0
+        ELSE NULL
+    END AS "ATC_Val",
+    CASE
+        WHEN d."Ticker" IS NOT NULL THEN d."ATC_Vol"
+        WHEN COALESCE(e."Volume", 0) = 0 THEN 0
+        ELSE NULL
+    END AS "ATC_Vol"
 FROM "CherryMon"."main"."raw_stock_eod" AS e
 LEFT JOIN intraday_daily AS d
     ON d."Ticker" = e."Ticker"
