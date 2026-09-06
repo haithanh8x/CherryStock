@@ -114,8 +114,10 @@ Rules:
 - EOD OHLCV remains owned by `raw_stock_eod`; the view does not reconstruct
   canonical daily prices from Intraday because historical corporate-action
   adjustment can make EOD and Intraday OHLC differ legitimately.
-- `TradingValue = SUM(tick Close * tick Volume)` over all available Intraday
-  transactions for the ticker/date.
+- AmiBroker stock prices are stored in thousand VND/share. Every `*_Val` field is
+  normalized to **VND** as `ROUND(SUM(tick Close * tick Volume * 1000))` and cast
+  to `BIGINT`, so consumer output has no decimal places.
+- `TradingValue` covers all available Intraday transactions for the ticker/date.
 - `OpenInt=1` contributes to `SellDown_*`.
 - `OpenInt=2` contributes to `BuyUp_*`.
 - `OpenInt=3` is only assigned to an auction bucket when the decoded local
@@ -124,8 +126,6 @@ Rules:
   - ATC: 14:30:00 through 14:45:00.
 - `OpenInt=3` outside those windows remains part of `TradingValue` but is not
   force-classified as ATO or ATC.
-- `*_Val` uses source price units multiplied by source volume units. No
-  undocumented price-scale multiplier is applied in the view.
 - EOD dates with `Volume=0` and no Intraday rows expose zero flow/value because
   no transaction occurred. EOD dates with `Volume>0` but no Intraday coverage
   retain NULL flow/value fields so missing historical coverage is not disguised
