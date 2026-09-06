@@ -25,6 +25,22 @@ def _drop_daily_view() -> None:
 def _recreate_daily_view() -> None:
     factory = DuckDBConnectionFactory()
     with factory.writer() as connection:
+        prerequisite_count = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE lower(table_catalog) = 'cherrymon'
+              AND lower(table_schema) = 'main'
+              AND lower(table_name) IN ('raw_stock_eod', 'raw_stock_intraday')
+            """
+        ).fetchone()[0]
+        if int(prerequisite_count) < 2:
+            print(
+                "Skip vw_Ticker_OHLC_D rebuild: raw_stock_eod and "
+                "raw_stock_intraday are not both available yet."
+            )
+            return
+
         executeDuckSQL(
             con=connection,
             sql_file_path=str(VIEW_SQL),
