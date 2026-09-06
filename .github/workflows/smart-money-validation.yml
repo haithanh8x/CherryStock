@@ -1,0 +1,60 @@
+name: SmartMoney Validation
+
+on:
+  push:
+    paths:
+      - ".github/workflows/smart-money-validation.yml"
+      - "src/calcEngine/smartMoneyScore.py"
+      - "src/calcEngine/smartMoneyEvaluation.py"
+      - "src/cherrystock/infrastructure/database/repositories/smart_money_repository.py"
+      - "src/cherrystock/infrastructure/database/unit_of_work.py"
+      - "src/DuckDB/sql/smart_money_v1_schema.sql"
+      - "tests/test_smart_money_score.py"
+      - "tests/test_smart_money_evaluation.py"
+  pull_request:
+    paths:
+      - "src/calcEngine/smartMoneyScore.py"
+      - "src/calcEngine/smartMoneyEvaluation.py"
+      - "src/cherrystock/infrastructure/database/repositories/smart_money_repository.py"
+      - "src/cherrystock/infrastructure/database/unit_of_work.py"
+      - "src/DuckDB/sql/smart_money_v1_schema.sql"
+      - "tests/test_smart_money_score.py"
+      - "tests/test_smart_money_evaluation.py"
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src
+      DUCKDB_ENV: local
+      DATA_DIR: /tmp/cherrystock-data
+      LOCAL_DB_PATH: /tmp/cherrystock-data/CherryMon-test.duckdb
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install focused dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pandas numpy duckdb python-dotenv
+
+      - name: Compile SmartMoney modules
+        run: |
+          python -m py_compile src/calcEngine/smartMoneyScore.py
+          python -m py_compile src/calcEngine/smartMoneyEvaluation.py
+          python -m py_compile src/cherrystock/infrastructure/database/repositories/smart_money_repository.py
+          python -m py_compile scripts/initload/init_reload_smart_money_score.py
+          python -m py_compile scripts/run_smart_money.py
+          python -m py_compile scripts/validate_smart_money_incremental.py
+          python -m py_compile scripts/evaluate_smart_money_v1.py
+
+      - name: Run focused unit tests
+        run: |
+          python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py -v
