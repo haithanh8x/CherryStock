@@ -68,6 +68,7 @@ Validation:
 ~~~text
 tests/test_smart_money_score.py
 tests/test_smart_money_evaluation.py
+tests/test_smart_money_integration.py
 src/DuckDB/sql/smart_money_v1_preflight.sql
 tests/test_smart_money_score.md
 ~~~
@@ -148,7 +149,7 @@ git status
 # Phase 1 — Focused unit tests
 
 ~~~powershell
-python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py -v
+python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py tests/test_smart_money_integration.py -v
 ~~~
 
 Required cases:
@@ -159,7 +160,8 @@ Required cases:
 - persisted memory seed;
 - missing LimitUp remains NULL;
 - state precedence;
-- SupplyLock weight renormalization when LimitUp is missing.
+- SupplyLock weight renormalization when LimitUp is missing;
+- synthetic DuckDB schema/bootstrap/full-refresh/public-view/incremental convergence.
 
 If unit tests fail:
 
