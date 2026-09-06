@@ -1,6 +1,6 @@
 # SmartMoneyScore V1 Deployment & Validation Runbook
 
-- Status: IMPLEMENTED_PENDING_VALIDATION
+- Status: FUNCTIONAL_VALIDATION_PASS
 - Requirement: REQ-0025
 - Architecture: docs/architecture/SmartMoneyScore.md
 - ADR: docs/adr/ADR-009-smart-money-score-state-aware-scoring.md
@@ -494,3 +494,49 @@ PASS:
 This CI evidence validates code/schema behavior on a deterministic fixture. It does
 not replace the TestEngineer run against the user's production/local CherryMon
 database.
+
+
+## Local CherryMon TestEngineer Evidence — 2026-09-06
+
+Functional validation was executed against the real local CherryMon database.
+
+```text
+SmartMoneyScore V1 Deployment & Validation
+------------------------------------------
+Phase 0  Sync:             PASS
+Phase 1  Unit tests:       PASS — 11/11
+Phase 2  Full initload:    PASS — 1,111,784 scores / 11,117,840 factors
+Phase 3  Preflight:        PASS — 13/13 sections / zero violations
+Phase 4  Convergence:      PASS — MWG/FPT/HPG identical
+Phase 5  Spot-check:       PASS
+Phase 6  Incremental op:   READY
+Phase 7  OOS evaluation:   READY
+
+Historical source coverage:
+2000-07-28 → 2026-09-04
+
+Convergence sample:
+60 score rows
+600 factor rows
+349 persisted memory seeds
+
+Verdict: PASS
+Action: KEEP
+```
+
+Validated behaviors include:
+
+- score and confidence remain within `0..100`;
+- `FactorCoverage` remains within `0..1`;
+- no duplicate logical keys;
+- all persisted scores have factor evidence;
+- nine supported market states are present;
+- public SmartMoney view is readable;
+- `LimitUpScore` remains `NULL / UNAVAILABLE` without trusted point-in-time market-limit data;
+- full-history and bounded incremental results converge for the validation sample.
+
+This evidence closes functional acceptance for REQ-0025.
+
+OOS evaluation remains a separate calibration / production-rollout gate. It is not
+required to keep the functional implementation status at DONE, but
+`SMART_MONEY_AUTO_RUN` remains disabled until OOS evidence is explicitly reviewed.
