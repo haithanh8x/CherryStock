@@ -12,7 +12,7 @@ this directory.
 Runs a full EOD reload followed by a full Intraday reload.
 
 ```powershell
-python scripts\initload\init_reload_all_market_data.py
+python scripts\initload\init_reload_raw_eod_raw_intraday.py
 ```
 
 This is the broadest raw market-data reload entry point.
@@ -23,7 +23,7 @@ Reloads every source configured in `settings.amibroker_eod_targets`, including
 stock, futures, index, warrant and the other configured EOD datasets.
 
 ```powershell
-python scripts\initload\init_reload_amibroker_eod.py
+python scripts\initload\init_reload_raw_eod_tables.py
 ```
 
 `from_last_day=None` is used, so the existing EOD loader rebuilds each managed
@@ -39,7 +39,7 @@ Resets and fully reloads the four configured Intraday sources:
 - warrant
 
 ```powershell
-python scripts\initload\init_reload_amibroker_intraday.py
+python scripts\initload\init_reload_raw_intraday_tables.py
 ```
 
 ## Reload full EOD history for one stock ticker
@@ -48,7 +48,7 @@ Use this when a corporate action/back-adjustment requires full historical reload
 for one stock without rebuilding the whole `raw_stock_eod` table.
 
 ```powershell
-python scripts\initload\reload_ticker_eod.py FPT
+python scripts\initload\reload_raw_stock_eod_ticker.py FPT
 ```
 
 Without an argument the existing script defaults to MWG.
@@ -59,7 +59,7 @@ Runs a full historical refresh for all active stock tickers and all enabled
 indicator configurations.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\initload\init_refresh_technical_indicators.py
+.\.venv\Scripts\python.exe scripts\initload\init_reload_cal_indicator_values.py
 ```
 
 ## Scope rule
