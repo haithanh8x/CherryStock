@@ -104,6 +104,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
 
 ## Runbooks
+- [[runbook/Indicator_OBV_AD|OBV + AD Line Activation and Historical Initload]]
 - [[runbook/MCP_DuckDB|CherryStock Local DuckDB MCP]]
 - [[runbook/RS_V2_4_Monthly_Full_Evaluation|R/S V2.4 Monthly Full Source Effectiveness]]
 
