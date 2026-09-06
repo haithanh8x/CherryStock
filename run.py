@@ -133,7 +133,7 @@ def main():
     print(f"CherryStock Run All | from_last_day={days_diff}")
 
     # Tương đương nút Run All trong NiceGUI_chart.py:
-    # 8 step tuần tự, dùng chung một DuckDB UnitOfWork/transaction.
+    # 8 base steps + optional validation-gated SmartMoney step, using one DuckDB UnitOfWork/transaction.
     with DuckDBUnitOfWork(connection_factory) as uow:
         connection = uow.connection
         if connection is None:
