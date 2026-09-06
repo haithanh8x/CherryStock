@@ -25,16 +25,21 @@ Run:
 PASS requires:
 
 - view exists;
-- expected 16-column contract exists;
+- expected 18-column contract exists;
 - duplicate `Ticker + Date` groups = 0;
-- no negative flow/value metrics;
-- `TradingValue >= BuyUp + SellDown + ATO + ATC`;
-- zero-volume EOD-only days expose zero flow/value;
-- positive-volume days without Intraday coverage expose NULL flow/value.
+- Intraday dates use exact tick-derived TradingValue in integer VND;
+- positive-volume EOD dates without Intraday use `((High + Low + Close) / 3) * Volume * 1000`, rounded to BIGINT;
+- `TradingValue_Source` and `TradingValue_IsProxy` match provenance;
+- zero-volume EOD-only days expose TradingValue=0 and `NO_TRADE`;
+- proxy TradingValue rows do not fabricate BuyUp/SellDown/ATO/ATC flow fields;
+- `TradingValue >= BuyUp + SellDown + ATO + ATC` on `INTRADAY_TICK` rows.
 
-The OI=3 timestamp distribution and `UNCLASSIFIED_OI3` bucket are informational.
-Do not change ATO/ATC rules only because unclassified OI=3 exists; inspect source
-timestamps and market/session semantics first.
+## TradingValue provenance
+
+- `INTRADAY_TICK` -> `SUM(tick Close * tick Volume * 1000)`, `IsProxy=FALSE`.
+- `EOD_TYPICAL_PRICE_PROXY` -> `((High + Low + Close) / 3) * Volume * 1000`, `IsProxy=TRUE`.
+- `NO_TRADE` -> `0`, `IsProxy=FALSE`.
+- `MISSING_INPUT` -> NULL TradingValue when positive-volume EOD has incomplete H/L/C.
 
 ## Flow semantics
 
@@ -42,7 +47,7 @@ timestamps and market/session semantics first.
 - `OpenInt=2` -> BuyUp
 - `OpenInt=3` + 09:00-09:20 -> ATO
 - `OpenInt=3` + 14:30-14:50 -> ATC
-- other `OpenInt=3` -> remains only in TradingValue
+- other `OpenInt=3` -> remains only in tick-based TradingValue
 
 Auction windows were verified against raw_stock_intraday `OpenInt=3` tick
 timestamps: matching results publish after the 09:15/14:45 session closes, so
@@ -55,8 +60,9 @@ vw_Ticker_OHLC_D
 ----------------
 Schema: PASS | FAIL
 Key uniqueness: PASS | FAIL
-Value quality: PASS | FAIL
-Missing-data semantics: PASS | FAIL
+TradingValue provenance: PASS | FAIL
+Proxy formula: PASS | FAIL
+Flow quality: PASS | FAIL
 OI=3 auction classification: PASS | WARNING | FAIL
 
 Verdict: PASS | WARNING | FAIL
