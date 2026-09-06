@@ -11,10 +11,10 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 4 canonical requirements | 1 DONE · 2 READY_FOR_DESIGN · 1 IMPLEMENTED_PENDING_VALIDATION |
+| Requirements | 4 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN |
 | Architecture | 10 | 10 TODO |
 | Agent Harness | 14 | 14 TODO |
-| **Total** | **28** | **1 DONE · 2 READY_FOR_DESIGN · 1 IMPLEMENTED_PENDING_VALIDATION · 24 TODO** |
+| **Total** | **28** | **2 DONE · 2 READY_FOR_DESIGN · 24 TODO** |
 
 ### Priority Summary
 
@@ -67,7 +67,7 @@ Canonical index:
 | REQ-0022 | R/S V2.4 Source Effectiveness & Indicator Promotion Framework | P0 | **DONE** | None | [[requirements/REQ-0022-rs-v2-4-source-effectiveness|REQ-0022]] |
 | REQ-0023 | R/S V2.5 Historical Reliability & Confident Strength Shadow Evaluation | P0 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0023-rs-v2-5-historical-reliability-confident-strength|REQ-0023]] |
 | REQ-0024 | R/S V2.6 Production Confident Strength Integration | P0 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0024-rs-v2-6-production-confident-strength|REQ-0024]] |
-| REQ-0025 | Ticker-level SmartMoneyScore | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0025-smart-money-score|REQ-0025]] |
+| REQ-0025 | Ticker-level SmartMoneyScore | P1 | **DONE** | None | [[requirements/REQ-0025-smart-money-score|REQ-0025]] |
 
 ## Requirement Delivery Flow
 
@@ -86,13 +86,8 @@ Smart Money is an independent workstream:
 
 ```text
 REQ-0025 SmartMoneyScore
-IMPLEMENTED_PENDING_VALIDATION
-        ↓
-TestEngineer.agent.md
-        ↓
-PASS
-        ↓
 DONE
+(TestEngineer PASS / KEEP on 2026-09-06)
 ```
 
 Related approved Smart Money design:
