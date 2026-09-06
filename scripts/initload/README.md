@@ -42,6 +42,18 @@ Resets and fully reloads the four configured Intraday sources:
 python scripts\initload\init_reload_raw_intraday_tables.py
 ```
 
+
+## Rebuild `vw_Ticker_OHLC_D`
+
+Creates or replaces the daily OHLC + Intraday transaction-flow view.
+
+```powershell
+python scripts\initload\init_reload_vw_Ticker_OHLC_D.py
+```
+
+The full EOD, full Intraday and combined raw reload entry points automatically
+drop/recreate this dependent view around their raw-table rebuild.
+
 ## Reload full EOD history for one stock ticker
 
 Use this when a corporate action/back-adjustment requires full historical reload
