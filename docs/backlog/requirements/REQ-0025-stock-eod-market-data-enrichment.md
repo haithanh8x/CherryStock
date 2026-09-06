@@ -10,7 +10,9 @@ related:
     - docs/architecture/Data_Architecture.md
   adr:
   implementation:
+    - src/DuckDB/sql/vw_Ticker_OHLC_D.sql
   test:
+    - src/DuckDB/sql/vw_Ticker_OHLC_D_preflight.sql
   change_request:
 ---
 
@@ -60,6 +62,28 @@ This limits downstream use cases that require liquidity, market-cap weighting, f
 The repository already contains `main.raw_stock_fa` with fields including `Capital`, `Shares Float` and `Shares Outstanding`. These are potential existing inputs, but their business semantics, temporal grain, history coverage and suitability for point-in-time EOD use must be verified before reuse. They must not be assumed to be equivalent to daily MarketCap or FreeFloat without evidence.
 
 The current Amibroker EOD reload path also persists only `Ticker/Date/OHLC/Volume/OpenInt`, so the missing data cannot be solved by merely reading additional columns from the existing contract unless the upstream source itself is changed or complemented.
+
+
+### Current partial implementation — TradingValue / transaction flow
+
+Validated AmiBroker Intraday tick ingestion now provides a trustworthy
+`Ticker + Date + transaction` source for reconstructing daily traded value during
+the available Intraday history.
+
+`main.vw_Ticker_OHLC_D` implements the first partial capability of this
+requirement:
+
+- canonical OHLCV continues to come from `raw_stock_eod`;
+- `TradingValue` is **tick-derived**, using
+  `SUM(raw_stock_intraday.Close * raw_stock_intraday.Volume)`;
+- the value is not labeled source-reported;
+- BuyUp/SellDown and ATO/ATC flow fields are additionally exposed from Intraday
+  `OpenInt` transaction classification;
+- dates outside trustworthy Intraday coverage remain NULL for these derived
+  fields.
+
+This does not close REQ-0025. Reference/Ceiling/Floor, MarketCap and FreeFloat
+still require their approved source/point-in-time designs.
 
 ## Stakeholders / Consumers
 
