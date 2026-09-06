@@ -210,3 +210,29 @@ PASS:
 This CI evidence validates code/schema behavior on a deterministic fixture. It does
 not replace the TestEngineer run against the user's production/local CherryMon
 database.
+
+
+## Local CherryMon functional verdict
+
+Executed 2026-09-06:
+
+~~~text
+T1 Unit:             PASS — 11/11
+T2 Full init:        PASS — 1,111,784 scores / 11,117,840 factors
+T3 Preflight:        PASS — 13/13 sections / zero violations
+T4 Convergence:      PASS — MWG/FPT/HPG identical
+T5 State semantics:  PASS
+T6 Public contract:  PASS
+T7 OOS evaluation:   READY — separate calibration gate
+
+Functional Verdict: PASS
+Action: KEEP
+REQ-0025: DONE
+~~~
+
+Functional TestEngineer ownership is complete.
+
+T7 remains a research/calibration execution and production-activation gate. It
+does not prevent the functional requirement from remaining DONE. If T7 later
+reveals a correctness issue rather than weak predictive effectiveness, open a new
+bounded regression task instead of rewriting this verdict.
