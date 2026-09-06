@@ -375,19 +375,32 @@ before treating the initial weights as calibrated.
 
 # Phase 8 — Production orchestration gate
 
-Do not add SmartMoney to normal daily run.py until TestEngineer returns PASS for:
+Functional gate status:
 
 ~~~text
-unit tests
-historical initload
-SQL preflight
-full/incremental convergence
-public view contract
+Unit tests:                   PASS
+Historical initload:          PASS
+SQL preflight:                PASS
+Full/incremental convergence: PASS
+Public view contract:         PASS
+TestEngineer verdict:         PASS
+Action:                       KEEP
 ~~~
 
-After TestEngineer functional PASS **and explicit OOS evaluation review**, production order is:
+REQ-0025 is functionally complete.
+
+The only remaining activation gate is explicit review of Phase 7 OOS evidence.
+Until that review is complete:
 
 ~~~text
+SMART_MONEY_AUTO_RUN=false
+~~~
+
+After OOS review approves production activation:
+
+~~~text
+SMART_MONEY_AUTO_RUN=true
+        ↓
 EOD refresh
 → VNINDEX refresh
 → Trend / Indicator Engine
@@ -396,8 +409,8 @@ EOD refresh
 → metadata export
 ~~~
 
-This gate is intentional: runtime implementation exists, but automatic daily
-activation is validation-dependent.
+OOS review is a calibration/rollout decision. It does not reopen functional
+acceptance unless it exposes a correctness regression.
 
 # Market-limit later cutover
 
@@ -540,3 +553,22 @@ This evidence closes functional acceptance for REQ-0025.
 OOS evaluation remains a separate calibration / production-rollout gate. It is not
 required to keep the functional implementation status at DONE, but
 `SMART_MONEY_AUTO_RUN` remains disabled until OOS evidence is explicitly reviewed.
+
+
+# Local-only diagnostic artifacts
+
+The local validation session also created non-canonical helper files:
+
+~~~text
+run_smart_money_preflight.py
+scripts/diag_*.py
+~~~
+
+Policy:
+
+- `scripts/diag_*.py` were temporary diagnostic tools and may be deleted after
+  validation; do not commit them as production artifacts.
+- `run_smart_money_preflight.py` is a local convenience runner. The canonical
+  validation contract remains `src/DuckDB/sql/smart_money_v1_preflight.sql`.
+  Promote a generic preflight runner later only if there is a broader reusable
+  requirement.
