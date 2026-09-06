@@ -40,16 +40,14 @@ Build an explainable, state-aware ticker-level SmartMoneyScore that distinguishe
 ### Existing market-data flow
 
 ```text
-External / AmiBroker source
-        ↓
-main.raw_stock_eod
-        ↓
-validation
-        ↓
-calculation domains
+main.raw_stock_eod ------------------┐
+                                    ├─> main.vw_Ticker_OHLC_D
+main.raw_stock_intraday ------------┘            ↓
+                                           Smart Money
 ```
 
-Current physical `main.raw_stock_eod` grain is one ticker/date and currently exposes:
+`main.vw_Ticker_OHLC_D` is the V1 market-data read contract for Smart Money.
+It preserves canonical EOD OHLCV and adds daily TradingValue with provenance:
 
 ```text
 Ticker
@@ -59,12 +57,21 @@ High
 Low
 Close
 Volume
-OpenInt
+TradingValue
+TradingValue_Source
+TradingValue_IsProxy
 ```
 
-It does **not** currently expose exact:
+TradingValue behavior:
 
-- TradingValue;
+- `INTRADAY_TICK`: reconstructed from tick Close × Volume × 1000 VND when Intraday coverage exists;
+- `EOD_TYPICAL_PRICE_PROXY`: fallback `((High + Low + Close) / 3) × Volume × 1000` when Intraday coverage is missing;
+- `NO_TRADE`: zero when EOD Volume is zero.
+
+Directional Intraday fields (BuyUp/SellDown/ATO/ATC) remain optional evidence and are not fabricated for historical dates without Intraday data.
+
+The market-data layer still does **not** provide authoritative point-in-time:
+
 - ReferencePrice;
 - CeilingPrice;
 - FloorPrice;
@@ -235,7 +242,7 @@ Load and normalize point-in-time market inputs without embedding Smart Money bus
 
 ### V1 source
 
-`main.raw_stock_eod`.
+`main.vw_Ticker_OHLC_D`.
 
 ### Output contract
 
@@ -251,23 +258,27 @@ Close
 Volume
 LiquidityValue
 LiquidityValueQuality
+LiquidityValueSource
 ```
 
 ### LiquidityValue contract
 
-Preferred hierarchy:
-
-1. `EXACT_TRADING_VALUE` when a future authoritative source exists.
-2. `CLOSE_X_VOLUME_PROXY` in current V1.
-
-For current schema:
+For V1:
 
 ```text
-LiquidityValue = Close * Volume
-LiquidityValueQuality = PROXY
+LiquidityValue = TradingValue
+LiquidityValueSource = TradingValue_Source
 ```
 
-This proxy is used for **relative liquidity**, not represented as official exchange trading value.
+Quality mapping:
+
+```text
+INTRADAY_TICK            -> RECONSTRUCTED_TICK
+EOD_TYPICAL_PRICE_PROXY  -> PROXY
+NO_TRADE                 -> OBSERVED_ZERO
+```
+
+`INTRADAY_TICK` is transaction-level reconstructed value, not claimed as an official exchange-reported TradingValue field. Historical fallback remains explicitly marked PROXY so Confidence can distinguish evidence quality.
 
 ### Failure behavior
 
@@ -311,14 +322,16 @@ Read optional technical-indicator evidence through `main.vw_Ticker_indicators`.
 ### Candidate V1 consumers
 
 - MA20 / MA50 for trend.
-- OBV if enabled/configured.
-- AD if enabled/configured.
+- `OBV_D` for cumulative signed-volume accumulation evidence.
+- `AD_D` for cumulative close-location/volume accumulation-distribution evidence.
+
+OBV and AD Line are activated as complete D/W/M families (`OBV_D/W/M`, `AD_D/W/M`) and are calculated from full source history so incremental refresh preserves the same cumulative baseline as full backfill. SmartMoney V1 consumes the Daily configs unless a later model version explicitly uses W/M evidence.
 
 ### Boundary
 
 The adapter resolves indicator config through public indicator metadata/contracts. Smart Money MUST NOT hard-code direct reads to `cal_indicator_values`.
 
-Smart Money also MUST NOT require OBV/AD to exist to calculate a minimal OHLCV-only score.
+OBV/AD remain optional evidence: failure or missing coverage lowers factor coverage/Confidence but does not block a minimal OHLCV + liquidity + benchmark score.
 
 ---
 
@@ -1220,20 +1233,17 @@ It does not alter:
 
 ### Trading Value
 
-Current architecture uses:
+Current V1 consumes `main.vw_Ticker_OHLC_D.TradingValue`.
 
-```text
-Close * Volume
-```
+Source quality is explicit:
 
-as a **relative-liquidity proxy**, marked PROXY.
+- recent dates with Intraday coverage use `INTRADAY_TICK` reconstructed transaction value;
+- older dates without Intraday use `EOD_TYPICAL_PRICE_PROXY`;
+- zero-trade dates use `NO_TRADE`.
 
-When exact Trading Value is later ingested:
+Relative-liquidity factors must preserve this provenance in DataQuality/Confidence. The proxy must never be presented as official exchange trading value.
 
-- MarketDataAdapter selects EXACT source;
-- factor semantics remain RelativeLiquidity;
-- model version/config can be advanced for historical comparability;
-- no consumer contract needs redesign.
+When a future authoritative TradingValue source is introduced, MarketDataAdapter may promote that source to EXACT without changing RelativeLiquidity factor semantics or downstream public contracts.
 
 ### Exact market-limit data
 
@@ -1387,7 +1397,8 @@ Expected: LimitUpScore NULL, not guessed/zero; SupplyLock still calculable.
 
 | Concept | Owner / SSOT |
 |---|---|
-| OHLCV | `raw_stock_eod` |
+| OHLCV owner | `raw_stock_eod` |
+| Smart Money market-data read contract | `vw_Ticker_OHLC_D` |
 | Active ticker universe | current `raw_lstTicker` contract |
 | Technical indicator values | `vw_Ticker_indicators` |
 | Smart Money model/config | Smart Money `dim_*` |
