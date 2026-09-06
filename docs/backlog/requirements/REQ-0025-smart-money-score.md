@@ -397,16 +397,20 @@ Then SmartMoneyScore and ConfidenceScore must remain within `0..100`.
 
 ## Dependencies
 
+- Historical production LimitUp/LimitDown evidence depends on [[../../architecture/AsTraded_Market_Limit|As-Traded Market Limit Architecture]] and [[../../adr/ADR-010-separate-adjusted-as-traded-market-limit|ADR-010]]. The current adjusted-price-derived `vw_raw_stock_eod` is transitional and MUST NOT be used as authoritative historical limit evidence.
+
 - `main.raw_stock_eod` provides current OHLCV source.
 - Active ticker universe is currently represented by `main.raw_lstTicker`.
 - Technical-indicator outputs may be consumed through `main.vw_Ticker_indicators`.
 - Benchmark time series must be available through an approved market-data source.
 - Exact Trading Value is not currently present in `raw_stock_eod`.
-- `main.vw_raw_stock_eod` provides derived standard-rule ReferencePrice/CeilingPrice/FloorPrice and LimitUp/Down streak evidence with explicit provenance; it is not an authoritative point-in-time exchange feed.
+- `main.vw_raw_stock_eod` currently provides transitional derived standard-rule ReferencePrice/CeilingPrice/FloorPrice and LimitUp/Down streak evidence; production historical limit evidence must migrate to `main.vw_stock_market_limit_eod` backed by point-in-time/as-traded history.
 - Exact exchange-published reference/ceiling/floor data is not currently present in the raw source layer.
 - Current `raw_lstTicker` metadata does not provide an authoritative market-cap/free-float contract for V1 confidence controls.
 
 ## Constraints
+
+- SmartMoney core implementation is not blocked by this migration because LimitUp remains optional evidence. However, historical production activation of the LimitUp/LimitDown factor is blocked until the As-Traded Market-Limit migration passes independent validation.
 
 - Current `raw_stock_eod` schema is `Ticker, Date, Open, High, Low, Close, Volume, OpenInt`.
 - V1 must be implementable without silently assuming columns that do not currently exist.
