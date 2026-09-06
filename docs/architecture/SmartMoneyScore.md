@@ -1185,7 +1185,7 @@ refresh_smart_money_score()
 
 # Historical / Incremental Contract
 
-Proposed public engine entry point:
+Implemented public engine entry point:
 
 ```text
 refresh_smart_money_score(
@@ -1197,26 +1197,42 @@ refresh_smart_money_score(
 )
 ```
 
-Exact signature may be adapted to current repository patterns during implementation, but it must support:
+Supported execution modes:
 
-- full history;
-- checkpoint incremental refresh;
-- ticker subset;
-- model subset;
-- caller-owned transaction/connection.
+- `from_last_day=None` — full historical backfill;
+- `from_last_day=N` — bounded checkpoint refresh;
+- optional ticker persistence subset;
+- optional model subset;
+- caller-owned connection/repository.
 
-## Warmup
+## Two-stage incremental warmup
 
-Warmup must cover:
+Incremental execution uses separate feature and memory boundaries:
 
-- maximum return/liquidity lookback;
-- indicator dependencies;
-- state persistence;
-- accumulation-memory convergence.
+```text
+feature_start
+    ↓  mature up to 60-session rolling features
+memory_start
+    ↓  resume from persisted AccumulationMemory seed
+target_start
+    ↓  replace checkpoint rows only
+source_end
+```
 
-The engine reads earlier warmup history but only replaces target checkpoint rows.
+Default boundary spacing is approximately 70 market sessions from
+`feature_start -> memory_start` and another approximately 70 sessions from
+`memory_start -> target_start`.
 
-A full backfill and equivalent incremental run must converge to the same result for overlapping dates within defined numerical tolerance.
+This separation is required because replaying AccumulationMemory from rows whose
+own RS60/ALV60 inputs are not yet mature creates a small but systematic divergence
+from full-history results.
+
+Same-date percentile normalization continues to use the complete active universe
+for every calculated date. A ticker subset limits persistence, not the
+normalization universe.
+
+Synthetic DuckDB integration validates full-history/incremental convergence with
+tight numerical tolerance.
 
 ---
 
@@ -1295,19 +1311,34 @@ When a future authoritative TradingValue source is introduced, MarketDataAdapter
 
 ### Market-limit data
 
-`main.vw_raw_stock_eod` now provides standard-rule derived
-ReferencePrice/CeilingPrice/FloorPrice and LimitUp/Down streak evidence.
+The current SmartMoney runtime does **not** consume transitional
+`main.vw_raw_stock_eod` LimitUp/LimitUpStreak evidence for production scoring.
 
-Smart Money may use this evidence only with `PARTIAL / DERIVED_STANDARD_RULE`
-quality. Exact authoritative Limit-Up remains unavailable until a point-in-time
-exchange-published market-limit source is introduced.
+The optional adapter activates only when the approved point-in-time public contract
+exists:
 
-Confidence must decrease when:
+```text
+main.vw_stock_market_limit_eod
+```
 
-- `PriceBandRuleQuality` is not authoritative;
-- `ReferencePrice_IsProxy = TRUE`;
-- Market is missing or not point-in-time;
-- special-session/corporate-action handling is unresolved.
+Accepted runtime quality values are:
+
+```text
+AUTHORITATIVE
+VALIDATED_PROVIDER
+DERIVED_AS_TRADED
+```
+
+If that view is absent, or evidence is not trusted:
+
+```text
+LimitUpScore = NULL
+DataQuality  = UNAVAILABLE
+```
+
+Missing market-limit evidence is therefore missing evidence, not a bearish zero.
+Legacy adjusted/current-snapshot-derived `vw_raw_stock_eod` must not be silently
+promoted into the SmartMoney production factor.
 
 ## Rollout
 
@@ -1564,3 +1595,24 @@ persisted scores or `SMART_MONEY_AUTO_RUN`.
 V1 does not hard-code a promotion threshold because no approved business
 effectiveness threshold exists yet. Validation/Test evidence must be reviewed
 explicitly before claiming the initial state weights are calibrated.
+
+
+## CI Integration Evidence
+
+Latest focused SmartMoney CI gate:
+
+```text
+Workflow:   .github/workflows/smart-money-validation.yml
+Run:        34027575109
+Run number: 6
+Commit:     9b352782f237f67938dc25ebcf95fb60de54be46
+Result:     SUCCESS
+Tests:      12 passed
+Python:     3.13
+DuckDB:     1.5.5
+```
+
+The synthetic integration executes SmartMoney schema bootstrap twice, executes the
+preflight SQL, performs full historical refresh, validates the public view and NULL
+LimitUp semantics, then verifies bounded incremental convergence against the full
+baseline.
