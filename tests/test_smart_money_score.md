@@ -42,6 +42,7 @@ scripts/validate_smart_money_incremental.py
 ~~~text
 tests/test_smart_money_score.py
 tests/test_smart_money_evaluation.py
+tests/test_smart_money_integration.py
 tests/test_smart_money_score.md
 ~~~
 
@@ -59,7 +60,7 @@ tests/test_smart_money_score.md
 ### T1 — Focused unit tests
 
 ~~~powershell
-python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py -v
+python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py tests/test_smart_money_integration.py -v
 ~~~
 
 Expected: all tests PASS.
