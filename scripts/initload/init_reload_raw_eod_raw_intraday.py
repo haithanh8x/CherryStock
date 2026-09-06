@@ -12,41 +12,52 @@ from CrawlStock.readAmi import syncAmibroker_EOD, syncAmibroker_Intraday  # noqa
 from Ults.DuckLib import executeDuckSQL  # noqa: E402
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory  # noqa: E402
 
-VIEW_NAME = '"CherryMon"."main"."vw_Ticker_OHLC_D"'
-VIEW_SQL = PROJECT_ROOT / "src" / "DuckDB" / "sql" / "vw_Ticker_OHLC_D.sql"
+DEPENDENT_VIEWS = (
+    (
+        '"CherryMon"."main"."vw_Ticker_OHLC_D"',
+        PROJECT_ROOT / "src" / "DuckDB" / "sql" / "vw_Ticker_OHLC_D.sql",
+        ("raw_stock_eod", "raw_stock_intraday"),
+    ),
+    (
+        '"CherryMon"."main"."vw_raw_stock_eod"',
+        PROJECT_ROOT / "src" / "DuckDB" / "sql" / "vw_raw_stock_eod.sql",
+        ("raw_stock_eod", "raw_stock_intraday", "raw_stock_fa"),
+    ),
+)
 
 
-def _drop_daily_view() -> None:
+def _drop_daily_views() -> None:
     factory = DuckDBConnectionFactory()
     with factory.writer() as connection:
-        connection.execute(f"DROP VIEW IF EXISTS {VIEW_NAME};")
+        for view_name, _, _ in DEPENDENT_VIEWS:
+            connection.execute(f"DROP VIEW IF EXISTS {view_name};")
 
 
-def _recreate_daily_view() -> None:
+def _recreate_daily_views() -> None:
     factory = DuckDBConnectionFactory()
     with factory.writer() as connection:
-        prerequisite_count = connection.execute(
-            """
-            SELECT COUNT(*)
-            FROM information_schema.tables
-            WHERE lower(table_catalog) = 'cherrymon'
-              AND lower(table_schema) = 'main'
-              AND lower(table_name) IN ('raw_stock_eod', 'raw_stock_intraday')
-            """
-        ).fetchone()[0]
-        if int(prerequisite_count) < 2:
-            print(
-                "Skip vw_Ticker_OHLC_D rebuild: raw_stock_eod and "
-                "raw_stock_intraday are not both available yet."
+        available = {
+            str(row[0]).lower()
+            for row in connection.execute(
+                """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE lower(table_catalog) = 'cherrymon'
+                  AND lower(table_schema) = 'main'
+                """
+            ).fetchall()
+        }
+
+        for view_name, sql_path, prerequisites in DEPENDENT_VIEWS:
+            missing = [name for name in prerequisites if name.lower() not in available]
+            if missing:
+                print(f"Skip {view_name} rebuild: missing prerequisites {missing}.")
+                continue
+            executeDuckSQL(
+                con=connection,
+                sql_file_path=str(sql_path),
+                sql_description=f"Rebuild {view_name}",
             )
-            return
-
-        executeDuckSQL(
-            con=connection,
-            sql_file_path=str(VIEW_SQL),
-            sql_description="Rebuild vw_Ticker_OHLC_D",
-        )
-
 
 
 def main() -> None:
@@ -64,7 +75,7 @@ def main() -> None:
     print("CherryStock - FULL AMIBROKER MARKET DATA RELOAD")
     print("=" * 72)
 
-    _drop_daily_view()
+    _drop_daily_views()
 
     print("[1/2] Full reload AmiBroker EOD...")
     syncAmibroker_EOD(from_last_day=None)
@@ -72,7 +83,7 @@ def main() -> None:
     print("[2/2] Full reload AmiBroker Intraday...")
     syncAmibroker_Intraday(from_last_day=None, reset=True)
 
-    _recreate_daily_view()
+    _recreate_daily_views()
 
     print("=" * 72)
     print("Full AmiBroker market data reload completed.")
