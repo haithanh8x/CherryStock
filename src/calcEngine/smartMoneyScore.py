@@ -907,10 +907,16 @@ def refresh_smart_money_score(
 ) -> dict[str, object]:
     """Calculate and atomically replace SmartMoneyScore checkpoint rows.
 
-    Full initload reads full history. Incremental refresh reads a bounded 70-session
-    warmup and seeds AccumulationMemory from the latest persisted value before the
-    warmup boundary, so the active universe does not require full-history
-    recalculation on every daily run.
+    Full initload reads full history.
+
+    Incremental refresh uses two bounded windows:
+    1) a feature warmup before the memory-continuation boundary so 60-session
+       rolling features are already point-in-time complete;
+    2) a memory-continuation window seeded from the latest persisted
+       AccumulationMemory immediately before that boundary.
+
+    Only target checkpoint rows are replaced. This preserves bounded daily work
+    while allowing full-history and incremental overlap to converge.
     """
     owns_connection = connection is None
     factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
@@ -936,16 +942,23 @@ def refresh_smart_money_score(
 
         source_min, source_max = bounds
         target_start = _target_start_date(source_min, source_max, from_last_day)
-        warmup_start = (
-            source_min
-            if from_last_day is None
-            else resolve_warmup_start(
+
+        if from_last_day is None:
+            memory_start = source_min
+            feature_start = source_min
+        else:
+            memory_start = resolve_warmup_start(
                 con,
                 target_start=target_start,
                 source_min=source_min,
                 sessions=70,
             )
-        )
+            feature_start = resolve_warmup_start(
+                con,
+                target_start=memory_start,
+                source_min=source_min,
+                sessions=70,
+            )
 
         requested = None
         if tickers:
@@ -955,31 +968,43 @@ def refresh_smart_money_score(
                 if str(ticker).strip()
             }
 
+        # Feature warmup intentionally precedes memory_start. Rolling inputs such as
+        # RS60/ALV60 must already be mature when accumulation memory resumes.
         market_data = load_market_data(
             con,
             tickers=None,
-            start_date=warmup_start,
+            start_date=feature_start,
             end_date=source_max,
         )
         if market_data.empty:
-            raise RuntimeError("SmartMoney warmup market-data window is empty.")
+            raise RuntimeError("SmartMoney feature-warmup market-data window is empty.")
 
         benchmark = load_benchmark_data(
             con,
-            start_date=warmup_start,
+            start_date=feature_start,
             end_date=source_max,
         )
         indicators = load_daily_indicator_data(
             con,
-            start_date=warmup_start,
+            start_date=feature_start,
             end_date=source_max,
         )
         market_limits = load_market_limit_data(
             con,
-            start_date=warmup_start,
+            start_date=feature_start,
             end_date=source_max,
         )
         base = calculate_base_features(market_data, benchmark, indicators)
+
+        # The rows before memory_start exist only to mature rolling calculations.
+        # AccumulationMemory must resume from its persisted seed at memory_start,
+        # otherwise those feature-warmup rows would be counted twice.
+        model_base = base.loc[base["Date"].ge(memory_start)].copy()
+        model_market_limits = market_limits
+        if market_limits is not None and not market_limits.empty:
+            model_market_limits = market_limits.loc[
+                market_limits["Date"].ge(memory_start)
+            ].copy()
 
         models = repo.load_enabled_models(model_ids)
         if not models:
@@ -1004,15 +1029,15 @@ def refresh_smart_money_score(
                 raise RuntimeError(f"No state weights for ModelId={model.model_id}.")
 
             memory_seed = None
-            if from_last_day is not None and warmup_start > source_min:
+            if from_last_day is not None and memory_start > source_min:
                 memory_seed = repo.load_accumulation_memory_seed(
                     model.model_id,
-                    warmup_start.date(),
+                    memory_start.date(),
                 )
 
             model_frame = calculate_model_frame(
-                base,
-                market_limits,
+                model_base,
+                model_market_limits,
                 config=config,
                 weights=weights,
                 memory_seed=memory_seed,
@@ -1102,7 +1127,8 @@ def refresh_smart_money_score(
             "status": "OK",
             "source_start": str(source_min.date()),
             "source_end": str(source_max.date()),
-            "warmup_start": str(warmup_start.date()),
+            "feature_start": str(feature_start.date()),
+            "memory_start": str(memory_start.date()),
             "target_start": str(target_start.date()),
             "models": model_summaries,
             "factor_rows_upserted": total_factor_rows,
@@ -1123,4 +1149,3 @@ def refresh_smart_money_score(
     finally:
         if owns_connection:
             con.close()
-
