@@ -5,6 +5,7 @@ from cherrystock.infrastructure.database.repositories import (
     IndexRepository,
     IndicatorRepository,
     RSEvaluationRepository,
+    SmartMoneyRepository,
     TickerRepository,
     TrendRepository,
 )
@@ -19,6 +20,7 @@ class DuckDBUnitOfWork:
         self.indexes: IndexRepository | None = None
         self.indicators: IndicatorRepository | None = None
         self.rs_evaluations: RSEvaluationRepository | None = None
+        self.smart_money: SmartMoneyRepository | None = None
         self.tickers: TickerRepository | None = None
         self.trends: TrendRepository | None = None
 
@@ -28,6 +30,7 @@ class DuckDBUnitOfWork:
         self.indexes = IndexRepository(self.connection)
         self.indicators = IndicatorRepository(self.connection)
         self.rs_evaluations = RSEvaluationRepository(self.connection)
+        self.smart_money = SmartMoneyRepository(self.connection)
         self.tickers = TickerRepository(self.connection)
         self.trends = TrendRepository(self.connection)
         return self
@@ -44,5 +47,6 @@ class DuckDBUnitOfWork:
             self.indexes = None
             self.indicators = None
             self.rs_evaluations = None
+            self.smart_money = None
             self.tickers = None
             self.trends = None
