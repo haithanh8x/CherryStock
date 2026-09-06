@@ -48,6 +48,37 @@ During this refactor, the existing detailed operational/design document remains 
 
 The long-form content should be progressively migrated here when it is edited next. New architecture/design content belongs in this file; AI operational policy belongs in `.github/instructions/indicators.instructions.md`.
 
+## Cumulative full-history indicators
+
+Some library indicators are cumulative lines rather than finite-window transforms.
+Their absolute value depends on the beginning of the input series, so a normal
+checkpoint warmup would reset the baseline and make incremental output diverge
+from a full historical backfill.
+
+CherryStock records this execution trait centrally in
+`src/calcEngine/indicatorRegistry.py`. The current full-history functions are:
+
+| Indicator | Function | Required inputs | Production configs | Component semantic |
+|---|---|---|---|---|
+| OBV | `obv` | Close, Volume | OBV_D / OBV_W / OBV_M | CUMULATIVE_FLOW / VOLUME |
+| AD Line | `ad` | High, Low, Close, Volume | AD_D / AD_W / AD_M | CUMULATIVE_FLOW / VOLUME |
+
+During incremental refresh, `refresh_technical_indicators()` partitions normal
+windowed configs from full-history cumulative configs. Windowed indicators keep
+their configured warmup behavior; OBV/AD reload source history from inception
+before calculating the requested checkpoint. Only checkpoint rows are replaced,
+so the cumulative absolute level remains reproducible without forcing unrelated
+indicators to calculate from full history.
+
+Activation metadata:
+`src/DuckDB/sql/indicator_obv_ad_activate.sql`
+
+Targeted historical initialization:
+`scripts/initload/init_reload_cal_indicator_values_obv_ad.py`
+
+Validation:
+`src/DuckDB/sql/indicator_obv_ad_preflight.sql`
+
 ## Related
 - [[../../.github/instructions/indicators.instructions|Indicator Instructions]]
 - [[../adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
