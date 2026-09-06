@@ -57,6 +57,8 @@ COMPONENT_SEMANTICS: dict[tuple[str, str], tuple[str, str]] = {
     ("BB", "PERCENT"): ("RATIO", "RATIO"),
     ("RSI", "VALUE"): ("OSCILLATOR", "INDEX"),
     ("ATR", "VALUE"): ("VOLATILITY_DISTANCE", "PRICE"),
+    ("OBV", "VALUE"): ("CUMULATIVE_FLOW", "VOLUME"),
+    ("AD", "VALUE"): ("CUMULATIVE_FLOW", "VOLUME"),
 }
 
 
