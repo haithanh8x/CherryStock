@@ -153,3 +153,59 @@ GROUP BY bucket
 ORDER BY bucket;
 
 -- Review only. UNCLASSIFIED_OI3 is not automatically a failure.
+
+
+-- 8) Zero-trade days versus missing-Intraday days.
+WITH recent_eod AS (
+    SELECT
+        e."Ticker",
+        e."Date",
+        e."Volume",
+        CASE WHEN i."Ticker" IS NULL THEN FALSE ELSE TRUE END AS has_intraday
+    FROM "CherryMon"."main"."raw_stock_eod" AS e
+    LEFT JOIN (
+        SELECT DISTINCT "Ticker", "Date"
+        FROM "CherryMon"."main"."raw_stock_intraday"
+    ) AS i
+        ON i."Ticker" = e."Ticker"
+       AND i."Date" = e."Date"
+    WHERE e."Date" >= (
+        SELECT MAX("Date") - INTERVAL 30 DAY
+        FROM "CherryMon"."main"."raw_stock_eod"
+    )
+)
+SELECT
+    SUM(
+        CASE
+            WHEN r."Volume" = 0
+             AND r.has_intraday = FALSE
+             AND (
+                    v."TradingValue" <> 0
+                 OR v."BuyUp_Val" <> 0 OR v."BuyUp_Vol" <> 0
+                 OR v."SellDown_Val" <> 0 OR v."SellDown_Vol" <> 0
+                 OR v."ATO_Val" <> 0 OR v."ATO_Vol" <> 0
+                 OR v."ATC_Val" <> 0 OR v."ATC_Vol" <> 0
+             )
+            THEN 1 ELSE 0
+        END
+    ) AS invalid_zero_trade_rows,
+    SUM(
+        CASE
+            WHEN r."Volume" > 0
+             AND r.has_intraday = FALSE
+             AND (
+                    v."TradingValue" IS NOT NULL
+                 OR v."BuyUp_Val" IS NOT NULL OR v."BuyUp_Vol" IS NOT NULL
+                 OR v."SellDown_Val" IS NOT NULL OR v."SellDown_Vol" IS NOT NULL
+                 OR v."ATO_Val" IS NOT NULL OR v."ATO_Vol" IS NOT NULL
+                 OR v."ATC_Val" IS NOT NULL OR v."ATC_Vol" IS NOT NULL
+             )
+            THEN 1 ELSE 0
+        END
+    ) AS invalid_missing_coverage_rows
+FROM recent_eod AS r
+INNER JOIN "CherryMon"."main"."vw_Ticker_OHLC_D" AS v
+    ON v."Ticker" = r."Ticker"
+   AND v."Date" = r."Date";
+
+-- PASS: both counts = 0.
