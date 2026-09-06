@@ -1535,3 +1535,32 @@ Implemented runtime:
 Final validation owner remains TestEngineer. Predictive effectiveness/calibration
 is a research/evaluation gate and must not be confused with implementation
 correctness.
+
+
+## Historical Effectiveness Evaluation
+
+Implementation correctness and predictive usefulness are separate gates.
+
+The research evaluator:
+
+```text
+src/calcEngine/smartMoneyEvaluation.py
+scripts/evaluate_smart_money_v1.py
+```
+
+uses chronological `TRAIN / VALIDATION / TEST = 60% / 20% / 20%` and computes
+forward 5/10/20-session stock returns, VNINDEX returns and excess returns for:
+
+- SmartMoneyScore buckets;
+- MarketState;
+- Confidence buckets.
+
+A future horizon is defined by the exact VNINDEX trading-session date H bars after
+the score date. A ticker without a Close on that date has an unavailable label.
+
+Evaluation output is research-only and MUST NOT mutate production model weights,
+persisted scores or `SMART_MONEY_AUTO_RUN`.
+
+V1 does not hard-code a promotion threshold because no approved business
+effectiveness threshold exists yet. Validation/Test evidence must be reviewed
+explicitly before claiming the initial state weights are calibrated.
