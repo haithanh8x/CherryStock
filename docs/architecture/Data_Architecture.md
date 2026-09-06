@@ -126,8 +126,10 @@ Rules:
   force-classified as ATO or ATC.
 - `*_Val` uses source price units multiplied by source volume units. No
   undocumented price-scale multiplier is applied in the view.
-- Dates without Intraday coverage retain EOD OHLCV and expose NULL flow/value
-  fields rather than silently converting missing Intraday history to zero.
+- EOD dates with `Volume=0` and no Intraday rows expose zero flow/value because
+  no transaction occurred. EOD dates with `Volume>0` but no Intraday coverage
+  retain NULL flow/value fields so missing historical coverage is not disguised
+  as zero.
 - Full EOD/Intraday reload entry points drop and recreate the view around raw
   table rebuilds so dependency state remains deterministic.
 
