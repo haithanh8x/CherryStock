@@ -1,8 +1,8 @@
 # SmartMoneyScore Architecture
 
 - **Requirement:** REQ-0025
-- **Status:** APPROVED_FOR_IMPLEMENTATION
-- **Date:** 2026-09-05
+- **Status:** IMPLEMENTED_PENDING_VALIDATION
+- **Date:** 2026-09-06
 - **ADR:** [[../adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009]]
 
 ## Context
@@ -1311,13 +1311,28 @@ Confidence must decrease when:
 
 ## Rollout
 
-1. create metadata/internal tables + public view;
-2. seed SMART_MONEY_V1 factors/config/state weights;
-3. historical smoke backfill for selected liquid tickers;
-4. focused scenario validation including Supply Lock and Distribution;
-5. full-universe backfill;
-6. add daily orchestration after successful validation;
-7. only then allow sector/group consumers to adopt the public view.
+Implementation artifacts now exist for metadata/storage, runtime calculation,
+historical initload, bounded incremental refresh, public view and independent
+validation.
+
+Operational rollout remains validation-gated:
+
+1. run focused unit tests;
+2. run full historical initload;
+3. run `smart_money_v1_preflight.sql`;
+4. run full/incremental convergence validation;
+5. TestEngineer issues terminal PASS;
+6. set `SMART_MONEY_AUTO_RUN=true`;
+7. normal `run.py` then appends SmartMoney after Trend / Indicator Engine.
+
+Default remains:
+
+```text
+SMART_MONEY_AUTO_RUN=false
+```
+
+so implementation cannot silently activate production scoring before independent
+validation.
 
 ---
 
@@ -1495,3 +1510,28 @@ Reason: this introduces a new cross-module calculation domain, new persisted/pub
 See:
 
 [[../adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 — SmartMoneyScore State-Aware Scoring and Data Contracts]]
+
+
+## Implementation Status
+
+Current state:
+
+```text
+IMPLEMENTED_PENDING_VALIDATION
+```
+
+Implemented runtime:
+
+- `src/calcEngine/smartMoneyScore.py`
+- `src/cherrystock/infrastructure/database/repositories/smart_money_repository.py`
+- `src/DuckDB/sql/smart_money_v1_schema.sql`
+- `src/DuckDB/sql/smart_money_v1_preflight.sql`
+- `scripts/initload/init_reload_smart_money_score.py`
+- `scripts/run_smart_money.py`
+- `scripts/validate_smart_money_incremental.py`
+- `tests/test_smart_money_score.py`
+- `docs/runbook/SmartMoneyScore_V1.md`
+
+Final validation owner remains TestEngineer. Predictive effectiveness/calibration
+is a research/evaluation gate and must not be confused with implementation
+correctness.
