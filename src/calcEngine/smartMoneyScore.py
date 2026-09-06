@@ -82,9 +82,71 @@ def _active_ticker_filter(tickers: Iterable[str] | None) -> tuple[str, list[obje
     return f" AND e.Ticker IN ({placeholders})", normalized
 
 
-def load_market_data(connection, tickers: Iterable[str] | None = None) -> pd.DataFrame:
+def load_source_bounds(connection) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    row = connection.execute(
+        f"""
+        SELECT
+            MIN(e.Date) AS MinDate,
+            MAX(e.Date) AS MaxDate
+        FROM {MARKET_DATA_VIEW} AS e
+        INNER JOIN {TICKER_TABLE} AS t
+            ON t.Ticker = e.Ticker
+        WHERE t.Status = 'Y'
+        """
+    ).fetchone()
+    if row is None or row[1] is None:
+        return None
+    return pd.Timestamp(row[0]), pd.Timestamp(row[1])
+
+
+def resolve_warmup_start(
+    connection,
+    *,
+    target_start: pd.Timestamp,
+    source_min: pd.Timestamp,
+    sessions: int = 70,
+) -> pd.Timestamp:
+    """Resolve enough prior market sessions for 60-session rolling features."""
+    row = connection.execute(
+        f"""
+        SELECT MIN(Date)
+        FROM (
+            SELECT DISTINCT e.Date AS Date
+            FROM {MARKET_DATA_VIEW} AS e
+            INNER JOIN {TICKER_TABLE} AS t
+                ON t.Ticker = e.Ticker
+            WHERE t.Status = 'Y'
+              AND e.Date < ?
+            ORDER BY e.Date DESC
+            LIMIT ?
+        ) AS warmup
+        """,
+        [target_start.date(), int(sessions)],
+    ).fetchone()
+    if row is None or row[0] is None:
+        return source_min
+    return max(source_min, pd.Timestamp(row[0]))
+
+
+def load_market_data(
+    connection,
+    tickers: Iterable[str] | None = None,
+    *,
+    start_date: pd.Timestamp | date | None = None,
+    end_date: pd.Timestamp | date | None = None,
+) -> pd.DataFrame:
     """Load active-universe daily OHLCV/liquidity inputs through the public market view."""
-    ticker_filter, params = _active_ticker_filter(tickers)
+    ticker_filter, ticker_params = _active_ticker_filter(tickers)
+    date_filters: list[str] = []
+    params: list[object] = []
+    if start_date is not None:
+        date_filters.append("AND e.Date >= ?")
+        params.append(pd.Timestamp(start_date).date())
+    if end_date is not None:
+        date_filters.append("AND e.Date <= ?")
+        params.append(pd.Timestamp(end_date).date())
+    params.extend(ticker_params)
+
     frame = connection.execute(
         f"""
         SELECT
@@ -102,6 +164,7 @@ def load_market_data(connection, tickers: Iterable[str] | None = None) -> pd.Dat
         INNER JOIN {TICKER_TABLE} AS t
             ON t.Ticker = e.Ticker
         WHERE t.Status = 'Y'
+          {' '.join(date_filters)}
           {ticker_filter}
         ORDER BY e.Ticker, e.Date
         """,
@@ -112,7 +175,21 @@ def load_market_data(connection, tickers: Iterable[str] | None = None) -> pd.Dat
     return frame
 
 
-def load_benchmark_data(connection) -> pd.DataFrame:
+def load_benchmark_data(
+    connection,
+    *,
+    start_date: pd.Timestamp | date | None = None,
+    end_date: pd.Timestamp | date | None = None,
+) -> pd.DataFrame:
+    date_filters: list[str] = []
+    params: list[object] = [BENCHMARK_CODE]
+    if start_date is not None:
+        date_filters.append("AND Date >= ?")
+        params.append(pd.Timestamp(start_date).date())
+    if end_date is not None:
+        date_filters.append("AND Date <= ?")
+        params.append(pd.Timestamp(end_date).date())
+
     frame = connection.execute(
         f"""
         SELECT
@@ -120,9 +197,10 @@ def load_benchmark_data(connection) -> pd.DataFrame:
             Close
         FROM {BENCHMARK_TABLE}
         WHERE Ticker = ?
+          {' '.join(date_filters)}
         ORDER BY Date
         """,
-        [BENCHMARK_CODE],
+        params,
     ).df()
     if not frame.empty:
         frame["Date"] = pd.to_datetime(frame["Date"])
@@ -136,8 +214,22 @@ def load_benchmark_data(connection) -> pd.DataFrame:
     return frame
 
 
-def load_daily_indicator_data(connection) -> pd.DataFrame:
+def load_daily_indicator_data(
+    connection,
+    *,
+    start_date: pd.Timestamp | date | None = None,
+    end_date: pd.Timestamp | date | None = None,
+) -> pd.DataFrame:
     """Load the V1 MA/OBV/AD evidence through public Indicator Engine views."""
+    date_filters: list[str] = []
+    params: list[object] = []
+    if start_date is not None:
+        date_filters.append("AND v.Date >= ?")
+        params.append(pd.Timestamp(start_date).date())
+    if end_date is not None:
+        date_filters.append("AND v.Date <= ?")
+        params.append(pd.Timestamp(end_date).date())
+
     frame = connection.execute(
         f"""
         SELECT
@@ -154,8 +246,10 @@ def load_daily_indicator_data(connection) -> pd.DataFrame:
           AND cfg.IndicatorIsActive = TRUE
           AND cfg.ComponentIsActive = TRUE
           AND v.ComponentCode = 'VALUE'
+          {' '.join(date_filters)}
         ORDER BY v.Ticker, v.Date, cfg.ConfigCode
-        """
+        """,
+        params,
     ).df()
     if frame.empty:
         return pd.DataFrame(columns=["Ticker", "Date", "MA20", "MA50", "OBV", "AD"])
@@ -196,7 +290,12 @@ def _market_limit_view_exists(connection) -> bool:
     return int(count) > 0
 
 
-def load_market_limit_data(connection) -> pd.DataFrame:
+def load_market_limit_data(
+    connection,
+    *,
+    start_date: pd.Timestamp | date | None = None,
+    end_date: pd.Timestamp | date | None = None,
+) -> pd.DataFrame:
     """Load point-in-time market-limit evidence when the approved target view exists."""
     if not _market_limit_view_exists(connection):
         return pd.DataFrame(
@@ -209,8 +308,17 @@ def load_market_limit_data(connection) -> pd.DataFrame:
             ]
         )
 
+    date_filters: list[str] = []
+    params: list[object] = []
+    if start_date is not None:
+        date_filters.append("AND Date >= ?")
+        params.append(pd.Timestamp(start_date).date())
+    if end_date is not None:
+        date_filters.append("AND Date <= ?")
+        params.append(pd.Timestamp(end_date).date())
+
     frame = connection.execute(
-        """
+        f"""
         SELECT
             Ticker,
             Date,
@@ -218,13 +326,15 @@ def load_market_limit_data(connection) -> pd.DataFrame:
             LimitUpStreak,
             MarketLimitQuality
         FROM "CherryMon"."main"."vw_stock_market_limit_eod"
+        WHERE 1 = 1
+          {' '.join(date_filters)}
         ORDER BY Ticker, Date
-        """
+        """,
+        params,
     ).df()
     if not frame.empty:
         frame["Date"] = pd.to_datetime(frame["Date"])
     return frame
-
 
 def _rolling(grouped, column: str, window: int, *, min_periods: int | None = None) -> pd.Series:
     minimum = window if min_periods is None else min_periods
@@ -426,14 +536,49 @@ def calculate_base_features(
     return frame
 
 
-def _apply_accumulation_memory(frame: pd.DataFrame, memory_lambda: float) -> pd.Series:
+def _apply_accumulation_memory(
+    frame: pd.DataFrame,
+    memory_lambda: float,
+    seed_frame: pd.DataFrame | None = None,
+) -> pd.Series:
+    """Apply recursive accumulation memory, optionally seeded from persisted history."""
     alpha = 1.0 - float(memory_lambda)
     if not 0.0 < alpha <= 1.0:
         raise ValueError("MEMORY_LAMBDA must be in [0, 1).")
-    return frame.groupby("Ticker", group_keys=False)["AccumulationScore"].transform(
-        lambda values: values.ewm(alpha=alpha, adjust=False, ignore_na=True).mean()
-    )
 
+    seed_map: dict[str, float] = {}
+    if seed_frame is not None and not seed_frame.empty:
+        seed_map = {
+            str(row.Ticker): float(row.AccumulationMemorySeed)
+            for row in seed_frame.itertuples(index=False)
+            if pd.notna(row.AccumulationMemorySeed)
+        }
+
+    result = pd.Series(np.nan, index=frame.index, dtype=float)
+    for ticker, indexes in frame.groupby("Ticker", sort=False).groups.items():
+        values = pd.to_numeric(
+            frame.loc[indexes, "AccumulationScore"],
+            errors="coerce",
+        )
+        seed = seed_map.get(str(ticker))
+        if seed is None:
+            memory = values.ewm(alpha=alpha, adjust=False, ignore_na=True).mean()
+        else:
+            augmented = pd.concat(
+                [
+                    pd.Series([seed], dtype=float),
+                    values.reset_index(drop=True),
+                ],
+                ignore_index=True,
+            )
+            memory = augmented.ewm(
+                alpha=alpha,
+                adjust=False,
+                ignore_na=True,
+            ).mean().iloc[1:]
+            memory.index = values.index
+        result.loc[indexes] = memory
+    return result
 
 def _apply_market_limit_evidence(
     frame: pd.DataFrame,
@@ -615,12 +760,14 @@ def calculate_model_frame(
     *,
     config: dict[str, object],
     weights: pd.DataFrame,
+    memory_seed: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Calculate one model version over a precomputed no-look-ahead base feature frame."""
     frame = base_features.copy()
     frame["AccumulationMemoryScore"] = _apply_accumulation_memory(
         frame,
         float(config.get("MEMORY_LAMBDA", 0.90)),
+        seed_frame=memory_seed,
     )
 
     frame = _apply_market_limit_evidence(frame, market_limit_data)
@@ -641,7 +788,6 @@ def calculate_model_frame(
     frame = _score_by_state(frame, weights, config)
     frame = _calculate_confidence(frame, config)
     return frame
-
 
 def _factor_quality(frame: pd.DataFrame, factor_code: str) -> pd.Series:
     if factor_code in {"RELATIVE_LIQUIDITY", "LIQUIDITY_ACCELERATION"}:
@@ -737,12 +883,19 @@ def build_factor_rows(
     return pd.concat(rows, ignore_index=True)
 
 
-def _target_start_date(source_max: pd.Timestamp, from_last_day: int | None) -> pd.Timestamp:
+def _target_start_date(
+    source_min: pd.Timestamp,
+    source_max: pd.Timestamp,
+    from_last_day: int | None,
+) -> pd.Timestamp:
     if from_last_day is None:
-        return pd.Timestamp.min.normalize()
+        return source_min.normalize()
     if int(from_last_day) < 0:
         raise ValueError("from_last_day cannot be negative.")
-    return source_max.normalize() - pd.Timedelta(days=int(from_last_day))
+    return max(
+        source_min.normalize(),
+        source_max.normalize() - pd.Timedelta(days=int(from_last_day)),
+    )
 
 
 def refresh_smart_money_score(
@@ -754,9 +907,10 @@ def refresh_smart_money_score(
 ) -> dict[str, object]:
     """Calculate and atomically replace SmartMoneyScore checkpoint rows.
 
-    V1 intentionally reads the full active-universe source history before replacing
-    only target checkpoint rows. This guarantees deterministic rolling windows and
-    accumulation memory for full versus incremental overlap.
+    Full initload reads full history. Incremental refresh reads a bounded 70-session
+    warmup and seeds AccumulationMemory from the latest persisted value before the
+    warmup boundary, so the active universe does not require full-history
+    recalculation on every daily run.
     """
     owns_connection = connection is None
     factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
@@ -767,10 +921,8 @@ def refresh_smart_money_score(
         con.execute("BEGIN")
 
     try:
-        # Always load the full active universe so same-date percentiles do not depend
-        # on the requested persistence subset.
-        market_data = load_market_data(con, tickers=None)
-        if market_data.empty:
+        bounds = load_source_bounds(con)
+        if bounds is None:
             summary = {
                 "status": "NO_DATA",
                 "factor_rows_upserted": 0,
@@ -782,8 +934,19 @@ def refresh_smart_money_score(
                 owns_transaction = False
             return summary
 
-        source_max = pd.Timestamp(market_data["Date"].max())
-        target_start = _target_start_date(source_max, from_last_day)
+        source_min, source_max = bounds
+        target_start = _target_start_date(source_min, source_max, from_last_day)
+        warmup_start = (
+            source_min
+            if from_last_day is None
+            else resolve_warmup_start(
+                con,
+                target_start=target_start,
+                source_min=source_min,
+                sessions=70,
+            )
+        )
+
         requested = None
         if tickers:
             requested = {
@@ -792,9 +955,30 @@ def refresh_smart_money_score(
                 if str(ticker).strip()
             }
 
-        benchmark = load_benchmark_data(con)
-        indicators = load_daily_indicator_data(con)
-        market_limits = load_market_limit_data(con)
+        market_data = load_market_data(
+            con,
+            tickers=None,
+            start_date=warmup_start,
+            end_date=source_max,
+        )
+        if market_data.empty:
+            raise RuntimeError("SmartMoney warmup market-data window is empty.")
+
+        benchmark = load_benchmark_data(
+            con,
+            start_date=warmup_start,
+            end_date=source_max,
+        )
+        indicators = load_daily_indicator_data(
+            con,
+            start_date=warmup_start,
+            end_date=source_max,
+        )
+        market_limits = load_market_limit_data(
+            con,
+            start_date=warmup_start,
+            end_date=source_max,
+        )
         base = calculate_base_features(market_data, benchmark, indicators)
 
         models = repo.load_enabled_models(model_ids)
@@ -819,11 +1003,19 @@ def refresh_smart_money_score(
             if weights.empty:
                 raise RuntimeError(f"No state weights for ModelId={model.model_id}.")
 
+            memory_seed = None
+            if from_last_day is not None and warmup_start > source_min:
+                memory_seed = repo.load_accumulation_memory_seed(
+                    model.model_id,
+                    warmup_start.date(),
+                )
+
             model_frame = calculate_model_frame(
                 base,
                 market_limits,
                 config=config,
                 weights=weights,
+                memory_seed=memory_seed,
             )
 
             target_mask = model_frame["Date"].ge(target_start)
@@ -873,9 +1065,7 @@ def refresh_smart_money_score(
                 {
                     "ModelId": int(model.model_id),
                     "Ticker": sorted(score_rows["Ticker"].unique()),
-                    "StartDate": target_start.date()
-                    if target_start != pd.Timestamp.min.normalize()
-                    else model.effective_from,
+                    "StartDate": target_start.date(),
                 }
             )
 
@@ -902,16 +1092,18 @@ def refresh_smart_money_score(
                     "version": model.model_version,
                     "scores": score_count,
                     "factors": factor_count,
+                    "memory_seed_rows": 0
+                    if memory_seed is None
+                    else len(memory_seed),
                 }
             )
 
         summary = {
             "status": "OK",
-            "source_start": str(pd.Timestamp(market_data["Date"].min()).date()),
+            "source_start": str(source_min.date()),
             "source_end": str(source_max.date()),
-            "target_start": None
-            if target_start == pd.Timestamp.min.normalize()
-            else str(target_start.date()),
+            "warmup_start": str(warmup_start.date()),
+            "target_start": str(target_start.date()),
             "models": model_summaries,
             "factor_rows_upserted": total_factor_rows,
             "score_rows_upserted": total_score_rows,
@@ -922,6 +1114,7 @@ def refresh_smart_money_score(
         }
         if owns_transaction:
             con.execute("COMMIT")
+            owns_transaction = False
         return summary
     except Exception:
         if owns_transaction:
@@ -930,3 +1123,4 @@ def refresh_smart_money_score(
     finally:
         if owns_connection:
             con.close()
+
