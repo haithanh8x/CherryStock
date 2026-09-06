@@ -1,28 +1,62 @@
-# Init Load Scripts
+# Init / Full Reload Scripts
 
-Entry points for one-time/full initialization workflows.
+This directory owns explicit **full-load / full-reload / historical-backfill**
+entry points.
 
-## AmiBroker Intraday
+Use it for workflows that intentionally rebuild an entire managed dataset or the
+full history of a selected entity. Incremental/checkpoint jobs remain outside
+this directory.
 
-Resets and fully reloads all configured Intraday sources:
+## Reload all AmiBroker market data
+
+Runs a full EOD reload followed by a full Intraday reload.
+
+```powershell
+python scripts\initload\init_reload_all_market_data.py
+```
+
+This is the broadest raw market-data reload entry point.
+
+## Reload all AmiBroker EOD data
+
+Reloads every source configured in `settings.amibroker_eod_targets`, including
+stock, futures, index, warrant and the other configured EOD datasets.
+
+```powershell
+python scripts\initload\init_reload_amibroker_eod.py
+```
+
+`from_last_day=None` is used, so the existing EOD loader rebuilds each managed
+target from full source history.
+
+## Reload all AmiBroker Intraday data
+
+Resets and fully reloads the four configured Intraday sources:
 
 - futures
 - index
 - stock
 - warrant
 
-Run from repository root:
-
 ```powershell
 python scripts\initload\init_reload_amibroker_intraday.py
 ```
 
-## Technical Indicators
+## Reload full EOD history for one stock ticker
+
+Use this when a corporate action/back-adjustment requires full historical reload
+for one stock without rebuilding the whole `raw_stock_eod` table.
+
+```powershell
+python scripts\initload\reload_ticker_eod.py FPT
+```
+
+Without an argument the existing script defaults to MWG.
+
+## Full historical Technical Indicator refresh
 
 Runs a full historical refresh for all active stock tickers and all enabled
 indicator configurations.
-
-Run from repository root:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\initload\init_refresh_technical_indicators.py
@@ -30,6 +64,18 @@ Run from repository root:
 
 ## Scope rule
 
-Keep only scripts whose primary purpose is full/init loading in this directory.
-Incremental refresh, seed/onboarding, diagnostics, migrations and operational
-evaluation scripts remain under their existing locations.
+Belongs in `scripts/initload/`:
+
+- full raw-data reload;
+- full historical reload for a selected entity;
+- initial/full historical backfill;
+- rebuild entry points that intentionally use full-history semantics.
+
+Does not belong here:
+
+- incremental/checkpoint refresh;
+- diagnostics;
+- seed/onboarding metadata;
+- migration;
+- evaluation/promotion;
+- normal daily/monthly operational execution.
