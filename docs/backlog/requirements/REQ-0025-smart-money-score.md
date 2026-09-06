@@ -451,7 +451,7 @@ These are calibration/data-source decisions and do not block the V1 architecture
 ## Suggested Routing
 
 - Architecture required: Yes — completed in `docs/architecture/SmartMoneyScore.md`.
-- Primary next owner: `.github/agents/TestEngineer.agent.md`.
+- Primary next owner: None — functional requirement is complete.
 - Domain instructions:
   - `.github/instructions/database.instructions.md`
   - `.github/instructions/indicators.instructions.md` when consuming indicator SSOT
@@ -462,13 +462,19 @@ These are calibration/data-source decisions and do not block the V1 architecture
 ## Handoff
 
 ```text
-Status: IMPLEMENTED_PENDING_VALIDATION
-Primary next owner: TestEngineer.agent.md
+Status: DONE
+Primary next owner: None
 Acceptance criteria count: 12
 Blocking questions: None
+TestEngineer verdict: PASS
+Action: KEEP
 Architecture: docs/architecture/SmartMoneyScore.md
 ADR: docs/adr/ADR-009-smart-money-score-state-aware-scoring.md
 ```
+
+Functional delivery is complete. The remaining OOS evaluation is a separate
+calibration / production-activation decision, not an open acceptance criterion for
+REQ-0025.
 
 
 ## Implementation Evidence
