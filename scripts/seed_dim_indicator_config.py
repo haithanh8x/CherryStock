@@ -39,6 +39,12 @@ CONFIG_TEMPLATES: dict[str, list[tuple[str, dict, int]]] = {
     "BB": [
         ("20_2", {"length": 20, "std": 2.0}, 20),
     ],
+    "OBV": [
+        ("", {}, 1),
+    ],
+    "AD": [
+        ("", {}, 1),
+    ],
 }
 
 
