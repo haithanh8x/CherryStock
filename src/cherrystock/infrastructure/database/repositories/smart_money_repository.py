@@ -143,6 +143,49 @@ class SmartMoneyRepository:
             [int(model_id), as_of_date, as_of_date],
         ).df()
 
+
+    def load_accumulation_memory_seed(
+        self,
+        model_id: int,
+        before_date: date,
+    ) -> pd.DataFrame:
+        """Load the latest persisted accumulation-memory value before a warmup boundary."""
+        return self._connection.execute(
+            """
+            WITH memory_factor AS (
+                SELECT FactorId
+                FROM "CherryMon"."main"."dim_smart_money_factor"
+                WHERE FactorCode = 'ACCUMULATION_MEMORY'
+                  AND IsEnabled = TRUE
+                LIMIT 1
+            ),
+            ranked AS (
+                SELECT
+                    v.Ticker,
+                    v.Date,
+                    v.NormalizedValue,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY v.Ticker
+                        ORDER BY v.Date DESC
+                    ) AS rn
+                FROM "CherryMon"."main"."cal_smart_money_factor_values" AS v
+                INNER JOIN memory_factor AS f
+                    ON f.FactorId = v.FactorId
+                WHERE v.ModelId = ?
+                  AND v.Date < ?
+                  AND v.NormalizedValue IS NOT NULL
+            )
+            SELECT
+                Ticker,
+                Date,
+                NormalizedValue AS AccumulationMemorySeed
+            FROM ranked
+            WHERE rn = 1
+            ORDER BY Ticker
+            """,
+            [int(model_id), before_date],
+        ).df()
+
     def replace_checkpoint(
         self,
         *,
