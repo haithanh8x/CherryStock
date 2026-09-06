@@ -80,6 +80,63 @@ The generated `docs/reference/DB_Metadata.md` must be refreshed after the local
 database has been init-loaded with this schema; it is not hand-edited ahead of the
 actual database state.
 
+
+## Daily ticker OHLC + transaction-flow view
+
+`main.vw_Ticker_OHLC_D` is the consumer-oriented daily contract that combines
+canonical EOD OHLCV with transaction-flow metrics reconstructed from validated
+AmiBroker Intraday ticks.
+
+Logical grain:
+
+```text
+Ticker + Date
+```
+
+Ownership and lineage:
+
+```text
+raw_stock_eod
+  └─ Open / High / Low / Close / Volume
+
+raw_stock_intraday
+  └─ TradingValue
+  └─ BuyUp_Val / BuyUp_Vol
+  └─ SellDown_Val / SellDown_Vol
+  └─ ATO_Val / ATO_Vol
+  └─ ATC_Val / ATC_Vol
+        ↓
+vw_Ticker_OHLC_D
+```
+
+Rules:
+
+- EOD OHLCV remains owned by `raw_stock_eod`; the view does not reconstruct
+  canonical daily prices from Intraday because historical corporate-action
+  adjustment can make EOD and Intraday OHLC differ legitimately.
+- `TradingValue = SUM(tick Close * tick Volume)` over all available Intraday
+  transactions for the ticker/date.
+- `OpenInt=1` contributes to `SellDown_*`.
+- `OpenInt=2` contributes to `BuyUp_*`.
+- `OpenInt=3` is only assigned to an auction bucket when the decoded local
+  `DateTime` is inside the corresponding auction window:
+  - ATO: 09:00:00 through 09:15:00;
+  - ATC: 14:30:00 through 14:45:00.
+- `OpenInt=3` outside those windows remains part of `TradingValue` but is not
+  force-classified as ATO or ATC.
+- `*_Val` uses source price units multiplied by source volume units. No
+  undocumented price-scale multiplier is applied in the view.
+- Dates without Intraday coverage retain EOD OHLCV and expose NULL flow/value
+  fields rather than silently converting missing Intraday history to zero.
+- Full EOD/Intraday reload entry points drop and recreate the view around raw
+  table rebuilds so dependency state remains deterministic.
+
+Definition:
+`src/DuckDB/sql/vw_Ticker_OHLC_D.sql`
+
+Validation:
+`src/DuckDB/sql/vw_Ticker_OHLC_D_preflight.sql`
+
 ## Database access policy
 See [[../../.github/instructions/database.instructions|Database Instructions]].
 
