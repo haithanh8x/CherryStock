@@ -1514,28 +1514,44 @@ Smart Money does not become a second SSOT for OHLCV or technical indicators.
 
 ---
 
-# Implementation Handoff
+# Completed Implementation Handoff
 
-Primary next owner:
-
-`.github/agents/GeneralCoding.agent.md`.
-
-Affected areas expected during implementation:
+The implementation handoff is complete.
 
 ```text
-src/calcEngine/smartMoney/**
-src/cherrystock/infrastructure/database/repositories/**
-src/DuckDB/sql/**
-run.py or approved orchestration owner
-tests/**
-docs/reference/DB_Metadata.md regeneration after DB migration
+Solution Architecture
+        ↓
+GeneralCoding
+        ↓
+IMPLEMENTED_PENDING_VALIDATION
+        ↓
+TestEngineer
+        ↓
+PASS / KEEP
+        ↓
+REQ-0025 DONE
 ```
 
-Implementation must preserve this architecture and end with:
+Implemented areas include:
 
-`IMPLEMENTED_PENDING_VALIDATION`.
+```text
+src/calcEngine/smartMoneyScore.py
+src/calcEngine/smartMoneyEvaluation.py
+src/cherrystock/infrastructure/database/repositories/smart_money_repository.py
+src/DuckDB/sql/smart_money_v1_schema.sql
+src/DuckDB/sql/smart_money_v1_preflight.sql
+scripts/initload/init_reload_smart_money_score.py
+scripts/run_smart_money.py
+scripts/validate_smart_money_incremental.py
+scripts/evaluate_smart_money_v1.py
+tests/test_smart_money_score.py
+tests/test_smart_money_evaluation.py
+tests/test_smart_money_integration.py
+.github/workflows/smart-money-validation.yml
+```
 
-Independent final validation belongs to TestEngineer.
+No implementation or functional-validation owner remains. OOS evaluation is a
+separate calibration / production-activation gate.
 
 # ADR
 
