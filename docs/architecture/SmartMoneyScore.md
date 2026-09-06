@@ -1,7 +1,7 @@
 # SmartMoneyScore Architecture
 
 - **Requirement:** REQ-0025
-- **Status:** IMPLEMENTED_PENDING_VALIDATION
+- **Status:** IMPLEMENTED_AND_FUNCTIONALLY_VALIDATED
 - **Date:** 2026-09-06
 - **ADR:** [[../adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009]]
 
@@ -1346,15 +1346,20 @@ Implementation artifacts now exist for metadata/storage, runtime calculation,
 historical initload, bounded incremental refresh, public view and independent
 validation.
 
-Operational rollout remains validation-gated:
+Functional validation gate is complete:
 
-1. run focused unit tests;
-2. run full historical initload;
-3. run `smart_money_v1_preflight.sql`;
-4. run full/incremental convergence validation;
-5. TestEngineer issues terminal PASS;
-6. set `SMART_MONEY_AUTO_RUN=true`;
-7. normal `run.py` then appends SmartMoney after Trend / Indicator Engine.
+1. focused unit tests — PASS;
+2. full historical initload — PASS;
+3. `smart_money_v1_preflight.sql` — PASS;
+4. full/incremental convergence — PASS;
+5. TestEngineer terminal verdict — PASS / KEEP.
+
+Production auto-run remains intentionally gated by OOS calibration review:
+
+6. execute `scripts/evaluate_smart_money_v1.py --horizons 5 10 20`;
+7. review TRAIN / VALIDATION / TEST evidence;
+8. only after explicit OOS review, set `SMART_MONEY_AUTO_RUN=true`;
+9. normal `run.py` then appends SmartMoney after Trend / Indicator Engine.
 
 Default remains:
 
@@ -1548,7 +1553,10 @@ See:
 Current state:
 
 ```text
-IMPLEMENTED_PENDING_VALIDATION
+IMPLEMENTED_AND_FUNCTIONALLY_VALIDATED
+REQ-0025 = DONE
+TestEngineer = PASS / KEEP
+OOS calibration review = PENDING
 ```
 
 Implemented runtime:
@@ -1619,3 +1627,27 @@ The synthetic integration executes SmartMoney schema bootstrap twice, executes t
 preflight SQL, performs full historical refresh, validates the public view and NULL
 LimitUp semantics, then verifies bounded incremental convergence against the full
 baseline.
+
+
+## Local Production-Like Validation Evidence
+
+Executed against the real local CherryMon database on 2026-09-06:
+
+```text
+Full historical scores:  1,111,784
+Factor rows:             11,117,840
+Source coverage:         2000-07-28 → 2026-09-04
+Preflight:               13/13 PASS
+Convergence sample:      MWG / FPT / HPG
+Convergence score rows:  60
+Convergence factor rows: 600
+Memory seeds:            349
+Verdict:                 PASS
+Action:                  KEEP
+```
+
+Functional architecture is therefore validated on both synthetic CI and the real
+local CherryMon dataset.
+
+The remaining OOS evaluation is intentionally treated as a model-calibration /
+production-activation gate, not a correctness gate.
