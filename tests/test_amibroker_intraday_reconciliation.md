@@ -32,7 +32,7 @@ Out of scope:
 1. Pull latest `main`.
 2. Local CherryMon DuckDB is available.
 3. For init validation, run:
-   `python scripts\initload\init_reload_amibroker_intraday.py`
+   `python scripts\initload\init_reload_raw_intraday_tables.py`
 4. For incremental validation, run the normal incremental pipeline first.
 5. Execute all SQL in read-only mode.
 
