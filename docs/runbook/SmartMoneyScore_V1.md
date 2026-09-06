@@ -424,3 +424,49 @@ Action: KEEP | FIX ONCE | REVERT | STOP
 ~~~
 
 Only TestEngineer owns final PASS.
+
+
+### CI / synthetic integration evidence — 2026-09-06
+
+GitHub Actions workflow:
+
+```text
+.github/workflows/smart-money-validation.yml
+```
+
+Validated on Python 3.13 / DuckDB 1.5.5:
+
+```text
+Run:        34027453182
+Run number: 4
+Commit:     636b2299c43c2d108d03c29fd9a6e3993c8e59d0
+Conclusion: SUCCESS
+Tests:      12 passed
+```
+
+Coverage includes:
+
+- module/runner compilation;
+- pure scoring/unit semantics;
+- OOS evaluation semantics;
+- real SmartMoney schema bootstrap in synthetic DuckDB;
+- full historical refresh;
+- public `vw_Ticker_SmartMoney`;
+- missing LimitUp = NULL / UNAVAILABLE;
+- incremental checkpoint refresh;
+- full-history vs incremental factor/score convergence.
+
+The integration gate found and forced repair of two implementation defects before
+PASS:
+
+1. DuckDB 1.5.5 did not accept `CURRENT_TIMESTAMP` in the SmartMoney
+   `ON CONFLICT ... DO UPDATE` expression as written. Upserts now reuse
+   `EXCLUDED.UpdatedAt`.
+2. A single 70-session incremental warmup was insufficient for exact memory
+   convergence because early warmup rows themselves lacked mature 60-session
+   features. Incremental execution now separates:
+   `feature_start -> memory_start -> target_start`.
+
+This CI evidence validates code/schema behavior on a deterministic fixture. It does
+not replace the TestEngineer run against the user's production/local CherryMon
+database.
