@@ -80,7 +80,41 @@ The generated `docs/reference/DB_Metadata.md` must be refreshed after the local
 database has been init-loaded with this schema; it is not hand-edited ahead of the
 actual database state.
 
+## Dual stock price domains
+
+CherryStock separates adjusted analytical price history from point-in-time/as-traded
+market history.
+
+```text
+raw_stock_eod
+    -> adjusted analytical OHLCV
+    -> Return / MA / RS / Trend / analytical SmartMoney features
+
+raw_stock_eod_astraded
+    -> point-in-time/as-traded OHLCV + source market facts
+    -> cal_stock_market_limit_eod
+    -> vw_stock_market_limit_eod
+    -> Reference/Ceiling/Floor/Limit/Streak
+```
+
+The two datasets intentionally represent different business facts and are not
+duplicate Sources of Truth.
+
+Historical market-limit calculations MUST NOT use adjusted
+`raw_stock_eod.Close` as a fallback.
+
+Target design:
+[[AsTraded_Market_Limit|As-Traded Market Limit Architecture]]
+
+Decision:
+[[../adr/ADR-010-separate-adjusted-as-traded-market-limit|ADR-010]]
+
 ## Enriched stock EOD market-limit view
+
+### Transition status: legacy derived path
+
+The current implementation of `vw_raw_stock_eod` still derives historical market-limit values from adjusted/current-snapshot inputs. It remains a transitional compatibility implementation and is **not** the target point-in-time SSOT. The approved target is `vw_stock_market_limit_eod` backed by as-traded history. See [[AsTraded_Market_Limit|As-Traded Market Limit Architecture]].
+
 
 `main.vw_raw_stock_eod` is the consumer-oriented stock EOD contract for standard-session
 reference prices, price bands and daily limit-up/down state.
