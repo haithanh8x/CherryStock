@@ -135,3 +135,24 @@ def test_supply_lock_scoring_renormalizes_missing_limit_up() -> None:
     assert result.loc[0, "FactorCoverage"] == pytest.approx(0.80)
     assert result.loc[0, "PositiveScore"] == pytest.approx(80.0)
     assert result.loc[0, "SmartMoneyScore"] == pytest.approx(80.0)
+
+
+
+def test_accumulation_memory_can_continue_from_persisted_seed() -> None:
+    frame = pd.DataFrame(
+        {
+            "Ticker": ["AAA", "AAA"],
+            "AccumulationScore": [80.0, 80.0],
+        }
+    )
+    seed = pd.DataFrame(
+        {
+            "Ticker": ["AAA"],
+            "AccumulationMemorySeed": [20.0],
+        }
+    )
+
+    memory = _apply_accumulation_memory(frame, 0.90, seed_frame=seed)
+
+    assert memory.iloc[0] == pytest.approx(26.0)
+    assert memory.iloc[1] == pytest.approx(31.4)
