@@ -80,7 +80,6 @@ The generated `docs/reference/DB_Metadata.md` must be refreshed after the local
 database has been init-loaded with this schema; it is not hand-edited ahead of the
 actual database state.
 
-
 ## Daily ticker OHLC + transaction-flow view
 
 `main.vw_Ticker_OHLC_D` is the consumer-oriented daily contract that combines
@@ -98,9 +97,10 @@ Ownership and lineage:
 ```text
 raw_stock_eod
   └─ Open / High / Low / Close / Volume
+  └─ TradingValue fallback proxy when Intraday is unavailable
 
 raw_stock_intraday
-  └─ TradingValue
+  └─ TradingValue primary source
   └─ BuyUp_Val / BuyUp_Vol
   └─ SellDown_Val / SellDown_Vol
   └─ ATO_Val / ATO_Vol
@@ -115,21 +115,32 @@ Rules:
   canonical daily prices from Intraday because historical corporate-action
   adjustment can make EOD and Intraday OHLC differ legitimately.
 - AmiBroker stock prices are stored in thousand VND/share. Every `*_Val` field is
-  normalized to **VND** as `ROUND(SUM(tick Close * tick Volume * 1000))` and cast
-  to `BIGINT`, so consumer output has no decimal places.
-- `TradingValue` covers all available Intraday transactions for the ticker/date.
+  normalized to **VND** and cast to `BIGINT`, so consumer output has no decimal places.
+- `TradingValue` uses the following precedence:
+  1. If Intraday exists for `Ticker + Date`, use
+     `ROUND(SUM(tick Close * tick Volume * 1000))`.
+  2. If Intraday is unavailable and EOD `Volume > 0`, use the proxy
+     `ROUND(((High + Low + Close) / 3) * Volume * 1000)`.
+  3. If EOD `Volume = 0`, return `0`.
+  4. If EOD `Volume > 0` but `High/Low/Close` is incomplete, return NULL.
+- `TradingValue_Source` identifies provenance:
+  - `INTRADAY_TICK`;
+  - `EOD_TYPICAL_PRICE_PROXY`;
+  - `NO_TRADE`;
+  - `MISSING_INPUT`.
+- `TradingValue_IsProxy` is `TRUE` only for `EOD_TYPICAL_PRICE_PROXY`, `FALSE`
+  for `INTRADAY_TICK`/`NO_TRADE`, and NULL for `MISSING_INPUT`.
+- BuyUp/SellDown/ATO/ATC require Intraday evidence. On positive-volume EOD dates
+  without Intraday coverage these flow fields remain NULL; the system must not
+  manufacture directional flow from OHLCV.
 - `OpenInt=1` contributes to `SellDown_*`.
 - `OpenInt=2` contributes to `BuyUp_*`.
 - `OpenInt=3` is only assigned to an auction bucket when the decoded local
-  `DateTime` is inside the corresponding auction window:
-  - ATO: 09:00:00 through 09:15:00;
-  - ATC: 14:30:00 through 14:45:00.
-- `OpenInt=3` outside those windows remains part of `TradingValue` but is not
-  force-classified as ATO or ATC.
-- EOD dates with `Volume=0` and no Intraday rows expose zero flow/value because
-  no transaction occurred. EOD dates with `Volume>0` but no Intraday coverage
-  retain NULL flow/value fields so missing historical coverage is not disguised
-  as zero.
+  `DateTime` is inside the current validated source windows:
+  - ATO: 09:00:00 through 09:20:00;
+  - ATC: 14:30:00 through 14:50:00.
+- `OpenInt=3` outside those windows remains part of tick-based `TradingValue` but
+  is not force-classified as ATO or ATC.
 - Full EOD/Intraday reload entry points drop and recreate the view around raw
   table rebuilds so dependency state remains deterministic.
 
