@@ -1,7 +1,7 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-04T14:30:34.038337+00:00
-- Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
+- Generated at: 2026-09-06T15:30:44.228960+00:00
+- Database file: `c:\onedrive\working\datafile\cherrymon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
 ## AI context loading guide
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 45
+- Table/view count: 54
 
 ## Schemas
 
@@ -33,11 +33,17 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`cal_rs_evaluation_run` (BASE TABLE)
 - `main`.`cal_rs_source_effectiveness` (BASE TABLE)
 - `main`.`cal_rs_source_effectiveness_run` (BASE TABLE)
+- `main`.`cal_smart_money_factor_values` (BASE TABLE)
+- `main`.`cal_smart_money_ticker_score` (BASE TABLE)
 - `main`.`dimCalendar` (BASE TABLE)
 - `main`.`dim_indicator` (BASE TABLE)
 - `main`.`dim_indicator_component` (BASE TABLE)
 - `main`.`dim_indicator_config` (BASE TABLE)
 - `main`.`dim_rs_model_version` (BASE TABLE)
+- `main`.`dim_smart_money_config` (BASE TABLE)
+- `main`.`dim_smart_money_factor` (BASE TABLE)
+- `main`.`dim_smart_money_model` (BASE TABLE)
+- `main`.`dim_smart_money_state_weight` (BASE TABLE)
 - `main`.`raw_active_eod` (BASE TABLE)
 - `main`.`raw_bctc_cdkt` (BASE TABLE)
 - `main`.`raw_bctc_cstc` (BASE TABLE)
@@ -69,7 +75,10 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`vw_Indicator_config` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
+- `main`.`vw_Ticker_OHLC_D` (VIEW)
+- `main`.`vw_Ticker_SmartMoney` (VIEW)
 - `main`.`vw_Ticker_indicators` (VIEW)
+- `main`.`vw_raw_stock_eod` (VIEW)
 
 ## Objects
 
@@ -223,6 +232,34 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `CompletedAt` | `TIMESTAMP` | `YES` | `` |
 | `Notes` | `VARCHAR` | `YES` | `` |
 
+### main.cal_smart_money_factor_values (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ModelId` | `BIGINT` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Date` | `DATE` | `NO` | `` |
+| `FactorId` | `BIGINT` | `NO` | `` |
+| `RawValue` | `DOUBLE` | `YES` | `` |
+| `NormalizedValue` | `DOUBLE` | `YES` | `` |
+| `DataQuality` | `VARCHAR` | `NO` | `` |
+| `SourceCode` | `VARCHAR` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_smart_money_ticker_score (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ModelId` | `BIGINT` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Date` | `DATE` | `NO` | `` |
+| `SmartMoneyScore` | `DOUBLE` | `NO` | `` |
+| `ConfidenceScore` | `DOUBLE` | `NO` | `` |
+| `MarketState` | `VARCHAR` | `NO` | `` |
+| `FactorCoverage` | `DOUBLE` | `NO` | `` |
+| `DataQualityStatus` | `VARCHAR` | `NO` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
 ### main.dimCalendar (BASE TABLE)
 
 | Column | Type | Nullable | Default |
@@ -300,6 +337,57 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `CreatedAt` | `TIMESTAMP` | `YES` | `CURRENT_TIMESTAMP` |
 | `PromotedAt` | `TIMESTAMP` | `YES` | `` |
 | `Notes` | `VARCHAR` | `YES` | `` |
+
+### main.dim_smart_money_config (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ModelId` | `BIGINT` | `NO` | `` |
+| `ConfigKey` | `VARCHAR` | `NO` | `` |
+| `ConfigValue` | `VARCHAR` | `NO` | `` |
+| `ValueType` | `VARCHAR` | `NO` | `` |
+| `EffectiveFrom` | `DATE` | `NO` | `CAST('2000-01-01' AS DATE)` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.dim_smart_money_factor (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `FactorId` | `BIGINT` | `NO` | `` |
+| `FactorCode` | `VARCHAR` | `NO` | `` |
+| `FactorName` | `VARCHAR` | `NO` | `` |
+| `Category` | `VARCHAR` | `NO` | `` |
+| `NormalizationMethod` | `VARCHAR` | `NO` | `` |
+| `ContributionType` | `VARCHAR` | `NO` | `` |
+| `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `Description` | `VARCHAR` | `YES` | `` |
+
+### main.dim_smart_money_model (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ModelId` | `BIGINT` | `NO` | `` |
+| `ModelCode` | `VARCHAR` | `NO` | `` |
+| `ModelVersion` | `VARCHAR` | `NO` | `` |
+| `Description` | `VARCHAR` | `YES` | `` |
+| `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `EffectiveFrom` | `DATE` | `NO` | `CAST('2000-01-01' AS DATE)` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.dim_smart_money_state_weight (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ModelId` | `BIGINT` | `NO` | `` |
+| `MarketState` | `VARCHAR` | `NO` | `` |
+| `FactorId` | `BIGINT` | `NO` | `` |
+| `Weight` | `DOUBLE` | `NO` | `` |
+| `EffectiveFrom` | `DATE` | `NO` | `CAST('2000-01-01' AS DATE)` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.raw_active_eod (BASE TABLE)
 
@@ -444,6 +532,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | --- | --- | --- | --- |
 | `Ticker` | `VARCHAR` | `NO` | `` |
 | `Date` | `DATE` | `NO` | `` |
+| `DateTime` | `TIMESTAMP` | `NO` | `` |
+| `RawTime` | `INTEGER` | `NO` | `` |
+| `TickSeq` | `BIGINT` | `NO` | `` |
 | `Open` | `DOUBLE` | `YES` | `` |
 | `High` | `DOUBLE` | `YES` | `` |
 | `Low` | `DOUBLE` | `YES` | `` |
@@ -470,6 +561,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | --- | --- | --- | --- |
 | `Ticker` | `VARCHAR` | `NO` | `` |
 | `Date` | `DATE` | `NO` | `` |
+| `DateTime` | `TIMESTAMP` | `NO` | `` |
+| `RawTime` | `INTEGER` | `NO` | `` |
+| `TickSeq` | `BIGINT` | `NO` | `` |
 | `Open` | `DOUBLE` | `YES` | `` |
 | `High` | `DOUBLE` | `YES` | `` |
 | `Low` | `DOUBLE` | `YES` | `` |
@@ -589,6 +683,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | --- | --- | --- | --- |
 | `Ticker` | `VARCHAR` | `NO` | `` |
 | `Date` | `DATE` | `NO` | `` |
+| `DateTime` | `TIMESTAMP` | `NO` | `` |
+| `RawTime` | `INTEGER` | `NO` | `` |
+| `TickSeq` | `BIGINT` | `NO` | `` |
 | `Open` | `DOUBLE` | `YES` | `` |
 | `High` | `DOUBLE` | `YES` | `` |
 | `Low` | `DOUBLE` | `YES` | `` |
@@ -697,6 +794,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | --- | --- | --- | --- |
 | `Ticker` | `VARCHAR` | `NO` | `` |
 | `Date` | `DATE` | `NO` | `` |
+| `DateTime` | `TIMESTAMP` | `NO` | `` |
+| `RawTime` | `INTEGER` | `NO` | `` |
+| `TickSeq` | `BIGINT` | `NO` | `` |
 | `Open` | `DOUBLE` | `YES` | `` |
 | `High` | `DOUBLE` | `YES` | `` |
 | `Low` | `DOUBLE` | `YES` | `` |
@@ -887,13 +987,61 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Industry` | `VARCHAR` | `YES` | `` |
 | `IndustryCode` | `VARCHAR` | `YES` | `` |
 | `Status` | `VARCHAR` | `YES` | `` |
-| `Capital` | `BIGINT` | `YES` | `` |
+| `MarketCap` | `BIGINT` | `YES` | `` |
 | `Shares Outstanding` | `BIGINT` | `YES` | `` |
+| `FreeFloat` | `BIGINT` | `YES` | `` |
 | `EPS` | `DOUBLE` | `YES` | `` |
 | `PE` | `DOUBLE` | `YES` | `` |
 | `Book Value` | `DOUBLE` | `YES` | `` |
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
+
+### main.vw_Ticker_OHLC_D (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Date` | `DATE` | `YES` | `` |
+| `Open` | `DOUBLE` | `YES` | `` |
+| `High` | `DOUBLE` | `YES` | `` |
+| `Low` | `DOUBLE` | `YES` | `` |
+| `Close` | `DOUBLE` | `YES` | `` |
+| `Volume` | `BIGINT` | `YES` | `` |
+| `TradingValue` | `BIGINT` | `YES` | `` |
+| `TradingValue_Source` | `VARCHAR` | `YES` | `` |
+| `TradingValue_IsProxy` | `BOOLEAN` | `YES` | `` |
+| `BuyUp_Val` | `BIGINT` | `YES` | `` |
+| `BuyUp_Vol` | `BIGINT` | `YES` | `` |
+| `SellDown_Val` | `BIGINT` | `YES` | `` |
+| `SellDown_Vol` | `BIGINT` | `YES` | `` |
+| `ATO_Val` | `BIGINT` | `YES` | `` |
+| `ATO_Vol` | `BIGINT` | `YES` | `` |
+| `ATC_Val` | `BIGINT` | `YES` | `` |
+| `ATC_Vol` | `BIGINT` | `YES` | `` |
+
+### main.vw_Ticker_SmartMoney (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Date` | `DATE` | `YES` | `` |
+| `ModelCode` | `VARCHAR` | `YES` | `` |
+| `ModelVersion` | `VARCHAR` | `YES` | `` |
+| `SmartMoneyScore` | `DOUBLE` | `YES` | `` |
+| `ConfidenceScore` | `DOUBLE` | `YES` | `` |
+| `MarketState` | `VARCHAR` | `YES` | `` |
+| `FactorCoverage` | `DOUBLE` | `YES` | `` |
+| `DataQualityStatus` | `VARCHAR` | `YES` | `` |
+| `FreshFlowScore` | `DOUBLE` | `YES` | `` |
+| `RelativeLiquidityScore` | `DOUBLE` | `YES` | `` |
+| `LiquidityAccelerationScore` | `DOUBLE` | `YES` | `` |
+| `RelativeStrengthScore` | `DOUBLE` | `YES` | `` |
+| `AccumulationScore` | `DOUBLE` | `YES` | `` |
+| `AccumulationMemoryScore` | `DOUBLE` | `YES` | `` |
+| `SupplyLockScore` | `DOUBLE` | `YES` | `` |
+| `LimitUpScore` | `DOUBLE` | `YES` | `` |
+| `TrendScore` | `DOUBLE` | `YES` | `` |
+| `DistributionScore` | `DOUBLE` | `YES` | `` |
 
 ### main.vw_Ticker_indicators (VIEW)
 
@@ -908,10 +1056,37 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Timeframe` | `VARCHAR` | `YES` | `` |
 | `WarmupBars` | `INTEGER` | `YES` | `` |
 
+### main.vw_raw_stock_eod (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Date` | `DATE` | `YES` | `` |
+| `Open` | `DOUBLE` | `YES` | `` |
+| `High` | `DOUBLE` | `YES` | `` |
+| `Low` | `DOUBLE` | `YES` | `` |
+| `Close` | `DOUBLE` | `YES` | `` |
+| `Volume` | `BIGINT` | `YES` | `` |
+| `OpenInt` | `DOUBLE` | `YES` | `` |
+| `Market` | `VARCHAR` | `YES` | `` |
+| `Market_Source` | `VARCHAR` | `YES` | `` |
+| `Market_IsPointInTime` | `BOOLEAN` | `YES` | `` |
+| `ReferencePrice` | `DOUBLE` | `YES` | `` |
+| `ReferencePrice_Source` | `VARCHAR` | `YES` | `` |
+| `ReferencePrice_IsProxy` | `BOOLEAN` | `YES` | `` |
+| `PriceBandRate` | `DOUBLE` | `YES` | `` |
+| `PriceBandRuleQuality` | `VARCHAR` | `YES` | `` |
+| `CeilingPrice` | `DOUBLE` | `YES` | `` |
+| `FloorPrice` | `DOUBLE` | `YES` | `` |
+| `LimitUp` | `BOOLEAN` | `YES` | `` |
+| `LimitUpStreak` | `BIGINT` | `YES` | `` |
+| `LimitDown` | `BOOLEAN` | `YES` | `` |
+| `LimitDownStreak` | `BIGINT` | `YES` | `` |
+
 ## Indicator metadata snapshots
 
 | DuckDB source | CSV file | Rows |
 | --- | --- | ---: |
 | `CherryMon`.`main`.`dim_indicator` | `dim_indicator.csv` | 66 |
-| `CherryMon`.`main`.`dim_indicator_component` | `dim_indicator_component.csv` | 8 |
-| `CherryMon`.`main`.`dim_indicator_config` | `dim_indicator_config.csv` | 21 |
+| `CherryMon`.`main`.`dim_indicator_component` | `dim_indicator_component.csv` | 10 |
+| `CherryMon`.`main`.`dim_indicator_config` | `dim_indicator_config.csv` | 27 |
