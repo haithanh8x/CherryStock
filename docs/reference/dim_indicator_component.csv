@@ -7,3 +7,5 @@ BB,WIDTH,Band Width,BBB,4,false,true,VOLATILITY,PERCENT
 BB,PERCENT,Percent Position,BBP,5,false,true,RATIO,RATIO
 MA,VALUE,MA Value,,1,true,true,PRICE_LEVEL,PRICE
 ATR,VALUE,Average True Range,,1,true,true,VOLATILITY_DISTANCE,PRICE
+OBV,VALUE,On-Balance Volume,,1,true,true,CUMULATIVE_FLOW,VOLUME
+AD,VALUE,Accumulation/Distribution Line,,1,true,true,CUMULATIVE_FLOW,VOLUME

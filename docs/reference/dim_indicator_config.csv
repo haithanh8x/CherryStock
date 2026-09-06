@@ -20,3 +20,9 @@ ConfigId,ConfigCode,IndicatorCode,Timeframe,Parameters,WarmupBars,IsEnabled,Desc
 37,ATR14_D,ATR,D,"{""length"": 14}",14,true,,2026-09-01 15:11:55.795737,
 38,ATR14_W,ATR,W,"{""length"": 14}",14,true,,2026-09-01 15:11:55.795737,
 39,ATR14_M,ATR,M,"{""length"": 14}",14,true,,2026-09-01 15:11:55.795737,
+43,AD_D,AD,D,{},1,true,Cumulative full-history AD Line daily.,2026-09-06 13:29:03.952904,2026-09-06 13:29:03.952904
+41,OBV_W,OBV,W,{},1,true,Cumulative full-history OBV weekly.,2026-09-06 13:29:03.952904,2026-09-06 13:29:03.952904
+42,OBV_M,OBV,M,{},1,true,Cumulative full-history OBV monthly.,2026-09-06 13:29:03.952904,2026-09-06 13:29:03.952904
+45,AD_M,AD,M,{},1,true,Cumulative full-history AD Line monthly.,2026-09-06 13:29:03.952904,2026-09-06 13:29:03.952904
+40,OBV_D,OBV,D,{},1,true,Cumulative full-history OBV daily.,2026-09-06 13:29:03.952904,2026-09-06 13:29:03.952904
+44,AD_W,AD,W,{},1,true,Cumulative full-history AD Line weekly.,2026-09-06 13:29:03.952904,2026-09-06 13:29:03.952904
