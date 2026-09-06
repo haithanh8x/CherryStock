@@ -11,6 +11,7 @@ on:
       - "src/DuckDB/sql/smart_money_v1_schema.sql"
       - "tests/test_smart_money_score.py"
       - "tests/test_smart_money_evaluation.py"
+      - "tests/test_smart_money_integration.py"
   pull_request:
     paths:
       - "src/calcEngine/smartMoneyScore.py"
@@ -20,6 +21,7 @@ on:
       - "src/DuckDB/sql/smart_money_v1_schema.sql"
       - "tests/test_smart_money_score.py"
       - "tests/test_smart_money_evaluation.py"
+      - "tests/test_smart_money_integration.py"
 
 jobs:
   unit:
@@ -57,4 +59,4 @@ jobs:
 
       - name: Run focused unit tests
         run: |
-          python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py -v
+          python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py tests/test_smart_money_integration.py -v
