@@ -67,8 +67,16 @@ Validation:
 
 ~~~text
 tests/test_smart_money_score.py
+tests/test_smart_money_evaluation.py
 src/DuckDB/sql/smart_money_v1_preflight.sql
 tests/test_smart_money_score.md
+~~~
+
+Research / calibration:
+
+~~~text
+src/calcEngine/smartMoneyEvaluation.py
+scripts/evaluate_smart_money_v1.py
 ~~~
 
 ## V1 input contract
@@ -140,7 +148,7 @@ git status
 # Phase 1 — Focused unit tests
 
 ~~~powershell
-python -m pytest tests/test_smart_money_score.py -v
+python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py -v
 ~~~
 
 Required cases:
@@ -293,7 +301,55 @@ python scripts\run_smart_money.py --days 30 --tickers MWG FPT HPG
 Ticker subset affects persistence only. Percentile normalization still uses the
 full active universe on each date.
 
-# Phase 7 — Production orchestration gate
+# Phase 7 — Historical / OOS evaluation
+
+After functional validation and full historical persistence:
+
+~~~powershell
+python scripts\evaluate_smart_money_v1.py --horizons 5 10 20
+~~~
+
+The evaluation uses chronological:
+
+~~~text
+TRAIN       60%
+VALIDATION  20%
+TEST        20%
+~~~
+
+and evaluates:
+
+- SmartMoneyScore buckets;
+- MarketState;
+- Confidence buckets;
+- forward stock return;
+- forward VNINDEX return;
+- excess return;
+- win rate / excess-win rate;
+- score-bucket monotonicity;
+- top-minus-bottom excess-return spread.
+
+Forward H is measured on the exact VNINDEX trading-session date H bars after the
+score date. If the ticker has no Close on that exact future session, the label is
+unavailable rather than silently shifted to a later ticker observation.
+
+Outputs are written under:
+
+~~~text
+data/evaluation/smart_money_v1/
+  metrics.csv
+  monotonicity.csv
+  summary.json
+~~~
+
+This is research evidence only. The evaluator MUST NOT mutate SmartMoney weights,
+score persistence or the auto-run flag.
+
+No predictive-performance threshold is hard-coded in V1 because no approved
+business calibration threshold exists yet. OOS evidence must be reviewed explicitly
+before treating the initial weights as calibrated.
+
+# Phase 8 — Production orchestration gate
 
 Do not add SmartMoney to normal daily run.py until TestEngineer returns PASS for:
 
@@ -305,7 +361,7 @@ full/incremental convergence
 public view contract
 ~~~
 
-After PASS, production order is:
+After TestEngineer functional PASS **and explicit OOS evaluation review**, production order is:
 
 ~~~text
 EOD refresh
