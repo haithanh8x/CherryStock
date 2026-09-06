@@ -1,15 +1,15 @@
 ---
 id: REQ-0025
 title: Ticker-level SmartMoneyScore
-status: READY_FOR_IMPLEMENTATION
+status: IMPLEMENTED_PENDING_VALIDATION
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: GeneralCoding
+primary_next_owner: TestEngineer
 related:
   architecture: docs/architecture/SmartMoneyScore.md
   adr: docs/adr/ADR-009-smart-money-score-state-aware-scoring.md
-  implementation:
-  test:
+  implementation: src/calcEngine/smartMoneyScore.py
+  test: tests/test_smart_money_score.md
   change_request:
 ---
 
@@ -469,3 +469,44 @@ Blocking questions: None
 Architecture: docs/architecture/SmartMoneyScore.md
 ADR: docs/adr/ADR-009-smart-money-score-state-aware-scoring.md
 ```
+
+
+## Implementation Evidence
+
+Implementation state:
+
+```text
+IMPLEMENTED_PENDING_VALIDATION
+```
+
+Runtime and persistence:
+
+- `src/calcEngine/smartMoneyScore.py` — feature calculation, normalization,
+  accumulation memory, state detection, state-aware scoring and confidence.
+- `src/cherrystock/infrastructure/database/repositories/smart_money_repository.py`
+  — metadata access and atomic checkpoint persistence.
+- `src/DuckDB/sql/smart_money_v1_schema.sql` — SmartMoney metadata, factor/score
+  storage and `vw_Ticker_SmartMoney`.
+- `scripts/initload/init_reload_smart_money_score.py` — full historical initload.
+- `scripts/run_smart_money.py` — bounded incremental checkpoint refresh.
+- `scripts/validate_smart_money_incremental.py` — rollback-safe full/incremental
+  convergence validation.
+- `src/DuckDB/sql/smart_money_v1_preflight.sql` — read-only DB contract checks.
+
+Validation materials:
+
+- `tests/test_smart_money_score.py`
+- `tests/test_smart_money_score.md`
+- `docs/runbook/SmartMoneyScore_V1.md`
+
+Operational gate:
+
+```text
+SMART_MONEY_AUTO_RUN=false
+```
+
+remains the default. Daily orchestration may only be enabled after TestEngineer
+returns PASS.
+
+Historical production LimitUp remains optional/unavailable until the approved
+As-Traded market-limit migration passes. This does not block core SmartMoney V1.
