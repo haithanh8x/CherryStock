@@ -102,7 +102,7 @@ ON CONFLICT (ModelId) DO UPDATE SET
     IsEnabled = EXCLUDED.IsEnabled,
     EffectiveFrom = EXCLUDED.EffectiveFrom,
     EffectiveTo = EXCLUDED.EffectiveTo,
-    UpdatedAt = CURRENT_TIMESTAMP;
+    UpdatedAt = EXCLUDED.UpdatedAt;
 
 INSERT INTO "CherryMon"."main"."dim_smart_money_factor" (
     FactorId, FactorCode, FactorName, Category,
@@ -147,7 +147,7 @@ ON CONFLICT (ModelId, ConfigKey, EffectiveFrom) DO UPDATE SET
     ConfigValue = EXCLUDED.ConfigValue,
     ValueType = EXCLUDED.ValueType,
     EffectiveTo = EXCLUDED.EffectiveTo,
-    UpdatedAt = CURRENT_TIMESTAMP;
+    UpdatedAt = EXCLUDED.UpdatedAt;
 
 -- Weight rows are deliberately explicit and versioned by EffectiveFrom.
 -- NEUTRAL
@@ -222,7 +222,7 @@ VALUES
 ON CONFLICT (ModelId, MarketState, FactorId, EffectiveFrom) DO UPDATE SET
     Weight = EXCLUDED.Weight,
     EffectiveTo = EXCLUDED.EffectiveTo,
-    UpdatedAt = CURRENT_TIMESTAMP;
+    UpdatedAt = EXCLUDED.UpdatedAt;
 
 CREATE OR REPLACE VIEW "CherryMon"."main"."vw_Ticker_SmartMoney" AS
 WITH factor_wide AS (
