@@ -1561,6 +1561,9 @@ Implemented runtime:
 - `scripts/run_smart_money.py`
 - `scripts/validate_smart_money_incremental.py`
 - `tests/test_smart_money_score.py`
+- `tests/test_smart_money_evaluation.py`
+- `tests/test_smart_money_integration.py`
+- `.github/workflows/smart-money-validation.yml`
 - `docs/runbook/SmartMoneyScore_V1.md`
 
 Final validation owner remains TestEngineer. Predictive effectiveness/calibration
