@@ -110,6 +110,36 @@ Unrelated indicator configs are not recalculated.
 Read-only validation:
 `src/DuckDB/sql/indicator_obv_ad_preflight.sql`
 
+
+## SmartMoneyScore V1 full historical initload
+
+Bootstraps SmartMoney V1 metadata/storage and performs a full historical backfill:
+
+```powershell
+python scripts\initload\init_reload_smart_money_score.py
+```
+
+The workflow runs inside one DuckDB UnitOfWork and exports generated DB metadata
+only after a successful commit.
+
+Read-only validation:
+
+```text
+src/DuckDB/sql/smart_money_v1_preflight.sql
+```
+
+Runbook:
+
+```text
+docs/runbook/SmartMoneyScore_V1.md
+```
+
+Incremental refresh belongs outside `scripts/initload/`:
+
+```powershell
+python scripts\run_smart_money.py --days 15
+```
+
 ## Scope rule
 
 Belongs in `scripts/initload/`:
