@@ -106,6 +106,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
 
 ## Runbooks
+- [[runbook/SmartMoneyScore_V1|SmartMoneyScore V1 Deployment]]
 - [[runbook/AsTraded_Market_Limit_Migration|As-Traded Market-Limit Migration]]
 - [[runbook/vw_raw_stock_eod|Enriched Stock EOD Market Limits]]
 - [[runbook/Indicator_OBV_AD|OBV + AD Line Activation and Historical Initload]]
