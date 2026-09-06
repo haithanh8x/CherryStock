@@ -480,6 +480,12 @@ def _detect_states(frame: pd.DataFrame, config: dict[str, object]) -> pd.Series:
     ] = "LIQUIDITY_DRYUP"
 
     state.loc[
+        (frame["DistributionScore"] >= 60.0)
+        & (frame["RelativeLiquidityScore"] >= 80.0)
+        & (frame["Return1"] < 0.0)
+    ] = "SELLING_CLIMAX"
+
+    state.loc[
         (frame["TrendScore"] >= markup_threshold)
         & (frame["RelativeStrengthScore"] >= 60.0)
     ] = "MARKUP"
@@ -505,12 +511,6 @@ def _detect_states(frame: pd.DataFrame, config: dict[str, object]) -> pd.Series:
         (frame["SupplyLockScore"] >= supply_threshold)
         & (frame["AccumulationMemoryScore"] >= 60.0)
     ] = "SUPPLY_LOCK"
-
-    state.loc[
-        (frame["DistributionScore"] >= 60.0)
-        & (frame["RelativeLiquidityScore"] >= 80.0)
-        & (frame["Return1"] < 0.0)
-    ] = "SELLING_CLIMAX"
 
     # DISTRIBUTION is highest precedence in V1.
     state.loc[frame["DistributionScore"] >= distribution_threshold] = "DISTRIBUTION"
@@ -675,10 +675,19 @@ def _factor_quality(frame: pd.DataFrame, factor_code: str) -> pd.Series:
         quality = frame.get("MarketLimitQuality")
         if quality is None:
             return np.full(len(frame), "UNAVAILABLE", dtype=object)
+        normalized = quality.fillna("PARTIAL").map(
+            {
+                "AUTHORITATIVE": "EXACT",
+                "VALIDATED_PROVIDER": "EXACT",
+                "DERIVED_AS_TRADED": "PARTIAL",
+                "PARTIAL": "PARTIAL",
+                "UNAVAILABLE": "UNAVAILABLE",
+            }
+        ).fillna("PARTIAL")
         return np.where(
             frame["LimitUpScore"].isna(),
             "UNAVAILABLE",
-            quality.fillna("PARTIAL"),
+            normalized,
         )
     if factor_code == "DISTRIBUTION":
         return np.where(
@@ -753,18 +762,25 @@ def refresh_smart_money_score(
     factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
     con = connection or factory.create_writer()
     repo = repository or SmartMoneyRepository(con)
+    owns_transaction = owns_connection
+    if owns_transaction:
+        con.execute("BEGIN")
 
     try:
         # Always load the full active universe so same-date percentiles do not depend
         # on the requested persistence subset.
         market_data = load_market_data(con, tickers=None)
         if market_data.empty:
-            return {
+            summary = {
                 "status": "NO_DATA",
                 "factor_rows_upserted": 0,
                 "score_rows_upserted": 0,
                 "warnings": 1,
             }
+            if owns_transaction:
+                con.execute("COMMIT")
+                owns_transaction = False
+            return summary
 
         source_max = pd.Timestamp(market_data["Date"].max())
         target_start = _target_start_date(source_max, from_last_day)
@@ -889,7 +905,7 @@ def refresh_smart_money_score(
                 }
             )
 
-        return {
+        summary = {
             "status": "OK",
             "source_start": str(pd.Timestamp(market_data["Date"].min()).date()),
             "source_end": str(source_max.date()),
@@ -904,6 +920,13 @@ def refresh_smart_money_score(
             "proxy_liquidity_count": proxy_liquidity_count,
             "state_distribution": state_counts,
         }
+        if owns_transaction:
+            con.execute("COMMIT")
+        return summary
+    except Exception:
+        if owns_transaction:
+            con.execute("ROLLBACK")
+        raise
     finally:
         if owns_connection:
             con.close()
