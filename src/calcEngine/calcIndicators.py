@@ -11,6 +11,7 @@ from Ults.DuckLib import DuckDBManager
 from Ults.Timing import timeit
 from calcEngine.indicatorRegistry import (
     build_indicator_input_kwargs,
+    indicator_requires_full_history,
     resolve_indicator_function,
 )
 
@@ -398,6 +399,22 @@ def _effective_warmup_bars(config: IndicatorConfig) -> int:
         if isinstance(slow, int) and isinstance(signal, int):
             inferred = max(inferred, slow + signal)
     return max(configured, inferred, 1)
+
+
+def _partition_configs_by_history_requirement(
+    configs: list[IndicatorConfig],
+    definitions: dict[str, IndicatorDefinition],
+) -> tuple[list[IndicatorConfig], list[IndicatorConfig]]:
+    """Split normal-window configs from cumulative full-history configs."""
+    windowed: list[IndicatorConfig] = []
+    full_history: list[IndicatorConfig] = []
+    for config in configs:
+        definition = definitions[config.indicator_code]
+        if indicator_requires_full_history(definition.function_name):
+            full_history.append(config)
+        else:
+            windowed.append(config)
+    return windowed, full_history
 
 
 def _source_date_bounds(connection, tickers: list[str] | None = None) -> tuple[date, date] | None:
@@ -923,45 +940,75 @@ def refresh_technical_indicators(
             source_max_date=source_max_date,
             from_last_day=from_last_day,
         )
-        source_start_date = _resolve_warmup_source_start_date(
-            con,
-            checkpoint_start=checkpoint_start,
-            source_min_date=source_min_date,
-            source_max_date=source_max_date,
-            configs=configs,
-            full_refresh=from_last_day is None,
-        )
 
-        required_inputs = tuple(
-            sorted(
-                {
-                    source_column
-                    for definition in definitions.values()
-                    for source_column in definition.required_inputs
-                }
+        windowed_configs, full_history_configs = _partition_configs_by_history_requirement(
+            configs,
+            definitions,
+        )
+        config_groups: list[tuple[list[IndicatorConfig], date]] = []
+        if windowed_configs:
+            windowed_start = _resolve_warmup_source_start_date(
+                con,
+                checkpoint_start=checkpoint_start,
+                source_min_date=source_min_date,
+                source_max_date=source_max_date,
+                configs=windowed_configs,
+                full_refresh=from_last_day is None,
             )
-        )
-        source_df = load_indicator_source_data(
-            con,
-            source_start_date=source_start_date,
-            source_end_date=source_max_date,
-            required_inputs=required_inputs,
-            tickers=tickers,
-        )
-        if source_df.empty:
-            raise RuntimeError(
-                "Technical Indicator Engine resolved source date bounds but loaded no source rows."
+            config_groups.append((windowed_configs, windowed_start))
+        if full_history_configs:
+            config_groups.append((full_history_configs, source_min_date))
+
+        calculated_frames: list[pd.DataFrame] = []
+        cleanup_frames: list[pd.DataFrame] = []
+        processed_tickers: set[str] = set()
+        source_starts: list[date] = []
+
+        for group_configs, group_source_start in config_groups:
+            group_indicator_codes = {config.indicator_code for config in group_configs}
+            required_inputs = tuple(
+                sorted(
+                    {
+                        source_column
+                        for indicator_code in group_indicator_codes
+                        for source_column in definitions[indicator_code].required_inputs
+                    }
+                )
+            )
+            source_df = load_indicator_source_data(
+                con,
+                source_start_date=group_source_start,
+                source_end_date=source_max_date,
+                required_inputs=required_inputs,
+                tickers=tickers,
+            )
+            if source_df.empty:
+                raise RuntimeError(
+                    "Technical Indicator Engine resolved source date bounds but loaded no source rows."
+                )
+
+            processed_tickers.update(source_df["Ticker"].dropna().astype(str).unique())
+            source_starts.append(group_source_start)
+            calculated_frames.append(
+                calculate_indicator_batch(
+                    source_df,
+                    configs=group_configs,
+                    definitions=definitions,
+                    components=component_map,
+                    checkpoint_start=checkpoint_start,
+                    source_end_date=source_max_date,
+                )
+            )
+            cleanup_frames.append(
+                _build_cleanup_dataframe(source_df, group_configs, checkpoint_start)
             )
 
-        indicator_values = calculate_indicator_batch(
-            source_df,
-            configs=configs,
-            definitions=definitions,
-            components=component_map,
-            checkpoint_start=checkpoint_start,
-            source_end_date=source_max_date,
+        indicator_values = pd.concat(calculated_frames, ignore_index=True)
+        cleanup_df = (
+            pd.concat(cleanup_frames, ignore_index=True)
+            .drop_duplicates(subset=["Ticker", "ConfigId", "StartDate"], keep="last")
         )
-        cleanup_df = _build_cleanup_dataframe(source_df, configs, checkpoint_start)
+        source_start_date = min(source_starts)
         records_upserted = repository.replace_indicator_checkpoint(
             dataframe=indicator_values,
             cleanup_dataframe=cleanup_df,
@@ -976,8 +1023,9 @@ def refresh_technical_indicators(
             "records_upserted": records_upserted,
             "configs_processed": len(configs),
             "indicators_processed": len({config.indicator_code for config in configs}),
-            "tickers_processed": int(source_df["Ticker"].nunique()),
+            "tickers_processed": len(processed_tickers),
             "default_timeframes_validated": config_ids is None and timeframes is None,
+            "full_history_configs_processed": len(full_history_configs),
         }
         if owns_transaction:
             con.execute("COMMIT")
