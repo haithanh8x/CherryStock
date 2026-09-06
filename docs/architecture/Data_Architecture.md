@@ -289,6 +289,94 @@ Definition:
 Validation:
 `src/DuckDB/sql/vw_Ticker_OHLC_D_preflight.sql`
 
+
+
+## SmartMoneyScore persistence domain
+
+SmartMoneyScore is a separate calculated analytics domain.
+
+Lineage:
+
+```text
+vw_Ticker_OHLC_D
+raw_index_eod (VNINDEX)
+vw_Ticker_indicators
+optional vw_stock_market_limit_eod
+        ↓
+smartMoneyScore.py
+        ↓
+cal_smart_money_factor_values
+cal_smart_money_ticker_score
+        ↓
+vw_Ticker_SmartMoney
+```
+
+### Metadata
+
+| Object | Grain / key | Purpose |
+|---|---|---|
+| `dim_smart_money_model` | `ModelId` | executable model/version identity |
+| `dim_smart_money_factor` | `FactorId` | canonical factor catalog |
+| `dim_smart_money_config` | `ModelId + ConfigKey + EffectiveFrom` | versioned thresholds/config |
+| `dim_smart_money_state_weight` | `ModelId + MarketState + FactorId + EffectiveFrom` | state-specific weights |
+
+### Calculated persistence
+
+`cal_smart_money_factor_values`
+
+Grain:
+
+```text
+ModelId + Ticker + Date + FactorId
+```
+
+Stores raw value, normalized value, evidence quality and source lineage.
+
+`cal_smart_money_ticker_score`
+
+Grain:
+
+```text
+ModelId + Ticker + Date
+```
+
+Stores final `SmartMoneyScore`, independent `ConfidenceScore`, primary
+`MarketState`, factor coverage and data-quality status.
+
+Both tables are checkpoint-replaced/upserted inside the caller-owned DuckDB
+transaction.
+
+### Public view
+
+`vw_Ticker_SmartMoney`
+
+Grain:
+
+```text
+Ticker + Date + enabled ModelCode/ModelVersion
+```
+
+The view joins final ticker score with a pivot of selected long-form factor values.
+Long-form factor persistence remains the internal evidence SSOT.
+
+### Historical / incremental lifecycle
+
+Full initload reads complete history. Daily incremental reads a bounded rolling
+warmup plus the latest persisted accumulation-memory checkpoint and only replaces
+the requested checkpoint.
+
+Missing point-in-time market-limit evidence remains `NULL / UNAVAILABLE`; the
+SmartMoney domain does not fall back to legacy adjusted-price-derived LimitUp.
+
+Definition / runtime:
+
+- `src/DuckDB/sql/smart_money_v1_schema.sql`
+- `src/calcEngine/smartMoneyScore.py`
+
+Runbook:
+
+- `docs/runbook/SmartMoneyScore_V1.md`
+
 ## Database access policy
 See [[../../.github/instructions/database.instructions|Database Instructions]].
 
