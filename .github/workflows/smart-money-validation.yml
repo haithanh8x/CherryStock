@@ -4,21 +4,38 @@ on:
   push:
     paths:
       - ".github/workflows/smart-money-validation.yml"
+      - "run.py"
       - "src/calcEngine/smartMoneyScore.py"
       - "src/calcEngine/smartMoneyEvaluation.py"
+      - "src/cherrystock/config/settings.py"
+      - "src/cherrystock/application/services/sync_write_pipeline.py"
       - "src/cherrystock/infrastructure/database/repositories/smart_money_repository.py"
       - "src/cherrystock/infrastructure/database/unit_of_work.py"
       - "src/DuckDB/sql/smart_money_v1_schema.sql"
+      - "src/DuckDB/sql/smart_money_v1_preflight.sql"
+      - "scripts/initload/init_reload_smart_money_score.py"
+      - "scripts/run_smart_money.py"
+      - "scripts/validate_smart_money_incremental.py"
+      - "scripts/evaluate_smart_money_v1.py"
       - "tests/test_smart_money_score.py"
       - "tests/test_smart_money_evaluation.py"
       - "tests/test_smart_money_integration.py"
   pull_request:
     paths:
+      - ".github/workflows/smart-money-validation.yml"
+      - "run.py"
       - "src/calcEngine/smartMoneyScore.py"
       - "src/calcEngine/smartMoneyEvaluation.py"
+      - "src/cherrystock/config/settings.py"
+      - "src/cherrystock/application/services/sync_write_pipeline.py"
       - "src/cherrystock/infrastructure/database/repositories/smart_money_repository.py"
       - "src/cherrystock/infrastructure/database/unit_of_work.py"
       - "src/DuckDB/sql/smart_money_v1_schema.sql"
+      - "src/DuckDB/sql/smart_money_v1_preflight.sql"
+      - "scripts/initload/init_reload_smart_money_score.py"
+      - "scripts/run_smart_money.py"
+      - "scripts/validate_smart_money_incremental.py"
+      - "scripts/evaluate_smart_money_v1.py"
       - "tests/test_smart_money_score.py"
       - "tests/test_smart_money_evaluation.py"
       - "tests/test_smart_money_integration.py"
@@ -49,9 +66,13 @@ jobs:
 
       - name: Compile SmartMoney modules
         run: |
+          python -m py_compile run.py
           python -m py_compile src/calcEngine/smartMoneyScore.py
           python -m py_compile src/calcEngine/smartMoneyEvaluation.py
           python -m py_compile src/cherrystock/infrastructure/database/repositories/smart_money_repository.py
+          python -m py_compile src/cherrystock/infrastructure/database/unit_of_work.py
+          python -m py_compile src/cherrystock/application/services/sync_write_pipeline.py
+          python -m py_compile src/cherrystock/config/settings.py
           python -m py_compile scripts/initload/init_reload_smart_money_score.py
           python -m py_compile scripts/run_smart_money.py
           python -m py_compile scripts/validate_smart_money_incremental.py
