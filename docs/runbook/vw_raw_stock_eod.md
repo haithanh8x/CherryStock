@@ -1,5 +1,29 @@
 # vw_raw_stock_eod — Reference / Price Band / Limit Streak Runbook
 
+## Migration notice
+
+Independent reconciliation found that the current implementation is not safe as a
+historical point-in-time market-limit SSOT because `raw_stock_eod` can be
+back-adjusted after corporate actions.
+
+The approved replacement architecture is:
+
+```text
+raw_stock_eod_astraded
+-> cal_stock_market_limit_eod
+-> vw_stock_market_limit_eod
+-> vw_raw_stock_eod compatibility join
+```
+
+See:
+- `docs/architecture/AsTraded_Market_Limit.md`
+- `docs/adr/ADR-010-separate-adjusted-as-traded-market-limit.md`
+- `docs/runbook/AsTraded_Market_Limit_Migration.md`
+
+Until that migration passes independent validation, this runbook validates only the
+legacy derived implementation. Do not promote historical LimitUp/Down from this path
+to authoritative SmartMoney evidence.
+
 ## Purpose
 
 Deploy and validate the enriched stock EOD public read contract:
