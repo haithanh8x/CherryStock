@@ -177,6 +177,13 @@ INDICATOR_REGISTRY: dict[str, str] = {
     "CDL_PATTERN": "cdl_pattern",
 }
 
+# Runtime input overrides for indicators whose library contract is not Close-only.
+# Keep these explicit so a future seed rerun cannot corrupt active metadata.
+REQUIRED_INPUTS_OVERRIDES: dict[str, list[str]] = {
+    "OBV": ["Close", "Volume"],
+    "AD": ["High", "Low", "Close", "Volume"],
+}
+
 # Category normalization: Excel Categories -> dim_indicator.Category
 CATEGORY_MAP = {
     "Momentum": "MOMENTUM",
@@ -349,7 +356,7 @@ def build_indicator_rows() -> tuple[pd.DataFrame, list[dict]]:
                 "Category": CATEGORY_MAP.get(category_raw, category_raw.upper()),
                 "Engine": "PANDAS_TA_CLASSIC",
                 "FunctionName": function_name,
-                "RequiredInputs": json.dumps(["Close"]),
+                "RequiredInputs": json.dumps(REQUIRED_INPUTS_OVERRIDES.get(code, ["Close"])),
                 "ParameterSchema": None,
                 "Description": desc,
                 "IsActive": True,
