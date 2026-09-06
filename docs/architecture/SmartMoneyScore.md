@@ -349,9 +349,11 @@ OBV/AD remain optional evidence: failure or missing coverage lowers factor cover
 
 Provide point-in-time market-limit evidence with explicit quality/provenance.
 
-### V1 source
+### Target V1 source
 
-`main.vw_raw_stock_eod`.
+`main.vw_stock_market_limit_eod`.
+
+During migration, `main.vw_raw_stock_eod` is transitional compatibility only and MUST NOT be treated as the authoritative historical market-limit SSOT.
 
 ### V1 contract
 
@@ -372,7 +374,7 @@ LimitDownStreak
 
 ### Quality semantics
 
-Current `vw_raw_stock_eod` is a **DERIVED_STANDARD_RULE** source:
+The current transitional `vw_raw_stock_eod` is a **DERIVED_STANDARD_RULE** source. The approved production target is `vw_stock_market_limit_eod`, backed by point-in-time/as-traded history. Until cutover, the legacy view must not be promoted to authoritative historical evidence:
 
 - HOSE/HNX use the nearest previous Close under ordinary-session rules;
 - UPCOM uses the nearest previous eligible Intraday VWAP proxy;
@@ -392,6 +394,23 @@ Supply Lock remains calculable from non-limit evidence when the derived limit
 contract is unavailable or low quality.
 
 ---
+
+### Price-domain separation
+
+Adjusted analytical price and market-limit price are separate contracts:
+
+```text
+MarketDataAdapter
+    -> vw_Ticker_OHLC_D
+    -> adjusted analytical OHLCV
+
+MarketLimitAdapter
+    -> vw_stock_market_limit_eod
+    -> AsTradedClose + Reference/Ceiling/Floor/Limit
+```
+
+SmartMoney MUST NOT compare adjusted `Close` to an as-traded Ceiling/Floor when
+determining LimitUp/Down. Limit state is supplied by the MarketLimitAdapter.
 
 ## 6. SmartMoneyFeatureEngine
 
