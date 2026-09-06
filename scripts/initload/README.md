@@ -74,6 +74,23 @@ indicator configurations.
 .\.venv\Scripts\python.exe scripts\initload\init_reload_cal_indicator_values.py
 ```
 
+## Targeted OBV + AD Line historical initload
+
+After OBV/AD metadata has been activated with
+`src/DuckDB/sql/indicator_obv_ad_activate.sql`, backfill only the six affected
+D/W/M configs:
+
+```powershell
+.\\.venv\\Scripts\\python.exe scripts\\initload\\init_reload_cal_indicator_values_obv_ad.py
+```
+
+The wrapper resolves ConfigIds dynamically, runs an MWG smoke refresh, then
+performs a full historical backfill for `OBV_D/W/M` and `AD_D/W/M` only.
+Unrelated indicator configs are not recalculated.
+
+Read-only validation:
+`src/DuckDB/sql/indicator_obv_ad_preflight.sql`
+
 ## Scope rule
 
 Belongs in `scripts/initload/`:
