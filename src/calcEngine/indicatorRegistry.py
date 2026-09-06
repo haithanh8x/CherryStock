@@ -18,6 +18,10 @@ SOURCE_ARGUMENT_MAP = {
 
 _FUNCTION_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+# Cumulative indicators must be calculated from the beginning of source history
+# so incremental refresh reproduces the same absolute line as a full backfill.
+FULL_HISTORY_FUNCTIONS = frozenset({"ad", "obv"})
+
 # Build the registry once from public callables exposed by pandas-ta-classic.
 # Runtime config can only resolve functions that actually exist in this registry.
 FUNCTION_REGISTRY: dict[str, Callable[..., object]] = {
@@ -25,6 +29,11 @@ FUNCTION_REGISTRY: dict[str, Callable[..., object]] = {
     for name, value in vars(ta).items()
     if not name.startswith("_") and callable(value)
 }
+
+
+def indicator_requires_full_history(function_name: str) -> bool:
+    """Return whether a library function needs source history from inception."""
+    return str(function_name).strip().lower() in FULL_HISTORY_FUNCTIONS
 
 
 def resolve_indicator_function(engine: str, function_name: str) -> Callable[..., object]:
