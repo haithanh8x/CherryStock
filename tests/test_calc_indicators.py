@@ -3,10 +3,12 @@ from datetime import date
 import pandas as pd
 import pytest
 
+from src.calcEngine.indicatorRegistry import indicator_requires_full_history
 from src.calcEngine.calcIndicators import (
     IndicatorComponent,
     IndicatorConfig,
     IndicatorDefinition,
+    _partition_configs_by_history_requirement,
     _period_checkpoint_start,
     _resolve_checkpoint_start_date,
     normalize_indicator_output,
@@ -116,3 +118,27 @@ def test_validate_macd_rejects_fast_greater_than_slow() -> None:
 
     with pytest.raises(ValueError, match="fast < slow"):
         validate_indicator_config(config, definition)
+
+
+def test_obv_and_ad_are_full_history_functions() -> None:
+    assert indicator_requires_full_history("obv") is True
+    assert indicator_requires_full_history("ad") is True
+    assert indicator_requires_full_history("sma") is False
+
+
+def test_partition_separates_cumulative_indicator_configs() -> None:
+    configs = [
+        IndicatorConfig(1, "MA20_D", "MA", "D", {"length": 20}, 20),
+        IndicatorConfig(2, "OBV_D", "OBV", "D", {}, 1),
+        IndicatorConfig(3, "AD_D", "AD", "D", {}, 1),
+    ]
+    definitions = {
+        "MA": IndicatorDefinition("MA", "Moving Average", "TREND", "PANDAS_TA_CLASSIC", "sma", ("Close",), None),
+        "OBV": IndicatorDefinition("OBV", "On-Balance Volume", "VOLUME", "PANDAS_TA_CLASSIC", "obv", ("Close", "Volume"), None),
+        "AD": IndicatorDefinition("AD", "Accumulation/Distribution Line", "VOLUME", "PANDAS_TA_CLASSIC", "ad", ("High", "Low", "Close", "Volume"), None),
+    }
+
+    windowed, full_history = _partition_configs_by_history_requirement(configs, definitions)
+
+    assert [config.config_code for config in windowed] == ["MA20_D"]
+    assert [config.config_code for config in full_history] == ["OBV_D", "AD_D"]
