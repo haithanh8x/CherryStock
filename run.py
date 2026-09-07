@@ -28,96 +28,26 @@ def _run_all_steps(
     connection,
     days_diff: int,
     uow: DuckDBUnitOfWork,
-) -> None:
+) -> dict[str, object]:
+    """Run the canonical daily write pipeline in one DuckDB transaction.
+
+    The application service owns ordering, intraday/EOD synchronization,
+    stage-level data-quality validation, indicators and SmartMoney refresh.
+    run.py owns only the transaction boundary and runtime dependencies.
     """
-    Chạy toàn bộ write pipeline theo đúng thứ tự Run All trong NiceGUI_chart.py.
-
-    Tất cả step dùng chung một writer connection/UoW để đảm bảo cùng transaction.
-    Nếu một step lỗi, context manager của DuckDBUnitOfWork sẽ rollback toàn bộ.
-    """
-    def _refresh_smart_money():
-        write_pipeline._execute_sql(
-            con=connection,
-            sql_file_path=str(write_pipeline._sql_dir / "smart_money_v1_schema.sql"),
-            sql_description="Ensure SmartMoney V1 schema",
-        )
-        return write_pipeline._calc_smart_money(
-            from_last_day=days_diff,
-            connection=connection,
-            repository=uow.smart_money,
-        )
-
-    steps = [
-        (
-            "Đồng bộ AmiBroker EOD",
-            lambda: write_pipeline._sync_amibroker_eod(
-                from_last_day=days_diff,
-                connection=connection,
-            ),
-        ),
-        (
-            "Đồng bộ Yahoo Finance EOD",
-            lambda: write_pipeline._sync_yahoo_eod(
-                from_last_day=days_diff,
-                connection=connection,
-            ),
-        ),
-        (
-            "Cập nhật Fundamental Analysis",
-            lambda: write_pipeline._upsert_fa(
-                amibroker=amibroker_adapter,
-                connection=connection,
-            ),
-        ),
-        (
-            "Cập nhật danh sách Ticker",
-            lambda: write_pipeline._upsert_tickers(
-                connection=connection,
-                repository=uow.tickers,
-            ),
-        ),
-        (
-            "Cập nhật ngày nghỉ",
-            lambda: write_pipeline._execute_sql(
-                con=connection,
-                sql_file_path=str(write_pipeline._sql_dir / "updateHoliday.sql"),
-                sql_description="Update Holiday Table",
-            ),
-        ),
-        (
-            "Tính VNINDEX_NOT_VIN",
-            lambda: write_pipeline._calc_index(
-                connection=connection,
-                repository=uow.indexes,
-            ),
-        ),
-        (
-            "Tính Moving Average / Trend",
-            lambda: write_pipeline._calc_trend(
-                from_last_day=days_diff,
-                connection=connection,
-                repository=uow.trends,
-            ),
-        ),
-        (
-            "Refresh Technical Indicators",
-            lambda: write_pipeline._calc_indicators(
-                from_last_day=days_diff,
-                connection=connection,
-                repository=uow.indicators,
-            ),
-        ),
-    ]
-
-    if settings.smart_money_auto_run:
-        steps.append(("Refresh SmartMoneyScore", _refresh_smart_money))
-    else:
-        print("SmartMoney auto-run: DISABLED (set SMART_MONEY_AUTO_RUN=true only after TestEngineer PASS)")
-
-    for index, (title, step) in enumerate(steps, start=1):
-        print(f"[{index}/{len(steps)}] ▶ {title}")
-        step()
-        print(f"[{index}/{len(steps)}] ✓ {title}")
+    print("[daily] ▶ Sync + Data Quality + Indicators + SmartMoney")
+    summary = write_pipeline.run(
+        days_diff=days_diff,
+        amibroker=amibroker_adapter,
+        connection=connection,
+        ticker_repository=uow.tickers,
+        index_repository=uow.indexes,
+        trend_repository=uow.trends,
+        indicator_repository=uow.indicators,
+        smart_money_repository=uow.smart_money,
+    )
+    print("[daily] ✓ Sync + Data Quality + Indicators + SmartMoney")
+    return summary
 
 
 # --- HÀM MAIN ---
@@ -132,8 +62,9 @@ def main():
 
     print(f"CherryStock Run All | from_last_day={days_diff}")
 
-    # Tương đương nút Run All trong NiceGUI_chart.py:
-    # 8 base steps + optional validation-gated SmartMoney step, using one DuckDB UnitOfWork/transaction.
+    # Daily Source of Truth:
+    # EOD + Intraday sync -> stage Data Quality -> Index/Trend/Indicators
+    # -> SmartMoneyScore -> SmartMoney Data Quality, all in one UnitOfWork.
     with DuckDBUnitOfWork(connection_factory) as uow:
         connection = uow.connection
         if connection is None:
