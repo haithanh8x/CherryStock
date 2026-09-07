@@ -673,8 +673,13 @@ def validate_data_quality(
         for name in ("open", "high", "low", "close")
         if name in lower_columns
     ]
+    # A generic column named "Value" is not guaranteed to be non-negative.
+    # Indicator Engine outputs such as OBV/AD/MACD/ROC legitimately cross below zero.
+    # Only columns with explicit volume / traded-value semantics get a non-negative check.
     volume_value_columns = [
-        lower_columns[name] for name in ("volume", "value") if name in lower_columns
+        lower_columns[name]
+        for name in ("volume", "tradingvalue", "trading_value")
+        if name in lower_columns
     ]
     numeric_columns = price_columns + volume_value_columns
     if numeric_columns:
