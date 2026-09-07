@@ -119,6 +119,7 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
     assert recorder.calls[8][1] == {"from_last_day": 9, "connection": connection}
     assert recorder.calls[9][1]["pipeline_name"] == "Yahoo Finance EOD"
     assert recorder.calls[9][1]["expected_date"] == date(2026, 8, 21)
+    assert recorder.calls[9][1]["check_count_anomalies"] is False
     assert recorder.calls[9][1]["filters"] == {
         "Ticker": ["DX-Y.NYB", "BTC-USD", "VND=X", "GC=F"]
     }
