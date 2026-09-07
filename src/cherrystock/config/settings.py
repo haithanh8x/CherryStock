@@ -20,12 +20,6 @@ def _as_optional_str(value: str | None) -> str | None:
     return stripped or None
 
 
-def _as_bool(value: str | None, *, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
 def _default_data_dir() -> Path:
     env_data_dir = _as_optional_str(os.getenv("DATA_DIR"))
     if env_data_dir:
@@ -67,7 +61,6 @@ class Settings:
     motherduck_path: str | None
     motherduck_token: str | None
     duckdb_env: str
-    smart_money_auto_run: bool
 
 
 def load_settings() -> Settings:
@@ -181,7 +174,6 @@ def load_settings() -> Settings:
         motherduck_path=_as_optional_str(os.getenv("DB_MOTHERDUCK_PATH")) or "md:CherryMon",
         motherduck_token=_as_optional_str(os.getenv("MOTHERDUCK_TOKEN")),
         duckdb_env=(_as_optional_str(os.getenv("DUCKDB_ENV")) or "local").lower(),
-        smart_money_auto_run=_as_bool(os.getenv("SMART_MONEY_AUTO_RUN"), default=False),
     )
 
 
