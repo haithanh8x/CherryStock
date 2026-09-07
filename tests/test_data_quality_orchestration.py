@@ -284,3 +284,92 @@ def test_mixed_calendar_scope_can_disable_count_anomalies() -> None:
         assert not result["errors"]
     finally:
         connection.close()
+
+
+
+def test_reference_quality_supports_qualified_snapshot_freshness() -> None:
+    connection = duckdb.connect(":memory:")
+    try:
+        _create_audit_table(connection)
+        connection.execute("ATTACH ':memory:' AS CherryMon")
+        connection.execute(
+            """
+            CREATE TABLE "CherryMon"."main"."raw_stock_fa" (
+                Ticker VARCHAR PRIMARY KEY,
+                Date DATE,
+                Close DOUBLE
+            )
+            """
+        )
+        connection.executemany(
+            'INSERT INTO "CherryMon"."main"."raw_stock_fa" VALUES (?, ?, ?)',
+            [
+                ("AAA", date(2026, 9, 7), 10.0),
+                ("BBB", date(2026, 9, 7), 20.0),
+                ("CCC", date(2026, 9, 4), 30.0),
+            ],
+        )
+
+        result = validate_and_persist_reference_quality(
+            connection=connection,
+            table_name='"CherryMon"."main"."raw_stock_fa"',
+            pipeline_name="Fundamental Analysis",
+            key_cols=["Ticker"],
+            required_cols=["Ticker", "Date"],
+            date_col="Date",
+            expected_date=date(2026, 9, 7),
+            audit_table="data_quality_audit",
+            raise_on_fail=True,
+        )
+
+        assert result["status"] == "PASS"
+        assert result["metrics"]["validation_mode"] == "snapshot"
+        assert result["metrics"]["row_count_current"] == 3
+        assert result["metrics"]["max_date"] == "2026-09-07"
+        assert result["metrics"]["latest_date_row_count"] == 2
+        assert result["metrics"]["latest_date_coverage"] == pytest.approx(2 / 3)
+        assert result["metrics"]["duplicate_count"] == 0
+        assert not result["errors"]
+    finally:
+        connection.close()
+
+
+def test_reference_snapshot_fails_when_latest_date_is_stale() -> None:
+    connection = duckdb.connect(":memory:")
+    try:
+        _create_audit_table(connection)
+        connection.execute(
+            """
+            CREATE TABLE raw_stock_fa (
+                Ticker VARCHAR PRIMARY KEY,
+                Date DATE
+            )
+            """
+        )
+        connection.executemany(
+            "INSERT INTO raw_stock_fa VALUES (?, ?)",
+            [
+                ("AAA", date(2026, 9, 4)),
+                ("BBB", date(2026, 9, 4)),
+            ],
+        )
+
+        with pytest.raises(RuntimeError, match="Snapshot is stale"):
+            validate_and_persist_reference_quality(
+                connection=connection,
+                table_name="raw_stock_fa",
+                pipeline_name="Fundamental Analysis",
+                key_cols=["Ticker"],
+                required_cols=["Ticker", "Date"],
+                date_col="Date",
+                expected_date=date(2026, 9, 7),
+                audit_table="data_quality_audit",
+                raise_on_fail=True,
+            )
+
+        status = connection.execute(
+            "SELECT status FROM data_quality_audit ORDER BY checked_at DESC LIMIT 1"
+        ).fetchone()[0]
+        assert status == "FAIL"
+    finally:
+        connection.close()
