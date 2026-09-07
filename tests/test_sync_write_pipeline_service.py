@@ -72,6 +72,7 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
 
     assert [name for name, _ in recorder.calls] == [
         "sync_amibroker_eod",
+        "execute_sql",
         "validate_dated",
         "sync_amibroker_intraday",
         "validate_dated",
@@ -84,7 +85,6 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
         "validate_dated",
         "upsert_tickers",
         "validate_reference",
-        "execute_sql",
         "calc_index",
         "validate_dated",
         "calc_trend",
@@ -97,11 +97,16 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
     ]
 
     assert recorder.calls[0][1] == {"from_last_day": 9, "connection": connection}
-    assert recorder.calls[1][1]["pipeline_name"] == "AmiBroker EOD"
-    assert recorder.calls[1][1]["table_name"] == '"CherryMon"."main"."raw_stock_eod"'
+    assert recorder.calls[1][1] == {
+        "con": connection,
+        "sql_file_path": str(Path("sql") / "updateHoliday.sql"),
+        "sql_description": "Refresh Trading Calendar",
+    }
+    assert recorder.calls[2][1]["pipeline_name"] == "AmiBroker EOD"
+    assert recorder.calls[2][1]["table_name"] == '"CherryMon"."main"."raw_stock_eod"'
 
-    assert recorder.calls[2][1] == {"from_last_day": 9, "connection": connection}
-    intraday_validations = recorder.calls[3:7]
+    assert recorder.calls[3][1] == {"from_last_day": 9, "connection": connection}
+    intraday_validations = recorder.calls[4:8]
     assert [kwargs["pipeline_name"] for _, kwargs in intraday_validations] == [
         "AmiBroker Intraday Futures",
         "AmiBroker Intraday Index",
@@ -111,25 +116,21 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
     assert all(kwargs["key_cols"] == ["Ticker", "Date", "RawTime", "TickSeq"] for _, kwargs in intraday_validations)
     assert all(kwargs["max_row_change_pct"] == 1.0 for _, kwargs in intraday_validations)
 
-    assert recorder.calls[7][1] == {"from_last_day": 9, "connection": connection}
-    assert recorder.calls[8][1]["pipeline_name"] == "Yahoo Finance EOD"
-    assert recorder.calls[8][1]["expected_date"] == date(2026, 8, 21)
-    assert recorder.calls[8][1]["filters"] == {
+    assert recorder.calls[8][1] == {"from_last_day": 9, "connection": connection}
+    assert recorder.calls[9][1]["pipeline_name"] == "Yahoo Finance EOD"
+    assert recorder.calls[9][1]["expected_date"] == date(2026, 8, 21)
+    assert recorder.calls[9][1]["filters"] == {
         "Ticker": ["DX-Y.NYB", "BTC-USD", "VND=X", "GC=F"]
     }
 
-    assert recorder.calls[9][1] == {"amibroker": amibroker, "connection": connection}
-    assert recorder.calls[10][1]["pipeline_name"] == "Fundamental Analysis"
-    assert recorder.calls[10][1]["key_cols"] == ["Ticker"]
+    assert recorder.calls[10][1] == {"amibroker": amibroker, "connection": connection}
+    assert recorder.calls[11][1]["pipeline_name"] == "Fundamental Analysis"
+    assert recorder.calls[11][1]["key_cols"] == ["Ticker"]
 
-    assert recorder.calls[11][1] == {"connection": connection, "repository": ticker_repository}
-    assert recorder.calls[12][1]["pipeline_name"] == "Ticker Master"
-    assert recorder.calls[12][1]["key_cols"] == ["Ticker"]
+    assert recorder.calls[12][1] == {"connection": connection, "repository": ticker_repository}
+    assert recorder.calls[13][1]["pipeline_name"] == "Ticker Master"
+    assert recorder.calls[13][1]["key_cols"] == ["Ticker"]
 
-    assert recorder.calls[13][1] == {
-        "con": connection,
-        "sql_file_path": str(Path("sql") / "updateHoliday.sql"),
-    }
     assert recorder.calls[14][1] == {"connection": connection, "repository": index_repository}
     assert recorder.calls[15][1]["filters"] == {"INDEX_NAME": "VNINDEX_NOT_VIN"}
 
@@ -165,7 +166,6 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
     }
     assert recorder.calls[22][1]["pipeline_name"] == "SmartMoneyScore"
     assert recorder.calls[22][1]["key_cols"] == ["ModelId", "Ticker", "Date"]
-
 
 def test_indicator_validation_is_skipped_when_engine_has_no_rows() -> None:
     recorder = Recorder()
@@ -219,5 +219,6 @@ def test_validation_failure_blocks_downstream_steps() -> None:
 
     assert [name for name, _ in recorder.calls] == [
         "sync_amibroker_eod",
+        "execute_sql",
         "validate_dated",
     ]
