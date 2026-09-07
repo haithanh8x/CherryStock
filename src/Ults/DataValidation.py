@@ -216,6 +216,7 @@ def _base_result(table_name: str) -> dict[str, Any]:
             "historical_symbol_mean": None,
             "historical_symbol_std": None,
             "symbol_count_zscore": None,
+            "check_count_anomalies": True,
             "invalid_date_count": 0,
             "invalid_numeric_count": 0,
             "invalid_ohlc_count": 0,
@@ -259,6 +260,7 @@ def validate_data_quality(
     optional_null_rate_cols: Sequence[str] | None = None,
     max_optional_null_rate: float = 0.35,
     expected_date: date | datetime | str | None = None,
+    check_count_anomalies: bool = True,
     max_row_change_pct: float = DEFAULT_MAX_ROW_CHANGE_PCT,
     max_symbol_change_pct: float = DEFAULT_MAX_SYMBOL_CHANGE_PCT,
     max_null_rate: float = DEFAULT_MAX_NULL_RATE,
@@ -272,6 +274,8 @@ def validate_data_quality(
     """
     if connection is None:
         raise ValueError("connection is required; validate_data_quality does not open DuckDB itself")
+    if not isinstance(check_count_anomalies, bool):
+        raise TypeError("check_count_anomalies must be bool")
     quoted_table = _quote_relation(table_name)
     max_row_change_pct = _validate_threshold("max_row_change_pct", max_row_change_pct)
     max_symbol_change_pct = _validate_threshold(
@@ -286,6 +290,7 @@ def validate_data_quality(
 
     validation_result = _base_result(table_name)
     metrics: dict[str, Any] = validation_result["metrics"]
+    metrics["check_count_anomalies"] = check_count_anomalies
     errors: list[str] = validation_result["errors"]
     warnings: list[str] = validation_result["warnings"]
 
@@ -436,10 +441,11 @@ def validate_data_quality(
         if previous_row_count > 0:
             row_change_pct = (current_row_count - previous_row_count) / previous_row_count
             metrics["row_count_change_pct"] = row_change_pct
-            _change_severity(
-                "Row count", row_change_pct, max_row_change_pct, errors, warnings
-            )
-        else:
+            if check_count_anomalies:
+                _change_severity(
+                    "Row count", row_change_pct, max_row_change_pct, errors, warnings
+                )
+        elif check_count_anomalies:
             warnings.append("Previous row count is zero; row-count change is unavailable.")
 
         if previous_symbol_count > 0:
@@ -447,14 +453,15 @@ def validate_data_quality(
                 current_symbol_count - previous_symbol_count
             ) / previous_symbol_count
             metrics["symbol_count_change_pct"] = symbol_change_pct
-            _change_severity(
-                "Symbol count",
-                symbol_change_pct,
-                max_symbol_change_pct,
-                errors,
-                warnings,
-            )
-        else:
+            if check_count_anomalies:
+                _change_severity(
+                    "Symbol count",
+                    symbol_change_pct,
+                    max_symbol_change_pct,
+                    errors,
+                    warnings,
+                )
+        elif check_count_anomalies:
             warnings.append("Previous symbol count is zero; symbol-count change is unavailable.")
     else:
         warnings.append("Only one valid data date is available; previous-date comparisons are unavailable.")
@@ -477,24 +484,25 @@ def validate_data_quality(
     metrics["historical_symbol_mean"] = historical_symbol_mean
     metrics["historical_symbol_std"] = historical_symbol_std
     metrics["symbol_count_zscore"] = symbol_count_zscore
-    if historical_row_std == 0 and historical_row_mean is not None and current_row_count != historical_row_mean:
-        errors.append(
-            "Row count differs from a zero-variance historical baseline: "
-            f"current={current_row_count}, baseline={historical_row_mean:.2f}."
-        )
-    else:
-        _zscore_severity("Row count", row_count_zscore, errors, warnings)
-    if (
-        historical_symbol_std == 0
-        and historical_symbol_mean is not None
-        and current_symbol_count != historical_symbol_mean
-    ):
-        errors.append(
-            "Symbol count differs from a zero-variance historical baseline: "
-            f"current={current_symbol_count}, baseline={historical_symbol_mean:.2f}."
-        )
-    else:
-        _zscore_severity("Symbol count", symbol_count_zscore, errors, warnings)
+    if check_count_anomalies:
+        if historical_row_std == 0 and historical_row_mean is not None and current_row_count != historical_row_mean:
+            errors.append(
+                "Row count differs from a zero-variance historical baseline: "
+                f"current={current_row_count}, baseline={historical_row_mean:.2f}."
+            )
+        else:
+            _zscore_severity("Row count", row_count_zscore, errors, warnings)
+        if (
+            historical_symbol_std == 0
+            and historical_symbol_mean is not None
+            and current_symbol_count != historical_symbol_mean
+        ):
+            errors.append(
+                "Symbol count differs from a zero-variance historical baseline: "
+                f"current={current_symbol_count}, baseline={historical_symbol_mean:.2f}."
+            )
+        else:
+            _zscore_severity("Symbol count", symbol_count_zscore, errors, warnings)
 
     current_date_literal = current_date.isoformat()
     if previous_date is not None:
