@@ -184,3 +184,48 @@ def test_reference_quality_persists_fail_before_raising() -> None:
 
     status = connection.execute("SELECT status FROM data_quality_audit").fetchone()[0]
     assert status == "FAIL"
+
+
+
+def test_helper_accepts_optional_null_rate_columns() -> None:
+    connection = duckdb.connect(":memory:")
+    try:
+        _create_audit_table(connection)
+        connection.execute(
+            """
+            CREATE TABLE cal_Trends (
+                Ticker VARCHAR,
+                Date DATE,
+                Close DOUBLE,
+                MA20 DOUBLE
+            )
+            """
+        )
+        connection.executemany(
+            "INSERT INTO cal_Trends VALUES (?, ?, ?, ?)",
+            [
+                ("AAA", date(2026, 8, 20), 10.0, None),
+                ("AAA", date(2026, 8, 21), 10.5, 10.2),
+            ],
+        )
+
+        result = validate_and_persist_data_quality(
+            connection=connection,
+            table_name="cal_Trends",
+            pipeline_name="Moving Average Trend",
+            date_col="Date",
+            symbol_col="Ticker",
+            key_cols=["Ticker", "Date"],
+            required_cols=["Ticker", "Date", "Close"],
+            optional_null_rate_cols=["MA20"],
+            max_optional_null_rate=0.50,
+            expected_date=date(2026, 8, 21),
+            history_window=2,
+            audit_table="data_quality_audit",
+            raise_on_fail=False,
+        )
+
+        assert result["status"] in {"PASS", "WARNING"}
+        assert "MA20" in result["metrics"]["null_rate"]
+    finally:
+        connection.close()
