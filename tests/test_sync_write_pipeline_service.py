@@ -82,7 +82,7 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
         "sync_yahoo_eod",
         "validate_dated",
         "upsert_fa",
-        "validate_dated",
+        "validate_reference",
         "upsert_tickers",
         "validate_reference",
         "calc_index",
@@ -127,6 +127,8 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
     assert recorder.calls[10][1] == {"amibroker": amibroker, "connection": connection}
     assert recorder.calls[11][1]["pipeline_name"] == "Fundamental Analysis"
     assert recorder.calls[11][1]["key_cols"] == ["Ticker"]
+    assert recorder.calls[11][1]["required_cols"] == ["Ticker", "Date"]
+    assert recorder.calls[11][1]["date_col"] == "Date"
 
     assert recorder.calls[12][1] == {"connection": connection, "repository": ticker_repository}
     assert recorder.calls[13][1]["pipeline_name"] == "Ticker Master"
