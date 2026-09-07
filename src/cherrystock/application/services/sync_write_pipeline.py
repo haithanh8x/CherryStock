@@ -83,6 +83,11 @@ class SyncWritePipelineService:
         smart_money_repository=None,
     ) -> dict[str, object]:
         self._sync_amibroker_eod(from_last_day=days_diff, connection=connection)
+        self._execute_sql(
+            con=connection,
+            sql_file_path=str(self._sql_dir / "updateHoliday.sql"),
+            sql_description="Refresh Trading Calendar",
+        )
         self._validate_dated(
             connection=connection,
             table_name='"CherryMon"."main"."raw_stock_eod"',
@@ -161,8 +166,6 @@ class SyncWritePipelineService:
             required_cols=["Ticker", "status"],
             raise_on_fail=True,
         )
-
-        self._execute_sql(con=connection, sql_file_path=str(self._sql_dir / "updateHoliday.sql"))
 
         self._calc_index(connection=connection, repository=index_repository)
         self._validate_dated(
