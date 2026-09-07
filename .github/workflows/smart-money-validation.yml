@@ -9,6 +9,7 @@ on:
       - "src/calcEngine/smartMoneyEvaluation.py"
       - "src/cherrystock/config/settings.py"
       - "src/cherrystock/application/services/sync_write_pipeline.py"
+      - "src/Ults/DataValidation.py"
       - "src/Ults/DataQualityOrchestration.py"
       - "src/cherrystock/infrastructure/database/repositories/smart_money_repository.py"
       - "src/cherrystock/infrastructure/database/unit_of_work.py"
@@ -27,6 +28,7 @@ on:
     paths:
       - ".github/workflows/smart-money-validation.yml"
       - "run.py"
+      - "src/Ults/DataValidation.py"
       - "src/Ults/DataQualityOrchestration.py"
       - "src/calcEngine/smartMoneyScore.py"
       - "src/calcEngine/smartMoneyEvaluation.py"
@@ -79,6 +81,7 @@ jobs:
           python -m py_compile src/cherrystock/infrastructure/database/unit_of_work.py
           python -m py_compile src/cherrystock/application/services/sync_write_pipeline.py
           python -m py_compile src/Ults/DataQualityOrchestration.py
+          python -m py_compile src/Ults/DataValidation.py
           python -m py_compile src/cherrystock/config/settings.py
           python -m py_compile scripts/initload/init_reload_smart_money_score.py
           python -m py_compile scripts/run_smart_money.py
