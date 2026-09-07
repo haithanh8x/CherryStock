@@ -373,3 +373,58 @@ def test_reference_snapshot_fails_when_latest_date_is_stale() -> None:
         assert status == "FAIL"
     finally:
         connection.close()
+
+
+
+def test_indicator_values_allow_negative_generic_value_and_variable_row_counts() -> None:
+    connection = duckdb.connect(":memory:")
+    try:
+        _create_audit_table(connection)
+        connection.execute(
+            """
+            CREATE TABLE cal_indicator_values (
+                Ticker VARCHAR,
+                Date DATE,
+                ConfigId BIGINT,
+                ComponentCode VARCHAR,
+                Value DOUBLE
+            )
+            """
+        )
+        rows = [
+            ("AAA", date(2026, 9, 4), 1, "VALUE", 10.0),
+            ("AAA", date(2026, 9, 7), 1, "VALUE", -5.0),
+            ("AAA", date(2026, 9, 7), 2, "VALUE", -100.0),
+            ("BBB", date(2026, 9, 7), 1, "VALUE", 20.0),
+            ("BBB", date(2026, 9, 7), 2, "VALUE", 30.0),
+        ]
+        connection.executemany(
+            "INSERT INTO cal_indicator_values VALUES (?, ?, ?, ?, ?)",
+            rows,
+        )
+
+        result = validate_and_persist_data_quality(
+            connection=connection,
+            table_name="cal_indicator_values",
+            pipeline_name="Technical Indicator Engine",
+            date_col="Date",
+            symbol_col="Ticker",
+            key_cols=["Ticker", "Date", "ConfigId", "ComponentCode"],
+            required_cols=["Ticker", "Date", "ConfigId", "ComponentCode", "Value"],
+            expected_date=date(2026, 9, 7),
+            check_count_anomalies=False,
+            history_window=2,
+            audit_table="data_quality_audit",
+            raise_on_fail=True,
+        )
+
+        assert result["status"] in {"PASS", "WARNING"}
+        assert result["metrics"]["row_count_current"] == 4
+        assert result["metrics"]["row_count_previous"] == 1
+        assert result["metrics"]["row_count_change_pct"] == pytest.approx(3.0)
+        assert result["metrics"]["check_count_anomalies"] is False
+        assert result["metrics"]["negative_volume_value_count"] == 0
+        assert result["metrics"]["duplicate_count"] == 0
+        assert not result["errors"]
+    finally:
+        connection.close()
