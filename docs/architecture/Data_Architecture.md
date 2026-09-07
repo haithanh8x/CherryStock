@@ -387,3 +387,47 @@ See [[../../.github/agents/DB_Metadata|DB Metadata]].
 - [[Indicator_Engine|Indicator Engine]]
 - [[../adr/ADR-001-duckdb-connection|ADR-001 DuckDB Connection]]
 - [[../00_HOME|Knowledge Home]]
+
+## Daily write orchestration
+
+The canonical daily write path is owned by
+`src/cherrystock/application/services/sync_write_pipeline.py` and invoked by
+`run.py` inside one `DuckDBUnitOfWork`.
+
+Current order:
+
+```text
+AmiBroker EOD
+→ EOD Data Quality
+→ AmiBroker Intraday
+  (futures / index / stock / warrant)
+→ Intraday Data Quality
+→ Yahoo Finance EOD
+→ Yahoo Data Quality
+→ Fundamental Analysis
+→ FA Data Quality
+→ Ticker Master
+→ Reference Data Quality
+→ Holiday Calendar
+→ VNINDEX_NOT_VIN
+→ Index Data Quality
+→ Moving Average / Trend
+→ Trend Data Quality
+→ Technical Indicators
+→ Indicator Data Quality
+→ SmartMoneyScore
+→ SmartMoney Data Quality
+→ COMMIT
+→ exportDuckDB_metadata()
+```
+
+All write and audit steps before COMMIT share the same writer transaction. A blocking
+Data Quality failure raises after persisting its audit result in the transaction and
+causes the UnitOfWork to roll back the daily write set.
+
+AmiBroker Intraday daily synchronization updates all four intraday source domains and
+therefore refreshes exact/provenance-aware inputs consumed by
+`vw_Ticker_OHLC_D`.
+
+`run.py` does not orchestrate private service methods individually; the application
+service is the daily workflow Source of Truth.
