@@ -394,40 +394,47 @@ The canonical daily write path is owned by
 `src/cherrystock/application/services/sync_write_pipeline.py` and invoked by
 `run.py` inside one `DuckDBUnitOfWork`.
 
-Current order:
+High-level order:
 
 ```text
-AmiBroker EOD
-→ EOD Data Quality
-→ AmiBroker Intraday
-  (futures / index / stock / warrant)
-→ Intraday Data Quality
-→ Yahoo Finance EOD
-→ Yahoo Data Quality
-→ Fundamental Analysis
-→ FA Data Quality
-→ Ticker Master
-→ Reference Data Quality
-→ Holiday Calendar
-→ VNINDEX_NOT_VIN
-→ Index Data Quality
-→ Moving Average / Trend
-→ Trend Data Quality
-→ Technical Indicators
-→ Indicator Data Quality
-→ SmartMoneyScore
-→ SmartMoney Data Quality
+AmiBroker EOD — 12 source domains
+→ refresh Trading Calendar
+→ EOD DQ
+→ AmiBroker Intraday — 4 source domains
+→ Intraday DQ
+→ Yahoo EOD + mixed-calendar DQ
+→ Fundamental Analysis + snapshot DQ
+→ Ticker Master + reference DQ
+→ VNINDEX_NOT_VIN + DQ
+→ Moving Average / Trend + DQ
+→ Technical Indicators + indicator-aware DQ
+→ SmartMoneyScore + DQ
 → COMMIT
 → exportDuckDB_metadata()
 ```
 
-All write and audit steps before COMMIT share the same writer transaction. A blocking
-Data Quality failure raises after persisting its audit result in the transaction and
-causes the UnitOfWork to roll back the daily write set.
+The Trading Calendar refresh MUST happen after the new AmiBroker EOD data is loaded
+and before dated DQ resolves the expected trading date.
 
-AmiBroker Intraday daily synchronization updates all four intraday source domains and
-therefore refreshes exact/provenance-aware inputs consumed by
-`vw_Ticker_OHLC_D`.
+Data Quality is profile-driven by table grain and lifecycle:
 
-`run.py` does not orchestrate private service methods individually; the application
-service is the daily workflow Source of Truth.
+- market EOD uses strict dated validation;
+- Intraday uses tick-grain validation with wider activity thresholds;
+- Yahoo disables count-anomaly gating because the source mixes calendars;
+- Fundamental Analysis uses snapshot/reference validation;
+- Ticker Master uses reference validation;
+- Indicator Engine disables total row/symbol-count anomaly gating and allows
+  negative generic `Value` outputs;
+- SmartMoney validates score persistence after incremental calculation.
+
+All pre-commit writes and DQ audits share the same writer transaction. A blocking
+DQ failure raises and causes the UnitOfWork to roll back the daily write set.
+
+Operational Source of Truth:
+
+`docs/runbook/Daily_Data_Pipeline.md`
+
+Important current boundary: all twelve AmiBroker EOD domains are ingested daily,
+but the current blocking EOD DQ gate explicitly validates `raw_stock_eod`; the
+other eleven EOD domains do not yet have individual blocking per-table DQ profiles.
+
