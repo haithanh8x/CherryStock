@@ -179,6 +179,8 @@ def validate_and_persist_reference_quality(
     *,
     key_cols: Sequence[str],
     required_cols: Sequence[str],
+    date_col: str | None = None,
+    expected_date: date | datetime | str | None = None,
     max_null_rate: float = DEFAULT_MAX_NULL_RATE,
     audit_table: str = DEFAULT_AUDIT_TABLE,
     validation_id: str | None = None,
@@ -198,14 +200,32 @@ def validate_and_persist_reference_quality(
         raise ValueError("max_null_rate must be between 0 and 1")
 
     quoted_table = _quote_relation(table_name)
-    # DESCRIBE is not a SELECT/WITH statement, so it cannot go through returnSQL().
-    schema_sql = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table_name}'"
+    relation_parts = [part.strip().strip('"') for part in table_name.split(".")]
+    schema_filters = [
+        f"lower(table_name) = lower({_sql_literal(relation_parts[-1])})"
+    ]
+    if len(relation_parts) >= 2:
+        schema_filters.append(
+            f"lower(table_schema) = lower({_sql_literal(relation_parts[-2])})"
+        )
+    if len(relation_parts) >= 3:
+        schema_filters.append(
+            f"lower(table_catalog) = lower({_sql_literal(relation_parts[-3])})"
+        )
+    schema_sql = f"""
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE {' AND '.join(schema_filters)}
+        ORDER BY ordinal_position
+    """
     schema_frame = returnSQL(connection, schema_sql)
     if schema_frame is None or schema_frame.empty:
         raise RuntimeError(f"Reference table {table_name!r} does not exist or has no readable schema")
 
     schema_columns = {str(column).lower(): str(column) for column in schema_frame.iloc[:, 0].tolist()}
     requested_columns = list(key_cols) + list(required_cols)
+    if date_col is not None:
+        requested_columns.append(date_col)
     missing_columns = [column for column in requested_columns if column.lower() not in schema_columns]
 
     metrics: dict[str, Any] = {
@@ -289,6 +309,72 @@ def validate_and_persist_reference_quality(
                     f"{actual_column} NULL rate is {null_rate:.2%}, exceeding {max_null_rate:.2%}."
                 )
 
+        if date_col is not None:
+            actual_date_col = schema_columns[date_col.lower()]
+            if expected_date is None:
+                expected_frame = returnSQL(
+                    connection,
+                    """
+                    SELECT MAX(CAST(FullDate AS DATE)) AS expected_date
+                    FROM "CherryMon"."main"."dimCalendar"
+                    WHERE IsHoliday = 'N'
+                      AND CAST(FullDate AS DATE) <= CURRENT_DATE
+                    """,
+                )
+                resolved_expected = (
+                    None
+                    if expected_frame is None or expected_frame.empty
+                    else expected_frame["expected_date"].iloc[0]
+                )
+            else:
+                resolved_expected = expected_date
+
+            if resolved_expected is None or pd.isna(resolved_expected):
+                errors.append("Unable to resolve expected trading date for snapshot freshness.")
+            else:
+                expected_day = pd.Timestamp(resolved_expected).date()
+                freshness_frame = returnSQL(
+                    connection,
+                    f"""
+                    SELECT
+                        MAX(TRY_CAST({_quote_identifier(actual_date_col)} AS DATE)) AS max_date,
+                        COUNT(*) FILTER (
+                            WHERE TRY_CAST({_quote_identifier(actual_date_col)} AS DATE) = DATE '{expected_day.isoformat()}'
+                        ) AS latest_date_rows
+                    FROM {quoted_table}
+                    """,
+                )
+                max_date_value = (
+                    None
+                    if freshness_frame is None or freshness_frame.empty
+                    else freshness_frame["max_date"].iloc[0]
+                )
+                metrics["expected_date"] = expected_day.isoformat()
+                if max_date_value is None or pd.isna(max_date_value):
+                    errors.append(
+                        f"Snapshot table {table_name!r} has no valid {actual_date_col} values."
+                    )
+                else:
+                    max_day = pd.Timestamp(max_date_value).date()
+                    metrics["max_date"] = max_day.isoformat()
+                    metrics["date_lag"] = (expected_day - max_day).days
+                    latest_rows = int(freshness_frame["latest_date_rows"].iloc[0] or 0)
+                    metrics["latest_date_row_count"] = latest_rows
+                    metrics["latest_date_coverage"] = (
+                        latest_rows / row_count if row_count else 0.0
+                    )
+                    metrics["validation_mode"] = "snapshot"
+                    if max_day < expected_day:
+                        errors.append(
+                            f"Snapshot is stale: max_date={max_day.isoformat()}, "
+                            f"expected_date={expected_day.isoformat()}."
+                        )
+                    elif max_day > expected_day:
+                        errors.append(
+                            f"Snapshot date is ahead of expected trading date: "
+                            f"max_date={max_day.isoformat()}, expected_date={expected_day.isoformat()}."
+                        )
+
     status = "FAIL" if errors else "WARNING" if warnings else "PASS"
     validation_result = {
         "status": status,
@@ -311,7 +397,7 @@ def validate_and_persist_reference_quality(
     print(
         "[DataValidation][REFERENCE] "
         f"table={table_name} | status={status} | rows={metrics['row_count_current']} | "
-        f"duplicates={metrics['duplicate_count']}"
+        f"duplicates={metrics['duplicate_count']} | max_date={metrics['max_date']}"
     )
 
     if raise_on_fail and status == "FAIL":
