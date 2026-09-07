@@ -1611,8 +1611,9 @@ forward 5/10/20-session stock returns, VNINDEX returns and excess returns for:
 A future horizon is defined by the exact VNINDEX trading-session date H bars after
 the score date. A ticker without a Close on that date has an unavailable label.
 
-Evaluation output is research-only and MUST NOT mutate production model weights,
-persisted scores or `SMART_MONEY_AUTO_RUN`.
+Evaluation output is research-only and MUST NOT mutate production model weights or
+persisted scores. Daily orchestration is governed independently by the canonical
+daily pipeline.
 
 V1 does not hard-code a promotion threshold because no approved business
 effectiveness threshold exists yet. Validation/Test evidence must be reviewed
@@ -1664,44 +1665,28 @@ The remaining OOS evaluation is intentionally treated as a model-calibration /
 production-activation gate, not a correctness gate.
 
 
-## Daily Orchestration Activation — 2026-09-07
+## Daily Orchestration — 2026-09-07
 
-Operator decision: SmartMoneyScore V1 now runs in the normal daily `run.py`
-pipeline together with AmiBroker Intraday synchronization and stage-level Data
-Quality validation.
+SmartMoneyScore V1 is part of the normal daily `run.py` pipeline.
 
-Canonical daily order:
+The **canonical daily sequence, source inventory, Data Quality profiles, transaction
+semantics and current gaps** are documented only in:
 
 ```text
-AmiBroker EOD
-→ EOD Data Quality
-→ AmiBroker Intraday (futures/index/stock/warrant)
-→ Intraday Data Quality
-→ Yahoo EOD
-→ Yahoo Data Quality
-→ Fundamental Analysis
-→ FA Data Quality
-→ Ticker Master
-→ Reference Data Quality
-→ Holiday Calendar
-→ VNINDEX_NOT_VIN
-→ Index Data Quality
-→ Moving Average / Trend
-→ Trend Data Quality
-→ Technical Indicators
-→ Indicator Data Quality
-→ SmartMoney schema ensure
-→ SmartMoney incremental refresh
-→ SmartMoney Data Quality
-→ COMMIT
-→ exportDuckDB_metadata()
+docs/runbook/Daily_Data_Pipeline.md
 ```
 
-`run.py` no longer calls private pipeline stages directly. It opens the shared
-DuckDB UnitOfWork and delegates the daily write workflow to
-`SyncWritePipelineService.run()`.
+SmartMoney-specific position in that flow:
 
-The previous `SMART_MONEY_AUTO_RUN` environment gate is retired.
+```text
+Technical Indicator Engine
+→ Indicator Data Quality
+→ ensure smart_money_v1_schema.sql
+→ SmartMoney incremental refresh
+→ SmartMoney Data Quality
+→ shared transaction COMMIT
+```
 
-OOS evaluation remains available for calibration/research, but it is no longer an
-operational prerequisite for daily SmartMoney calculation.
+The former `SMART_MONEY_AUTO_RUN` environment gate is retired. OOS evaluation
+remains calibration/research and does not block daily calculation.
+
