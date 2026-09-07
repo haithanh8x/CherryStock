@@ -141,6 +141,7 @@ class SyncWritePipelineService:
             key_cols=["Ticker", "Date"],
             required_cols=["Ticker", "Date", "Open", "High", "Low", "Close"],
             expected_date=yahoo_expected_date,
+            check_count_anomalies=False,
             filters={"Ticker": list(YAHOO_OTHER_TICKERS)},
             raise_on_fail=True,
         )
