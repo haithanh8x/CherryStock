@@ -1,7 +1,7 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-06T15:30:44.228960+00:00
-- Database file: `c:\onedrive\working\datafile\cherrymon.duckdb`
+- Generated at: 2026-09-07T16:46:08.194212+00:00
+- Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
 ## AI context loading guide
