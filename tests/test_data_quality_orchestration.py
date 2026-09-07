@@ -229,3 +229,58 @@ def test_helper_accepts_optional_null_rate_columns() -> None:
         assert "MA20" in result["metrics"]["null_rate"]
     finally:
         connection.close()
+
+
+
+def test_mixed_calendar_scope_can_disable_count_anomalies() -> None:
+    connection = duckdb.connect(":memory:")
+    try:
+        _create_audit_table(connection)
+        connection.execute(
+            """
+            CREATE TABLE raw_other_eod (
+                Ticker VARCHAR,
+                Date DATE,
+                Open DOUBLE,
+                High DOUBLE,
+                Low DOUBLE,
+                Close DOUBLE
+            )
+            """
+        )
+        rows = [
+            ("BTC-USD", date(2026, 9, 6), 1.0, 1.1, 0.9, 1.0),
+            ("DX-Y.NYB", date(2026, 9, 7), 2.0, 2.1, 1.9, 2.0),
+            ("BTC-USD", date(2026, 9, 7), 1.0, 1.1, 0.9, 1.0),
+            ("VND=X", date(2026, 9, 7), 3.0, 3.1, 2.9, 3.0),
+            ("GC=F", date(2026, 9, 7), 4.0, 4.1, 3.9, 4.0),
+        ]
+        connection.executemany(
+            "INSERT INTO raw_other_eod VALUES (?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+        result = validate_and_persist_data_quality(
+            connection=connection,
+            table_name="raw_other_eod",
+            pipeline_name="Yahoo Finance EOD",
+            date_col="Date",
+            symbol_col="Ticker",
+            key_cols=["Ticker", "Date"],
+            required_cols=["Ticker", "Date", "Open", "High", "Low", "Close"],
+            expected_date=date(2026, 9, 7),
+            check_count_anomalies=False,
+            history_window=2,
+            audit_table="data_quality_audit",
+            raise_on_fail=True,
+        )
+
+        assert result["status"] in {"PASS", "WARNING"}
+        assert result["metrics"]["row_count_current"] == 4
+        assert result["metrics"]["row_count_previous"] == 1
+        assert result["metrics"]["row_count_change_pct"] == pytest.approx(3.0)
+        assert result["metrics"]["symbol_count_change_pct"] == pytest.approx(3.0)
+        assert result["metrics"]["check_count_anomalies"] is False
+        assert not result["errors"]
+    finally:
+        connection.close()
