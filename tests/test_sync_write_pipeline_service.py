@@ -156,6 +156,7 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
         "ConfigId",
         "ComponentCode",
     ]
+    assert recorder.calls[19][1]["check_count_anomalies"] is False
 
     assert recorder.calls[20][1] == {
         "con": connection,
