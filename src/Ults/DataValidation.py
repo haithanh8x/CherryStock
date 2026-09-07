@@ -543,7 +543,7 @@ def validate_data_quality(
         metrics["new_symbol_count"] = len(new_symbols)
         metrics["new_symbols"] = new_symbols
 
-        if previous_symbol_count:
+        if previous_symbol_count and check_count_anomalies:
             missing_symbol_rate = len(missing_symbols) / previous_symbol_count
             _change_severity(
                 "Missing-symbol rate",
