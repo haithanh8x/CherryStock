@@ -147,14 +147,13 @@ class SyncWritePipelineService:
         )
 
         self._upsert_fa(amibroker=amibroker, connection=connection)
-        self._validate_dated(
+        self._validate_reference(
             connection=connection,
             table_name='"CherryMon"."main"."raw_stock_fa"',
             pipeline_name="Fundamental Analysis",
-            date_col="Date",
-            symbol_col="Ticker",
             key_cols=["Ticker"],
             required_cols=["Ticker", "Date"],
+            date_col="Date",
             raise_on_fail=True,
         )
 
