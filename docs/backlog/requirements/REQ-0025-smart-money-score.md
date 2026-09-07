@@ -506,14 +506,14 @@ Validation materials:
 - `tests/test_smart_money_score.md`
 - `docs/runbook/SmartMoneyScore_V1.md`
 
-Operational gate:
+Operational state:
 
 ```text
-SMART_MONEY_AUTO_RUN=false
+DAILY_ORCHESTRATION = ENABLED
 ```
 
-remains the default. Functional TestEngineer validation is PASS; daily orchestration
-remains intentionally disabled until the separate OOS evaluation is reviewed.
+By operator decision on 2026-09-07, SmartMoneyScore runs in the canonical daily
+`run.py` pipeline after Technical Indicators and upstream Data Quality checks.
 
 Historical production LimitUp remains optional/unavailable until the approved
 As-Traded market-limit migration passes. This does not block core SmartMoney V1.
@@ -608,6 +608,48 @@ Validated behaviors include:
 
 This evidence closes functional acceptance for REQ-0025.
 
-OOS evaluation remains a separate calibration / production-rollout gate. It is not
-required to keep the functional implementation status at DONE, but
-`SMART_MONEY_AUTO_RUN` remains disabled until OOS evidence is explicitly reviewed.
+OOS evaluation remains a separate calibration/research workflow. It does not block
+daily SmartMoney calculation.
+
+
+## Daily Orchestration Activation — 2026-09-07
+
+Operator decision: SmartMoneyScore V1 now runs in the normal daily `run.py`
+pipeline together with AmiBroker Intraday synchronization and stage-level Data
+Quality validation.
+
+Canonical daily order:
+
+```text
+AmiBroker EOD
+→ EOD Data Quality
+→ AmiBroker Intraday (futures/index/stock/warrant)
+→ Intraday Data Quality
+→ Yahoo EOD
+→ Yahoo Data Quality
+→ Fundamental Analysis
+→ FA Data Quality
+→ Ticker Master
+→ Reference Data Quality
+→ Holiday Calendar
+→ VNINDEX_NOT_VIN
+→ Index Data Quality
+→ Moving Average / Trend
+→ Trend Data Quality
+→ Technical Indicators
+→ Indicator Data Quality
+→ SmartMoney schema ensure
+→ SmartMoney incremental refresh
+→ SmartMoney Data Quality
+→ COMMIT
+→ exportDuckDB_metadata()
+```
+
+`run.py` no longer calls private pipeline stages directly. It opens the shared
+DuckDB UnitOfWork and delegates the daily write workflow to
+`SyncWritePipelineService.run()`.
+
+The previous `SMART_MONEY_AUTO_RUN` environment gate is retired.
+
+OOS evaluation remains available for calibration/research, but it is no longer an
+operational prerequisite for daily SmartMoney calculation.
