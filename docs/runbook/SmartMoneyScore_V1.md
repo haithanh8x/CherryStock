@@ -389,28 +389,26 @@ Action:                       KEEP
 
 REQ-0025 is functionally complete.
 
-The only remaining activation gate is explicit review of Phase 7 OOS evidence.
-Until that review is complete:
+Daily SmartMoney activation was approved by operator decision on 2026-09-07.
+
+Current production daily order includes:
 
 ~~~text
-SMART_MONEY_AUTO_RUN=false
-~~~
-
-After OOS review approves production activation:
-
-~~~text
-SMART_MONEY_AUTO_RUN=true
-        ↓
-EOD refresh
-→ VNINDEX refresh
-→ Trend / Indicator Engine
-→ SmartMoney incremental refresh
-→ data-quality checks
+EOD + EOD DQ
+→ Intraday + Intraday DQ
+→ Yahoo/FA/Ticker + DQ
+→ VNINDEX + DQ
+→ Trend + DQ
+→ Technical Indicators + DQ
+→ SmartMoney incremental refresh + DQ
+→ COMMIT
 → metadata export
 ~~~
 
-OOS review is a calibration/rollout decision. It does not reopen functional
-acceptance unless it exposes a correctness regression.
+The previous SMART_MONEY_AUTO_RUN gate is retired.
+
+Phase 7 OOS remains calibration/research evidence. It does not block the daily
+calculation pipeline.
 
 # Market-limit later cutover
 
@@ -572,3 +570,46 @@ Policy:
   validation contract remains `src/DuckDB/sql/smart_money_v1_preflight.sql`.
   Promote a generic preflight runner later only if there is a broader reusable
   requirement.
+
+
+## Daily Orchestration Activation — 2026-09-07
+
+Operator decision: SmartMoneyScore V1 now runs in the normal daily `run.py`
+pipeline together with AmiBroker Intraday synchronization and stage-level Data
+Quality validation.
+
+Canonical daily order:
+
+```text
+AmiBroker EOD
+→ EOD Data Quality
+→ AmiBroker Intraday (futures/index/stock/warrant)
+→ Intraday Data Quality
+→ Yahoo EOD
+→ Yahoo Data Quality
+→ Fundamental Analysis
+→ FA Data Quality
+→ Ticker Master
+→ Reference Data Quality
+→ Holiday Calendar
+→ VNINDEX_NOT_VIN
+→ Index Data Quality
+→ Moving Average / Trend
+→ Trend Data Quality
+→ Technical Indicators
+→ Indicator Data Quality
+→ SmartMoney schema ensure
+→ SmartMoney incremental refresh
+→ SmartMoney Data Quality
+→ COMMIT
+→ exportDuckDB_metadata()
+```
+
+`run.py` no longer calls private pipeline stages directly. It opens the shared
+DuckDB UnitOfWork and delegates the daily write workflow to
+`SyncWritePipelineService.run()`.
+
+The previous `SMART_MONEY_AUTO_RUN` environment gate is retired.
+
+OOS evaluation remains available for calibration/research, but it is no longer an
+operational prerequisite for daily SmartMoney calculation.
