@@ -68,7 +68,7 @@ jobs:
       - name: Install focused dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pandas numpy duckdb python-dotenv
+          python -m pip install pytest pandas numpy duckdb python-dotenv yfinance
 
       - name: Compile SmartMoney modules
         run: |
