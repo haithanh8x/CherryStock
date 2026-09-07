@@ -612,44 +612,28 @@ OOS evaluation remains a separate calibration/research workflow. It does not blo
 daily SmartMoney calculation.
 
 
-## Daily Orchestration Activation — 2026-09-07
+## Daily Orchestration — 2026-09-07
 
-Operator decision: SmartMoneyScore V1 now runs in the normal daily `run.py`
-pipeline together with AmiBroker Intraday synchronization and stage-level Data
-Quality validation.
+SmartMoneyScore V1 is part of the normal daily `run.py` pipeline.
 
-Canonical daily order:
+The **canonical daily sequence, source inventory, Data Quality profiles, transaction
+semantics and current gaps** are documented only in:
 
 ```text
-AmiBroker EOD
-→ EOD Data Quality
-→ AmiBroker Intraday (futures/index/stock/warrant)
-→ Intraday Data Quality
-→ Yahoo EOD
-→ Yahoo Data Quality
-→ Fundamental Analysis
-→ FA Data Quality
-→ Ticker Master
-→ Reference Data Quality
-→ Holiday Calendar
-→ VNINDEX_NOT_VIN
-→ Index Data Quality
-→ Moving Average / Trend
-→ Trend Data Quality
-→ Technical Indicators
-→ Indicator Data Quality
-→ SmartMoney schema ensure
-→ SmartMoney incremental refresh
-→ SmartMoney Data Quality
-→ COMMIT
-→ exportDuckDB_metadata()
+docs/runbook/Daily_Data_Pipeline.md
 ```
 
-`run.py` no longer calls private pipeline stages directly. It opens the shared
-DuckDB UnitOfWork and delegates the daily write workflow to
-`SyncWritePipelineService.run()`.
+SmartMoney-specific position in that flow:
 
-The previous `SMART_MONEY_AUTO_RUN` environment gate is retired.
+```text
+Technical Indicator Engine
+→ Indicator Data Quality
+→ ensure smart_money_v1_schema.sql
+→ SmartMoney incremental refresh
+→ SmartMoney Data Quality
+→ shared transaction COMMIT
+```
 
-OOS evaluation remains available for calibration/research, but it is no longer an
-operational prerequisite for daily SmartMoney calculation.
+The former `SMART_MONEY_AUTO_RUN` environment gate is retired. OOS evaluation
+remains calibration/research and does not block daily calculation.
+
