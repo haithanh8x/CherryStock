@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from CrawlStock.readAmi import syncAmibroker_EOD, upsert_lstTicker
+from CrawlStock.readAmi import syncAmibroker_EOD, syncAmibroker_Intraday, upsert_lstTicker
 from CrawlStock.upsertFA import upsert_stock_fa
 from CrawlStock.readYahooFinance import YAHOO_OTHER_TICKERS, syncYahooFinance_EOD
 from Ults.DataQualityOrchestration import (
@@ -25,6 +25,7 @@ class SyncWritePipelineService:
         self,
         sql_dir: Path = DUCKDB_SQL_PATH,
         sync_amibroker_eod: Callable[..., None] = syncAmibroker_EOD,
+        sync_amibroker_intraday: Callable[..., None] = syncAmibroker_Intraday,
         sync_yahoo_eod: Callable[..., None] = syncYahooFinance_EOD,
         upsert_fa: Callable[..., None] = upsert_stock_fa,
         upsert_tickers: Callable[..., None] = upsert_lstTicker,
@@ -39,6 +40,7 @@ class SyncWritePipelineService:
     ) -> None:
         self._sql_dir = sql_dir
         self._sync_amibroker_eod = sync_amibroker_eod
+        self._sync_amibroker_intraday = sync_amibroker_intraday
         self._sync_yahoo_eod = sync_yahoo_eod
         self._upsert_fa = upsert_fa
         self._upsert_tickers = upsert_tickers
@@ -78,7 +80,8 @@ class SyncWritePipelineService:
         index_repository=None,
         trend_repository=None,
         indicator_repository=None,
-    ) -> None:
+        smart_money_repository=None,
+    ) -> dict[str, object]:
         self._sync_amibroker_eod(from_last_day=days_diff, connection=connection)
         self._validate_dated(
             connection=connection,
@@ -90,6 +93,37 @@ class SyncWritePipelineService:
             required_cols=["Ticker", "Date", "Open", "High", "Low", "Close", "Volume"],
             raise_on_fail=True,
         )
+
+        self._sync_amibroker_intraday(
+            from_last_day=days_diff,
+            connection=connection,
+        )
+        for table_name, pipeline_name in (
+            ('"CherryMon"."main"."raw_futures_intraday"', "AmiBroker Intraday Futures"),
+            ('"CherryMon"."main"."raw_index_intraday"', "AmiBroker Intraday Index"),
+            ('"CherryMon"."main"."raw_stock_intraday"', "AmiBroker Intraday Stock"),
+            ('"CherryMon"."main"."raw_warrant_intraday"', "AmiBroker Intraday Warrant"),
+        ):
+            self._validate_dated(
+                connection=connection,
+                table_name=table_name,
+                pipeline_name=pipeline_name,
+                date_col="Date",
+                symbol_col="Ticker",
+                key_cols=["Ticker", "Date", "RawTime", "TickSeq"],
+                required_cols=[
+                    "Ticker",
+                    "Date",
+                    "DateTime",
+                    "RawTime",
+                    "TickSeq",
+                    "Close",
+                    "Volume",
+                ],
+                max_row_change_pct=1.0,
+                max_symbol_change_pct=0.25,
+                raise_on_fail=True,
+            )
 
         self._sync_yahoo_eod(from_last_day=days_diff, connection=connection)
         yahoo_expected_date = self._resolve_yahoo_expected_date(connection)
@@ -176,3 +210,39 @@ class SyncWritePipelineService:
                 required_cols=["Ticker", "Date", "ConfigId", "ComponentCode", "Value"],
                 raise_on_fail=True,
             )
+
+        self._execute_sql(
+            con=connection,
+            sql_file_path=str(self._sql_dir / "smart_money_v1_schema.sql"),
+            sql_description="Ensure SmartMoney V1 schema",
+        )
+        smart_money_summary = self._calc_smart_money(
+            from_last_day=days_diff,
+            connection=connection,
+            repository=smart_money_repository,
+        )
+        if int(smart_money_summary.get("score_rows_upserted", 0)) > 0:
+            self._validate_dated(
+                connection=connection,
+                table_name='"CherryMon"."main"."cal_smart_money_ticker_score"',
+                pipeline_name="SmartMoneyScore",
+                date_col="Date",
+                symbol_col="Ticker",
+                key_cols=["ModelId", "Ticker", "Date"],
+                required_cols=[
+                    "ModelId",
+                    "Ticker",
+                    "Date",
+                    "SmartMoneyScore",
+                    "ConfidenceScore",
+                    "MarketState",
+                    "FactorCoverage",
+                    "DataQualityStatus",
+                ],
+                raise_on_fail=True,
+            )
+
+        return {
+            "indicator": indicator_summary,
+            "smart_money": smart_money_summary,
+        }
