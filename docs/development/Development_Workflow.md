@@ -9,7 +9,7 @@ C:\Github\CherryStock
 
 GitHub is the versioned Single Source of Truth. Obsidian is the knowledge-navigation layer. VS Code is the implementation workspace.
 
-## Daily flow
+## Developer daily flow
 
 ~~~text
 1. git pull
@@ -24,6 +24,31 @@ GitHub is the versioned Single Source of Truth. Obsidian is the knowledge-naviga
 10. Commit on feature branch
 11. Open/review Pull Request
 ~~~
+
+
+
+## Runtime daily data pipeline
+
+The developer workflow above is separate from the production/local data pipeline
+executed by `python run.py`.
+
+Canonical runtime documentation:
+
+`docs/runbook/Daily_Data_Pipeline.md`
+
+Runtime ownership:
+
+```text
+run.py
+→ DuckDBUnitOfWork
+→ SyncWritePipelineService.run()
+→ EOD / Intraday / DQ / calculations / SmartMoney
+→ COMMIT
+→ exportDuckDB_metadata()
+```
+
+Do not duplicate the daily stage sequence directly in `run.py`; modify the
+application service and its nearest orchestration/DQ tests instead.
 
 ## Before coding
 Read in order:
