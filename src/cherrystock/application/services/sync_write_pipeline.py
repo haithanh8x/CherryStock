@@ -211,6 +211,9 @@ class SyncWritePipelineService:
                 symbol_col="Ticker",
                 key_cols=["Ticker", "Date", "ConfigId", "ComponentCode"],
                 required_cols=["Ticker", "Date", "ConfigId", "ComponentCode", "Value"],
+                # cal_indicator_values mixes many configs/timeframes/components.
+                # Daily row/symbol counts are therefore not a stable quality contract.
+                check_count_anomalies=False,
                 raise_on_fail=True,
             )
 
