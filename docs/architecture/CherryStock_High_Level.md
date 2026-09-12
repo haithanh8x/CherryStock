@@ -125,7 +125,55 @@ node $archify validate architecture docs/architecture/diagrams/cherrystock-high-
 
 `--repo-root .` is required because the diagram declares `meta.repository` and component `sources`. Archify verifies the configured repository origin, pinned commit and source paths against the local Git checkout before rendering.
 
-### Deliver interactive HTML
+### CherryStock typography
+
+CherryStock keeps Archify's built-in JetBrains Mono stack for technical context, relationship labels and source evidence, while architecture node names and boundary titles use a human-readable sans-serif stack.
+
+Default presentation policy:
+
+```text
+Node / boundary title  → Inter → Segoe UI Variable → Segoe UI → Arial → sans-serif
+Technical context      → Archify JetBrains Mono stack
+Relationship labels    → Archify JetBrains Mono stack
+Source/path details    → Archify JetBrains Mono stack
+```
+
+This is implemented as a **post-processing presentation layer**, not a fork or patch of the globally installed Archify package:
+
+- `scripts/customize_archify_typography.py` injects an idempotent CherryStock CSS override into the delivered HTML.
+- `scripts/render_archify_cherrystock.ps1` runs validate → deliver → typography post-process → open.
+- The Archify JSON, geometry, evidence verification and quality checks remain unchanged and authoritative for the generated diagram.
+- The script references the local/system `Inter` font when available and falls back to Windows UI fonts; no font binaries are stored in this repository.
+
+### One-command render
+
+Preferred command from the CherryStock repository root:
+
+```powershell
+.\scripts\render_archify_cherrystock.ps1
+```
+
+Use another sans-serif font without modifying Archify or the architecture JSON:
+
+```powershell
+.\scripts\render_archify_cherrystock.ps1 -SansFont "IBM Plex Sans"
+```
+
+or:
+
+```powershell
+.\scripts\render_archify_cherrystock.ps1 -SansFont "Segoe UI"
+```
+
+To render without automatically opening the browser:
+
+```powershell
+.\scripts\render_archify_cherrystock.ps1 -NoOpen
+```
+
+### Manual deliver
+
+If the typography post-process is not required, raw Archify delivery remains available:
 
 ```powershell
 New-Item -ItemType Directory -Force docs/architecture/generated | Out-Null
@@ -155,6 +203,8 @@ The HTML is a derived presentation artifact. The architectural facts remain gove
 ## Maintenance Rule
 
 `SolutionArchitect.agent.md` should refresh this high-level map with Archify whenever an approved change materially alters a major runtime component, a top-level dependency/data path, the public consumer boundary, or the engineering control-plane relationship shown here. Domain-only changes that do not change this abstraction level should update their own architecture documents without churning the high-level map.
+
+Typography customization is presentation-only. It must not alter architecture semantics, source evidence, diagram geometry or quality validation rules.
 
 ## ADR
 
