@@ -207,7 +207,7 @@ TradeActionConfidenceScore
     = min(ConfidenceScore, CandidateActionConfidence)
 ```
 
-Then round to 2 decimals.
+The public view keeps full calculation precision. It MUST NOT round `TradeActionConfidenceScore` before returning it because upward rounding can violate the hard invariant `TradeActionConfidenceScore <= ConfidenceScore`. UI/report consumers may round for display only.
 
 Why 60/40:
 
@@ -554,7 +554,7 @@ No strategy persistence is introduced.
 Consequences:
 
 1. historical persisted rows automatically receive both strategy fields when the view definition is refreshed;
-2. no full historical SmartMoney initload is required for this additive view change;
+2. the strategy fields themselves require no separate persisted backfill, but deployment acceptance requires the canonical full historical SmartMoney initload so underlying historical score/factor coverage and the public historical contract are validated end-to-end;
 3. score/factor full-vs-incremental convergence is unaffected;
 4. downstream consumers can drill from action confidence into the exact state and factor evidence.
 
@@ -617,12 +617,13 @@ Focused validation must prove:
 4. DISTRIBUTION returns SELL under PASS quality.
 5. MARKUP, LIQUIDITY_DRYUP, SELLING_CLIMAX and NEUTRAL return HOLD under PASS quality.
 6. `TradeActionConfidenceScore` is non-NULL and in `0..100`.
-7. `TradeActionConfidenceScore <= ConfidenceScore` for every public row.
+7. `TradeActionConfidenceScore <= ConfidenceScore` for every public row, including non-pre-rounded upstream confidence values.
 8. non-PASS rows return `TradeActionConfidenceScore = 0`.
 9. explicit state factor formulas produce deterministic expected confidence values.
 10. missing required public factor evidence returns action confidence `0`.
 11. existing score/factor persistence schema remains unchanged.
 12. repeated execution of `smart_money_v1_schema.sql` remains idempotent.
+13. the canonical full historical initload validates score/view row coverage and matching historical min/max date range before acceptance.
 
 Implementation validation artifacts:
 
@@ -630,6 +631,7 @@ Implementation validation artifacts:
 src/DuckDB/sql/smart_money_v1_preflight.sql
 tests/test_smart_money_strategy.py
 docs/runbook/SmartMoneyStrategy_V1.md
+docs/runbook/SmartMoneyTradeActionConfidence_V1.md
 ```
 
 ---
