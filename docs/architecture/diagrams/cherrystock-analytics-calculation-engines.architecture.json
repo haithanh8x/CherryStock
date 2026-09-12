@@ -18,8 +18,8 @@
       "type": "backend",
       "label": "Daily Analytics Orchestration",
       "sublabel": "SyncWritePipelineService · shared UoW",
-      "pos": [40, 80],
-      "size": [180, 72],
+      "pos": [30, 80],
+      "size": [200, 72],
       "sources": [
         {"path": "run.py", "label": "Daily transaction entry"},
         {"path": "src/cherrystock/application/services/sync_write_pipeline.py", "label": "Canonical daily ordering"}
@@ -228,7 +228,7 @@
     {"from": "smart_store", "to": "smart_public", "label": "stable read view", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1170, 390]},
     {"from": "indicator_public", "to": "rs_runtime", "label": "price-level metadata + values", "variant": "emphasis", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [940, 565]},
     {"from": "analytics_inputs", "to": "rs_runtime", "label": "price / market structure", "fromSide": "bottom", "toSide": "left", "via": [[130, 650]], "labelAt": [430, 665]},
-    {"from": "rs_runtime", "to": "consumers", "label": "LevelLadderResult", "variant": "emphasis", "route": "straight", "labelAt": [975, 635]},
+    {"from": "rs_runtime", "to": "consumers", "label": "LevelLadderResult", "variant": "emphasis", "route": "straight", "labelAt": [975, 704]},
     {"from": "smart_public", "to": "consumers", "label": "score / state / confidence", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1170, 565]},
     {"from": "monthly_orchestrator", "to": "rs_evaluation", "label": "monthly research run", "variant": "emphasis", "route": "straight", "labelAt": [735, 755]},
     {"from": "rs_runtime", "to": "rs_evaluation", "label": "baseline + ablation behavior", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [940, 735]},
