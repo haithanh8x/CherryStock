@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "CherryStock — Analytics & Calculation Engines",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/haithanh8x/CherryStock",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "cec702c6788a75f6f430be11dc3055c955dc4e0c"
+    },
+    "viewBox": [1300, 920]
+  },
+  "components": [
+    {
+      "id": "daily_orchestrator",
+      "type": "backend",
+      "label": "Daily Analytics Orchestration",
+      "sublabel": "SyncWritePipelineService · shared UoW",
+      "pos": [40, 80],
+      "size": [180, 72],
+      "sources": [
+        {"path": "run.py", "label": "Daily transaction entry"},
+        {"path": "src/cherrystock/application/services/sync_write_pipeline.py", "label": "Canonical daily ordering"}
+      ]
+    },
+    {
+      "id": "composite_index",
+      "type": "backend",
+      "label": "Composite Index Engine",
+      "sublabel": "VNINDEX_NOT_VIN · divisor-adjusted",
+      "pos": [280, 80],
+      "size": [190, 72],
+      "sources": [
+        {"path": "src/calcEngine/calcIndexes.py", "label": "Composite index calculation"}
+      ]
+    },
+    {
+      "id": "trend_ma",
+      "type": "backend",
+      "label": "Trend & Moving Average",
+      "sublabel": "MA20/50/100/200 · D/W/M",
+      "pos": [520, 80],
+      "size": [190, 72],
+      "sources": [
+        {"path": "src/calcEngine/calc_fv_Trend.py", "label": "Trend / MA calculation"}
+      ]
+    },
+    {
+      "id": "indicator_engine",
+      "type": "backend",
+      "label": "Technical Indicator Engine",
+      "sublabel": "metadata-driven · D/W/M · incremental",
+      "pos": [760, 80],
+      "size": [190, 72],
+      "sources": [
+        {"path": "src/calcEngine/calcIndicators.py", "label": "Indicator refresh"},
+        {"path": "src/calcEngine/indicatorRegistry.py", "label": "Indicator runtime registry"},
+        {"path": "docs/architecture/Indicator_Engine.md", "label": "Indicator architecture"}
+      ]
+    },
+    {
+      "id": "smart_money",
+      "type": "backend",
+      "label": "SmartMoneyScore Engine",
+      "sublabel": "features · state · score · confidence",
+      "pos": [1000, 80],
+      "size": [220, 72],
+      "sources": [
+        {"path": "src/calcEngine/smartMoneyScore.py", "label": "SmartMoney runtime"},
+        {"path": "docs/architecture/SmartMoneyScore.md", "label": "SmartMoney architecture"}
+      ]
+    },
+    {
+      "id": "analytics_inputs",
+      "type": "database",
+      "label": "Analytics Input Contracts",
+      "sublabel": "raw_* · ticker/FA · vw_Ticker_OHLC_D · indicator config",
+      "pos": [25, 260],
+      "size": [210, 92],
+      "sources": [
+        {"path": "src/DuckDB/sql/vw_Ticker_OHLC_D.sql", "label": "OHLC / liquidity read contract"},
+        {"path": "docs/architecture/Indicator_Engine.md", "label": "Indicator config/value contracts"},
+        {"path": "docs/architecture/Data_Architecture.md", "label": "Data architecture"}
+      ]
+    },
+    {
+      "id": "index_store",
+      "type": "database",
+      "label": "Composite Index Persistence",
+      "sublabel": "cal_Indexes · INDEX_NAME/Date",
+      "pos": [280, 260],
+      "size": [190, 80],
+      "sources": [
+        {"path": "src/calcEngine/calcIndexes.py", "label": "cal_Indexes writer"}
+      ]
+    },
+    {
+      "id": "trend_store",
+      "type": "database",
+      "label": "Trend Persistence",
+      "sublabel": "cal_Trends · Ticker/Date",
+      "pos": [520, 260],
+      "size": [190, 80],
+      "sources": [
+        {"path": "src/calcEngine/calc_fv_Trend.py", "label": "cal_Trends writer"}
+      ]
+    },
+    {
+      "id": "indicator_store",
+      "type": "database",
+      "label": "Indicator Persistence",
+      "sublabel": "cal_indicator_values · long format",
+      "pos": [760, 260],
+      "size": [190, 80],
+      "sources": [
+        {"path": "src/calcEngine/calcIndicators.py", "label": "Indicator persistence"},
+        {"path": "docs/architecture/Indicator_Engine.md", "label": "Persistence contract"}
+      ]
+    },
+    {
+      "id": "smart_store",
+      "type": "database",
+      "label": "SmartMoney Persistence",
+      "sublabel": "factor values · ticker score",
+      "pos": [1000, 260],
+      "size": [220, 80],
+      "sources": [
+        {"path": "src/calcEngine/smartMoneyScore.py", "label": "Factor / score persistence"},
+        {"path": "docs/architecture/SmartMoneyScore.md", "label": "Persistence contract"}
+      ]
+    },
+    {
+      "id": "indicator_public",
+      "type": "database",
+      "label": "Indicator Public Contract",
+      "sublabel": "vw_Ticker_indicators · vw_Indicator_config",
+      "pos": [760, 440],
+      "size": [190, 80],
+      "sources": [
+        {"path": "docs/architecture/Indicator_Engine.md", "label": "Calculated/config SSOT"}
+      ]
+    },
+    {
+      "id": "smart_public",
+      "type": "database",
+      "label": "SmartMoney Public Contract",
+      "sublabel": "vw_Ticker_SmartMoney",
+      "pos": [1000, 440],
+      "size": [220, 80],
+      "sources": [
+        {"path": "docs/architecture/SmartMoneyScore.md", "label": "Public score contract"}
+      ]
+    },
+    {
+      "id": "rs_runtime",
+      "type": "backend",
+      "label": "R/S Runtime Ladder",
+      "sublabel": "levels → zones → strength → S/R rank",
+      "pos": [760, 610],
+      "size": [190, 80],
+      "sources": [
+        {"path": "src/calcEngine/levelLadder.py", "label": "R/S runtime engine"},
+        {"path": "docs/architecture/RS_Ladder.md", "label": "R/S architecture"}
+      ]
+    },
+    {
+      "id": "consumers",
+      "type": "frontend",
+      "label": "Analytical Consumers",
+      "sublabel": "Web · Chart · Screener · API/ML",
+      "pos": [1000, 610],
+      "size": [220, 80],
+      "sources": [
+        {"path": "src/webapp/NiceGUI_chart.py", "label": "Chart/UI consumer"},
+        {"path": "src/Chart/plot.py", "label": "Chart rendering"}
+      ]
+    },
+    {
+      "id": "monthly_orchestrator",
+      "type": "backend",
+      "label": "Monthly R/S Orchestration",
+      "sublabel": "runMonthly.py · full-universe evaluation",
+      "pos": [520, 780],
+      "size": [190, 72],
+      "sources": [
+        {"path": "runMonthly.py", "label": "Monthly runner"},
+        {"path": "src/Orchestrator/rs_v2_4_full_evaluation.py", "label": "V2.4 full evaluation"}
+      ]
+    },
+    {
+      "id": "rs_evaluation",
+      "type": "backend",
+      "label": "R/S Historical Evaluation",
+      "sublabel": "baseline/ablation · effectiveness · promotion",
+      "pos": [760, 780],
+      "size": [190, 72],
+      "sources": [
+        {"path": "src/calcEngine/rsEvaluation.py", "label": "Historical evaluation"},
+        {"path": "src/calcEngine/rsSourceEffectiveness.py", "label": "Source effectiveness"},
+        {"path": "docs/architecture/RS_Source_Effectiveness.md", "label": "V2.4 architecture"}
+      ]
+    },
+    {
+      "id": "rs_research_store",
+      "type": "database",
+      "label": "R/S Research Persistence",
+      "sublabel": "effectiveness · promotion audit · public view",
+      "pos": [1000, 776],
+      "size": [220, 80],
+      "sources": [
+        {"path": "docs/architecture/RS_Source_Effectiveness.md", "label": "cal_rs_* / sys_rs_* / vw_RS_*"}
+      ]
+    }
+  ],
+  "connections": [
+    {"from": "analytics_inputs", "to": "daily_orchestrator", "label": "validated inputs", "variant": "emphasis", "route": "straight", "fromSide": "top", "toSide": "bottom", "labelAt": [130, 205]},
+    {"from": "daily_orchestrator", "to": "composite_index", "label": "1 · calculate index", "variant": "emphasis", "route": "straight", "labelAt": [250, 55]},
+    {"from": "composite_index", "to": "trend_ma", "label": "2 · then trend", "route": "straight", "labelAt": [495, 55]},
+    {"from": "trend_ma", "to": "indicator_engine", "label": "3 · then indicators", "route": "straight", "labelAt": [735, 55]},
+    {"from": "indicator_engine", "to": "smart_money", "label": "4 · then SmartMoney", "variant": "emphasis", "route": "straight", "labelAt": [975, 55]},
+    {"from": "composite_index", "to": "index_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [430, 205]},
+    {"from": "trend_ma", "to": "trend_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [670, 205]},
+    {"from": "indicator_engine", "to": "indicator_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [910, 205]},
+    {"from": "smart_money", "to": "smart_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1170, 205]},
+    {"from": "indicator_store", "to": "indicator_public", "label": "stable read SSOT", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [920, 390]},
+    {"from": "smart_store", "to": "smart_public", "label": "stable read view", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1170, 390]},
+    {"from": "indicator_public", "to": "rs_runtime", "label": "price-level metadata + values", "variant": "emphasis", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [940, 565]},
+    {"from": "analytics_inputs", "to": "rs_runtime", "label": "price / market structure", "fromSide": "bottom", "toSide": "left", "via": [[130, 650]], "labelAt": [430, 665]},
+    {"from": "rs_runtime", "to": "consumers", "label": "LevelLadderResult", "variant": "emphasis", "route": "straight", "labelAt": [975, 635]},
+    {"from": "smart_public", "to": "consumers", "label": "score / state / confidence", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1170, 565]},
+    {"from": "monthly_orchestrator", "to": "rs_evaluation", "label": "monthly research run", "variant": "emphasis", "route": "straight", "labelAt": [735, 755]},
+    {"from": "rs_runtime", "to": "rs_evaluation", "label": "baseline + ablation behavior", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [940, 735]},
+    {"from": "rs_evaluation", "to": "rs_research_store", "label": "effectiveness + audit", "variant": "security", "route": "straight", "labelAt": [975, 755]},
+    {"from": "rs_research_store", "to": "consumers", "label": "research / governance read", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [1170, 735]}
+  ],
+  "cards": [
+    {"dot": "emerald", "title": "Daily analytics transaction", "items": ["Canonical order: Composite Index → Trend/MA → Indicator Engine → SmartMoneyScore", "Each calculated write is followed by blocking Data Quality in SyncWritePipelineService", "All daily writes participate in the shared DuckDBUnitOfWork; failure before commit rolls back the write set"]},
+    {"dot": "cyan", "title": "Calculation contracts", "items": ["Composite Index writes cal_Indexes; Trend/MA writes cal_Trends", "Indicator Engine persists long-format cal_indicator_values and exposes vw_Ticker_indicators / vw_Indicator_config", "SmartMoney persists factor + ticker score tables and exposes vw_Ticker_SmartMoney"]},
+    {"dot": "violet", "title": "R/S is two paths", "items": ["Runtime Level Ladder is read/on-demand analytical calculation using market data plus Indicator public contracts", "Monthly R/S V2.4 is a separate research path: baseline/ablation → Source Effectiveness → Promotion Gate", "V2.4 persists cal_rs_source_effectiveness_run, cal_rs_source_effectiveness, sys_rs_source_promotion_audit and vw_RS_Source_Effectiveness; it does not auto-change runtime weights"]}
+  ]
+}
