@@ -67,6 +67,7 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 - [[architecture/SmartMoneyStrategy|SmartMoneyStrategy BUY/HOLD/SELL]]
 - [[runbook/SmartMoneyStrategy_V1|SmartMoneyStrategy V1 Local Deployment & Validation]]
 - [[runbook/SmartMoneyTradeActionConfidence_V1|TradeActionConfidence V1 Historical Initload & Minimal Validation]]
+- [[runbook/SmartMoney_NiceGUI_Tab|SmartMoney NiceGUI Tab Deployment & Focused Validation]]
 - [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
 - Uses [[architecture/Data_Architecture|Data Architecture]] and may consume [[architecture/Indicator_Engine|Indicator Engine]] through public indicator contracts.
 
@@ -120,6 +121,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[runbook/SmartMoneyScore_V1|SmartMoneyScore V1 Deployment]]
 - [[runbook/SmartMoneyStrategy_V1|SmartMoneyStrategy V1 Local Deployment & Validation]]
 - [[runbook/SmartMoneyTradeActionConfidence_V1|TradeActionConfidence V1 Historical Initload & Minimal Validation]]
+- [[runbook/SmartMoney_NiceGUI_Tab|SmartMoney NiceGUI Tab Deployment & Focused Validation]]
 - [[runbook/AsTraded_Market_Limit_Migration|As-Traded Market-Limit Migration]]
 - [[runbook/vw_raw_stock_eod|Enriched Stock EOD Market Limits]]
 - [[runbook/Indicator_OBV_AD|OBV + AD Line Activation and Historical Initload]]
