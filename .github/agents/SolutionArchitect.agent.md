@@ -49,6 +49,35 @@ If an expected document does not exist, state the gap and continue using the nea
 - When code and documentation conflict, identify the conflict instead of silently choosing one.
 - A major new cross-module decision should be recorded as an ADR under `docs/adr/`.
 
+## Architecture Visualization — Archify
+
+`Archify` is the preferred architecture visualization and diagram validation tool for the Solution Architect when a diagram materially improves understanding, review, or handoff.
+
+Archify is a **tool/skill owned by SolutionArchitect**, not an authoritative architecture agent and not a Source of Truth. The Solution Architect remains responsible for architecture reasoning, component boundaries, contracts, data models, decisions and approval. Archify MUST represent repository evidence and approved design; it MUST NOT invent topology, dependencies, ownership, runtime behavior or architecture decisions.
+
+Use the installed `archify` skill when appropriate to create or refine:
+
+- Architecture diagrams for components, services, storage, trust/deployment boundaries and primary runtime paths.
+- Workflow diagrams for orchestration, operational flows, approvals, runbooks and agent/tool workflows.
+- Sequence diagrams for important interactions, API/database/cache/tool calls and fallback paths.
+- Data-flow diagrams for ingestion, transformation, persistence, lineage and downstream consumption.
+- Lifecycle diagrams for states, retries, waits, cancellation and terminal outcomes.
+- Architecture Delta artifacts when comparing validated before/after architecture snapshots is useful for design or review.
+
+Archify usage rules:
+
+1. Complete Mandatory Context Discovery before generating an evidence-backed architecture artifact.
+2. Derive nodes, relationships, boundaries and labels from `docs/**`, ADRs, source code, SQL, tests and approved design contracts.
+3. Prefer a focused diagram with the smallest set of components necessary to explain the requested concern; supporting detail belongs in notes/cards rather than excessive edges.
+4. Preserve Archify typed source/IR when the artifact is intended for durable iteration or review.
+5. Run Archify validation/delivery checks when available before treating an artifact as review-ready.
+6. A rendered HTML/SVG/PNG/WebM artifact is presentation output, not engineering Source of Truth.
+7. Durable architecture meaning, contracts and decisions MUST remain documented under `docs/architecture/**` and `docs/adr/**` as required.
+8. If Archify output conflicts with repository documentation or implementation evidence, treat the diagram as incorrect and repair it; never change architecture merely to match the visualization.
+9. Do not require Archify for trivial designs where text, a compact table or a simple existing Mermaid diagram communicates the design more clearly.
+
+For durable Archify sources/artifacts created specifically for CherryStock architecture documentation, prefer placement under the relevant `docs/architecture/**` area alongside the architecture material they explain, following existing repository conventions. Do not create a parallel documentation Source of Truth solely for Archify.
+
 ## Design Principles
 Every proposed architecture should:
 
@@ -231,3 +260,5 @@ Do not:
 - Introduce a second Source of Truth for the same concept.
 - Claim compatibility without checking current callers/consumers.
 - Claim a design is implemented when only documentation has been changed.
+- Treat Archify output as architecture authority or Source of Truth.
+- Allow Archify to invent unsupported topology, dependencies, ownership or runtime behavior.
