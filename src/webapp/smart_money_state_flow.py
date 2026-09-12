@@ -27,14 +27,35 @@ _REQUIRED_COLUMNS = {
 }
 
 
+def format_ticker_sequence(
+    rows: list[dict[str, Any]],
+    *,
+    bold_top_n: int = 2,
+) -> str:
+    """Format confidence-ranked ticker rows as one comma-separated Markdown string."""
+    tickers = [str(row.get("Ticker") or "").strip().upper() for row in rows]
+    tickers = [ticker for ticker in tickers if ticker]
+    if not tickers:
+        return ""
+
+    highlighted_count = min(max(int(bold_top_n), 0), len(tickers))
+    if highlighted_count == 0:
+        return ", ".join(tickers)
+
+    highlighted = ", ".join(tickers[:highlighted_count])
+    remainder = ", ".join(tickers[highlighted_count:])
+    if remainder:
+        return f"**{highlighted}**, {remainder}"
+    return f"**{highlighted}**"
+
+
 def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any]]:
-    """Build UI-ready MarketState blocks from one SmartMoney snapshot.
+    """Build UI-ready full-width MarketState blocks from one SmartMoney snapshot.
 
     Canonical states always appear in the configured flow order. Any future/unknown
     MarketState found in the public view is appended rather than silently dropped.
-    Within each state and each TradeAction subgroup, tickers are sorted by
-    TradeActionConfidenceScore descending, then Ticker ascending for deterministic
-    ties.
+    Within each state, all tickers share one confidence-ranked sequence regardless of
+    TradeAction. TradeAction is summarized beside MarketState through action counts.
     """
     missing = _REQUIRED_COLUMNS.difference(snapshot.columns)
     if missing:
@@ -57,8 +78,8 @@ def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any
     ].copy()
 
     # Public SmartMoney V1 should already be one row per ticker/date/model. This
-    # defensive de-duplication keeps UI ticker counts stable if the input contains
-    # duplicate rows, retaining the strongest action-confidence evidence.
+    # defensive de-duplication keeps UI ticker counts stable if duplicate input is
+    # observed, retaining the row with strongest action-confidence evidence.
     frame = (
         frame.sort_values(
             ["Ticker", "TradeActionConfidenceScore"],
@@ -72,7 +93,9 @@ def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any
     description_by_state = dict(SMART_MONEY_STATE_FLOW)
     canonical_states = [state for state, _ in SMART_MONEY_STATE_FLOW]
     observed_states = sorted(
-        state for state in frame["MarketState"].unique().tolist() if state not in canonical_states
+        state
+        for state in frame["MarketState"].unique().tolist()
+        if state not in canonical_states
     )
     ordered_states = canonical_states + observed_states
 
@@ -84,15 +107,12 @@ def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any
             ascending=[False, True],
             kind="stable",
         )
-
-        action_rows = {
-            action: state_rows.loc[state_rows["TradeAction"] == action].to_dict("records")
-            for action in TRADE_ACTION_ORDER
-        }
+        rows = state_rows.to_dict("records")
         action_counts = {
-            action: len(action_rows[action])
+            action: int((state_rows["TradeAction"] == action).sum())
             for action in TRADE_ACTION_ORDER
         }
+
         blocks.append(
             {
                 "stage": index,
@@ -102,8 +122,8 @@ def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any
                 ),
                 "total_tickers": int(state_rows["Ticker"].nunique()),
                 "action_counts": action_counts,
-                "action_rows": action_rows,
-                "rows": state_rows.to_dict("records"),
+                "rows": rows,
+                "ticker_sequence": format_ticker_sequence(rows),
             }
         )
 
