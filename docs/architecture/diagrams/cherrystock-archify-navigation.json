@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "pages": {
+    "CherryStock_High_Level.html": {
+      "nodes": {
+        "analytics": {
+          "target": "CherryStock_Analytics_Calculation_Engines.html",
+          "label": "Open Analytics & Calculation Engines detail",
+          "interaction": "double-click"
+        }
+      }
+    },
+    "CherryStock_Analytics_Calculation_Engines.html": {
+      "back": {
+        "target": "CherryStock_High_Level.html",
+        "label": "← High Level"
+      }
+    }
+  }
+}
