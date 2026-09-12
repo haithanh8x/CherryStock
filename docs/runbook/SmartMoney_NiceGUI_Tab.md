@@ -1,4 +1,4 @@
-# SmartMoney NiceGUI Tab — Deployment & Focused Validation
+# SmartMoney NiceGUI Tab — Vertical MarketState Deployment
 
 - **UI entry:** `src/webapp/NiceGUI_chart.py`
 - **Renderer:** `src/webapp/smart_money_tab.py`
@@ -9,29 +9,27 @@
 
 ## 1. Purpose
 
-Deploy the `SmartMoney` tab immediately after `R/S` in `NiceGUI_chart.py` and validate only the UI/read contract.
-
-Expected tab order:
+Deploy the `SmartMoney` tab immediately after `R/S` with a compact vertical flow:
 
 ```text
 ... → Danh mục → R/S → SmartMoney → Vận Hành
 ```
 
-This runbook does **not** recalculate SmartMoney and does **not** run historical initload. The historical SmartMoney rollout is an upstream prerequisite and remains independently governed by `SmartMoneyTradeActionConfidence_V1.md`.
+Each `MarketState` occupies one **full-width block** and blocks are stacked vertically in canonical flow order.
+
+This is an **UI/read-only deployment**. Do not recalculate SmartMoney and do not rerun historical initload. The historical SmartMoney rollout remains independently governed by `SmartMoneyTradeActionConfidence_V1.md`.
 
 ---
 
 ## 2. UI contract
 
-The tab reads only the latest available `SMART_MONEY_V1` date from:
+The tab reads only the latest available `SMART_MONEY_V1` snapshot from:
 
 ```text
 "CherryMon"."main"."vw_Ticker_SmartMoney"
 ```
 
-Each `MarketState` is one block.
-
-Canonical flow order:
+Canonical vertical block order:
 
 ```text
 1. ACCUMULATION
@@ -45,64 +43,86 @@ Canonical flow order:
 9. NEUTRAL
 ```
 
-The primary progression intentionally follows:
+Any future unknown `MarketState` is appended after these nine canonical states rather than silently dropped.
+
+### 2.1 MarketState block layout
+
+Every MarketState block must be:
 
 ```text
-ACCUMULATION
-→ SUPPLY_LOCK
-→ demand / fresh-flow expansion
-→ BREAKOUT
-→ MARKUP
-→ DISTRIBUTION
+full width
+one block per row
+vertical ordering only
 ```
 
-`SELLING_CLIMAX`, `LIQUIDITY_DRYUP` and `NEUTRAL` remain explicit blocks so no current `MarketState` is hidden. Any future unknown state is appended after the canonical states instead of being dropped.
-
-Each block must show:
+Header contract:
 
 ```text
-MarketState
-state description
-total distinct tickers
-BUY count
-HOLD count
-SELL count
+[stage] MARKET_STATE  [TradeAction count badge(s)]                 <total tickers>
+        state description
 ```
 
-Below the summary, ticker rows are split into three explicit `TradeAction` subgroups in this order:
+Examples:
 
 ```text
-BUY
-HOLD
-SELL
+01  ACCUMULATION  [BUY 75]                                        75 tickers
+02  SUPPLY LOCK   [HOLD 1]                                         1 ticker
 ```
 
-Each subgroup shows its own count and ticker list. Empty subgroups remain visible as `0 / Không có ticker`, so the action breakdown is explicit rather than inferred from missing UI.
+There are **no BUY/HOLD/SELL subgroups below the MarketState**.
 
-Ticker order **inside each TradeAction subgroup**:
+TradeAction is summarized beside `MarketState` instead:
+
+```text
+BUY <count>
+HOLD <count>
+SELL <count>
+```
+
+Only actions with count greater than zero are rendered. This preserves exceptional cases such as a normally-BUY MarketState containing a `HOLD` ticker because of upstream data-quality rules, without splitting the ticker list into multiple sections.
+
+An empty MarketState remains visible and uses:
+
+```text
+NO TICKER
+```
+
+### 2.2 Ticker sequence contract
+
+All tickers in one MarketState share a **single sequence**, regardless of TradeAction.
+
+Ordering:
 
 ```text
 TradeActionConfidenceScore DESC
-Ticker ASC   # deterministic tie-break
+Ticker ASC  # deterministic tie-break
 ```
 
-Ticker rows show:
+Rendering:
 
 ```text
-Ticker
-TradeAction
-TradeActionConfidenceScore
-SmartMoneyScore
-ConfidenceScore
+**MCH, VC3**, CTR, CTF, ...
 ```
 
-`TradeActionConfidenceScore` keeps full precision in the public view. The UI may display it rounded to two decimals; display rounding must not be written back to the model/view.
+Rules:
+
+```text
+tickers are separated by ", "
+first two tickers are bold
+remaining tickers use normal weight
+one ticker only -> that ticker is bold
+empty state -> no sequence, show empty-state message
+```
+
+The ticker string does not display subgroup headings and does not reorder by TradeAction.
+
+`TradeActionConfidenceScore` remains full precision in the public view. The UI ordering uses the original numeric value; bold formatting and comma-separated rendering are presentation-only.
 
 ---
 
 ## 3. Preconditions
 
-Before deployment:
+Required upstream state:
 
 ```text
 SmartMoney historical rollout: PASS / KEEP
@@ -112,7 +132,7 @@ TradeActionConfidenceScore exists
 latest SMART_MONEY_V1 snapshot is non-empty
 ```
 
-Do not rerun historical initload merely to deploy this tab.
+Do not rerun historical initload merely to deploy this UI layout.
 
 ---
 
@@ -173,12 +193,14 @@ python -m pytest tests\test_smart_money_state_flow.py -q
 PASS proves:
 
 ```text
-canonical MarketState block ordering
-empty canonical blocks remain visible
-BUY/HOLD/SELL counts match block total
-BUY/HOLD/SELL subgroups are materialized explicitly
-ticker ranking inside each subgroup is TradeActionConfidenceScore DESC
-future unknown state is not dropped
+canonical MarketState ordering
+empty canonical states remain represented
+all ticker rows are globally ranked inside MarketState
+TradeAction counts still reconcile to MarketState total
+no action_rows/subgroup contract remains
+ticker sequence is comma-separated
+first two confidence-ranked tickers are bold
+future unknown MarketState is not dropped
 duplicate ticker input is handled deterministically
 ```
 
@@ -186,7 +208,7 @@ Do not expand automatically to the full pytest suite.
 
 ---
 
-## 7. Step 4 — Validate the real local snapshot
+## 7. Step 4 — Validate real local snapshot
 
 Run:
 
@@ -194,7 +216,7 @@ Run:
 python scripts\validate_smart_money_ui_snapshot.py
 ```
 
-Required result starts with:
+Required first line:
 
 ```text
 SMART MONEY UI SNAPSHOT — PASS
@@ -204,12 +226,13 @@ The validator is read-only and checks:
 
 ```text
 latest SMART_MONEY_V1 date exists
-snapshot contains tickers
-canonical block order is preserved
-all snapshot tickers are represented exactly once in UI blocks
-action counts sum to each block total
-each BUY/HOLD/SELL subgroup count matches its rows
-TradeActionConfidenceScore is descending inside each subgroup
+snapshot is non-empty
+canonical MarketState prefix is preserved
+all snapshot tickers are represented exactly once
+TradeAction summary counts equal each MarketState total
+MarketState rows are TradeActionConfidenceScore DESC
+ticker sequence matches the row ranking exactly
+first two ticker symbols are bolded in the rendered sequence
 ```
 
 This step does not write to DuckDB.
@@ -230,21 +253,25 @@ Open the existing NiceGUI endpoint, normally:
 http://127.0.0.1:8081
 ```
 
-Validate only these UI items:
+Validate only:
 
 ```text
-1. SmartMoney tab appears immediately after R/S and before Vận Hành.
+1. SmartMoney remains immediately after R/S and before Vận Hành.
 2. Tab opens without exception.
-3. Header shows latest SmartMoney date and total ticker count.
-4. Nine canonical MarketState blocks appear in the documented order.
-5. Every block shows total tickers and BUY/HOLD/SELL summary counts.
-6. Every non-empty block contains explicit BUY/HOLD/SELL subgroup sections.
-7. Tickers inside each subgroup are ordered by TradeActionConfidenceScore descending.
-8. Refresh reloads the latest public-view snapshot.
-9. Empty MarketStates render as an empty block, not as a missing block.
+3. Header shows latest snapshot date and total ticker count.
+4. Nine canonical MarketState blocks appear in documented order.
+5. Every MarketState block spans full available width.
+6. Blocks are stacked vertically, one block per row.
+7. BUY/HOLD/SELL subgroup sections are absent.
+8. Non-zero TradeAction badge(s) appear beside MarketState name.
+9. Tickers are shown as one comma-separated string per MarketState.
+10. First two ticker symbols are bold.
+11. Ticker order follows TradeActionConfidenceScore descending.
+12. Refresh reloads the same/latest public-view snapshot correctly.
+13. Empty MarketStates remain visible.
 ```
 
-Do not judge Strategy quality from this visual smoke; this step validates rendering only.
+Do not judge strategy quality from this smoke test; this validates presentation only.
 
 Stop the NiceGUI process after the smoke check.
 
@@ -259,8 +286,11 @@ focused compile PASS
 focused unit test PASS
 real snapshot validator PASS
 SmartMoney tab placement PASS
-SmartMoney tab render PASS
-TradeAction subgroup render PASS
+full-width vertical block layout PASS
+TradeAction-beside-MarketState layout PASS
+flat comma-separated ticker sequence PASS
+confidence ordering PASS
+refresh smoke PASS
 ```
 
 If any item fails:
@@ -279,7 +309,7 @@ Do not rerun SmartMoney historical initload as a UI repair action.
 Return only:
 
 ```text
-SMART MONEY NICEGUI TAB — DEPLOYMENT
+SMART MONEY NICEGUI TAB — VERTICAL LAYOUT DEPLOYMENT
 
 HEAD: <sha>
 Compile: PASS | FAIL
@@ -289,15 +319,19 @@ Snapshot date: <date>
 Snapshot tickers: <count>
 Tab order R/S -> SmartMoney -> Vận Hành: PASS | FAIL
 Nine canonical blocks: PASS | FAIL
-TradeAction subgroups: PASS | FAIL
-Ticker confidence order per subgroup: PASS | FAIL
+Full-width vertical blocks: PASS | FAIL
+TradeAction beside MarketState: PASS | FAIL
+No TradeAction subgroups: PASS | FAIL
+Comma-separated ticker sequence: PASS | FAIL
+Top-two ticker emphasis: PASS | FAIL
+Ticker confidence order per MarketState: PASS | FAIL
 Refresh smoke: PASS | FAIL
 
 Verdict: PASS | FAIL | BLOCKED
 Action: KEEP | STOP
 ```
 
-After the terminal verdict, STOP.
+After terminal verdict, STOP.
 
 ---
 
@@ -314,4 +348,4 @@ run.py daily pipeline
 OOS/backtest evaluation
 ```
 
-Those belong to their own contracts and are not evidence for whether the NiceGUI tab renders the already-validated public SmartMoney snapshot correctly.
+Those belong to separate contracts and do not provide additional evidence for this NiceGUI presentation change.
