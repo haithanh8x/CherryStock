@@ -5,6 +5,7 @@
 - **Visualization tool:** Archify
 - **Mapped runtime revision:** `711b9a582e66e0660966907a82a6e901cd76764d`
 - **Archify source:** `docs/architecture/diagrams/cherrystock-high-level.architecture.json`
+- **Generated HTML:** `docs/architecture/generated/CherryStock_High_Level.html`
 
 ## Purpose
 
@@ -110,9 +111,21 @@ Source:
 docs/architecture/diagrams/cherrystock-high-level.architecture.json
 ```
 
+Generated presentation:
+
+```text
+docs/architecture/generated/CherryStock_High_Level.html
+```
+
 The source uses Archify `architecture` schema v1, `quality_profile=showcase`, at most 12 primary nodes, and repository evidence pinned to the mapped runtime revision.
 
 Because authored labels are Vietnamese while Archify's renderer-owned locale currently supports only `en` and `zh-CN`, `meta.locale` is intentionally omitted; fixed Viewer UI falls back to English while authored CherryStock content remains unchanged.
+
+### Artifact synchronization contract
+
+The Archify typed source and generated HTML are a synchronized pair. Whenever this high-level design changes, both files MUST be updated in the same change set. The HTML MUST be regenerated from the typed source; it must not be maintained as an independent design source.
+
+More generally, every approved CherryStock design change must follow the `SolutionArchitect.agent.md` Archify synchronization rule: update the relevant design document, update the relevant Archify typed source/diagram, regenerate its corresponding HTML artifact, and validate before handoff. A design is not complete while either Archify artifact is stale or inconsistent with the approved design.
 
 ### Validate locally
 
@@ -140,10 +153,10 @@ Source/path details    → Archify JetBrains Mono stack
 
 This is implemented as a **post-processing presentation layer**, not a fork or patch of the globally installed Archify package:
 
-- `scripts/customize_archify_typography.py` injects an idempotent CherryStock CSS override into the delivered HTML.
-- `scripts/render_archify_cherrystock.ps1` runs validate → deliver → typography post-process → open.
+- `scripts/customize_archify_typography.py` injects an idempotent CherryStock CSS override and font picker into the delivered HTML.
+- `scripts/render_archify_cherrystock.ps1` runs validate → deliver → typography/font-picker post-process → open.
 - The Archify JSON, geometry, evidence verification and quality checks remain unchanged and authoritative for the generated diagram.
-- The script references the local/system `Inter` font when available and falls back to Windows UI fonts; no font binaries are stored in this repository.
+- The script references local/system fonts when available; no additional font binaries are stored in this repository.
 
 ### One-command render
 
@@ -153,7 +166,9 @@ Preferred command from the CherryStock repository root:
 .\scripts\render_archify_cherrystock.ps1
 ```
 
-Use another sans-serif font without modifying Archify or the architecture JSON:
+This command is mandatory after a high-level design change because it validates the current typed source and regenerates `CherryStock_High_Level.html` with the repository presentation layer.
+
+Use another initial sans-serif font without modifying Archify or the architecture JSON:
 
 ```powershell
 .\scripts\render_archify_cherrystock.ps1 -SansFont "IBM Plex Sans"
@@ -173,13 +188,15 @@ To render without automatically opening the browser:
 
 ### Manual deliver
 
-If the typography post-process is not required, raw Archify delivery remains available:
+If the CherryStock presentation post-process is intentionally not required for a temporary raw artifact, raw Archify delivery remains available:
 
 ```powershell
 New-Item -ItemType Directory -Force docs/architecture/generated | Out-Null
 $archify = "$env:USERPROFILE\.agents\skills\archify\bin\archify.mjs"
 node $archify deliver architecture docs/architecture/diagrams/cherrystock-high-level.architecture.json docs/architecture/generated/CherryStock_High_Level.html --repo-root . --quality showcase --open --json
 ```
+
+For committed high-level artifacts, the repository wrapper is preferred so generated HTML remains consistent with CherryStock presentation features.
 
 The HTML is a derived presentation artifact. The architectural facts remain governed by this document, related domain architecture documents, ADRs and runtime source.
 
@@ -202,7 +219,22 @@ The HTML is a derived presentation artifact. The architectural facts remain gove
 
 ## Maintenance Rule
 
-`SolutionArchitect.agent.md` should refresh this high-level map with Archify whenever an approved change materially alters a major runtime component, a top-level dependency/data path, the public consumer boundary, or the engineering control-plane relationship shown here. Domain-only changes that do not change this abstraction level should update their own architecture documents without churning the high-level map.
+Every approved design change must keep its relevant Archify diagram source and generated HTML synchronized as required by `.github/agents/SolutionArchitect.agent.md`.
+
+For changes that alter the high-level abstraction shown here, `SolutionArchitect` MUST update both:
+
+```text
+docs/architecture/diagrams/cherrystock-high-level.architecture.json
+docs/architecture/generated/CherryStock_High_Level.html
+```
+
+and regenerate the HTML with:
+
+```powershell
+.\scripts\render_archify_cherrystock.ps1
+```
+
+Domain-only design changes that do not affect this high-level abstraction do not need to churn the high-level map, but they still MUST update their own relevant Archify diagram + generated HTML pair under the mandatory synchronization contract.
 
 Typography customization is presentation-only. It must not alter architecture semantics, source evidence, diagram geometry or quality validation rules.
 
