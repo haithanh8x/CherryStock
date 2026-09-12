@@ -17,6 +17,34 @@ This document drills down the **Analytics & Calculation Engines** component from
 
 The diagram documents current repository evidence; it does not introduce a new calculation algorithm or runtime dependency.
 
+## Navigation Contract
+
+`CherryStock_High_Level.html` is the root/main architecture map. The high-level node with stable Archify id `analytics` drills down to this generated detail page:
+
+```text
+CherryStock_High_Level.html
+        │
+        │ double-click: Analytics & Calculation Engines
+        ▼
+CherryStock_Analytics_Calculation_Engines.html
+        │
+        └─ ← High Level
+```
+
+The mapping is configuration-driven in:
+
+```text
+docs/architecture/diagrams/cherrystock-archify-navigation.json
+```
+
+and is injected after every Archify delivery by:
+
+```text
+scripts/customize_archify_navigation.py
+```
+
+Both generated files live in the same `docs/architecture/generated/` directory, so navigation uses relative HTML links and works when opened locally as files as well as when hosted as static artifacts.
+
 ## Detailed Flow
 
 ```text
@@ -308,15 +336,20 @@ Generated HTML:
 docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html
 ```
 
-Validate and generate locally from the repository root:
+Preferred validation/render command:
 
 ```powershell
-.\scripts\render_archify_cherrystock.ps1 `
-  -Input "docs/architecture/diagrams/cherrystock-analytics-calculation-engines.architecture.json" `
-  -Output "docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html"
+.\scripts\render_archify_analytics.ps1
 ```
 
-The repository wrapper performs showcase validation, Archify delivery and the CherryStock typography/font-picker post-process.
+The shared repository renderer performs:
+
+```text
+showcase validation
+→ Archify delivery
+→ CherryStock typography/font picker
+→ CherryStock drill-down/back navigation
+```
 
 Until the command above succeeds and the generated HTML is committed, this drill-down remains `DRAFT_PENDING_ARCHIFY_RENDER` under the repository artifact synchronization contract.
 
