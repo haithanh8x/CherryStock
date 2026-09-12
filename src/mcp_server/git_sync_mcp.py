@@ -11,6 +11,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -24,9 +25,11 @@ _DEFAULT_TIMEOUT_SECONDS = 180
 
 try:
     from mcp.server import MCPServer
+    from mcp.server.transport_security import TransportSecuritySettings
     _MCP_SDK_V2 = True
 except ImportError:  # pragma: no cover - MCP SDK 1.x compatibility
     from mcp.server.fastmcp import FastMCP as MCPServer
+    TransportSecuritySettings = None  # type: ignore[assignment,misc]
     _MCP_SDK_V2 = False
 
 
@@ -50,6 +53,30 @@ def _bounded(value: str) -> str:
     if len(value) <= _MAX_OUTPUT_CHARS:
         return value
     return value[-_MAX_OUTPUT_CHARS:]
+
+
+def _transport_security() -> Any:
+    """Build an explicit Host allowlist for localhost and the configured tunnel."""
+    if TransportSecuritySettings is None:
+        return None
+
+    allowed_hosts = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    public_host = os.getenv("CHERRYSTOCK_GIT_MCP_PUBLIC_HOST", "").strip()
+    if public_host:
+        # Accept either a hostname or an https:// URL from configuration.
+        public_host = public_host.removeprefix("https://").removeprefix("http://").split("/", 1)[0]
+        public_host = public_host.split(":", 1)[0]
+        allowed_hosts.extend([public_host, f"{public_host}:*"])
+
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=[
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "http://[::1]:*",
+        ],
+    )
 
 
 @mcp.tool()
@@ -141,6 +168,7 @@ def main(argv: list[str] | None = None) -> None:
             streamable_http_path="/mcp",
             stateless_http=True,
             json_response=True,
+            transport_security=_transport_security(),
         )
         return
 
