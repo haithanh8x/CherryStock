@@ -1,5 +1,5 @@
 -- SmartMoneyScore V1 read-only preflight.
--- Run after scripts/initload/init_reload_smart_money_score.py.
+-- Run after scripts/initload/init_reload_smart_money_score.py or the normal SmartMoney runner.
 -- No DDL/DML.
 
 -- 1) Required objects.
@@ -131,6 +131,7 @@ SELECT
     FactorCoverage,
     DataQualityStatus,
     TradeAction,
+    TradeActionConfidenceScore,
     FreshFlowScore,
     RelativeLiquidityScore,
     LiquidityAccelerationScore,
@@ -146,12 +147,15 @@ WHERE Ticker = 'MWG'
 ORDER BY Date DESC
 LIMIT 20;
 
--- PASS: recent MWG rows exist; TradeAction is BUY/HOLD/SELL; scores are numeric; LimitUpScore may be NULL.
+-- PASS: recent MWG rows exist; TradeAction is BUY/HOLD/SELL; TradeActionConfidenceScore is 0..100; scores are numeric; LimitUpScore may be NULL.
 
 -- 9) TradeAction strategy contract.
 SELECT
     TradeAction,
-    COUNT(*) AS Rows
+    COUNT(*) AS Rows,
+    MIN(TradeActionConfidenceScore) AS MinTradeActionConfidenceScore,
+    AVG(TradeActionConfidenceScore) AS AvgTradeActionConfidenceScore,
+    MAX(TradeActionConfidenceScore) AS MaxTradeActionConfidenceScore
 FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
 GROUP BY TradeAction
 ORDER BY TradeAction;
@@ -171,7 +175,27 @@ WHERE TradeAction <>
         ELSE 'HOLD'
     END;
 
--- PASS: InvalidTradeAction = 0; TradeActionMappingMismatch = 0.
+SELECT COUNT(*) AS InvalidTradeActionConfidenceScore
+FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
+WHERE TradeActionConfidenceScore IS NULL
+   OR TradeActionConfidenceScore < 0
+   OR TradeActionConfidenceScore > 100;
+
+SELECT COUNT(*) AS TradeActionConfidenceAboveEvidence
+FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
+WHERE TradeActionConfidenceScore > ConfidenceScore + 0.000001;
+
+SELECT COUNT(*) AS NonPassTradeActionConfidenceMismatch
+FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
+WHERE DataQualityStatus <> 'PASS'
+  AND ABS(TradeActionConfidenceScore) > 0.000001;
+
+-- PASS:
+-- InvalidTradeAction = 0
+-- TradeActionMappingMismatch = 0
+-- InvalidTradeActionConfidenceScore = 0
+-- TradeActionConfidenceAboveEvidence = 0
+-- NonPassTradeActionConfidenceMismatch = 0
 
 -- 10) Factor/score relationship.
 SELECT COUNT(*) AS ScoreRowsWithoutFactors
