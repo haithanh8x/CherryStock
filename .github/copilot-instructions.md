@@ -73,6 +73,8 @@ Routing principles:
 - A small, explicit and contract-preserving change routes directly to `GeneralCoding`.
 - A concrete indicator lifecycle change routes directly to `Indicator_Management`; broad Indicator Engine redesign routes to `SolutionArchitect`.
 - Chart-type recommendation, analytical visualization mapping and Flint authoring/rendering route directly to `Chart`.
+- Architecture visualization, architecture/workflow/sequence/data-flow/lifecycle diagrams, and architecture-delta visualization route to `SolutionArchitect`; when visualization materially improves the design output, `SolutionArchitect` SHOULD use the installed `Archify` skill as its rendering/validation tool.
+- `Archify` is a tool of `SolutionArchitect`, not an authoritative agent and not a Source of Truth; architecture decisions remain governed by CherryStock docs, ADRs, repository evidence, and `SolutionArchitect.agent.md`.
 - Production chart/UI integration after the chart decision is ready routes to `GeneralCoding`; reusable chart architecture remains `SolutionArchitect`.
 - Implementation outcomes requiring verification hand off to `TestEngineer`.
 - `PASS` completes the task. `BLOCKED` stops execution and is reported to the user.
@@ -87,7 +89,7 @@ Before executing a task, classify its primary intent and select the authoritativ
 | Requirement analysis, clarification, scope, business rules, acceptance criteria, backlog creation/refinement or requirement decomposition | `.github/agents/BusinessAnalyst.agent.md` |
 | Onboard, add, activate, modify, repair, deactivate, or delete a technical indicator, its components, metadata, parameter/config family, or D/W/M configuration | `.github/agents/Indicator_Management.agent.md` |
 | Recommend/compare a chart, map an analytical question to a visualization, author a Flint ChartAssemblyInput, or validate/render/compile a chart with Flint | `.github/agents/Chart.agent.md` |
-| Architecture, system design, solution design, technical design, structural refactor, integration design, data architecture, MCP architecture, or AI/agent architecture | `.github/agents/SolutionArchitect.agent.md` |
+| Architecture, system design, solution design, technical design, structural refactor, integration design, data architecture, MCP architecture, AI/agent architecture, or architecture visualization | `.github/agents/SolutionArchitect.agent.md` (use `Archify` when architecture visualization materially improves the output) |
 | Clear implementation, focused bug fix, contract-preserving refactor, code/config/SQL/script/documentation change not owned end-to-end by a domain agent | `.github/agents/GeneralCoding.agent.md` |
 | Test design, test execution, validation, regression, reproduction, cross-check, acceptance, performance, or execution verification | `.github/agents/TestEngineer.agent.md` |
 
@@ -130,6 +132,8 @@ If the request changes reusable chart architecture or cross-page contracts, rout
 For architecture, system design, solution design, component design, technical design, data model, workflow design, integration design, architecture refactor, migration design or similar requests:
 
 MUST follow .github/agents/SolutionArchitect.agent.md before proposing the design.
+
+For architecture visualization, architecture/workflow/sequence/data-flow/lifecycle diagrams, or architecture-delta visualization, ownership remains with `SolutionArchitect`. Use the installed `Archify` skill when it materially improves communication or validation of the approved architecture. `Archify` MUST NOT replace repository context discovery, architecture reasoning, ADR decisions, or CherryStock Source-of-Truth documents.
 
 Design requests MUST use docs/00_HOME.md as the knowledge routing entry point and inspect relevant architecture documents, ADRs, domain references and existing source before finalizing a proposal.
 
@@ -190,6 +194,7 @@ Examples:
 - Database / DuckDB / SQL / transaction / data quality → .github/instructions/database.instructions.md
 - Technical indicator lifecycle / metadata / components / config families / activation / backfill / deactivation / deletion → .github/agents/Indicator_Management.agent.md + .github/instructions/indicators.instructions.md
 - Broad Indicator Engine architecture or cross-module redesign → .github/agents/SolutionArchitect.agent.md + .github/instructions/indicators.instructions.md
+- Architecture visualization / architecture, workflow, sequence, data-flow, lifecycle, architecture-delta diagrams → .github/agents/SolutionArchitect.agent.md + installed `Archify` skill
 - Chart recommendation / visualization selection / Flint authoring and render → .github/agents/Chart.agent.md + .github/skills/chart-authoring/SKILL.md + .github/instructions/chart.instructions.md
 - Production chart / visualization / UI chart contracts → .github/instructions/chart.instructions.md + owner selected by intent
 - Crawlers / ingestion / external data sources → .github/instructions/crawler.instructions.md
