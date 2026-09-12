@@ -100,8 +100,7 @@
       "sources": [
         {"path": "src/calcEngine/calcIndicators.py", "label": "Indicators"},
         {"path": "src/calcEngine/levelLadder.py", "label": "R/S Ladder"},
-        {"path": "src/calcEngine/smartMoneyScore.py", "label": "SmartMoneyScore"},
-        {"path": "docs/architecture/Analytics_Calculation_Engines.md", "label": "Drill-down architecture"}
+        {"path": "src/calcEngine/smartMoneyScore.py", "label": "SmartMoneyScore"}
       ]
     },
     {
