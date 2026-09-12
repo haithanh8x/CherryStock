@@ -31,10 +31,11 @@ A small explicit implementation request does not require a new backlog document.
 When the request involves architecture, system design, solution design, component design, technical design, data model, workflow, integration, migration or architecture refactor:
 
 1. Read ../.github/agents/SolutionArchitect.agent.md.
-2. Identify affected domain(s).
-3. Follow the related Architecture / ADR / Domain Knowledge links below.
-4. Read matching .github/instructions/*.instructions.md.
-5. Inspect current implementation and tests before finalizing the design.
+2. For system-level, high-level or cross-domain current-state work, read [[architecture/CherryStock_High_Level|CherryStock High-Level Architecture]].
+3. Identify affected domain(s).
+4. Follow the related Architecture / ADR / Domain Knowledge links below.
+5. Read matching .github/instructions/*.instructions.md.
+6. Inspect current implementation and tests before finalizing the design.
 
 ### Data / DuckDB
 - [[architecture/Data_Architecture|Data Architecture]]
@@ -89,6 +90,7 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 Testing requests should use the Test Engineer Agent first, then the testing instructions. Test execution must be bounded: one objective/hypothesis at a time, finite retry budget, explicit terminal verdict, and STOP after the objective is decided.
 
 ## Architecture
+- [[architecture/CherryStock_High_Level|CherryStock High-Level Architecture (Archify)]]
 - [[architecture/agent-harness/README|Agent Harness Architecture]]
 - [[architecture/Second_Brain|Second Brain Architecture]]
 - [[architecture/Indicator_Engine|Indicator Engine]]
