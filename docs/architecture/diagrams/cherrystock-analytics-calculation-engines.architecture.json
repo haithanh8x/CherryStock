@@ -17,7 +17,7 @@
       "id": "daily_orchestrator",
       "type": "backend",
       "label": "Daily Analytics Orchestration",
-      "sublabel": "SyncWritePipelineService · shared UoW",
+      "sublabel": "daily pipeline · shared UoW",
       "pos": [30, 80],
       "size": [200, 72],
       "sources": [
@@ -29,7 +29,7 @@
       "id": "composite_index",
       "type": "backend",
       "label": "Composite Index Engine",
-      "sublabel": "VNINDEX_NOT_VIN · divisor-adjusted",
+      "sublabel": "VNINDEX_NOT_VIN · divisor",
       "pos": [280, 80],
       "size": [190, 72],
       "sources": [
@@ -51,7 +51,7 @@
       "id": "indicator_engine",
       "type": "backend",
       "label": "Technical Indicator Engine",
-      "sublabel": "metadata-driven · D/W/M · incremental",
+      "sublabel": "metadata-driven · D/W/M",
       "pos": [760, 80],
       "size": [190, 72],
       "sources": [
@@ -64,7 +64,7 @@
       "id": "smart_money",
       "type": "backend",
       "label": "SmartMoneyScore Engine",
-      "sublabel": "features · state · score · confidence",
+      "sublabel": "feature · state · score",
       "pos": [1000, 80],
       "size": [220, 72],
       "sources": [
@@ -76,7 +76,7 @@
       "id": "analytics_inputs",
       "type": "database",
       "label": "Analytics Input Contracts",
-      "sublabel": "raw_* · FA · OHLC · indicator config",
+      "sublabel": "raw_* · FA · OHLC · config",
       "pos": [25, 260],
       "size": [210, 92],
       "sources": [
@@ -89,7 +89,7 @@
       "id": "index_store",
       "type": "database",
       "label": "Composite Index Persistence",
-      "sublabel": "cal_Indexes · INDEX_NAME/Date",
+      "sublabel": "cal_Indexes · index/date",
       "pos": [280, 260],
       "size": [190, 80],
       "sources": [
@@ -100,7 +100,7 @@
       "id": "trend_store",
       "type": "database",
       "label": "Trend Persistence",
-      "sublabel": "cal_Trends · Ticker/Date",
+      "sublabel": "cal_Trends · ticker/date",
       "pos": [520, 260],
       "size": [190, 80],
       "sources": [
@@ -111,7 +111,7 @@
       "id": "indicator_store",
       "type": "database",
       "label": "Indicator Persistence",
-      "sublabel": "cal_indicator_values · long format",
+      "sublabel": "cal_indicator_values · long",
       "pos": [760, 260],
       "size": [190, 80],
       "sources": [
@@ -123,7 +123,7 @@
       "id": "smart_store",
       "type": "database",
       "label": "SmartMoney Persistence",
-      "sublabel": "factor values · ticker score",
+      "sublabel": "factors · ticker score",
       "pos": [1000, 260],
       "size": [220, 80],
       "sources": [
@@ -135,7 +135,7 @@
       "id": "indicator_public",
       "type": "database",
       "label": "Indicator Public Contract",
-      "sublabel": "vw_Ticker_indicators · vw_Indicator_config",
+      "sublabel": "values · config SSOT",
       "pos": [760, 440],
       "size": [190, 80],
       "sources": [
@@ -146,7 +146,7 @@
       "id": "smart_public",
       "type": "database",
       "label": "SmartMoney Public Contract",
-      "sublabel": "vw_Ticker_SmartMoney",
+      "sublabel": "ticker score · public view",
       "pos": [1000, 440],
       "size": [220, 80],
       "sources": [
@@ -157,7 +157,7 @@
       "id": "rs_runtime",
       "type": "backend",
       "label": "R/S Runtime Ladder",
-      "sublabel": "levels → zones → strength → S/R rank",
+      "sublabel": "levels · zones · strength · rank",
       "pos": [760, 610],
       "size": [190, 80],
       "sources": [
@@ -169,7 +169,7 @@
       "id": "consumers",
       "type": "frontend",
       "label": "Analytical Consumers",
-      "sublabel": "Web · Chart · Screener · API/ML",
+      "sublabel": "Web · Chart · Screener · API",
       "pos": [1000, 610],
       "size": [220, 80],
       "sources": [
@@ -181,7 +181,7 @@
       "id": "monthly_orchestrator",
       "type": "backend",
       "label": "Monthly R/S Orchestration",
-      "sublabel": "runMonthly.py · full-universe evaluation",
+      "sublabel": "runMonthly.py · full evaluation",
       "pos": [520, 780],
       "size": [190, 72],
       "sources": [
@@ -193,7 +193,7 @@
       "id": "rs_evaluation",
       "type": "backend",
       "label": "R/S Historical Evaluation",
-      "sublabel": "baseline/ablation · effectiveness",
+      "sublabel": "baseline/ablation · effect",
       "pos": [760, 780],
       "size": [190, 72],
       "sources": [
@@ -206,7 +206,7 @@
       "id": "rs_research_store",
       "type": "database",
       "label": "R/S Research Persistence",
-      "sublabel": "effectiveness · promotion audit · public view",
+      "sublabel": "effectiveness · promotion audit",
       "pos": [1000, 776],
       "size": [220, 80],
       "sources": [
