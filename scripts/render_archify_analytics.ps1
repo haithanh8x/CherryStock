@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $renderer = Join-Path $PSScriptRoot "render_archify_cherrystock.ps1"
 
-if (-not (Test-Path $renderer)) {
+if (-not (Test-Path $renderer -PathType Leaf)) {
     throw "CherryStock Archify renderer not found: $renderer"
 }
 
@@ -18,8 +18,8 @@ $outputPath = "docs/architecture/generated/CherryStock_Analytics_Calculation_Eng
 Push-Location $repoRoot
 try {
     & $renderer `
-        -Input $inputPath `
-        -Output $outputPath `
+        -InputPath $inputPath `
+        -OutputPath $outputPath `
         -SansFont $SansFont `
         -NoOpen:$NoOpen
 
