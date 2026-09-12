@@ -69,49 +69,66 @@ def main() -> int:
 
     for block in blocks:
         total = int(block["total_tickers"])
-        action_total = sum(int(block["action_counts"].get(action, 0)) for action in TRADE_ACTION_ORDER)
+        action_total = sum(
+            int(block["action_counts"].get(action, 0))
+            for action in TRADE_ACTION_ORDER
+        )
         if action_total != total:
             raise RuntimeError(
-                f"TradeAction breakdown mismatch for {block['market_state']}: "
+                f"TradeAction summary mismatch for {block['market_state']}: "
                 f"total={total}, action_total={action_total}"
             )
 
-        block_confidences = [
+        rows = list(block["rows"])
+        if len(rows) != total:
+            raise RuntimeError(
+                f"MarketState row coverage mismatch for {block['market_state']}: "
+                f"rows={len(rows)}, total={total}"
+            )
+
+        confidences = [
             float(row["TradeActionConfidenceScore"])
-            for row in block["rows"]
+            for row in rows
         ]
-        if block_confidences != sorted(block_confidences, reverse=True):
+        if confidences != sorted(confidences, reverse=True):
             raise RuntimeError(
                 f"Ticker confidence ranking is not descending for {block['market_state']}"
             )
 
-        for action in TRADE_ACTION_ORDER:
-            action_rows = list(block["action_rows"].get(action, []))
-            if len(action_rows) != int(block["action_counts"].get(action, 0)):
+        expected_tickers = [str(row["Ticker"]).upper() for row in rows]
+        sequence = str(block.get("ticker_sequence") or "")
+        normalized_sequence = sequence.replace("**", "")
+        actual_tickers = normalized_sequence.split(", ") if normalized_sequence else []
+        if actual_tickers != expected_tickers:
+            raise RuntimeError(
+                f"Ticker sequence mismatch for {block['market_state']}: "
+                f"expected={expected_tickers}, actual={actual_tickers}"
+            )
+
+        if len(expected_tickers) >= 2:
+            expected_prefix = f"**{expected_tickers[0]}, {expected_tickers[1]}**"
+            if not sequence.startswith(expected_prefix):
                 raise RuntimeError(
-                    f"TradeAction subgroup count mismatch for {block['market_state']} / {action}"
+                    f"Top-two ticker emphasis mismatch for {block['market_state']}"
                 )
-            action_confidences = [
-                float(row["TradeActionConfidenceScore"])
-                for row in action_rows
-            ]
-            if action_confidences != sorted(action_confidences, reverse=True):
-                raise RuntimeError(
-                    f"Confidence ranking is not descending for "
-                    f"{block['market_state']} / {action}"
-                )
+        elif len(expected_tickers) == 1 and sequence != f"**{expected_tickers[0]}**":
+            raise RuntimeError(
+                f"Single ticker emphasis mismatch for {block['market_state']}"
+            )
 
     print("SMART MONEY UI SNAPSHOT — PASS")
     print(f"Date: {dates[0]}")
     print(f"Tickers: {snapshot_tickers}")
     for block in blocks:
         counts = block["action_counts"]
+        actions = " ".join(
+            f"{action}={counts.get(action, 0)}"
+            for action in TRADE_ACTION_ORDER
+            if int(counts.get(action, 0)) > 0
+        ) or "NO_TICKER"
         print(
             f"{block['stage']:02d}. {block['market_state']}: "
-            f"total={block['total_tickers']} "
-            f"BUY={counts.get('BUY', 0)} "
-            f"HOLD={counts.get('HOLD', 0)} "
-            f"SELL={counts.get('SELL', 0)}"
+            f"total={block['total_tickers']} {actions}"
         )
     return 0
 
