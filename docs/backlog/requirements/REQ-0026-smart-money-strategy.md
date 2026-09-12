@@ -175,9 +175,32 @@ TradeActionConfidenceScore
     = min(ConfidenceScore, CandidateActionConfidence)
 ```
 
-và round 2 chữ số thập phân.
+Public view phải giữ full calculation precision cho `TradeActionConfidenceScore`. Không được round trước khi trả về vì upward rounding có thể làm `TradeActionConfidenceScore > ConfidenceScore`. UI/report consumer được phép round chỉ ở presentation layer.
 
 Nếu một state có explicit factor list ở bảng trên nhưng factor bắt buộc bị NULL trên public view, `TradeActionConfidenceScore = 0` để lộ rõ inconsistency thay vì silently tăng confidence.
+
+### FR-13 — Historical deployment validation
+
+Deployment acceptance của extension này phải chạy canonical full historical SmartMoney initload:
+
+```powershell
+python scripts\initload\init_reload_smart_money_score.py
+```
+
+và chứng minh:
+
+```text
+ScoreRows > 0
+ViewRows = ScoreRows
+ViewMinDate = ScoreMinDate
+ViewMaxDate = ScoreMaxDate
+InvalidRange = 0
+AboveUpstreamConfidence = 0
+NonPassConfidenceMismatch = 0
+InvalidTradeAction = 0
+```
+
+Strategy fields vẫn là derived view fields; full historical initload được yêu cầu để validate underlying historical score/factor coverage và public historical contract end-to-end.
 
 ## Business Rules
 
@@ -191,10 +214,11 @@ Nếu một state có explicit factor list ở bảng trên nhưng factor bắt 
 8. `HOLD` có nghĩa **không phát sinh hành động mới từ Strategy V1**. Với ticker chưa có vị thế, có thể đọc là `WAIT`; không đồng nghĩa bắt buộc phải tiếp tục nắm giữ.
 9. `TradeActionConfidenceScore` đo độ tin cậy của strategy classification hiện tại; nó **không phải** win probability, expected return, risk/reward ratio hay position-sizing signal.
 10. `TradeActionConfidenceScore` không bao giờ được lớn hơn upstream `ConfidenceScore`.
-11. Với state có nhiều điều kiện, weakest confirming factor được dùng làm `StateEvidenceStrength` để tránh một factor cực mạnh che lấp một factor chỉ vừa đủ hoặc yếu.
-12. `TradeAction` là technical strategy classification, không phải lệnh giao dịch và không thực hiện order execution.
-13. Mapping và confidence phải deterministic và point-in-time vì chỉ dùng dữ liệu của cùng row/date.
-14. Nếu thay đổi materially mapping BUY/HOLD/SELL hoặc công thức action confidence trong tương lai, phải version hóa strategy semantics thay vì âm thầm thay đổi cách diễn giải lịch sử.
+11. Public contract giữ full precision; presentation rounding không được thay đổi business invariant.
+12. Với state có nhiều điều kiện, weakest confirming factor được dùng làm `StateEvidenceStrength` để tránh một factor cực mạnh che lấp một factor chỉ vừa đủ hoặc yếu.
+13. `TradeAction` là technical strategy classification, không phải lệnh giao dịch và không thực hiện order execution.
+14. Mapping và confidence phải deterministic và point-in-time vì chỉ dùng dữ liệu của cùng row/date.
+15. Nếu thay đổi materially mapping BUY/HOLD/SELL hoặc công thức action confidence trong tương lai, phải version hóa strategy semantics thay vì âm thầm thay đổi cách diễn giải lịch sử.
 
 ## Scope
 
@@ -205,6 +229,7 @@ Nếu một state có explicit factor list ở bảng trên nhưng factor bắt 
 - BUY/HOLD/SELL mapping từ primary `MarketState`.
 - Data-quality gate trước khi phát BUY/SELL.
 - State-evidence-strength confidence overlay.
+- Full historical deployment validation.
 - Documentation và focused validation cho mapping/confidence.
 - Backward-compatible public-view extension.
 
@@ -272,7 +297,7 @@ Then the user can trace action → action confidence → quality gate → Market
 
 ### AC-09 — Confidence range and cap
 
-Given any public row  
+Given any public row, including upstream `ConfidenceScore` values with more than two decimal places  
 When `TradeActionConfidenceScore` is read  
 Then it is non-NULL, lies in `0..100`, and is not greater than `ConfidenceScore`.
 
@@ -286,7 +311,7 @@ Then `TradeActionConfidenceScore = 0`.
 
 Given a PASS row in a state with explicit confirming factors  
 When `TradeActionConfidenceScore` is calculated  
-Then it uses the documented weakest-factor `StateEvidenceStrength`, 60/40 blend, upstream-confidence cap and 2-decimal rounding.
+Then it uses the documented weakest-factor `StateEvidenceStrength`, 60/40 blend and upstream-confidence cap without view-level rounding.
 
 ### AC-12 — Missing required action evidence
 
@@ -294,12 +319,19 @@ Given a PASS row whose persisted state requires explicit public factors but one 
 When the public view is read  
 Then `TradeActionConfidenceScore = 0` rather than silently inferring high confidence.
 
+### AC-13 — Historical deployment contract
+
+Given the canonical historical initload is executed  
+When deployment validation completes  
+Then score/view row counts and min/max dates match, and all action-confidence violation counters are zero before metadata export and acceptance.
+
 ## Non-functional Requirements
 
 - Performance: action/confidence must be computed from fields already participating in the public view; no new persistence scan or external data source.
 - Reliability: mapping and confidence must be deterministic and non-NULL for every public row.
+- Precision: business invariants apply to full-precision public values; UI/report rounding is presentation-only.
 - Security: Not applicable; no credential or authorization change.
-- Observability: SQL preflight must validate allowed action values, mapping consistency, confidence range, upstream cap and non-PASS zero rule.
+- Observability: SQL/pre-initload validation must validate allowed action values, mapping consistency, confidence range, upstream cap and non-PASS zero rule.
 - Compatibility: additive public-view columns only; existing columns/grain and internal persistence remain unchanged.
 
 ## Dependencies
@@ -347,6 +379,6 @@ Then `TradeActionConfidenceScore = 0` rather than silently inferring high confid
 ```text
 Status: IMPLEMENTED_PENDING_VALIDATION
 Primary next owner: TestEngineer
-Acceptance criteria count: 12
+Acceptance criteria count: 13
 Blocking questions: None
 ```
