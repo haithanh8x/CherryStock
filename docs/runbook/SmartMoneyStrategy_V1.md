@@ -5,24 +5,23 @@
 - **Upstream model:** `docs/architecture/SmartMoneyScore.md`
 - **Python execution convention:** `docs/development/Python_Execution_Conventions.md`
 - **Public contract:** `"CherryMon"."main"."vw_Ticker_SmartMoney"`
-- **Strategy column:** `TradeAction`
+- **Strategy outputs:** `TradeAction`, `TradeActionConfidenceScore`
 - **Validation owner:** `TestEngineer`
 - **Execution target:** local CherryStock repository + local CherryMon DuckDB
-- **Status:** `FUNCTIONALLY_VALIDATED`
+- **Status before this validation:** `IMPLEMENTED_PENDING_VALIDATION`
 
 ## 1. Objective
 
-Validate that the local CherryStock environment has correctly deployed and can safely consume the SmartMoneyStrategy V1 mapping:
+Validate local deployment of SmartMoneyStrategy V1 with both public strategy outputs:
 
 ```text
-BUY / HOLD / SELL
+TradeAction                 = BUY / HOLD / SELL
+TradeActionConfidenceScore  = 0..100
 ```
 
-from the existing SmartMoney public view without changing SmartMoneyScore calculation semantics or historical persistence.
+without changing SmartMoneyScore persistence or historical factor/score calculations.
 
-This runbook incorporates the execution lessons found during the first local validation on 2026-09-12, especially Python import/collection behavior and direct-script path bootstrapping.
-
-The local agent MUST end with exactly one terminal verdict:
+The local agent MUST finish with exactly one verdict:
 
 ```text
 PASS
@@ -31,7 +30,7 @@ BLOCKED
 REGRESSION
 ```
 
-and one terminal action:
+and one action:
 
 ```text
 KEEP
@@ -40,7 +39,7 @@ REVERT
 STOP
 ```
 
-After a terminal verdict, STOP. Do not automatically investigate another hypothesis.
+After a terminal verdict, STOP.
 
 ---
 
@@ -48,61 +47,54 @@ After a terminal verdict, STOP. Do not automatically investigate another hypothe
 
 ## In scope
 
-- sync the latest `main` branch safely;
-- verify required SmartMoneyStrategy files exist;
-- verify Python import/collection contract before functional tests;
-- run focused strategy tests;
-- run the nearest SmartMoney integration regression test;
-- execute the normal SmartMoney schema/incremental path so the local view is recreated with `TradeAction`;
-- run read-only SmartMoney preflight;
-- verify `TradeAction` values and mapping against real local data;
-- refresh generated DuckDB metadata after the local view change;
-- record a finite TestEngineer verdict.
+- safely sync latest `main`;
+- verify Python import/collection contract;
+- run focused strategy unit test;
+- run nearest SmartMoney integration regression;
+- recreate local Smart Money public view through the normal runner;
+- validate `TradeAction` mapping;
+- validate `TradeActionConfidenceScore` range, upstream-confidence cap and quality gate;
+- run read-only preflight;
+- inspect real local action/confidence distribution;
+- export generated DB metadata;
+- produce finite TestEngineer evidence.
 
 ## Out of scope
 
-- changing BUY/HOLD/SELL business rules;
-- recalibrating SmartMoneyScore weights or thresholds;
-- full SmartMoney historical initload unless a separate requirement explicitly asks for it;
-- OOS/effectiveness research;
-- changing `MarketState` rules;
-- changing `ConfidenceScore` or `DataQualityStatus` rules;
-- adding position sizing, stop loss, take profit or order execution;
-- refactoring unrelated code;
-- changing repository-wide Python packaging beyond the approved execution convention.
+- changing BUY/HOLD/SELL state mapping;
+- changing the documented 60/40 confidence blend during validation;
+- SmartMoney factor/state threshold recalibration;
+- predictive win-probability research;
+- position sizing / stop loss / take profit / order execution;
+- full SmartMoney historical initload unless separate evidence proves persistence invalid;
+- unrelated refactor.
 
 ---
 
-# 3. Why full historical initload is NOT required
+# 3. Persistence boundary
 
-`TradeAction` is not persisted in:
+Neither strategy field is persisted in:
 
 ```text
 cal_smart_money_ticker_score
 cal_smart_money_factor_values
 ```
 
-It is derived by the public view:
+Both are derived by:
 
 ```text
 vw_Ticker_SmartMoney
 ```
 
-Therefore recreating the view immediately exposes `TradeAction` for all already-persisted historical SmartMoney rows.
+Therefore recreating the view exposes the new field for already-persisted historical rows.
 
-Do NOT run:
-
-```powershell
-python scripts\initload\init_reload_smart_money_score.py
-```
-
-for this strategy-only rollout unless another failure proves that historical SmartMoney persistence itself is invalid.
+Do NOT run a full historical SmartMoney initload merely to add `TradeActionConfidenceScore`.
 
 ---
 
-# 4. Mandatory context for the local agent
+# 4. Mandatory context
 
-Before execution, read only this context set:
+Read only the smallest relevant set:
 
 ```text
 .github/copilot-instructions.md
@@ -124,48 +116,39 @@ tests/test_smart_money_integration.py
 
 Do not scan unrelated repository areas.
 
-The historical execution issue export from the first validation is not a canonical instruction source. Reusable lessons belong in the Python execution convention and this runbook.
-
 ---
 
-# 5. Python execution contract for this runbook
+# 5. Python execution contract
 
-All commands below are executed from repository root:
+Run all commands from repository root:
 
 ```text
 C:\Github\CherryStock
 ```
 
-Canonical rules:
+Rules:
 
 ```text
 pytest
-    → run with python -m pytest from repository root
-    → pytest config exposes src for production imports
+    → python -m pytest ...
+    → use --collect-only before classifying an integration failure as behavioral regression
 
 direct script
     → python scripts\x.py
     → script must bootstrap repository path itself
-    → no manual developer-specific PYTHONPATH required
+    → do not require developer-specific PYTHONPATH
 
 python -c / python -
-    → run from repository root
-    → repository root is available to src.* imports
+    → execute from repository root
 ```
 
-Do NOT make the runbook pass by setting an undocumented path such as:
-
-```powershell
-$env:PYTHONPATH="C:\Github\CherryStock"
-```
-
-If a canonical direct script still needs manual `PYTHONPATH`, classify it as an execution-contract defect and apply one focused fix to the script/config instead.
+Do not make a canonical command pass by adding an undocumented absolute-path `PYTHONPATH`.
 
 ---
 
-# 6. Rule under validation
+# 6. Strategy contracts under validation
 
-The public view must expose exactly this deterministic strategy mapping:
+## 6.1 TradeAction
 
 ```sql
 CASE
@@ -178,82 +161,83 @@ CASE
         'SUPPLY_LOCK'
     ) THEN 'BUY'
     ELSE 'HOLD'
-END AS TradeAction
+END
 ```
 
-Expected semantics:
+## 6.2 TradeActionConfidenceScore
 
-| Condition | Expected `TradeAction` |
+Hard invariants:
+
+```text
+non-NULL
+0 <= TradeActionConfidenceScore <= 100
+TradeActionConfidenceScore <= ConfidenceScore
+DataQualityStatus != PASS → TradeActionConfidenceScore = 0
+```
+
+PASS rows use:
+
+```text
+CandidateActionConfidence
+    = 0.60 * ConfidenceScore
+    + 0.40 * StateEvidenceStrength
+
+TradeActionConfidenceScore
+    = min(ConfidenceScore, CandidateActionConfidence)
+```
+
+StateEvidenceStrength:
+
+| MarketState | Evidence strength |
 |---|---|
-| `DataQualityStatus <> PASS` | `HOLD` |
-| `PASS + DISTRIBUTION` | `SELL` |
-| `PASS + ACCUMULATION` | `BUY` |
-| `PASS + BREAKOUT` | `BUY` |
-| `PASS + DEMAND_EXPANSION` | `BUY` |
-| `PASS + SUPPLY_LOCK` | `BUY` |
-| `PASS + MARKUP` | `HOLD` |
-| `PASS + LIQUIDITY_DRYUP` | `HOLD` |
-| `PASS + SELLING_CLIMAX` | `HOLD` |
-| `PASS + NEUTRAL` | `HOLD` |
+| ACCUMULATION | min(AccumulationScore, AccumulationMemoryScore) |
+| BREAKOUT | min(FreshFlowScore, RelativeLiquidityScore, RelativeStrengthScore) |
+| DEMAND_EXPANSION | min(RelativeLiquidityScore, LiquidityAccelerationScore, RelativeStrengthScore) |
+| SUPPLY_LOCK | min(SupplyLockScore, AccumulationMemoryScore) |
+| DISTRIBUTION | DistributionScore |
+| MARKUP | min(TrendScore, RelativeStrengthScore) |
+| SELLING_CLIMAX | min(DistributionScore, RelativeLiquidityScore) |
+| LIQUIDITY_DRYUP | ConfidenceScore |
+| NEUTRAL | ConfidenceScore |
 
-The local production dataset is NOT required to contain all three actions on the latest date. The synthetic focused test owns complete branch coverage.
+For states with explicit required public factors, missing required factor evidence must yield action confidence `0`.
+
+Do not interpret this score as future-return probability.
 
 ---
 
-# 7. Phase 0 — Define the single validation objective
+# 7. Phase 0 — Define objective
 
-The local agent must write this before executing commands:
+Before execution write:
 
 ```text
-Objective: validate local deployment and real-data contract of SmartMoneyStrategy V1 TradeAction without changing strategy rules.
-
-In scope:
-- Python import/collection contract
-- schema/view deployment
-- focused tests
-- integration regression
-- read-only real-data verification
-- metadata refresh
-
-Out of scope:
-- strategy redesign
-- SmartMoneyScore recalibration
-- full historical initload
+Objective: validate local TradeAction and TradeActionConfidenceScore public contracts without changing strategy rules or SmartMoney persistence.
 ```
 
 Stop condition:
 
 ```text
-PASS / FAIL / BLOCKED / REGRESSION + KEEP / FIX ONCE / REVERT / STOP
+PASS / FAIL / BLOCKED / REGRESSION
++
+KEEP / FIX ONCE / REVERT / STOP
 ```
 
 ---
 
-# 8. Phase 1 — Sync repository safely
-
-Run from the CherryStock repository root in PowerShell.
+# 8. Phase 1 — Safe repository sync
 
 ```powershell
 git status --short
 ```
 
-### Expected
-
-No unexpected local modifications.
-
-### If output is non-empty
-
-Do NOT discard, reset, stash or overwrite user work automatically.
-
-Return:
+If non-empty, do not reset/stash/discard automatically:
 
 ```text
 Verdict: BLOCKED
 Action: STOP
-Reason: working tree contains uncommitted changes; safe sync cannot be guaranteed.
 ```
 
-If clean, continue:
+If clean:
 
 ```powershell
 git fetch origin
@@ -262,152 +246,79 @@ git pull --ff-only origin main
 git log -1 --oneline
 ```
 
-Then verify the expected files:
+Verify:
 
 ```powershell
 Test-Path docs\architecture\SmartMoneyStrategy.md
 Test-Path docs\runbook\SmartMoneyStrategy_V1.md
-Test-Path docs\development\Python_Execution_Conventions.md
 Test-Path docs\backlog\requirements\REQ-0026-smart-money-strategy.md
 Test-Path tests\test_smart_money_strategy.py
+Test-Path tests\test_smart_money_integration.py
 Test-Path src\DuckDB\sql\smart_money_v1_schema.sql
 Test-Path src\DuckDB\sql\smart_money_v1_preflight.sql
-Test-Path scripts\run_smart_money_preflight.py
 ```
 
-### PASS
-
-All commands return `True` for the expected files.
-
-### BLOCKED
-
-Any required file is missing after successful `git pull --ff-only`.
-
-Do not invent a replacement file.
+All must be `True`.
 
 ---
 
-# 9. Phase 2 — Python compile and pytest collection sanity
-
-First verify interpreter and compile the runnable scripts:
+# 9. Phase 2 — Compile and collection sanity
 
 ```powershell
 python --version
 python -m py_compile scripts\run_smart_money.py
 python -m py_compile scripts\run_smart_money_preflight.py
+python -m pytest tests\test_smart_money_strategy.py tests\test_smart_money_integration.py --collect-only -q
 ```
 
-Then verify pytest can collect both SmartMoney test modules before treating any assertion failure as a functional regression:
+A collection/import failure is an execution-contract FAIL, not automatically a strategy regression.
 
-```powershell
-python -m pytest tests\test_smart_money_strategy.py --collect-only -q
-python -m pytest tests\test_smart_money_integration.py --collect-only -q
-```
-
-### PASS
-
-- compile commands exit `0`;
-- both pytest modules collect successfully;
-- no `ModuleNotFoundError` / `ImportError` occurs during collection.
-
-### Collection/import failure
-
-A collection error is NOT automatically a SmartMoney functional regression.
-
-Classify as:
+Diagnostic path:
 
 ```text
-Verdict: FAIL
-Category: Python import/execution contract
-Action: FIX ONCE
+1. Read first relevant traceback.
+2. Identify unresolved module/import.
+3. Compare with docs/development/Python_Execution_Conventions.md and one known-good neighbor.
+4. Apply one focused correction.
+5. Retest once.
+6. Same failure without new evidence → STOP.
 ```
-
-Use the finite diagnostic in Section 10. Apply at most one focused correction and rerun only the failed collection command once.
-
-If collection still fails with the same cause:
-
-```text
-Verdict: FAIL
-Action: STOP
-```
-
-Do not continue to functional tests.
 
 ---
 
-# 10. Import/collection diagnostic — finite path
-
-If Phase 2 reports `ModuleNotFoundError`, `ImportError` or pytest collection failure:
-
-```text
-Step 1: Read the first relevant traceback and identify the unresolved module.
-Step 2: Check docs/development/Python_Execution_Conventions.md.
-Step 3: Compare with ONE known-good neighboring test/script of the same invocation type.
-Step 4: Check whether the failure is test import style, pytest path config, or direct-script bootstrap.
-Step 5: Apply ONE focused correction.
-Step 6: Rerun the exact failed collection/command ONCE.
-Step 7: PASS or STOP.
-```
-
-Do not repeatedly run equivalent `Select-String`, grep, `sys.path` inspection or the same failing command without new evidence.
-
-For tests, current preferred repository-root form is:
-
-```python
-from src.calcEngine.smartMoneyScore import refresh_smart_money_score
-from src.cherrystock.infrastructure.database.repositories.smart_money_repository import (
-    SmartMoneyRepository,
-)
-```
-
-Pytest path configuration is owned by `pyproject.toml`. Do not introduce a user-specific shell `PYTHONPATH` workaround as the permanent fix.
-
----
-
-# 11. Phase 3 — Focused strategy unit test
-
-Run the narrowest strategy test first:
+# 10. Phase 3 — Focused strategy test
 
 ```powershell
 python -m pytest tests\test_smart_money_strategy.py -v
 ```
 
-This test must cover at minimum:
+The test must prove at minimum:
 
 ```text
-PASS + bullish state      -> BUY
-PASS + DISTRIBUTION       -> SELL
-PASS + neutral/non-action -> HOLD
-WARNING/INVALID           -> HOLD
-only BUY/HOLD/SELL values
+PASS bullish states → BUY
+PASS DISTRIBUTION → SELL
+PASS management/neutral states → HOLD
+WARNING/INVALID → HOLD
+WARNING/INVALID action confidence → 0
+confidence values are deterministic
+0 <= action confidence <= 100
+action confidence <= upstream ConfidenceScore
 ```
 
-### PASS
+One focused repair is allowed if the failure belongs directly to this implementation.
 
-All tests in `tests/test_smart_money_strategy.py` pass.
-
-### FAIL
-
-If the assertion failure is caused by the current strategy change:
-
-```text
-Action: FIX ONCE
-```
-
-One focused fix is allowed, followed by one retest.
-
-If the same behavior still fails after the focused repair:
+If the same focused behavior still fails after repair:
 
 ```text
 Verdict: FAIL
 Action: STOP
 ```
 
-Do not continue to integration or real-data execution.
-
 ---
 
-# 12. Phase 4 — Nearest SmartMoney integration regression
+# 11. Phase 4 — Integration regression
+
+First collection was already validated in Phase 2.
 
 Run:
 
@@ -415,17 +326,9 @@ Run:
 python -m pytest tests\test_smart_money_integration.py -v
 ```
 
-This is the nearest persistence/public-view regression boundary. It checks schema bootstrap, SmartMoney calculation persistence, public view readability and incremental/full convergence behavior on the synthetic DuckDB fixture.
+This checks SmartMoney persistence/public-view/incremental behavior on synthetic DuckDB data.
 
-### PASS
-
-All integration tests pass.
-
-### REGRESSION
-
-Only classify `REGRESSION` when the module collected and executed successfully, and a previously valid SmartMoney persistence/incremental behavior now fails because of the current change.
-
-On regression:
+If existing behavior breaks because of this public-view extension:
 
 ```text
 Verdict: REGRESSION
@@ -436,130 +339,82 @@ Do not broaden into unrelated SmartMoney refactoring.
 
 ---
 
-# 13. Phase 5 — Deploy/recreate the local public view through the normal path
+# 12. Phase 5 — Recreate local public view
 
-Use the normal SmartMoney operational runner rather than ad-hoc `duckdb.connect()` calls.
-
-Run:
+Use the normal operational path:
 
 ```powershell
 python scripts\run_smart_money.py --days 15
 ```
 
-The runner performs:
+Expected flow:
 
 ```text
 DuckDBUnitOfWork
-    ↓
-execute smart_money_v1_schema.sql
-    ↓
-CREATE OR REPLACE vw_Ticker_SmartMoney
-    ↓
-bounded SmartMoney incremental refresh
-    ↓
-COMMIT
+→ execute smart_money_v1_schema.sql
+→ CREATE OR REPLACE vw_Ticker_SmartMoney
+→ bounded incremental SmartMoney refresh
+→ COMMIT
 ```
 
-`TradeAction` is derived by the recreated public view. Existing historical persisted score rows immediately inherit the new public column.
-
-### Expected output
-
-A summary containing:
+Expected summary includes:
 
 ```text
 status = OK
-score_rows_upserted > 0
-factor_rows_upserted > 0
 ```
 
-Exact counts depend on current local data and requested checkpoint window.
+and normal score/factor upsert counts appropriate to local data.
 
-### Failure behavior
-
-The runner uses the project UnitOfWork. A write failure must not be bypassed with an ad-hoc direct DuckDB writer.
-
-If it fails:
-
-```text
-Verdict: FAIL or BLOCKED
-Action: STOP
-```
-
-Capture the exact exception and command. Do not run full initload automatically.
+If the runner fails, capture exact command/exception/HEAD/config context and STOP. Do not bypass project transaction policy with ad-hoc direct writes.
 
 ---
 
-# 14. Phase 6 — Read-only SmartMoney preflight
-
-Run directly from repository root:
+# 13. Phase 6 — Read-only preflight
 
 ```powershell
 python scripts\run_smart_money_preflight.py
 ```
 
-The script now owns its repository-path bootstrap. The command MUST NOT require a manual developer-specific `PYTHONPATH`.
-
-If the command fails only because repository code cannot be imported, classify that as a direct-script execution-contract failure and follow Section 10 once. Do not workaround it by permanently setting a local absolute `PYTHONPATH`.
-
-The runner executes `src/DuckDB/sql/smart_money_v1_preflight.sql` statement-by-statement using read-only DuckDB access.
-
-For SmartMoneyStrategy specifically, verify the output includes these contracts:
+Required strategy checks:
 
 ```text
-TradeAction distribution query executes successfully
 InvalidTradeAction = 0
 TradeActionMappingMismatch = 0
+InvalidTradeActionConfidenceScore = 0
+TradeActionConfidenceAboveEvidence = 0
+NonPassTradeActionConfidenceMismatch = 0
 ```
 
-Also preserve all upstream SmartMoney preflight expectations:
+Also preserve upstream integrity:
 
 ```text
-no duplicate score keys
-no duplicate factor keys
-score/confidence ranges valid
-FactorCoverage range valid
+DuplicateScoreKeys = 0
+DuplicateFactorKeys = 0
+ScoreRowsWithoutFactors = 0
+score/confidence/coverage ranges valid
 supported MarketState values only
-public view readable
-all score rows have factor evidence
 ```
 
-### PASS
-
-The preflight reaches the end without `STOPPED at statement ...` and all zero-violation checks are zero.
-
-### FAIL
-
-Any of these is non-zero:
-
-```text
-InvalidTradeAction
-TradeActionMappingMismatch
-DuplicateScoreKeys
-DuplicateFactorKeys
-ScoreRowsWithoutFactors
-```
-
-or any existing SmartMoney range/integrity contract is violated.
+Any non-zero strategy confidence violation is FAIL.
 
 ---
 
-# 15. Phase 7 — Real local data drill-down
+# 14. Phase 7 — Real local data drill-down
 
-Run this PowerShell block exactly from repository root:
+Run from repository root:
 
 ```powershell
 @'
 from src.Ults.DuckLib import DuckDBManager
 
 with DuckDBManager(read_only=True) as con:
-    print("=== Latest SmartMoney date ===")
     latest = con.sql('''
         SELECT MAX(Date) AS LatestDate
         FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
     ''').df()
+    print("=== Latest SmartMoney date ===")
     print(latest.to_string(index=False))
 
-    print("\n=== Latest-date TradeAction / state / quality distribution ===")
     distribution = con.sql('''
         WITH latest AS (
             SELECT MAX(Date) AS Date
@@ -569,15 +424,18 @@ with DuckDBManager(read_only=True) as con:
             v.TradeAction,
             v.MarketState,
             v.DataQualityStatus,
-            COUNT(*) AS Rows
+            COUNT(*) AS Rows,
+            ROUND(MIN(v.TradeActionConfidenceScore), 2) AS MinActionConfidence,
+            ROUND(AVG(v.TradeActionConfidenceScore), 2) AS AvgActionConfidence,
+            ROUND(MAX(v.TradeActionConfidenceScore), 2) AS MaxActionConfidence
         FROM "CherryMon"."main"."vw_Ticker_SmartMoney" AS v
         INNER JOIN latest AS d ON d.Date = v.Date
         GROUP BY v.TradeAction, v.MarketState, v.DataQualityStatus
         ORDER BY v.TradeAction, Rows DESC, v.MarketState
     ''').df()
+    print("\n=== Latest action/state/confidence distribution ===")
     print(distribution.to_string(index=False))
 
-    print("\n=== Strategy violation counts ===")
     violations = con.sql('''
         SELECT
             SUM(CASE
@@ -586,25 +444,25 @@ with DuckDBManager(read_only=True) as con:
                 THEN 1 ELSE 0
             END) AS InvalidTradeAction,
             SUM(CASE
-                WHEN TradeAction <>
-                    CASE
-                        WHEN DataQualityStatus <> 'PASS' THEN 'HOLD'
-                        WHEN MarketState = 'DISTRIBUTION' THEN 'SELL'
-                        WHEN MarketState IN (
-                            'ACCUMULATION',
-                            'BREAKOUT',
-                            'DEMAND_EXPANSION',
-                            'SUPPLY_LOCK'
-                        ) THEN 'BUY'
-                        ELSE 'HOLD'
-                    END
+                WHEN TradeActionConfidenceScore IS NULL
+                  OR TradeActionConfidenceScore < 0
+                  OR TradeActionConfidenceScore > 100
                 THEN 1 ELSE 0
-            END) AS TradeActionMappingMismatch
+            END) AS InvalidTradeActionConfidenceScore,
+            SUM(CASE
+                WHEN TradeActionConfidenceScore > ConfidenceScore + 0.000001
+                THEN 1 ELSE 0
+            END) AS TradeActionConfidenceAboveEvidence,
+            SUM(CASE
+                WHEN DataQualityStatus <> 'PASS'
+                 AND ABS(TradeActionConfidenceScore) > 0.000001
+                THEN 1 ELSE 0
+            END) AS NonPassTradeActionConfidenceMismatch
         FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
     ''').df()
+    print("\n=== Strategy confidence violations ===")
     print(violations.to_string(index=False))
 
-    print("\n=== Recent sample ===")
     sample = con.sql('''
         SELECT
             Ticker,
@@ -613,266 +471,157 @@ with DuckDBManager(read_only=True) as con:
             ConfidenceScore,
             MarketState,
             DataQualityStatus,
-            TradeAction
+            TradeAction,
+            TradeActionConfidenceScore
         FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
         WHERE Ticker IN ('MWG','FPT','HPG')
         ORDER BY Date DESC, Ticker
         LIMIT 30
     ''').df()
+    print("\n=== Recent sample ===")
     print(sample.to_string(index=False))
 '@ | python -
 ```
 
-### PASS criteria
+PASS requires all four displayed violation counts = `0`.
 
-The output must show:
-
-```text
-InvalidTradeAction = 0
-TradeActionMappingMismatch = 0
-```
-
-Every displayed action must be one of:
-
-```text
-BUY
-HOLD
-SELL
-```
-
-Do not fail the run merely because one of BUY/HOLD/SELL is absent on the latest trading date. Market conditions may legitimately produce only a subset.
+The latest trading date does not need to contain all BUY/HOLD/SELL labels.
 
 ---
 
-# 16. Phase 8 — Refresh generated DB metadata
+# 15. Phase 8 — Metadata refresh
 
-After the local database view has been successfully recreated and validated, export generated metadata from repository root:
+Only after local schema/view deployment and validation succeeds:
 
 ```powershell
 python -c "from src.Ults import DuckLib; DuckLib.exportDuckDB_metadata()"
 ```
 
-`python -c` from repository root has different import-path behavior from directly executing a file under `scripts/`. Do not use its success as proof that every `python scripts\x.py` command is correctly bootstrapped; direct scripts own their own path setup.
-
-Then confirm the generated metadata knows the new public column:
+Confirm:
 
 ```powershell
 Select-String -Path docs\reference\DB_Metadata.md -Pattern "vw_Ticker_SmartMoney"
 Select-String -Path docs\reference\DB_Metadata.md -Pattern "TradeAction"
+Select-String -Path docs\reference\DB_Metadata.md -Pattern "TradeActionConfidenceScore"
 ```
 
-### PASS
-
-`DB_Metadata.md` contains `TradeAction` under the local `vw_Ticker_SmartMoney` structure.
-
-### Important
-
-`docs/reference/DB_Metadata.md` is generated evidence of the local physical database. Do not hand-edit it to make this check pass.
-
-If metadata export fails after the database validation already passed, report the export failure explicitly. Do not claim full local closure until generated reference export succeeds.
+`docs/reference/DB_Metadata.md` is generated evidence. Never hand-edit it to make this validation pass.
 
 ---
 
-# 17. Phase 9 — Optional daily pipeline smoke
+# 16. Optional daily pipeline smoke
 
-This phase is optional for strategy-only validation because `TradeAction` does not change orchestration.
+Not required by default because this is an additive derived-view change.
 
-Run `run.py` only when the operator explicitly wants a full daily pipeline smoke or when there is evidence that schema recreation through the daily pipeline differs from `scripts/run_smart_money.py`.
-
-Do NOT automatically run the full daily pipeline merely for extra confidence.
-
-If explicitly required:
+Run only if explicitly requested or evidence suggests the daily orchestration path differs:
 
 ```powershell
 python run.py
 ```
 
-Expected ordering remains:
-
-```text
-Technical Indicators + DQ
-→ ensure SmartMoney schema
-→ SmartMoney incremental refresh
-→ SmartMoney DQ
-→ COMMIT
-→ exportDuckDB_metadata()
-```
+Do not run the full daily pipeline merely for extra confidence.
 
 ---
 
-# 18. Acceptance criteria for local TestEngineer
+# 17. Acceptance criteria
 
-Local validation is PASS only when all applicable criteria below pass:
+Local PASS requires:
 
-1. repository sync is clean and safe;
-2. both SmartMoney pytest modules collect without import error;
-3. strategy unit test passes;
-4. nearest SmartMoney integration test passes;
-5. normal SmartMoney runner successfully recreates/deploys the view;
-6. direct preflight runner works without manual developer-specific `PYTHONPATH`;
-7. public view contains `TradeAction`;
-8. `TradeAction` is never NULL;
-9. `TradeAction` contains only `BUY`, `HOLD`, `SELL`;
-10. quality gate maps every non-PASS row to `HOLD`;
-11. PASS + `DISTRIBUTION` maps to `SELL`;
-12. PASS + `ACCUMULATION/BREAKOUT/DEMAND_EXPANSION/SUPPLY_LOCK` maps to `BUY`;
-13. all other PASS states map to `HOLD`;
-14. `TradeActionMappingMismatch = 0` on the full local public view;
-15. existing SmartMoney duplicate/range/factor-evidence contracts remain valid;
-16. generated DB metadata exports successfully and includes `TradeAction`.
+1. repository sync clean/safe;
+2. compile and pytest collection pass;
+3. focused strategy test pass;
+4. integration regression pass;
+5. normal SmartMoney runner recreates public view;
+6. `TradeAction` remains non-NULL BUY/HOLD/SELL only;
+7. action mapping remains exact;
+8. `TradeActionConfidenceScore` is non-NULL and `0..100`;
+9. action confidence never exceeds upstream `ConfidenceScore`;
+10. non-PASS rows have action confidence `0`;
+11. focused tests prove deterministic formula values for representative states;
+12. upstream duplicate/range/factor-evidence contracts remain valid;
+13. metadata export includes `TradeActionConfidenceScore`.
 
 ---
 
-# 19. Failure handling and retry budget
+# 18. Failure handling
 
-## Working tree dirty
+## Dirty working tree
 
 ```text
 Verdict: BLOCKED
 Action: STOP
 ```
 
-Do not auto-reset/stash user changes.
+## Collection/import failure
 
-## Pytest collection/import failure
+One focused import/bootstrap fix, then one retest. Do not repeat unchanged grep/search/command loops.
 
-Do not classify it as regression before the test body executes.
+## Focused strategy formula failure
 
 ```text
-Verdict: FAIL
-Category: Python import/execution contract
 Action: FIX ONCE
 ```
 
-Follow Section 10. One focused correction + one collection retry.
+Retest only the focused strategy test. Same defect after repair → FAIL/STOP.
 
-If still failing with the same cause:
-
-```text
-Verdict: FAIL
-Action: STOP
-```
-
-## Focused strategy assertion fails
-
-One focused repair is allowed only when the failure directly belongs to the strategy rollout.
-
-```text
-Fix attempt 1
-→ rerun the same focused test once
-```
-
-If still failing:
-
-```text
-Verdict: FAIL
-Action: STOP
-```
-
-## Integration regression
-
-Only after successful collection/execution:
+## Integration behavior regression
 
 ```text
 Verdict: REGRESSION
 Action: STOP
 ```
 
-Do not rewrite the SmartMoney engine during this runbook.
+## Local DB runner failure
 
-## Local DB runner fails
+Capture command, exception, HEAD and DB path/config context. STOP. Do not switch to an ad-hoc writer.
 
-Capture:
+## Preflight confidence violation
 
-```text
-command
-exception
-current HEAD
-local DB path/config context
-```
-
-Then STOP. Do not bypass project connection/transaction policy.
-
-## Direct preflight script import fails
-
-Treat missing repository bootstrap as a script defect, not an environment workaround opportunity.
-
-Do not permanently solve it with:
-
-```powershell
-$env:PYTHONPATH="<developer-specific absolute path>"
-```
-
-Apply one focused script/bootstrap fix or STOP.
-
-## Preflight mapping mismatch
-
-If:
+Any of:
 
 ```text
-TradeActionMappingMismatch > 0
+InvalidTradeActionConfidenceScore > 0
+TradeActionConfidenceAboveEvidence > 0
+NonPassTradeActionConfidenceMismatch > 0
 ```
 
-classify as:
+means:
 
 ```text
 Verdict: FAIL
 Action: STOP
 ```
 
-because the public contract does not match the approved deterministic strategy.
+---
 
-## Retry governance
+# 19. Rollback boundary
 
-- never rerun the same failing command unchanged;
-- maximum two total repair attempts for the same defect under repository governance;
-- this runbook defaults to one focused repair for the strategy/import execution change;
-- no automatic second hypothesis;
-- no unrelated cleanup/refactor;
-- do not repeat equivalent grep/Select-String/sys.path probes after the import convention has been established.
+The change is additive at the public-view layer.
+
+If validation fails:
+
+1. stop rollout;
+2. do not delete SmartMoney score/factor persistence;
+3. do not run full historical initload automatically;
+4. preserve failing evidence;
+5. if rollback is approved, revert the strategy view commit(s);
+6. recreate the view through the normal SmartMoney runner;
+7. rerun only the focused rollback validation.
 
 ---
 
-# 20. Rollback boundary
-
-SmartMoneyStrategy V1 is additive at the public-view contract layer.
-
-The rollout does not add persisted `TradeAction` data and does not mutate upstream OHLCV/indicator Sources of Truth.
-
-If strategy validation fails:
-
-1. STOP further rollout;
-2. do not run full historical initload automatically;
-3. do not delete SmartMoney factor/score persistence;
-4. preserve the exact failing evidence;
-5. if an explicit rollback is approved, revert the strategy implementation commit(s) and recreate `vw_Ticker_SmartMoney` from the reverted schema through the normal SmartMoney runner;
-6. rerun only the focused validation required to prove rollback correctness.
-
-Do not manually edit production DuckDB objects outside the repository-owned SQL path.
-
----
-
-# 21. Required local-agent result format
-
-The local agent MUST finish with this exact evidence structure:
+# 20. Required local-agent result format
 
 ```text
 SMART MONEY STRATEGY V1 — LOCAL VALIDATION
-
-Objective:
-Validate TradeAction BUY/HOLD/SELL on local CherryMon.
 
 Repository:
 Branch: main
 HEAD: <sha>
 Working tree before run: CLEAN | DIRTY
 
-Python/import sanity:
-Compile run_smart_money.py: PASS | FAIL
-Compile run_smart_money_preflight.py: PASS | FAIL
-Strategy test collection: PASS | FAIL
-Integration test collection: PASS | FAIL
-Manual PYTHONPATH required: NO | YES
+Collection:
+Result: PASS | FAIL
 
 Focused strategy test:
 Command: python -m pytest tests\test_smart_money_strategy.py -v
@@ -887,14 +636,15 @@ Local deployment:
 Command: python scripts\run_smart_money.py --days 15
 Result: PASS | FAIL | BLOCKED
 Summary status: <value>
-Score rows upserted: <value>
-Factor rows upserted: <value>
 
 Preflight:
 Command: python scripts\run_smart_money_preflight.py
 Result: PASS | FAIL
 InvalidTradeAction: <value>
 TradeActionMappingMismatch: <value>
+InvalidTradeActionConfidenceScore: <value>
+TradeActionConfidenceAboveEvidence: <value>
+NonPassTradeActionConfidenceMismatch: <value>
 DuplicateScoreKeys: <value>
 DuplicateFactorKeys: <value>
 ScoreRowsWithoutFactors: <value>
@@ -904,53 +654,31 @@ Latest SmartMoney date: <date>
 Latest BUY rows: <count or not present>
 Latest HOLD rows: <count or not present>
 Latest SELL rows: <count or not present>
+BUY avg action confidence: <value or not present>
+HOLD avg action confidence: <value or not present>
+SELL avg action confidence: <value or not present>
 
 Metadata export:
 Result: PASS | FAIL
-TradeAction present in DB_Metadata.md: YES | NO
+TradeAction present: YES | NO
+TradeActionConfidenceScore present: YES | NO
 
 Verdict: PASS | FAIL | BLOCKED | REGRESSION
 Action: KEEP | FIX ONCE | REVERT | STOP
 ```
 
-Do not claim PASS based only on static review or GitHub CI. This runbook requires execution against the local CherryMon database.
+Do not claim local PASS from GitHub CI alone.
 
 ---
 
-# 22. Historical execution issue handling
+# 21. Closure
 
-Execution issues found during one validation run are evidence, not a new Source of Truth.
-
-Reusable lessons must be promoted into:
+After real local TestEngineer PASS, evidence may support returning REQ-0026 and SmartMoneyStrategy to:
 
 ```text
-docs/development/Python_Execution_Conventions.md
-.github/instructions/python.instructions.md
-docs/runbook/SmartMoneyStrategy_V1.md
+FUNCTIONALLY_VALIDATED
 ```
 
-Non-obvious historical context that remains useful belongs under:
+Do not alter strategy mapping or confidence formula during closure.
 
-```text
-docs/development/implementation-notes/**
-```
-
-Do not leave postmortem/issue-export documents under `tests/**` after their reusable rules have been incorporated. `tests/*.md` is reserved for finite test execution material.
-
----
-
-# 23. After PASS — closure/revalidation handoff
-
-REQ-0026 and SmartMoneyStrategy were functionally validated locally on 2026-09-12.
-
-Future executions of this runbook are revalidation runs. They must return the evidence format above and stop after the terminal verdict.
-
-Do not change strategy thresholds or mapping during revalidation.
-
----
-
-# 24. STOP
-
-After returning the terminal verdict and evidence, STOP.
-
-Do not continue into OOS research, SmartMoneyScore calibration, R/S work, chart work or any other task without a new explicit request.
+After terminal verdict, STOP.
