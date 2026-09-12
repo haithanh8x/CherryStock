@@ -58,12 +58,16 @@ def _card_classes(extra: str = "") -> str:
     )
 
 
-def _action_style(action: str) -> str:
-    color = {
+def _action_color(action: str) -> str:
+    return {
         "BUY": THEME["positive"],
         "SELL": THEME["negative"],
         "HOLD": THEME["warning"],
     }.get(action, THEME["muted"])
+
+
+def _action_style(action: str) -> str:
+    color = _action_color(action)
     return (
         f"color:{color};background:{with_alpha(color, 0.12)};"
         f"border:1px solid {with_alpha(color, 0.32)};"
@@ -107,10 +111,37 @@ def _render_ticker_row(row: dict[str, Any]) -> None:
                 )
 
 
+def _render_action_group(action: str, rows: list[dict[str, Any]]) -> None:
+    """Render one BUY/HOLD/SELL subgroup preserving confidence-desc row order."""
+    color = _action_color(action)
+    with ui.column().classes("w-full gap-1.5"):
+        with ui.row().classes("w-full items-center justify-between gap-2"):
+            with ui.row().classes("items-center gap-2"):
+                ui.element("span").classes("w-2 h-2 rounded-full").style(
+                    f"background:{color};"
+                )
+                ui.label(action).classes(
+                    f"text-xs font-bold text-[{color}]"
+                )
+            ui.label(str(len(rows))).classes(
+                "text-[10px] font-bold rounded-full px-2 py-0.5"
+            ).style(_action_style(action))
+
+        if not rows:
+            ui.label("Không có ticker").classes(
+                f"text-[10px] italic text-[{THEME['muted']}] pl-4 py-1"
+            )
+            return
+
+        for row in rows:
+            _render_ticker_row(row)
+
+
 def _render_state_block(block: dict[str, Any]) -> None:
     state = str(block["market_state"])
     total = int(block["total_tickers"])
     action_counts = block["action_counts"]
+    rows: list[dict[str, Any]] = list(block["rows"])
 
     with ui.card().classes(_card_classes("p-4 h-full")):
         with ui.row().classes("w-full items-start justify-between gap-3 no-wrap"):
@@ -143,18 +174,25 @@ def _render_state_block(block: dict[str, Any]) -> None:
 
         ui.separator().classes(f"my-3 bg-[{THEME['border']}]")
 
-        rows = block["rows"]
         if not rows:
             ui.label("Không có ticker ở phiên mới nhất").classes(
                 f"text-xs italic text-[{THEME['muted']}] py-3"
             )
             return
 
+        # block["rows"] is already sorted by TradeActionConfidenceScore DESC.
+        # Filtering in-place therefore preserves descending confidence inside
+        # each TradeAction subgroup without introducing a second ranking rule.
         with ui.column().classes(
-            "w-full gap-1.5 max-h-[330px] overflow-y-auto pr-1"
+            "w-full gap-3 max-h-[430px] overflow-y-auto pr-1"
         ):
-            for row in rows:
-                _render_ticker_row(row)
+            for action in TRADE_ACTION_ORDER:
+                action_rows = [
+                    row
+                    for row in rows
+                    if str(row.get("TradeAction") or "").upper() == action
+                ]
+                _render_action_group(action, action_rows)
 
 
 def smart_money_tab_content() -> None:
