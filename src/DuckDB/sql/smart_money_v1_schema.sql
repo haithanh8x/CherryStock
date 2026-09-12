@@ -255,6 +255,12 @@ SELECT
     s.MarketState,
     s.FactorCoverage,
     s.DataQualityStatus,
+    CASE
+        WHEN s.DataQualityStatus <> 'PASS' THEN 'HOLD'
+        WHEN s.MarketState = 'DISTRIBUTION' THEN 'SELL'
+        WHEN s.MarketState IN ('ACCUMULATION', 'BREAKOUT', 'DEMAND_EXPANSION', 'SUPPLY_LOCK') THEN 'BUY'
+        ELSE 'HOLD'
+    END AS TradeAction,
     w.FreshFlowScore,
     w.RelativeLiquidityScore,
     w.LiquidityAccelerationScore,
