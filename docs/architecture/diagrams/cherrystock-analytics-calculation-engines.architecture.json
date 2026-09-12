@@ -193,7 +193,7 @@
       "id": "rs_evaluation",
       "type": "backend",
       "label": "R/S Historical Evaluation",
-      "sublabel": "baseline/ablation · effectiveness · promotion",
+      "sublabel": "baseline/ablation · effectiveness",
       "pos": [760, 780],
       "size": [190, 72],
       "sources": [
