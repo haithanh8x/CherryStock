@@ -261,6 +261,76 @@ SELECT
         WHEN s.MarketState IN ('ACCUMULATION', 'BREAKOUT', 'DEMAND_EXPANSION', 'SUPPLY_LOCK') THEN 'BUY'
         ELSE 'HOLD'
     END AS TradeAction,
+    CASE
+        WHEN s.DataQualityStatus <> 'PASS' THEN 0.0
+        WHEN s.MarketState = 'ACCUMULATION' THEN
+            CASE
+                WHEN w.AccumulationScore IS NULL OR w.AccumulationMemoryScore IS NULL THEN 0.0
+                ELSE ROUND(LEAST(
+                    s.ConfidenceScore,
+                    0.60 * s.ConfidenceScore
+                    + 0.40 * LEAST(w.AccumulationScore, w.AccumulationMemoryScore)
+                ), 2)
+            END
+        WHEN s.MarketState = 'BREAKOUT' THEN
+            CASE
+                WHEN w.FreshFlowScore IS NULL
+                  OR w.RelativeLiquidityScore IS NULL
+                  OR w.RelativeStrengthScore IS NULL THEN 0.0
+                ELSE ROUND(LEAST(
+                    s.ConfidenceScore,
+                    0.60 * s.ConfidenceScore
+                    + 0.40 * LEAST(w.FreshFlowScore, w.RelativeLiquidityScore, w.RelativeStrengthScore)
+                ), 2)
+            END
+        WHEN s.MarketState = 'DEMAND_EXPANSION' THEN
+            CASE
+                WHEN w.RelativeLiquidityScore IS NULL
+                  OR w.LiquidityAccelerationScore IS NULL
+                  OR w.RelativeStrengthScore IS NULL THEN 0.0
+                ELSE ROUND(LEAST(
+                    s.ConfidenceScore,
+                    0.60 * s.ConfidenceScore
+                    + 0.40 * LEAST(w.RelativeLiquidityScore, w.LiquidityAccelerationScore, w.RelativeStrengthScore)
+                ), 2)
+            END
+        WHEN s.MarketState = 'SUPPLY_LOCK' THEN
+            CASE
+                WHEN w.SupplyLockScore IS NULL OR w.AccumulationMemoryScore IS NULL THEN 0.0
+                ELSE ROUND(LEAST(
+                    s.ConfidenceScore,
+                    0.60 * s.ConfidenceScore
+                    + 0.40 * LEAST(w.SupplyLockScore, w.AccumulationMemoryScore)
+                ), 2)
+            END
+        WHEN s.MarketState = 'DISTRIBUTION' THEN
+            CASE
+                WHEN w.DistributionScore IS NULL THEN 0.0
+                ELSE ROUND(LEAST(
+                    s.ConfidenceScore,
+                    0.60 * s.ConfidenceScore + 0.40 * w.DistributionScore
+                ), 2)
+            END
+        WHEN s.MarketState = 'MARKUP' THEN
+            CASE
+                WHEN w.TrendScore IS NULL OR w.RelativeStrengthScore IS NULL THEN 0.0
+                ELSE ROUND(LEAST(
+                    s.ConfidenceScore,
+                    0.60 * s.ConfidenceScore
+                    + 0.40 * LEAST(w.TrendScore, w.RelativeStrengthScore)
+                ), 2)
+            END
+        WHEN s.MarketState = 'SELLING_CLIMAX' THEN
+            CASE
+                WHEN w.DistributionScore IS NULL OR w.RelativeLiquidityScore IS NULL THEN 0.0
+                ELSE ROUND(LEAST(
+                    s.ConfidenceScore,
+                    0.60 * s.ConfidenceScore
+                    + 0.40 * LEAST(w.DistributionScore, w.RelativeLiquidityScore)
+                ), 2)
+            END
+        ELSE ROUND(s.ConfidenceScore, 2)
+    END AS TradeActionConfidenceScore,
     w.FreshFlowScore,
     w.RelativeLiquidityScore,
     w.LiquidityAccelerationScore,
