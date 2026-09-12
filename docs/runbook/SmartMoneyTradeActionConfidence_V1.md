@@ -30,6 +30,14 @@ refresh_smart_money_score(from_last_day=None)
 
 `TradeAction` and `TradeActionConfidenceScore` remain derived public-view fields; they are not persisted as duplicate strategy columns. Full initload is required here to guarantee that the underlying historical SmartMoney score/factor dataset is present and current before the public historical strategy contract is accepted.
 
+`TradeActionConfidenceScore` keeps **full calculation precision** in the public view. Do not round the stored/read contract inside the view because rounding can violate the strict invariant:
+
+```text
+TradeActionConfidenceScore <= ConfidenceScore
+```
+
+UI/report consumers may round the value for display only.
+
 ---
 
 ## 2. What the initload script validates automatically
@@ -170,7 +178,50 @@ Capture the exception and printed evidence. Do not retry unchanged and do not by
 
 ---
 
-## 5. Step 3 — Verify generated metadata only
+## 5. One owner-approved repair budget
+
+A failed run may be repaired **once** only when all of the following are true:
+
+```text
+1. root cause is identified from the failed evidence
+2. owner explicitly accepts the repair direction
+3. the repair changes the root cause, not the validation threshold
+4. focused CI/test protects the repaired case
+5. the full historical initload is rerun exactly once after pulling the repaired commit
+```
+
+For the confirmed precision-cap defect found on historical data:
+
+```text
+Root cause:
+ROUND(LEAST(...), 2) or ROUND(ConfidenceScore, 2)
+can round upward and make TradeActionConfidenceScore > ConfidenceScore.
+
+Accepted repair:
+remove view-level rounding and preserve full calculation precision.
+
+Regression protection:
+use non-pre-rounded ConfidenceScore values such as 86.135 / 97.135 in strategy tests.
+```
+
+After the repaired commit is pulled, rerun only:
+
+```powershell
+python scripts\initload\init_reload_smart_money_score.py
+```
+
+If the same contract fails again after this one repaired rerun:
+
+```text
+Verdict: FAIL
+Action: STOP
+```
+
+No second repair loop is allowed in this runbook.
+
+---
+
+## 6. Step 3 — Verify generated metadata only
 
 The initload already exports metadata. Only verify that the generated reference contains the new public field:
 
@@ -188,7 +239,7 @@ Do not hand-edit `docs/reference/DB_Metadata.md`.
 
 ---
 
-## 6. Optional focused pytest
+## 7. Optional focused pytest
 
 Do **not** run pytest by default when the pulled commit already has green SmartMoney CI and no local SmartMoney strategy code was modified after pull.
 
@@ -202,7 +253,7 @@ Do not automatically expand to integration/full-suite validation for this rollou
 
 ---
 
-## 7. Required result
+## 8. Required result
 
 Return only:
 
@@ -220,6 +271,7 @@ NonPassConfidenceMismatch: <count>
 InvalidTradeAction: <count>
 Metadata TradeActionConfidenceScore: YES | NO
 Optional pytest: NOT_RUN | PASS | FAIL
+Repair rerun: NO | YES
 
 Verdict: PASS | FAIL | BLOCKED
 Action: KEEP | STOP
@@ -240,7 +292,7 @@ After the terminal verdict, STOP.
 
 ---
 
-## 8. Deliberately skipped extra validation
+## 9. Deliberately skipped extra validation
 
 The historical initload script already owns the minimum deployment gate, so this runbook does not separately run:
 
