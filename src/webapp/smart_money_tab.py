@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 import pandas as pd
 from nicegui import ui
@@ -78,83 +77,38 @@ def _state_title(state: str) -> str:
     return state.replace("_", " ")
 
 
-def _render_ticker_row(row: dict[str, Any]) -> None:
-    action = str(row.get("TradeAction") or "HOLD").upper()
-    action_confidence = float(row.get("TradeActionConfidenceScore") or 0.0)
-    smart_money_score = row.get("SmartMoneyScore")
-    upstream_confidence = row.get("ConfidenceScore")
-
-    with ui.row().classes(
-        "w-full items-center gap-2 no-wrap rounded-lg px-2 py-2"
-    ).style(
-        f"background:{with_alpha(THEME['surface_alt'], 0.55)};"
-        f"border:1px solid {with_alpha(THEME['border'], 0.75)};"
-    ):
-        ui.label(str(row.get("Ticker") or "—")).classes(
-            f"w-16 shrink-0 font-bold text-[{THEME['text']}]"
-        )
-        ui.label(action).classes(
-            "w-14 shrink-0 text-center text-[10px] font-bold rounded-full px-2 py-1"
-        ).style(_action_style(action))
-        with ui.column().classes("gap-0 flex-1 min-w-0"):
-            ui.label(f"Action confidence {action_confidence:.2f}").classes(
-                f"text-xs font-semibold text-[{THEME['text']}]"
-            )
-            detail_parts: list[str] = []
-            if smart_money_score is not None:
-                detail_parts.append(f"SM {float(smart_money_score):.2f}")
-            if upstream_confidence is not None:
-                detail_parts.append(f"Upstream {float(upstream_confidence):.2f}")
-            if detail_parts:
-                ui.label(" · ".join(detail_parts)).classes(
-                    f"text-[10px] text-[{THEME['muted']}]"
-                )
-
-
-def _render_action_group(action: str, rows: list[dict[str, Any]]) -> None:
-    """Render one BUY/HOLD/SELL subgroup preserving confidence-desc row order."""
-    color = _action_color(action)
-    with ui.column().classes("w-full gap-1.5"):
-        with ui.row().classes("w-full items-center justify-between gap-2"):
-            with ui.row().classes("items-center gap-2"):
-                ui.element("span").classes("w-2 h-2 rounded-full").style(
-                    f"background:{color};"
-                )
-                ui.label(action).classes(
-                    f"text-xs font-bold text-[{color}]"
-                )
-            ui.label(str(len(rows))).classes(
-                "text-[10px] font-bold rounded-full px-2 py-0.5"
-            ).style(_action_style(action))
-
-        if not rows:
-            ui.label("Không có ticker").classes(
-                f"text-[10px] italic text-[{THEME['muted']}] pl-4 py-1"
-            )
-            return
-
-        for row in rows:
-            _render_ticker_row(row)
-
-
-def _render_state_block(block: dict[str, Any]) -> None:
+def _render_state_block(block: dict) -> None:
     state = str(block["market_state"])
     total = int(block["total_tickers"])
-    action_counts = block["action_counts"]
-    rows: list[dict[str, Any]] = list(block["rows"])
-    action_rows: dict[str, list[dict[str, Any]]] = block["action_rows"]
+    action_counts = dict(block["action_counts"])
+    ticker_sequence = str(block.get("ticker_sequence") or "")
 
-    with ui.card().classes(_card_classes("p-4 h-full")):
-        with ui.row().classes("w-full items-start justify-between gap-3 no-wrap"):
-            with ui.row().classes("items-start gap-3 min-w-0 no-wrap"):
+    with ui.card().classes(_card_classes("p-4 w-full")):
+        with ui.row().classes("w-full items-start justify-between gap-4 no-wrap"):
+            with ui.row().classes("items-start gap-3 min-w-0 flex-1 no-wrap"):
                 ui.label(str(block["stage"])).classes(
                     f"w-8 h-8 rounded-full flex items-center justify-center shrink-0 "
                     f"font-bold text-[{THEME['primary']}] bg-[{THEME['surface_alt']}]"
                 )
-                with ui.column().classes("gap-0 min-w-0"):
-                    ui.label(_state_title(state)).classes(
-                        f"font-bold text-base text-[{THEME['text']}]"
-                    )
+                with ui.column().classes("gap-1 min-w-0 flex-1"):
+                    with ui.row().classes("items-center gap-2 flex-wrap"):
+                        ui.label(_state_title(state)).classes(
+                            f"font-bold text-base text-[{THEME['text']}]"
+                        )
+                        rendered_action = False
+                        for action in TRADE_ACTION_ORDER:
+                            count = int(action_counts.get(action, 0))
+                            if count <= 0:
+                                continue
+                            rendered_action = True
+                            ui.label(f"{action} {count}").classes(
+                                "text-[10px] font-bold rounded-full px-2.5 py-1"
+                            ).style(_action_style(action))
+                        if not rendered_action:
+                            ui.label("NO TICKER").classes(
+                                f"text-[10px] font-semibold rounded-full px-2.5 py-1 "
+                                f"text-[{THEME['muted']}] bg-[{THEME['surface_alt']}]"
+                            )
                     ui.label(str(block["description"])).classes(
                         f"text-[11px] leading-snug text-[{THEME['muted']}]"
                     )
@@ -166,30 +120,24 @@ def _render_state_block(block: dict[str, Any]) -> None:
                     f"text-[10px] uppercase tracking-wide text-[{THEME['muted']}]"
                 )
 
-        with ui.row().classes("w-full items-center gap-2 flex-wrap mt-3"):
-            for action in TRADE_ACTION_ORDER:
-                count = int(action_counts.get(action, 0))
-                ui.label(f"{action} {count}").classes(
-                    "text-[10px] font-bold rounded-full px-2.5 py-1"
-                ).style(_action_style(action))
-
         ui.separator().classes(f"my-3 bg-[{THEME['border']}]")
 
-        if not rows:
+        if not ticker_sequence:
             ui.label("Không có ticker ở phiên mới nhất").classes(
-                f"text-xs italic text-[{THEME['muted']}] py-3"
+                f"text-xs italic text-[{THEME['muted']}] py-2"
             )
             return
 
-        with ui.column().classes(
-            "w-full gap-3 max-h-[430px] overflow-y-auto pr-1"
-        ):
-            for action in TRADE_ACTION_ORDER:
-                _render_action_group(action, list(action_rows.get(action, [])))
+        ui.label("Tickers · TradeActionConfidenceScore ↓").classes(
+            f"text-[10px] uppercase tracking-wide font-semibold text-[{THEME['muted']}] mb-1"
+        )
+        ui.markdown(ticker_sequence).classes(
+            f"w-full text-sm leading-7 text-[{THEME['text']}]"
+        )
 
 
 def smart_money_tab_content() -> None:
-    """Render SmartMoney MarketState blocks from the latest public-view snapshot."""
+    """Render full-width SmartMoney MarketState blocks from the latest snapshot."""
     latest_date_label: ui.label
     total_tickers_label: ui.label
 
@@ -205,7 +153,7 @@ def smart_money_tab_content() -> None:
                         f"text-lg font-bold text-[{THEME['text']}]"
                     )
                     ui.label(
-                        "Latest snapshot · MarketState → TradeAction → Action Confidence"
+                        "Latest snapshot · MarketState / TradeAction · confidence-ranked tickers"
                     ).classes(f"text-xs text-[{THEME['muted']}]")
             refresh_button = ui.button("Refresh", icon="refresh").props(
                 "outline dense no-caps"
@@ -230,9 +178,7 @@ def smart_money_tab_content() -> None:
                     f"bg-[{THEME['surface_alt']}] text-[{THEME['muted']}]"
                 )
 
-    state_container = ui.element("div").classes(
-        "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 w-full"
-    )
+    state_container = ui.column().classes("w-full gap-4")
 
     def refresh_snapshot() -> None:
         state_container.clear()
