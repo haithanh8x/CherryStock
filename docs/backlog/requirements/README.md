@@ -63,6 +63,7 @@ Key governance boundary:
 ## Other requirements
 
 - [[REQ-0025-smart-money-score|REQ-0025 — Ticker-level SmartMoneyScore]] — **DONE**; state-aware, explainable Smart Money behavioral scoring with independent confidence; TestEngineer PASS / KEEP on 2026-09-06. OOS calibration remains a separate production-activation gate.
+- [[REQ-0026-smart-money-strategy|REQ-0026 — Smart Money BUY / HOLD / SELL Strategy Action]] — **IMPLEMENTED_PENDING_VALIDATION**; additive `TradeAction` overlay on `vw_Ticker_SmartMoney`, derived from `DataQualityStatus + MarketState` without changing REQ-0025 scoring persistence.
 
 ## Traceability
 
