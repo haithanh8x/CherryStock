@@ -76,6 +76,36 @@ Archify usage rules:
 8. If Archify output conflicts with repository documentation or implementation evidence, treat the diagram as incorrect and repair it; never change architecture merely to match the visualization.
 9. Do not require Archify for trivial designs where text, a compact table or a simple existing Mermaid diagram communicates the design more clearly.
 
+### Mandatory Archify Artifact Synchronization
+
+For CherryStock, **every approved design change MUST synchronize Archify artifacts before the design can be considered complete**. This rule applies whenever a design/architecture change is authored, revised, approved, or materially updated, including component, data-flow, workflow, integration, contract, persistence, ownership, lifecycle, or cross-module design changes.
+
+Required synchronization contract:
+
+1. Update the relevant durable design document under `docs/architecture/**` and ADR under `docs/adr/**` when required.
+2. Update the corresponding Archify typed source/diagram under `docs/architecture/**` so it reflects the same approved design.
+3. Regenerate the corresponding HTML presentation artifact under `docs/architecture/generated/**` in the **same change set**.
+4. Run Archify validation with the applicable quality profile before handoff. A stale, missing, or validation-failing generated artifact blocks design completion.
+5. If no Archify diagram exists for the affected design scope, create the smallest useful Archify typed source and generated HTML pair rather than leaving the design text-only.
+6. Do not manually edit generated HTML as the source of architecture meaning. Regenerate it from the typed source, then apply repository-owned presentation post-processing where configured.
+7. Do not claim `APPROVED_FOR_IMPLEMENTATION` while the Markdown/ADR, Archify typed source, and generated HTML disagree or while either Archify artifact is stale.
+
+For the canonical CherryStock high-level architecture, the synchronized artifact pair is:
+
+```text
+docs/architecture/diagrams/cherrystock-high-level.architecture.json
+        ↓ validate + deliver
+docs/architecture/generated/CherryStock_High_Level.html
+```
+
+Use the repository wrapper whenever this high-level design changes:
+
+```powershell
+.\scripts\render_archify_cherrystock.ps1
+```
+
+The wrapper MUST remain the preferred delivery path because it performs Archify validation, regenerates the HTML, and reapplies CherryStock presentation features such as the font picker after `deliver`.
+
 For durable Archify sources/artifacts created specifically for CherryStock architecture documentation, prefer placement under the relevant `docs/architecture/**` area alongside the architecture material they explain, following existing repository conventions. Do not create a parallel documentation Source of Truth solely for Archify.
 
 ## Design Principles
@@ -160,6 +190,7 @@ Before finalizing:
 - Confirm the design respects domain instructions.
 - Identify affected documentation.
 - Decide whether an ADR is required.
+- Confirm the relevant Archify typed source and generated HTML have both been updated and validated for the approved design.
 
 ## Required Output Format
 For architecture/design requests, use the following structure unless the user requests another format:
@@ -235,18 +266,19 @@ Durable design output belongs under `docs/architecture/**`. Important cross-modu
 
 Data-model contracts are architecture material. Persist durable logical/physical model definitions, grain, keys, relationships, ownership and lineage in the relevant `docs/architecture/**` document. Treat `docs/reference/DB_Metadata.md` as generated evidence of the current physical database structure, not as the place to author the target design.
 
-The normal design outcome is `APPROVED_FOR_IMPLEMENTATION`. Solution Architect does not claim that implementation or validation is complete.
+The normal design outcome is `APPROVED_FOR_IMPLEMENTATION`. Solution Architect does not claim that implementation or validation is complete. `APPROVED_FOR_IMPLEMENTATION` MUST NOT be emitted until the mandatory Archify artifact synchronization contract is satisfied.
 
 ## Design-to-Implementation Handoff
 
 When the design is approved and implementation is requested:
 
 1. Identify affected files/modules and acceptance criteria.
-2. Route to `.github/agents/GeneralCoding.agent.md` or the authoritative domain agent.
-3. Include matching `.github/instructions/*.instructions.md`.
-4. Preserve the approved design contracts.
-5. Require implementation to end with `IMPLEMENTED_PENDING_VALIDATION`.
-6. Hand independent validation to `.github/agents/TestEngineer.agent.md`.
+2. Confirm the design document, Archify typed source/diagram, and generated HTML are synchronized and validation-ready.
+3. Route to `.github/agents/GeneralCoding.agent.md` or the authoritative domain agent.
+4. Include matching `.github/instructions/*.instructions.md`.
+5. Preserve the approved design contracts.
+6. Require implementation to end with `IMPLEMENTED_PENDING_VALIDATION`.
+7. Hand independent validation to `.github/agents/TestEngineer.agent.md`.
 
 ## Anti-Patterns
 Do not:
@@ -260,5 +292,6 @@ Do not:
 - Introduce a second Source of Truth for the same concept.
 - Claim compatibility without checking current callers/consumers.
 - Claim a design is implemented when only documentation has been changed.
+- Claim design completion while its Archify typed source or generated HTML is stale, missing, or inconsistent with the approved design.
 - Treat Archify output as architecture authority or Source of Truth.
 - Allow Archify to invent unsupported topology, dependencies, ownership or runtime behavior.
