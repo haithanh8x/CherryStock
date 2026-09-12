@@ -4973,6 +4973,57 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       svg [data-node-id], svg [data-edge-from], svg [data-detail], svg [data-detail-anchor], svg [data-legend-hit], svg { transition: none !important; }
     }
   </style>
+<style id="cherrystock-archify-typography">
+/* CherryStock presentation-only typography override. */
+:root {
+  --cherrystock-arch-font-sans: "Inter", "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+}
+
+svg [data-node-label],
+svg [data-boundary-label] {
+  font-family: var(--cherrystock-arch-font-sans) !important;
+  letter-spacing: -0.01em;
+}
+
+#cherrystock-archify-font-picker {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.90);
+  color: #e2e8f0;
+  backdrop-filter: blur(8px);
+  font: 12px/1.2 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+}
+
+#cherrystock-archify-font-picker label { opacity: 0.78; }
+#cherrystock-archify-font-picker select {
+  min-width: 142px;
+  padding: 5px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.40);
+  border-radius: 6px;
+  background: #111827;
+  color: #f8fafc;
+  font: inherit;
+}
+
+html[data-theme="light"] #cherrystock-archify-font-picker {
+  background: rgba(255,255,255,0.94);
+  color: #0f172a;
+  border-color: rgba(100,116,139,0.30);
+}
+html[data-theme="light"] #cherrystock-archify-font-picker select {
+  background: #ffffff;
+  color: #0f172a;
+}
+</style>
 </head>
 <body>
   <!-- Toolbar: theme, live visual style, trace motion, presentation stage, and export.
@@ -15010,5 +15061,33 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       }
     });
   </script>
+<div id="cherrystock-archify-font-picker" aria-label="CherryStock architecture font picker"><label for="cherrystock-arch-font-select">Font</label><select id="cherrystock-arch-font-select"><option value="Inter" selected>Inter</option><option value="Segoe UI">Segoe UI</option><option value="IBM Plex Sans">IBM Plex Sans</option><option value="Arial">Arial</option><option value="system-ui">system-ui</option><option value="JetBrains Mono">JetBrains Mono</option></select></div>
+<script id="cherrystock-archify-font-picker-script">
+(function () {
+  var key = 'cherrystock-arch-font';
+  var select = document.getElementById('cherrystock-arch-font-select');
+  if (!select) return;
+  var stacks = {
+    'Inter': '"Inter", "Segoe UI Variable", "Segoe UI", Arial, sans-serif',
+    'Segoe UI': '"Segoe UI Variable", "Segoe UI", Arial, sans-serif',
+    'IBM Plex Sans': '"IBM Plex Sans", "Segoe UI", Arial, sans-serif',
+    'Arial': 'Arial, sans-serif',
+    'system-ui': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    'JetBrains Mono': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+  };
+  function apply(name) {
+    var stack = stacks[name] || stacks['Inter'];
+    document.documentElement.style.setProperty('--cherrystock-arch-font-sans', stack);
+    select.value = stacks[name] ? name : 'Inter';
+  }
+  var saved = null;
+  try { saved = localStorage.getItem(key); } catch (_) {}
+  apply(saved || 'Inter');
+  select.addEventListener('change', function () {
+    apply(select.value);
+    try { localStorage.setItem(key, select.value); } catch (_) {}
+  });
+})();
+</script>
 </body>
 </html>
