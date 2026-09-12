@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - ".github/workflows/smart-money-validation.yml"
+      - "pyproject.toml"
       - "run.py"
       - "src/calcEngine/smartMoneyScore.py"
       - "src/calcEngine/smartMoneyEvaluation.py"
@@ -17,6 +18,7 @@ on:
       - "src/DuckDB/sql/smart_money_v1_preflight.sql"
       - "scripts/initload/init_reload_smart_money_score.py"
       - "scripts/run_smart_money.py"
+      - "scripts/run_smart_money_preflight.py"
       - "scripts/validate_smart_money_incremental.py"
       - "scripts/evaluate_smart_money_v1.py"
       - "tests/test_smart_money_score.py"
@@ -28,6 +30,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/smart-money-validation.yml"
+      - "pyproject.toml"
       - "run.py"
       - "src/Ults/DataValidation.py"
       - "src/Ults/DataQualityOrchestration.py"
@@ -41,6 +44,7 @@ on:
       - "src/DuckDB/sql/smart_money_v1_preflight.sql"
       - "scripts/initload/init_reload_smart_money_score.py"
       - "scripts/run_smart_money.py"
+      - "scripts/run_smart_money_preflight.py"
       - "scripts/validate_smart_money_incremental.py"
       - "scripts/evaluate_smart_money_v1.py"
       - "tests/test_data_quality_orchestration.py"
@@ -55,7 +59,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PYTHONPATH: src
       DUCKDB_ENV: local
       DATA_DIR: /tmp/cherrystock-data
       LOCAL_DB_PATH: /tmp/cherrystock-data/CherryMon-test.duckdb
@@ -87,8 +90,13 @@ jobs:
           python -m py_compile src/cherrystock/config/settings.py
           python -m py_compile scripts/initload/init_reload_smart_money_score.py
           python -m py_compile scripts/run_smart_money.py
+          python -m py_compile scripts/run_smart_money_preflight.py
           python -m py_compile scripts/validate_smart_money_incremental.py
           python -m py_compile scripts/evaluate_smart_money_v1.py
+
+      - name: Collect SmartMoney strategy tests
+        run: |
+          python -m pytest tests/test_smart_money_strategy.py tests/test_smart_money_integration.py --collect-only -q
 
       - name: Run focused unit tests
         run: |
