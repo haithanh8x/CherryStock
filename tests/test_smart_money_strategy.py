@@ -36,16 +36,16 @@ def test_trade_action_mapping_contract(tmp_path: Path) -> None:
                 CalculatedAt
             )
             VALUES
-                (1, 'AAA', DATE '2026-09-12', 72.0, 80.0, 'ACCUMULATION',     0.95, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'BBB', DATE '2026-09-12', 80.0, 85.0, 'BREAKOUT',         0.95, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'CCC', DATE '2026-09-12', 76.0, 82.0, 'DEMAND_EXPANSION', 0.92, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'DDD', DATE '2026-09-12', 78.0, 88.0, 'SUPPLY_LOCK',       0.90, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'EEE', DATE '2026-09-12', 35.0, 86.0, 'DISTRIBUTION',      0.94, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'FFF', DATE '2026-09-12', 75.0, 85.0, 'MARKUP',            0.93, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'AAA', DATE '2026-09-11', 81.0, 58.0, 'BREAKOUT',          0.75, 'WARNING', CURRENT_TIMESTAMP),
-                (1, 'BBB', DATE '2026-09-11', 25.0, 90.0, 'SELLING_CLIMAX',    0.95, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'CCC', DATE '2026-09-11', 45.0, 80.0, 'LIQUIDITY_DRYUP',   0.90, 'PASS',    CURRENT_TIMESTAMP),
-                (1, 'DDD', DATE '2026-09-11', 50.0, 80.0, 'NEUTRAL',           0.90, 'PASS',    CURRENT_TIMESTAMP)
+                (1, 'AAA', DATE '2026-09-12', 72.0, 80.0,   'ACCUMULATION',     0.95, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'BBB', DATE '2026-09-12', 80.0, 85.0,   'BREAKOUT',         0.95, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'CCC', DATE '2026-09-12', 76.0, 82.0,   'DEMAND_EXPANSION', 0.92, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'DDD', DATE '2026-09-12', 78.0, 88.0,   'SUPPLY_LOCK',       0.90, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'EEE', DATE '2026-09-12', 35.0, 86.135, 'DISTRIBUTION',      0.94, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'FFF', DATE '2026-09-12', 75.0, 85.0,   'MARKUP',            0.93, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'AAA', DATE '2026-09-11', 81.0, 58.0,   'BREAKOUT',          0.75, 'WARNING', CURRENT_TIMESTAMP),
+                (1, 'BBB', DATE '2026-09-11', 25.0, 90.0,   'SELLING_CLIMAX',    0.95, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'CCC', DATE '2026-09-11', 45.0, 80.0,   'LIQUIDITY_DRYUP',   0.90, 'PASS',    CURRENT_TIMESTAMP),
+                (1, 'DDD', DATE '2026-09-11', 50.0, 97.135, 'NEUTRAL',           0.90, 'PASS',    CURRENT_TIMESTAMP)
             """
         )
 
@@ -81,7 +81,7 @@ def test_trade_action_mapping_contract(tmp_path: Path) -> None:
                 (1, 'DDD', DATE '2026-09-12', 7,  NULL, 90.0, 'PASS', 'TEST', CURRENT_TIMESTAMP),
                 (1, 'DDD', DATE '2026-09-12', 6,  NULL, 75.0, 'PASS', 'TEST', CURRENT_TIMESTAMP),
 
-                -- DISTRIBUTION: state strength 92; final confidence is capped by upstream 86
+                -- DISTRIBUTION: state strength 92; final confidence is capped by upstream 86.135
                 (1, 'EEE', DATE '2026-09-12', 10, NULL, 92.0, 'PASS', 'TEST', CURRENT_TIMESTAMP),
 
                 -- MARKUP: min(80, 75) => state strength 75
@@ -113,12 +113,12 @@ def test_trade_action_mapping_contract(tmp_path: Path) -> None:
             ("BBB", "BREAKOUT", "PASS", "BUY", 83.0),
             ("CCC", "DEMAND_EXPANSION", "PASS", "BUY", 77.2),
             ("DDD", "SUPPLY_LOCK", "PASS", "BUY", 82.8),
-            ("EEE", "DISTRIBUTION", "PASS", "SELL", 86.0),
+            ("EEE", "DISTRIBUTION", "PASS", "SELL", 86.135),
             ("FFF", "MARKUP", "PASS", "HOLD", 81.0),
             ("AAA", "BREAKOUT", "WARNING", "HOLD", 0.0),
             ("BBB", "SELLING_CLIMAX", "PASS", "HOLD", 86.0),
             ("CCC", "LIQUIDITY_DRYUP", "PASS", "HOLD", 80.0),
-            ("DDD", "NEUTRAL", "PASS", "HOLD", 80.0),
+            ("DDD", "NEUTRAL", "PASS", "HOLD", 97.135),
         ]
 
         assert len(rows) == len(expected)
@@ -131,7 +131,7 @@ def test_trade_action_mapping_contract(tmp_path: Path) -> None:
                 exp_quality,
                 exp_action,
             )
-            assert action_confidence == pytest.approx(exp_confidence, abs=0.01)
+            assert action_confidence == pytest.approx(exp_confidence, abs=1e-9)
             assert 0.0 <= action_confidence <= 100.0
             assert action_confidence <= row_confidence(connection, ticker, _date) + 1e-9
     finally:
