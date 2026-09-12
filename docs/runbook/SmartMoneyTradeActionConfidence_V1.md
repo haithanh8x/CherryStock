@@ -1,51 +1,87 @@
-# SmartMoney TradeActionConfidence V1 — Minimal Local Rollout
+# SmartMoney TradeActionConfidence V1 — Historical Initload & Minimal Validation
 
 - **Requirement:** `REQ-0026`
 - **Architecture:** `docs/architecture/SmartMoneyStrategy.md`
 - **Public view:** `"CherryMon"."main"."vw_Ticker_SmartMoney"`
-- **New field:** `TradeActionConfidenceScore`
+- **Field:** `TradeActionConfidenceScore`
 - **Validation owner:** `TestEngineer`
-- **Goal:** deploy the additive view field locally with minimum sufficient validation.
+- **Goal:** full historical SmartMoney initload with minimum sufficient validation for the additive strategy-confidence field.
 
 ## 1. Scope
 
-This runbook validates only the `TradeActionConfidenceScore` public-view extension.
+This runbook makes **historical initial load mandatory**.
 
-In scope:
+Execution path:
 
-- sync latest `main`;
-- recreate the Smart Money public view through the normal runner;
-- verify the new field and four critical invariants on the local CherryMon database;
-- refresh generated DB metadata;
-- return one finite verdict.
+```text
+sync main
+→ full SmartMoney historical initload
+→ historical public-contract validation inside the same transaction
+→ commit
+→ export DB metadata
+→ terminal verdict
+```
 
-Out of scope:
+The initload recalculates/upserts historical SmartMoney factor/score data using:
 
-- full SmartMoney historical initload;
-- SmartMoneyScore recalibration;
-- full integration/regression suite;
-- full `smart_money_v1_preflight.sql` execution;
-- full `run.py` daily pipeline;
-- OOS/backtest/effectiveness research;
-- changing BUY/HOLD/SELL or confidence formulas.
+```python
+refresh_smart_money_score(from_last_day=None)
+```
 
-GitHub CI owns formula/unit regression for this change. Local validation owns deployment against the actual local CherryMon database.
+`TradeAction` and `TradeActionConfidenceScore` remain derived public-view fields; they are not persisted as duplicate strategy columns. Full initload is required here to guarantee that the underlying historical SmartMoney score/factor dataset is present and current before the public historical strategy contract is accepted.
 
 ---
 
-## 2. PASS contract
+## 2. What the initload script validates automatically
 
-`TradeActionConfidenceScore` must satisfy all of these:
+The canonical command is:
 
-```text
-1. field exists and public view returns rows
-2. 0 <= TradeActionConfidenceScore <= 100
-3. TradeActionConfidenceScore <= ConfidenceScore
-4. DataQualityStatus != PASS -> TradeActionConfidenceScore = 0
-5. TradeAction remains BUY / HOLD / SELL only
+```powershell
+python scripts\initload\init_reload_smart_money_score.py
 ```
 
-The field is derived by the public view and is not persisted into `cal_smart_money_ticker_score`.
+The script performs, in order:
+
+```text
+1. ensure SmartMoney schema + recreate vw_Ticker_SmartMoney
+2. full historical factor/score calculation
+3. historical upsert
+4. validate public historical row coverage
+5. validate TradeActionConfidenceScore invariants
+6. commit only when validation passes
+7. export generated DB metadata
+```
+
+Historical validation requires:
+
+```text
+ScoreRows > 0
+ViewRows = ScoreRows
+ViewMinDate = ScoreMinDate
+ViewMaxDate = ScoreMaxDate
+InvalidRange = 0
+AboveUpstreamConfidence = 0
+NonPassConfidenceMismatch = 0
+InvalidTradeAction = 0
+```
+
+Where:
+
+```text
+InvalidRange
+    → TradeActionConfidenceScore is NULL or outside 0..100
+
+AboveUpstreamConfidence
+    → TradeActionConfidenceScore > ConfidenceScore
+
+NonPassConfidenceMismatch
+    → DataQualityStatus != PASS but TradeActionConfidenceScore != 0
+
+InvalidTradeAction
+    → TradeAction is NULL or not BUY/HOLD/SELL
+```
+
+Because validation runs before the UnitOfWork exits, a validation exception prevents the run from being treated as a successful historical deployment.
 
 ---
 
@@ -57,14 +93,14 @@ Run from repository root:
 git status --short
 ```
 
-If the working tree contains unexpected local changes:
+If unexpected local changes exist:
 
 ```text
 Verdict: BLOCKED
 Action: STOP
 ```
 
-Do not reset, stash or overwrite user work automatically.
+Do not reset/stash/discard user work automatically.
 
 If clean:
 
@@ -77,158 +113,107 @@ git log -1 --oneline
 
 ---
 
-## 4. Step 2 — Recreate the view through the normal runner
+## 4. Step 2 — Mandatory full historical initload
 
-Run only a one-day bounded refresh; schema execution recreates the view before the incremental calculation:
+Run:
+
+```powershell
+python scripts\initload\init_reload_smart_money_score.py
+```
+
+Do **not** replace this with:
 
 ```powershell
 python scripts\run_smart_money.py --days 1
 ```
 
-PASS when the runner completes successfully.
+or another incremental checkpoint. This rollout requires historical data to be fully recalculated/upserted.
 
-Do not run historical initload for this extension. `TradeActionConfidenceScore` is a derived view column, so existing historical SmartMoney rows receive it immediately after `CREATE OR REPLACE VIEW`.
+Expected successful output includes both:
 
-If the runner fails:
+```text
+SmartMoney full historical summary: {...}
+SmartMoney historical public-contract validation: {...}
+```
+
+and ends with:
+
+```text
+SmartMoney V1 full historical initload committed; TradeActionConfidenceScore historical contract validated; DB metadata exported.
+```
+
+### PASS
+
+The command exits successfully and validation evidence shows:
+
+```text
+score_rows > 0
+view_rows = score_rows
+score_min_date = view_min_date
+score_max_date = view_max_date
+invalid_range = 0
+above_upstream_confidence = 0
+non_pass_confidence_mismatch = 0
+invalid_trade_action = 0
+```
+
+### FAIL / BLOCKED
+
+If the command raises an exception:
 
 ```text
 Verdict: FAIL | BLOCKED
 Action: STOP
 ```
 
-Capture the exact exception. Do not bypass the repository runner with ad-hoc DuckDB writes.
+Capture the exception and printed evidence. Do not retry unchanged and do not bypass the canonical initload with ad-hoc DuckDB writes.
 
 ---
 
-## 5. Step 3 — One focused read-only validation
+## 5. Step 3 — Verify generated metadata only
 
-Run exactly from repository root:
-
-```powershell
-@'
-from src.Ults.DuckLib import DuckDBManager
-
-with DuckDBManager(read_only=True) as con:
-    result = con.sql('''
-        SELECT
-            COUNT(*) AS Rows,
-            MAX(Date) AS LatestDate,
-            SUM(CASE
-                WHEN TradeActionConfidenceScore IS NULL
-                  OR TradeActionConfidenceScore < 0
-                  OR TradeActionConfidenceScore > 100
-                THEN 1 ELSE 0
-            END) AS InvalidRange,
-            SUM(CASE
-                WHEN TradeActionConfidenceScore > ConfidenceScore + 0.000001
-                THEN 1 ELSE 0
-            END) AS AboveUpstreamConfidence,
-            SUM(CASE
-                WHEN DataQualityStatus <> 'PASS'
-                 AND ABS(TradeActionConfidenceScore) > 0.000001
-                THEN 1 ELSE 0
-            END) AS NonPassConfidenceMismatch,
-            SUM(CASE
-                WHEN TradeAction IS NULL
-                  OR TradeAction NOT IN ('BUY','HOLD','SELL')
-                THEN 1 ELSE 0
-            END) AS InvalidTradeAction
-        FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
-    ''').df()
-    print(result.to_string(index=False))
-
-    print("\n=== Latest action-confidence sample ===")
-    sample = con.sql('''
-        WITH latest AS (
-            SELECT MAX(Date) AS Date
-            FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
-        )
-        SELECT
-            Ticker,
-            Date,
-            MarketState,
-            TradeAction,
-            ConfidenceScore,
-            TradeActionConfidenceScore
-        FROM "CherryMon"."main"."vw_Ticker_SmartMoney" v
-        INNER JOIN latest l ON l.Date = v.Date
-        ORDER BY TradeActionConfidenceScore DESC, Ticker
-        LIMIT 20
-    ''').df()
-    print(sample.to_string(index=False))
-'@ | python -
-```
-
-### PASS
-
-Required result:
-
-```text
-Rows > 0
-InvalidRange = 0
-AboveUpstreamConfidence = 0
-NonPassConfidenceMismatch = 0
-InvalidTradeAction = 0
-```
-
-The latest-date sample is observational only. Do not fail because BUY, HOLD or SELL is absent on the latest trading date.
-
-### FAIL
-
-If any violation count is non-zero:
-
-```text
-Verdict: FAIL
-Action: STOP
-```
-
-Do not continue into unrelated diagnosis in this runbook.
-
----
-
-## 6. Step 4 — Refresh generated metadata
-
-Only after Step 3 passes:
+The initload already exports metadata. Only verify that the generated reference contains the new public field:
 
 ```powershell
-python -c "from src.Ults import DuckLib; DuckLib.exportDuckDB_metadata()"
 Select-String -Path docs\reference\DB_Metadata.md -Pattern "TradeActionConfidenceScore"
 ```
 
-PASS when generated metadata contains the new field.
+Required:
+
+```text
+TradeActionConfidenceScore present = YES
+```
 
 Do not hand-edit `docs/reference/DB_Metadata.md`.
 
 ---
 
-## 7. Optional focused pytest — only when needed
+## 6. Optional focused pytest
 
-Do **not** run pytest by default when the pulled GitHub commit already has green SmartMoney CI and no local strategy code was modified.
+Do **not** run pytest by default when the pulled commit already has green SmartMoney CI and no local SmartMoney strategy code was modified after pull.
 
-Run this only when:
-
-- CI is not green/available; or
-- local strategy/schema/test code was modified after pull.
+Only when CI is unavailable/not green or local code changed:
 
 ```powershell
 python -m pytest tests\test_smart_money_strategy.py -q
 ```
 
-Do not escalate automatically to `tests/test_smart_money_integration.py` or the repository-wide suite.
+Do not automatically expand to integration/full-suite validation for this rollout.
 
 ---
 
-## 8. Required result
+## 7. Required result
 
 Return only:
 
 ```text
-SMART MONEY ACTION CONFIDENCE — MINIMAL LOCAL VALIDATION
+SMART MONEY ACTION CONFIDENCE — HISTORICAL INITLOAD
 
 HEAD: <sha>
-View deployment: PASS | FAIL | BLOCKED
-Rows: <count>
-LatestDate: <date>
+Historical initload: PASS | FAIL | BLOCKED
+Score rows: <count>
+View rows: <count>
+Historical range: <min date> -> <max date>
 InvalidRange: <count>
 AboveUpstreamConfidence: <count>
 NonPassConfidenceMismatch: <count>
@@ -243,7 +228,10 @@ Action: KEEP | STOP
 PASS requires:
 
 ```text
-view deployment PASS
+historical initload PASS
+ScoreRows > 0
+ViewRows = ScoreRows
+historical min/max dates match
 all four violation counts = 0
 metadata contains TradeActionConfidenceScore
 ```
@@ -252,17 +240,16 @@ After the terminal verdict, STOP.
 
 ---
 
-## 9. Deliberately skipped validation
+## 8. Deliberately skipped extra validation
 
-For this additive derived-view field, the following are intentionally not part of the default local gate:
+The historical initload script already owns the minimum deployment gate, so this runbook does not separately run:
 
 ```text
-full historical initload
-full SmartMoney preflight
-SmartMoney integration regression
-full daily pipeline
-full test suite
+smart_money_v1_preflight.sql
+tests/test_smart_money_integration.py
+full pytest suite
+run.py daily pipeline
 OOS/backtest evaluation
 ```
 
-Those are only required when their own code/contracts change or separate evidence indicates a regression beyond this view extension.
+Run those only when their own contracts change or separate evidence indicates a broader regression.
