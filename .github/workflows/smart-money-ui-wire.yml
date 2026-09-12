@@ -1,0 +1,93 @@
+name: SmartMoney UI Wire
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/smart-money-ui-wire.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Wire SmartMoney tab into NiceGUI chart
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/webapp/NiceGUI_chart.py")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  "from webapp.NiceGUI_grid import create_market_grid\n",
+                  "from webapp.NiceGUI_grid import create_market_grid\n"
+                  "from webapp.smart_money_tab import smart_money_tab_content\n",
+              ),
+              (
+                  '            ui.tab("rs", label="R/S", icon="vertical_align_center")\n'
+                  '            ui.tab("operations", label="Vận Hành", icon="settings_suggest")\n',
+                  '            ui.tab("rs", label="R/S", icon="vertical_align_center")\n'
+                  '            ui.tab("smart_money", label="SmartMoney", icon="account_tree")\n'
+                  '            ui.tab("operations", label="Vận Hành", icon="settings_suggest")\n',
+              ),
+              (
+                  '            with ui.tab_panel("rs").classes("p-0 gap-4"):\n'
+                  '                rs_tab_content()\n'
+                  '            with ui.tab_panel("operations").classes("p-0 gap-4"):\n',
+                  '            with ui.tab_panel("rs").classes("p-0 gap-4"):\n'
+                  '                rs_tab_content()\n'
+                  '            with ui.tab_panel("smart_money").classes("p-0 gap-4"):\n'
+                  '                smart_money_tab_content()\n'
+                  '            with ui.tab_panel("operations").classes("p-0 gap-4"):\n',
+              ),
+          ]
+
+          for old, new in replacements:
+              if new in text:
+                  continue
+              if old not in text:
+                  raise SystemExit(f"Expected NiceGUI_chart.py anchor not found:\n{old}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Validate focused UI contract
+        shell: bash
+        run: |
+          python -m pip install --quiet pytest pandas
+          python -m py_compile src/webapp/NiceGUI_chart.py
+          python -m py_compile src/webapp/smart_money_tab.py
+          python -m py_compile src/webapp/smart_money_state_flow.py
+          python -m pytest tests/test_smart_money_state_flow.py -q
+          git diff --check
+
+      - name: Commit chart wiring
+        shell: bash
+        run: |
+          if git diff --quiet -- src/webapp/NiceGUI_chart.py; then
+            echo "NiceGUI_chart.py already wired; no commit required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/webapp/NiceGUI_chart.py
+          git commit -m "feat(smart-money-ui): wire SmartMoney tab into chart"
+          git push origin HEAD:main
