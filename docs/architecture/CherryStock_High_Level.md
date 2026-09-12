@@ -27,6 +27,8 @@ The map covers the current repository-level architecture:
 - automation and notification tooling;
 - engineering/AI governance as a separate control plane.
 
+At this abstraction level, DuckDB MCP, Telegram and focused operational scripts are grouped into one **Operational Interfaces** component. Their detailed behavior remains owned by the corresponding source modules and runbooks.
+
 Deployment infrastructure that is not evidenced in the repository is intentionally omitted.
 
 ## High-Level Components
@@ -42,8 +44,7 @@ Deployment infrastructure that is not evidenced in the repository is intentional
 | Analytics & Calculation Engines | Build Trend, Indicators, R/S and SmartMoney outputs | `src/calcEngine/**` |
 | Public Read Contracts | Expose stable `vw_*` consumer-oriented read surfaces | `vw_Ticker_OHLC_D`, Indicator Engine and SmartMoney architecture contracts |
 | Web & Chart Presentation | Present grids/charts and analytical views | `src/webapp/**`, `src/Chart/**`, `src/Presentation/**` |
-| DuckDB MCP Server | Expose guarded analytical/read-write tools over stdio or localhost HTTP | `src/mcp_server/**` |
-| Automation & Notifications | Operational scripts, notebook entry points and Telegram notifications | `scripts/**`, `src/Jupyter/**`, `src/Telegram/**` |
+| Operational Interfaces | Expose guarded MCP access and operational automation/notification surfaces | `src/mcp_server/**`, `src/Telegram/**`, `scripts/**` |
 
 ## Primary Runtime Paths
 
@@ -72,7 +73,7 @@ AmiBroker / Yahoo / FA sources
   → raw_* / reference data in DuckDB
   → analytical engines
   → calculated persistence + public vw_* contracts
-  → Web/Chart | MCP | automation/notifications
+  → Web/Chart | Operational Interfaces
 ```
 
 The public read layer is intentionally separated from internal calculated persistence. Consumers should prefer stable `vw_*` contracts when a public read contract exists.
@@ -83,7 +84,7 @@ The public read layer is intentionally separated from internal calculated persis
 
 ### MCP access path
 
-The DuckDB MCP Server is a consumer/interface path into the local CherryMon database, not the owner of the daily pipeline. It uses the centralized DuckDB layer and applies its own SQL/write guardrails. HTTP mode binds to `127.0.0.1:8765/mcp` by default.
+The DuckDB MCP Server is part of the high-level **Operational Interfaces** surface. It is a consumer/interface path into the local CherryMon database, not the owner of the daily pipeline. It uses the centralized DuckDB layer and applies its own SQL/write guardrails. HTTP mode binds to `127.0.0.1:8765/mcp` by default.
 
 ## Engineering / AI Control Plane
 
