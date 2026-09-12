@@ -130,6 +130,7 @@ SELECT
     MarketState,
     FactorCoverage,
     DataQualityStatus,
+    TradeAction,
     FreshFlowScore,
     RelativeLiquidityScore,
     LiquidityAccelerationScore,
@@ -145,9 +146,34 @@ WHERE Ticker = 'MWG'
 ORDER BY Date DESC
 LIMIT 20;
 
--- PASS: recent MWG rows exist; scores are numeric; LimitUpScore may be NULL.
+-- PASS: recent MWG rows exist; TradeAction is BUY/HOLD/SELL; scores are numeric; LimitUpScore may be NULL.
 
--- 9) Factor/score relationship.
+-- 9) TradeAction strategy contract.
+SELECT
+    TradeAction,
+    COUNT(*) AS Rows
+FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
+GROUP BY TradeAction
+ORDER BY TradeAction;
+
+SELECT COUNT(*) AS InvalidTradeAction
+FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
+WHERE TradeAction IS NULL
+   OR TradeAction NOT IN ('BUY', 'HOLD', 'SELL');
+
+SELECT COUNT(*) AS TradeActionMappingMismatch
+FROM "CherryMon"."main"."vw_Ticker_SmartMoney"
+WHERE TradeAction <>
+    CASE
+        WHEN DataQualityStatus <> 'PASS' THEN 'HOLD'
+        WHEN MarketState = 'DISTRIBUTION' THEN 'SELL'
+        WHEN MarketState IN ('ACCUMULATION', 'BREAKOUT', 'DEMAND_EXPANSION', 'SUPPLY_LOCK') THEN 'BUY'
+        ELSE 'HOLD'
+    END;
+
+-- PASS: InvalidTradeAction = 0; TradeActionMappingMismatch = 0.
+
+-- 10) Factor/score relationship.
 SELECT COUNT(*) AS ScoreRowsWithoutFactors
 FROM "CherryMon"."main"."cal_smart_money_ticker_score" AS s
 WHERE NOT EXISTS (
@@ -160,7 +186,7 @@ WHERE NOT EXISTS (
 
 -- PASS: 0.
 
--- 10) Data quality summary.
+-- 11) Data quality summary.
 SELECT
     DataQualityStatus,
     COUNT(*) AS Rows,
