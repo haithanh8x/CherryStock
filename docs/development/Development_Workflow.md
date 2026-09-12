@@ -64,6 +64,30 @@ Read in order:
 5. related requirement/architecture/ADR/domain materials routed from docs/00_HOME.md
 6. implementation + nearest tests
 
+For any task that creates or changes Python tests, repository-root commands or runnable scripts, also read:
+
+`docs/development/Python_Execution_Conventions.md`
+
+Do not invent a new import/bootstrap convention when the repository already defines one.
+
+## Python execution contract
+
+CherryStock uses a `src` layout, and Python resolves imports differently depending on how a command is invoked.
+
+Canonical details live in:
+
+`docs/development/Python_Execution_Conventions.md`
+
+Key developer obligations:
+
+- documented Python commands must be reproducible from the repository root;
+- new tests must not depend on a developer-specific manual `PYTHONPATH`;
+- directly executed `scripts/*.py` entry points must bootstrap the repository path themselves when needed;
+- pytest collection/import failures must be diagnosed before labeling a failure as behavioral regression;
+- use one known-good neighboring test/script as the convention reference instead of repeatedly probing `sys.path`.
+
+When a runbook command works only after setting an absolute local path such as `C:\Github\CherryStock`, treat that as an execution-contract defect unless that path is an explicit project configuration contract.
+
 ## Standard handoff
 
 ~~~text
@@ -113,9 +137,12 @@ This is especially important when using fast/small models such as Flash-class LL
 - implementation → src/**
 - validation → tests/**
 - operational/init/migration entry points → scripts/**
+- Python import/execution convention → docs/development/Python_Execution_Conventions.md
 - non-obvious implementation guidance only → docs/development/implementation-notes/**
 
 Test runbooks under tests/*.md must be finite execution instructions, not open-ended investigation documents.
+
+Postmortems, issue exports and developer lessons from a completed run belong under `docs/development/implementation-notes/**` when they remain useful. Once their reusable lessons are incorporated into canonical docs/instructions, they must not remain in `tests/**` as a competing contract.
 
 Do not duplicate a document solely for Obsidian. Use links/backlinks to navigate the same repository files.
 
