@@ -32,7 +32,7 @@ try {
         throw "Archify deliver failed."
     }
 
-    Write-Host "[3/3] Apply CherryStock typography (sans titles + Archify mono technical text)..."
+    Write-Host "[3/3] Apply CherryStock typography + runtime font picker..."
     & python scripts/customize_archify_typography.py $Output --sans-font $SansFont
     if ($LASTEXITCODE -ne 0) {
         throw "CherryStock typography post-processing failed."
@@ -40,7 +40,9 @@ try {
 
     $resolvedOutput = (Resolve-Path $Output).Path
     Write-Host "Rendered: $resolvedOutput"
-    Write-Host "Typography: node/boundary titles = $SansFont; technical text = Archify JetBrains Mono"
+    Write-Host "Default title font: $SansFont"
+    Write-Host "HTML font picker: Inter / Segoe UI / IBM Plex Sans / Arial / system-ui / JetBrains Mono"
+    Write-Host "Technical text remains Archify JetBrains Mono."
 
     if (-not $NoOpen) {
         Start-Process $resolvedOutput
