@@ -10,16 +10,16 @@
       "link_mode": "web",
       "revision": "711b9a582e66e0660966907a82a6e901cd76764d"
     },
-    "viewBox": [1760, 900]
+    "viewBox": [1340, 900]
   },
   "components": [
     {
       "id": "entrypoints",
       "type": "backend",
       "label": "Runtime Entry Points",
-      "sublabel": "run.py · runMonthly.py · Rundeck",
+      "sublabel": "Daily · Monthly · Rundeck",
       "pos": [40, 90],
-      "size": [190, 72],
+      "size": [180, 72],
       "sources": [
         {"path": "run.py", "label": "Daily runner"},
         {"path": "runMonthly.py", "label": "Monthly runner"},
@@ -31,7 +31,7 @@
       "type": "backend",
       "label": "Application Orchestration",
       "sublabel": "SyncWritePipelineService + jobs",
-      "pos": [320, 90],
+      "pos": [280, 88],
       "size": [200, 76],
       "sources": [
         {"path": "src/cherrystock/application/services/sync_write_pipeline.py", "label": "Daily pipeline"},
@@ -43,7 +43,7 @@
       "type": "backend",
       "label": "Transaction & Data Quality Gate",
       "sublabel": "DuckDBUnitOfWork · blocking DQ",
-      "pos": [610, 90],
+      "pos": [520, 88],
       "size": [220, 76],
       "sources": [
         {"path": "src/cherrystock/infrastructure/database/unit_of_work.py", "label": "Unit of Work"},
@@ -69,7 +69,7 @@
       "type": "backend",
       "label": "Ingestion & Adapters",
       "sublabel": "AmiBroker adapter · CrawlStock",
-      "pos": [320, 360],
+      "pos": [280, 360],
       "size": [200, 72],
       "sources": [
         {"path": "src/cherrystock/infrastructure/amibroker/windows_adapter.py", "label": "Windows adapter"},
@@ -82,7 +82,7 @@
       "type": "database",
       "label": "CherryMon DuckDB",
       "sublabel": "raw_* · dim_* · cal_* · sys_*",
-      "pos": [620, 360],
+      "pos": [530, 358],
       "size": [200, 76],
       "sources": [
         {"path": "src/cherrystock/infrastructure/database/connection.py", "label": "Connection factory"},
@@ -95,7 +95,7 @@
       "type": "backend",
       "label": "Analytics & Calculation Engines",
       "sublabel": "Trend · Indicators · R/S · SmartMoney",
-      "pos": [930, 360],
+      "pos": [780, 358],
       "size": [220, 76],
       "sources": [
         {"path": "src/calcEngine/calcIndicators.py", "label": "Indicators"},
@@ -108,7 +108,7 @@
       "type": "database",
       "label": "Public Read Contracts",
       "sublabel": "vw_* · ticker/indicator/score views",
-      "pos": [1240, 360],
+      "pos": [1040, 358],
       "size": [200, 76],
       "sources": [
         {"path": "src/DuckDB/sql/vw_Ticker_OHLC_D.sql", "label": "Daily OHLC contract"},
@@ -121,7 +121,7 @@
       "type": "frontend",
       "label": "Web & Chart Presentation",
       "sublabel": "NiceGUI · Chart · Presentation",
-      "pos": [1240, 100],
+      "pos": [1040, 90],
       "size": [200, 76],
       "sources": [
         {"path": "src/webapp/app.py", "label": "Web entry point"},
@@ -134,7 +134,7 @@
       "type": "backend",
       "label": "Operational Interfaces",
       "sublabel": "DuckDB MCP · Telegram · scripts",
-      "pos": [1520, 360],
+      "pos": [1040, 610],
       "size": [200, 76],
       "sources": [
         {"path": "src/mcp_server/duckdb_mcp.py", "label": "MCP transport"},
@@ -144,18 +144,18 @@
     }
   ],
   "connections": [
-    {"from": "entrypoints", "to": "orchestrator", "label": "invoke", "variant": "emphasis", "route": "straight"},
-    {"from": "orchestrator", "to": "ingestion", "label": "coordinate sync", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [485, 260]},
-    {"from": "sources", "to": "ingestion", "label": "market + reference data", "variant": "emphasis", "route": "straight", "labelAt": [270, 455]},
-    {"from": "orchestrator", "to": "quality_uow", "label": "shared write transaction", "variant": "emphasis", "route": "straight", "labelAt": [565, 190]},
-    {"from": "ingestion", "to": "duckdb", "label": "raw_* / reference writes", "route": "straight", "labelAt": [570, 455]},
-    {"from": "quality_uow", "to": "duckdb", "label": "validate · commit / rollback", "variant": "emphasis", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [795, 260]},
-    {"from": "orchestrator", "to": "analytics", "label": "run calculations", "fromSide": "top", "toSide": "top", "via": [[420, 45], [1040, 45]], "labelAt": [730, 35]},
-    {"from": "duckdb", "to": "analytics", "label": "raw_* + dim_* inputs", "route": "straight", "labelAt": [875, 455]},
-    {"from": "analytics", "to": "contracts", "label": "calculated outputs", "route": "straight", "labelAt": [1195, 455]},
-    {"from": "duckdb", "to": "contracts", "label": "vw_* read layer", "fromSide": "bottom", "toSide": "bottom", "via": [[720, 540], [1340, 540]], "labelAt": [1030, 555]},
-    {"from": "contracts", "to": "web_chart", "label": "visualization data", "route": "straight", "fromSide": "top", "toSide": "bottom", "labelAt": [1410, 270]},
-    {"from": "contracts", "to": "operations", "label": "guarded access + automation", "variant": "security", "route": "straight", "labelAt": [1480, 455]}
+    {"from": "entrypoints", "to": "orchestrator", "label": "invoke", "variant": "emphasis", "route": "straight", "labelAt": [250, 110]},
+    {"from": "orchestrator", "to": "ingestion", "label": "coordinate sync", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [430, 260]},
+    {"from": "sources", "to": "ingestion", "label": "market + reference data", "variant": "emphasis", "route": "straight", "labelAt": [250, 455]},
+    {"from": "orchestrator", "to": "quality_uow", "label": "shared write transaction", "variant": "emphasis", "route": "straight", "labelAt": [500, 190]},
+    {"from": "ingestion", "to": "duckdb", "label": "raw_* / reference writes", "route": "straight", "labelAt": [505, 455]},
+    {"from": "quality_uow", "to": "duckdb", "label": "validate · commit / rollback", "variant": "emphasis", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [700, 260]},
+    {"from": "orchestrator", "to": "analytics", "label": "run calculations", "fromSide": "top", "toSide": "top", "via": [[380, 40], [890, 40]], "labelAt": [635, 30]},
+    {"from": "duckdb", "to": "analytics", "label": "raw_* + dim_* inputs", "route": "straight", "labelAt": [755, 455]},
+    {"from": "analytics", "to": "contracts", "label": "calculated outputs", "route": "straight", "labelAt": [1020, 455]},
+    {"from": "duckdb", "to": "contracts", "label": "vw_* read layer", "fromSide": "bottom", "toSide": "bottom", "via": [[630, 520], [1140, 520]], "labelAt": [885, 535]},
+    {"from": "contracts", "to": "web_chart", "label": "visualization data", "route": "straight", "fromSide": "top", "toSide": "bottom", "labelAt": [1220, 260]},
+    {"from": "contracts", "to": "operations", "label": "guarded access + automation", "variant": "security", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1220, 525]}
   ],
   "cards": [
     {"dot": "emerald", "title": "Luồng ghi dữ liệu hằng ngày", "items": ["run.py mở một DuckDBUnitOfWork và gọi SyncWritePipelineService", "Data Quality dạng blocking sẽ rollback toàn bộ daily write set dùng chung transaction", "Metadata chỉ được export sau khi COMMIT thành công"]},
