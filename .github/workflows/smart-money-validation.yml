@@ -22,6 +22,7 @@ on:
       - "tests/test_smart_money_score.py"
       - "tests/test_smart_money_evaluation.py"
       - "tests/test_smart_money_integration.py"
+      - "tests/test_smart_money_strategy.py"
       - "tests/test_sync_write_pipeline_service.py"
       - "tests/test_data_quality_orchestration.py"
   pull_request:
@@ -47,6 +48,7 @@ on:
       - "tests/test_smart_money_score.py"
       - "tests/test_smart_money_evaluation.py"
       - "tests/test_smart_money_integration.py"
+      - "tests/test_smart_money_strategy.py"
 
 jobs:
   unit:
@@ -90,4 +92,4 @@ jobs:
 
       - name: Run focused unit tests
         run: |
-          python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py tests/test_smart_money_integration.py tests/test_sync_write_pipeline_service.py tests/test_data_quality_orchestration.py -v
+          python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py tests/test_smart_money_integration.py tests/test_smart_money_strategy.py tests/test_sync_write_pipeline_service.py tests/test_data_quality_orchestration.py -v
