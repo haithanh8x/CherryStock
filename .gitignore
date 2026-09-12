@@ -76,3 +76,7 @@ state.json
 # Keep generated reference artifacts in Git
 !docs/reference/
 !docs/reference/**
+
+# Keep Archify architecture-as-code sources in Git
+!docs/architecture/diagrams/
+!docs/architecture/diagrams/*.architecture.json
