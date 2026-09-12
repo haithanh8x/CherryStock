@@ -142,6 +142,7 @@ def _render_state_block(block: dict[str, Any]) -> None:
     total = int(block["total_tickers"])
     action_counts = block["action_counts"]
     rows: list[dict[str, Any]] = list(block["rows"])
+    action_rows: dict[str, list[dict[str, Any]]] = block["action_rows"]
 
     with ui.card().classes(_card_classes("p-4 h-full")):
         with ui.row().classes("w-full items-start justify-between gap-3 no-wrap"):
@@ -180,19 +181,11 @@ def _render_state_block(block: dict[str, Any]) -> None:
             )
             return
 
-        # block["rows"] is already sorted by TradeActionConfidenceScore DESC.
-        # Filtering in-place therefore preserves descending confidence inside
-        # each TradeAction subgroup without introducing a second ranking rule.
         with ui.column().classes(
             "w-full gap-3 max-h-[430px] overflow-y-auto pr-1"
         ):
             for action in TRADE_ACTION_ORDER:
-                action_rows = [
-                    row
-                    for row in rows
-                    if str(row.get("TradeAction") or "").upper() == action
-                ]
-                _render_action_group(action, action_rows)
+                _render_action_group(action, list(action_rows.get(action, [])))
 
 
 def smart_money_tab_content() -> None:
