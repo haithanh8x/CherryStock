@@ -3,12 +3,12 @@
 - **Requirement:** [[../backlog/requirements/REQ-0026-smart-money-strategy|REQ-0026]]
 - **Upstream model:** [[SmartMoneyScore|SmartMoneyScore V1]]
 - **Public contract:** `"CherryMon"."main"."vw_Ticker_SmartMoney"`
-- **Strategy output:** `TradeAction`
-- **Status:** FUNCTIONALLY_VALIDATED
+- **Strategy outputs:** `TradeAction`, `TradeActionConfidenceScore`
+- **Status:** IMPLEMENTED_PENDING_VALIDATION
 
 ## Purpose
 
-`SmartMoneyStrategy V1` converts the rich SmartMoneyScore state model into one simple downstream action:
+`SmartMoneyStrategy V1` converts the rich SmartMoneyScore state model into a simple downstream action:
 
 ```text
 BUY
@@ -16,21 +16,36 @@ HOLD
 SELL
 ```
 
-The strategy does **not** replace `SmartMoneyScore`, `ConfidenceScore`, `MarketState` or component scores. It is a thin, deterministic interpretation layer so Screener, Chart, Dashboard and research consumers do not each invent a different BUY/HOLD/SELL mapping.
+and exposes a companion confidence score:
 
-The strategy is technical classification only. It does not place orders, size positions, define stop-loss/take-profit, or represent personalized investment advice.
+```text
+TradeActionConfidenceScore: 0..100
+```
+
+The strategy does **not** replace `SmartMoneyScore`, upstream `ConfidenceScore`, `MarketState` or component factor scores. It is a deterministic interpretation layer so Screener, Chart, Dashboard and research consumers do not each invent different BUY/HOLD/SELL semantics.
+
+The strategy is a technical classification contract only. It does not place orders, size positions, define stop-loss/take-profit, or represent personalized investment advice.
+
+`TradeActionConfidenceScore` is **not** a probability that a trade will win. It measures how well the current strategy action is supported by upstream evidence quality and the weakest factor directly confirming the current state.
 
 ---
 
-# 1. Output Contract
+# 1. Public Output Contract
 
-`TradeAction` is exposed directly by:
+The public view exposes:
 
 ```text
 "CherryMon"."main"."vw_Ticker_SmartMoney"
 ```
 
-Allowed values:
+with additive strategy fields:
+
+```text
+TradeAction
+TradeActionConfidenceScore
+```
+
+`TradeAction` allowed values:
 
 ```text
 BUY
@@ -38,22 +53,33 @@ HOLD
 SELL
 ```
 
-Properties:
+`TradeActionConfidenceScore` contract:
 
-- non-NULL for every public Smart Money row;
-- derived from the row's existing `DataQualityStatus` and primary `MarketState`;
-- not persisted in `cal_smart_money_ticker_score`;
-- not persisted in `cal_smart_money_factor_values`;
-- does not alter the SmartMoney model/factor calculation;
-- preserves the existing public grain `Ticker + Date + enabled ModelCode/ModelVersion`.
+```text
+0 <= TradeActionConfidenceScore <= 100
+TradeActionConfidenceScore <= ConfidenceScore
+```
 
-`TradeAction` is therefore a presentation/strategy contract over the existing Smart Money Source of Truth, not a second Source of Truth.
+Both fields are derived at read time. They are not persisted in:
+
+```text
+cal_smart_money_ticker_score
+cal_smart_money_factor_values
+```
+
+The existing public grain remains:
+
+```text
+Ticker + Date + enabled ModelCode/ModelVersion
+```
+
+No second Smart Money Source of Truth is introduced.
 
 ---
 
-# 2. Rule Precedence
+# 2. TradeAction Rule Precedence
 
-Strategy V1 uses the following deterministic precedence:
+Strategy V1 uses deterministic precedence:
 
 ```text
 1. DataQualityStatus != PASS
@@ -90,17 +116,112 @@ CASE
 END AS TradeAction
 ```
 
-The quality gate is intentionally first. A bullish/bearish state with incomplete or low-confidence evidence does not emit an actionable BUY/SELL label in V1.
+The quality gate is first. A bullish/bearish state with incomplete or low-confidence evidence cannot emit BUY/SELL.
 
 ---
 
-# 3. BUY
+# 3. Why Action Confidence Is Separate
 
-## Meaning
+Three different concepts must remain separate:
 
-`BUY` means SmartMoneyScore V1 has classified the ticker into a **bullish participation/setup state** and the evidence quality has passed the current production gate.
+```text
+SmartMoneyScore
+    = overall Smart Money signal strength after state-aware weighting/penalty
 
-It means:
+ConfidenceScore
+    = trustworthiness/completeness of the upstream SmartMoney conclusion
+
+TradeActionConfidenceScore
+    = confidence that the derived BUY/HOLD/SELL classification is sufficiently supported
+```
+
+A high `SmartMoneyScore` does not automatically imply a high action confidence.
+
+A high `TradeActionConfidenceScore` does not imply future return or win probability.
+
+Important invariant:
+
+```text
+TradeActionConfidenceScore <= ConfidenceScore
+```
+
+The strategy layer may reduce confidence when state-confirming factors are weak; it may never increase confidence beyond the upstream evidence-quality ceiling.
+
+---
+
+# 4. TradeActionConfidenceScore Formula
+
+## 4.1 Quality gate
+
+If:
+
+```text
+DataQualityStatus != PASS
+```
+
+then:
+
+```text
+TradeAction = HOLD
+TradeActionConfidenceScore = 0
+```
+
+This is a safety HOLD, not a validated directional/management action.
+
+## 4.2 PASS rows
+
+For PASS rows, derive a `StateEvidenceStrength` from the weakest directly confirming public factor.
+
+The weakest factor is intentional: one very strong factor must not hide another condition that is only marginal.
+
+| MarketState | StateEvidenceStrength |
+|---|---|
+| `ACCUMULATION` | `min(AccumulationScore, AccumulationMemoryScore)` |
+| `BREAKOUT` | `min(FreshFlowScore, RelativeLiquidityScore, RelativeStrengthScore)` |
+| `DEMAND_EXPANSION` | `min(RelativeLiquidityScore, LiquidityAccelerationScore, RelativeStrengthScore)` |
+| `SUPPLY_LOCK` | `min(SupplyLockScore, AccumulationMemoryScore)` |
+| `DISTRIBUTION` | `DistributionScore` |
+| `MARKUP` | `min(TrendScore, RelativeStrengthScore)` |
+| `SELLING_CLIMAX` | `min(DistributionScore, RelativeLiquidityScore)` |
+| `LIQUIDITY_DRYUP` | `ConfidenceScore` |
+| `NEUTRAL` | `ConfidenceScore` |
+
+For states with an explicit factor list, if any required public factor is NULL:
+
+```text
+TradeActionConfidenceScore = 0
+```
+
+This exposes a state/factor consistency problem rather than silently assigning high confidence.
+
+## 4.3 Blend and cap
+
+For a valid PASS row:
+
+```text
+CandidateActionConfidence
+    = 0.60 * ConfidenceScore
+    + 0.40 * StateEvidenceStrength
+
+TradeActionConfidenceScore
+    = min(ConfidenceScore, CandidateActionConfidence)
+```
+
+Then round to 2 decimals.
+
+Why 60/40:
+
+- `ConfidenceScore` remains the dominant evidence-quality input;
+- state evidence can reduce confidence when the weakest confirming factor is weaker;
+- the upstream confidence cap prevents strategy confidence from becoming more optimistic than the model's own evidence quality.
+
+`LIQUIDITY_DRYUP` currently falls back to `ConfidenceScore` because `LiquidityCompressionScore`, one of the state trigger inputs, is not exposed as a public factor column. This limitation is explicit rather than reconstructed from unrelated public fields.
+
+---
+
+# 5. BUY States
+
+`BUY` requires:
 
 ```text
 DataQualityStatus = PASS
@@ -113,18 +234,12 @@ MarketState ∈ {
 }
 ```
 
-It does **not** mean all four bullish states are simultaneously true. `MarketState` is one primary state after V1 precedence resolves competing evidence.
+## ACCUMULATION → BUY
 
-## BUY state conditions
-
-### 3.1 ACCUMULATION → BUY
-
-Purpose: detect multi-session accumulation before or during an emerging move.
-
-Implemented state condition:
+State condition:
 
 ```text
-AccumulationScore >= STATE_ACCUMULATION_THRESHOLD (65)
+AccumulationScore >= 65
 AND
 AccumulationMemoryScore >= 60
 ```
@@ -136,7 +251,7 @@ Main evidence:
 - optional OBV/AD slope improvement;
 - multi-session accumulation memory.
 
-`AccumulationScore` raw evidence:
+Approximate accumulation raw evidence:
 
 ```text
 AccumulationRaw = mean(
@@ -147,26 +262,18 @@ AccumulationRaw = mean(
 )
 ```
 
-At least 2 of the 4 evidence components must be available; the raw value is then normalized by same-date cross-sectional percentile.
-
-Memory:
+Action-confidence evidence strength:
 
 ```text
-AccumulationMemory_t
-≈ 0.90 × AccumulationMemory_(t-1)
- + 0.10 × AccumulationScore_t
+min(AccumulationScore, AccumulationMemoryScore)
 ```
 
-Interpretation: Strategy V1 treats confirmed accumulation as an early BUY/setup action rather than waiting exclusively for the breakout day.
+## BREAKOUT → BUY
 
-### 3.2 BREAKOUT → BUY
-
-Purpose: detect fresh participation pushing price with abnormal liquidity and relative strength.
-
-Implemented state condition:
+State condition:
 
 ```text
-FreshFlowScore >= STATE_BREAKOUT_THRESHOLD (70)
+FreshFlowScore >= 70
 AND
 RelativeLiquidityScore >= 70
 AND
@@ -181,26 +288,19 @@ FreshFlowRaw =
     × ln(1 + max(RVAL20, 0))
 ```
 
-Then:
+Action-confidence evidence strength:
 
 ```text
-FreshFlowScore = same-date cross-sectional percentile(FreshFlowRaw)
+min(
+    FreshFlowScore,
+    RelativeLiquidityScore,
+    RelativeStrengthScore
+)
 ```
 
-Key confirmation:
+## DEMAND_EXPANSION → BUY
 
-```text
-new participation
-+ strong close/short-term price impulse
-+ abnormal current liquidity
-+ strength versus VNINDEX
-```
-
-### 3.3 DEMAND_EXPANSION → BUY
-
-Purpose: detect broadening demand before/without requiring the stricter FreshFlow breakout threshold.
-
-Implemented state condition:
+State condition:
 
 ```text
 RelativeLiquidityScore >= 70
@@ -214,153 +314,44 @@ Supporting formulas:
 
 ```text
 RVAL20 = TradingValue / ALV20
-
 LiquidityAccelerationRaw = ALV5 / ALV20
-
 ALV5  = MA5(TradingValue)
 ALV20 = MA20(TradingValue)
 ```
 
-The raw liquidity measures are normalized cross-sectionally for the same trading date.
-
-Interpretation: current participation is elevated, the recent liquidity baseline is accelerating, and price strength remains better than the benchmark/universe context.
-
-### 3.4 SUPPLY_LOCK → BUY
-
-Purpose: identify a bullish shortage of available supply after prior accumulation, even when current volume is not expanding.
-
-Implemented state condition:
+Action-confidence evidence strength:
 
 ```text
-SupplyLockScore >= STATE_SUPPLY_LOCK_THRESHOLD (70)
+min(
+    RelativeLiquidityScore,
+    LiquidityAccelerationScore,
+    RelativeStrengthScore
+)
+```
+
+## SUPPLY_LOCK → BUY
+
+State condition:
+
+```text
+SupplyLockScore >= 70
 AND
 AccumulationMemoryScore >= 60
 ```
 
-`SupplyLockScore` is a conjunctive/geometric composite of available evidence:
+`SupplyLockScore` is a conjunctive/geometric composite of available evidence including accumulation memory, close strength, Relative Strength, Trend and liquidity compression, penalized by Distribution evidence.
+
+Action-confidence evidence strength:
 
 ```text
-AccumulationMemory
-CloseStrength
-RelativeStrength
-Trend
-LiquidityCompression
-```
-
-At least 4/5 components are required. The composite is then penalized by Distribution evidence:
-
-```text
-SupplyLockScore
-= GeometricComposite(...)
-  × (1 - DistributionScore / 100)
-```
-
-Interpretation:
-
-```text
-prior accumulation remains present
-+ price/RS/trend stay strong
-+ available supply/liquidity contracts
-+ distribution remains low
-```
-
-Low volume alone never produces a bullish Supply Lock conclusion.
-
----
-
-# 4. HOLD
-
-## Meaning
-
-`HOLD` means **Strategy V1 does not emit a new BUY or SELL action** for the row.
-
-Important semantic boundary:
-
-- if the ticker is already held, `HOLD` can be interpreted as no strategy-driven change;
-- if the ticker is not held, `HOLD` should be read as `WAIT / NO NEW ACTION`;
-- it is not a guarantee that an investor should literally keep an existing position.
-
-## HOLD condition A — evidence quality is not PASS
-
-```text
-DataQualityStatus != PASS
-→ HOLD
-```
-
-Current SmartMoneyScore V1 quality contract:
-
-```text
-INVALID
-  if SmartMoneyScore is NULL
-
-PASS
-  if ConfidenceScore >= 60
-  AND FactorCoverage >= 0.80
-
-WARNING
-  otherwise
-```
-
-Therefore a technically bullish `MarketState` cannot emit `BUY` when its supporting evidence has only WARNING/INVALID quality.
-
-## HOLD condition B — MARKUP
-
-Implemented MARKUP state:
-
-```text
-TrendScore >= STATE_MARKUP_THRESHOLD (65)
-AND
-RelativeStrengthScore >= 60
-```
-
-Strategy interpretation:
-
-`MARKUP` describes an existing positive trend/strength phase. V1 maps it to HOLD rather than repeatedly generating a fresh BUY each day after the initial setup/participation phase.
-
-## HOLD condition C — LIQUIDITY_DRYUP
-
-Implemented state condition:
-
-```text
-LiquidityCompressionScore >= STATE_DRYUP_THRESHOLD (75)
-AND
-RelativeStrengthScore < 55
-```
-
-Liquidity compression alone has no bullish meaning. Because RS is weak in this state rule, V1 does not promote it to BUY.
-
-## HOLD condition D — SELLING_CLIMAX
-
-Implemented state condition:
-
-```text
-DistributionScore >= 60
-AND
-RelativeLiquidityScore >= 80
-AND
-Return1 < 0
-```
-
-A selling climax can represent continuing risk or late-stage capitulation/exhaustion. V1 therefore does not infer an automatic SELL or bottom-fishing BUY from this state alone.
-
-## HOLD condition E — NEUTRAL
-
-No stronger supported state condition is satisfied.
-
-```text
-MarketState = NEUTRAL
-→ HOLD
+min(SupplyLockScore, AccumulationMemoryScore)
 ```
 
 ---
 
-# 5. SELL
+# 6. SELL State
 
-## Meaning
-
-`SELL` means the primary Smart Money state is `DISTRIBUTION` and the evidence quality passes the production gate.
-
-Condition:
+`SELL` requires:
 
 ```text
 DataQualityStatus = PASS
@@ -368,10 +359,10 @@ AND
 MarketState = DISTRIBUTION
 ```
 
-Implemented Distribution state:
+Distribution state condition:
 
 ```text
-DistributionScore >= STATE_DISTRIBUTION_THRESHOLD (70)
+DistributionScore >= 70
 ```
 
 Distribution raw evidence:
@@ -388,105 +379,162 @@ DistributionRaw =
       ]
 ```
 
-Then:
+Action-confidence evidence strength:
 
 ```text
-DistributionScore =
-same-date cross-sectional percentile(DistributionRaw)
+DistributionScore
 ```
 
-This looks for the dangerous combination:
-
-```text
-participation/liquidity high
-+ Close weak / near Low
-+ short-term return weak
-+ Relative Strength deteriorating
-```
-
-`DISTRIBUTION` has the highest MarketState precedence in SmartMoneyScore V1. A ticker that also satisfies a lower-precedence bullish state can therefore still finish as `DISTRIBUTION`, which maps to `SELL` when quality is PASS.
+Because `DISTRIBUTION` has highest MarketState precedence, an otherwise bullish ticker can still resolve to SELL if distribution dominates and quality is PASS.
 
 ---
 
-# 6. Action Matrix
+# 7. HOLD States
 
-| DataQualityStatus | Primary MarketState | TradeAction | Strategy meaning |
+`HOLD` means no new BUY/SELL action from Strategy V1. For a ticker not already held, consumers may read it as `WAIT / NO NEW ACTION`.
+
+## Non-PASS quality
+
+```text
+DataQualityStatus != PASS
+→ TradeAction = HOLD
+→ TradeActionConfidenceScore = 0
+```
+
+Current upstream quality contract:
+
+```text
+INVALID
+  if SmartMoneyScore is NULL
+
+PASS
+  if ConfidenceScore >= 60
+  AND FactorCoverage >= 0.80
+
+WARNING
+  otherwise
+```
+
+## MARKUP
+
+State condition:
+
+```text
+TrendScore >= 65
+AND
+RelativeStrengthScore >= 60
+```
+
+V1 treats this as an already-running trend rather than repeatedly emitting new BUY entries.
+
+Action-confidence evidence strength:
+
+```text
+min(TrendScore, RelativeStrengthScore)
+```
+
+## LIQUIDITY_DRYUP
+
+State condition:
+
+```text
+LiquidityCompressionScore >= 75
+AND
+RelativeStrengthScore < 55
+```
+
+Because public view does not expose `LiquidityCompressionScore`, action confidence currently equals upstream `ConfidenceScore` for PASS rows.
+
+## SELLING_CLIMAX
+
+State condition:
+
+```text
+DistributionScore >= 60
+AND
+RelativeLiquidityScore >= 80
+AND
+Return1 < 0
+```
+
+The state can mean continuing risk or capitulation/exhaustion, so V1 does not infer automatic SELL or bottom-fishing BUY.
+
+Action-confidence evidence strength uses the public confirming factors:
+
+```text
+min(DistributionScore, RelativeLiquidityScore)
+```
+
+The already-persisted `MarketState` supplies the `Return1 < 0` part of the classification.
+
+## NEUTRAL
+
+No stronger supported state condition is satisfied.
+
+For a PASS `NEUTRAL` row:
+
+```text
+TradeAction = HOLD
+TradeActionConfidenceScore = ConfidenceScore
+```
+
+---
+
+# 8. Action Matrix
+
+| DataQualityStatus | Primary MarketState | TradeAction | Action-confidence evidence |
 |---|---|---|---|
-| not `PASS` | any | `HOLD` | Evidence quality insufficient for BUY/SELL |
-| `PASS` | `ACCUMULATION` | `BUY` | Early accumulation/setup confirmed |
-| `PASS` | `BREAKOUT` | `BUY` | Fresh flow + abnormal liquidity + RS confirmed |
-| `PASS` | `DEMAND_EXPANSION` | `BUY` | Demand/liquidity expanding with strength |
-| `PASS` | `SUPPLY_LOCK` | `BUY` | Prior accumulation + strong price/RS + supply contraction |
-| `PASS` | `MARKUP` | `HOLD` | Trend already in progress; manage rather than re-trigger entry |
-| `PASS` | `DISTRIBUTION` | `SELL` | High-participation weak price behavior / distribution |
-| `PASS` | `LIQUIDITY_DRYUP` | `HOLD` | Low liquidity without enough bullish confirmation |
-| `PASS` | `SELLING_CLIMAX` | `HOLD` | Capitulation ambiguous; no automatic action |
-| `PASS` | `NEUTRAL` | `HOLD` | No actionable Smart Money state |
+| not `PASS` | any | `HOLD` | `0` |
+| `PASS` | `ACCUMULATION` | `BUY` | min Accumulation + Memory |
+| `PASS` | `BREAKOUT` | `BUY` | min FreshFlow + RelativeLiquidity + RS |
+| `PASS` | `DEMAND_EXPANSION` | `BUY` | min RelativeLiquidity + LiquidityAcceleration + RS |
+| `PASS` | `SUPPLY_LOCK` | `BUY` | min SupplyLock + Memory |
+| `PASS` | `MARKUP` | `HOLD` | min Trend + RS |
+| `PASS` | `DISTRIBUTION` | `SELL` | DistributionScore |
+| `PASS` | `LIQUIDITY_DRYUP` | `HOLD` | upstream ConfidenceScore |
+| `PASS` | `SELLING_CLIMAX` | `HOLD` | min Distribution + RelativeLiquidity |
+| `PASS` | `NEUTRAL` | `HOLD` | upstream ConfidenceScore |
 
 ---
 
-# 7. Important Fields by Action
+# 9. Interpretation Guidelines
 
-## BUY evidence
-
-The most useful fields when `TradeAction='BUY'` are:
-
-| Field | Why it matters |
-|---|---|
-| `MarketState` | Identifies which BUY setup generated the action |
-| `SmartMoneyScore` | Overall positive Smart Money evidence after Distribution penalty |
-| `ConfidenceScore` | Trustworthiness of the conclusion |
-| `FreshFlowScore` | Fresh money/price participation, especially BREAKOUT |
-| `RelativeLiquidityScore` | Current abnormal liquidity |
-| `LiquidityAccelerationScore` | Recent liquidity expansion |
-| `RelativeStrengthScore` | Strength versus VNINDEX |
-| `AccumulationScore` | Current accumulation evidence |
-| `AccumulationMemoryScore` | Persistence of prior accumulation |
-| `SupplyLockScore` | Bullish supply contraction evidence |
-| `DistributionScore` | Contradictory/negative evidence to monitor |
-
-## HOLD management
-
-Important fields:
+Recommended downstream interpretation:
 
 ```text
-MarketState
-SmartMoneyScore
-ConfidenceScore
-TrendScore
-RelativeStrengthScore
-AccumulationMemoryScore
-DistributionScore
+TradeAction
+    = what the strategy says now
+
+TradeActionConfidenceScore
+    = how strongly/reliably that action is supported now
 ```
 
-HOLD should be monitored for transition into a new actionable state, especially:
+Examples:
 
 ```text
-ACCUMULATION / SUPPLY_LOCK → BREAKOUT
-MARKUP → DISTRIBUTION
-WARNING → PASS
+BUY  + 82
+    stronger validated BUY evidence
+
+BUY  + 62
+    BUY still valid, but weaker/closer-to-threshold evidence
+
+HOLD + 0
+    safety HOLD caused by WARNING/INVALID quality
+
+HOLD + 85
+    validated no-new-action / management state
+
+SELL + 88
+    strong validated distribution classification
 ```
 
-## SELL risk
-
-Primary fields:
-
-```text
-MarketState = DISTRIBUTION
-DistributionScore
-RelativeLiquidityScore
-RelativeStrengthScore
-SmartMoneyScore
-ConfidenceScore
-```
-
-A SELL label should always be explainable through the Distribution state and evidence quality rather than being inferred from a low SmartMoneyScore alone.
+Do not use arbitrary global execution thresholds such as `BUY only if confidence >= 80` unless a separate backtest/research requirement validates that policy.
 
 ---
 
-# 8. Public View Construction
+# 10. Public View Construction
 
-The existing score/factor persistence remains authoritative:
+Persistence remains authoritative:
 
 ```text
 cal_smart_money_ticker_score
@@ -497,73 +545,69 @@ dim_smart_money_model
         ↓
 vw_Ticker_SmartMoney
         ↓
-TradeAction = CASE(DataQualityStatus, MarketState)
+TradeAction
+TradeActionConfidenceScore
 ```
 
-No strategy persistence is introduced in V1.
+No strategy persistence is introduced.
 
-This has three consequences:
+Consequences:
 
-1. historical rows automatically receive a deterministic `TradeAction` when the view definition is refreshed;
-2. SmartMoney full/incremental score convergence is unaffected because action is not part of persistence;
-3. downstream consumers can still drill from action into the original state/factors.
+1. historical persisted rows automatically receive both strategy fields when the view definition is refreshed;
+2. no full historical SmartMoney initload is required for this additive view change;
+3. score/factor full-vs-incremental convergence is unaffected;
+4. downstream consumers can drill from action confidence into the exact state and factor evidence.
 
 ---
 
-# 9. Examples
+# 11. Examples
 
-### Example A — confirmed breakout
+## Confirmed BREAKOUT
 
 ```text
+ConfidenceScore         = 85
 MarketState             = BREAKOUT
 DataQualityStatus       = PASS
-FreshFlowScore          = 86
-RelativeLiquidityScore  = 91
-RelativeStrengthScore   = 73
+FreshFlowScore          = 90
+RelativeLiquidityScore  = 88
+RelativeStrengthScore   = 80
 
+StateEvidenceStrength   = 80
+Candidate               = 0.60*85 + 0.40*80 = 83
 TradeAction             = BUY
+TradeActionConfidence   = 83
 ```
 
-### Example B — strong state but weak evidence quality
+## Strong state but WARNING quality
 
 ```text
 MarketState             = BREAKOUT
 DataQualityStatus       = WARNING
-SmartMoneyScore         = 84
-ConfidenceScore         = 48
+ConfidenceScore         = 58
 
 TradeAction             = HOLD
+TradeActionConfidence   = 0
 ```
 
-The quality gate prevents an apparently strong directional score from becoming an actionable BUY.
-
-### Example C — markup
+## Distribution stronger than upstream evidence confidence
 
 ```text
-MarketState             = MARKUP
-DataQualityStatus       = PASS
-TrendScore              = 82
-RelativeStrengthScore   = 75
-
-TradeAction             = HOLD
-```
-
-The trend is already in progress; V1 does not repeatedly trigger BUY on every MARKUP day.
-
-### Example D — distribution
-
-```text
+ConfidenceScore         = 86
 MarketState             = DISTRIBUTION
+DistributionScore       = 92
 DataQualityStatus       = PASS
-DistributionScore       = 88
-RelativeLiquidityScore  = 92
 
+Candidate               = 88.4
+Cap                     = ConfidenceScore = 86
 TradeAction             = SELL
+TradeActionConfidence   = 86
 ```
+
+The strategy cannot claim 88.4 confidence when the upstream model only trusts the evidence at 86.
 
 ---
 
-# 10. Validation Contract
+# 12. Validation Contract
 
 Focused validation must prove:
 
@@ -572,37 +616,43 @@ Focused validation must prove:
 3. each of the four BUY states returns BUY under PASS quality.
 4. DISTRIBUTION returns SELL under PASS quality.
 5. MARKUP, LIQUIDITY_DRYUP, SELLING_CLIMAX and NEUTRAL return HOLD under PASS quality.
-6. existing score/factor persistence schema is unchanged.
-7. repeated execution of `smart_money_v1_schema.sql` remains idempotent.
+6. `TradeActionConfidenceScore` is non-NULL and in `0..100`.
+7. `TradeActionConfidenceScore <= ConfidenceScore` for every public row.
+8. non-PASS rows return `TradeActionConfidenceScore = 0`.
+9. explicit state factor formulas produce deterministic expected confidence values.
+10. missing required public factor evidence returns action confidence `0`.
+11. existing score/factor persistence schema remains unchanged.
+12. repeated execution of `smart_money_v1_schema.sql` remains idempotent.
 
 Implementation validation artifacts:
 
 ```text
 src/DuckDB/sql/smart_money_v1_preflight.sql
 tests/test_smart_money_strategy.py
+docs/runbook/SmartMoneyStrategy_V1.md
 ```
 
 ---
 
-# 11. Versioning and Change Control
+# 13. Versioning and Change Control
 
-Strategy V1 intentionally reuses existing `SMART_MONEY_V1 / 1.0.0` score outputs because it does not change factor/state calculations.
+This additive field reuses existing `SMART_MONEY_V1 / 1.0.0` upstream score outputs because it does not change factor/state calculations or existing `TradeAction` values.
 
-`TradeAction` mapping itself is an explicit strategy contract. Future material changes such as:
+It does change the public strategy contract, so the confidence formula is documented explicitly and must not be silently modified later.
 
-- changing which state means BUY/SELL;
+Future material changes such as:
+
+- changing BUY/SELL state mapping;
+- changing the 60/40 action-confidence blend;
+- changing the upstream-confidence cap;
 - adding STRONG_BUY / REDUCE / WATCH;
+- adding predictive win probability;
 - adding position-aware entry/exit lifecycle;
 - adding stop/target/position sizing;
-- changing the quality gate;
 
-must be documented and versioned rather than silently rewriting the historical meaning of the strategy.
+must be versioned/documented rather than silently rewriting historical strategy semantics.
 
-The upstream SmartMoneyScore architecture remains owned by:
+Requirement boundary:
 
-[[SmartMoneyScore|SmartMoneyScore Architecture]]
-
-The requirement boundary between score and strategy is:
-
-- REQ-0025: calculate explainable Smart Money score/state/confidence;
-- REQ-0026: interpret validated primary state as BUY/HOLD/SELL for downstream consumption.
+- REQ-0025: calculate explainable Smart Money score/state/upstream confidence;
+- REQ-0026: interpret validated primary state as BUY/HOLD/SELL and expose strategy confidence for downstream consumption.
