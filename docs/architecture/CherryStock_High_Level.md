@@ -42,7 +42,7 @@ Deployment infrastructure that is not evidenced in the repository is intentional
 | Application Orchestration | Own execution order and coordinate daily/monthly jobs | `src/cherrystock/application/services/sync_write_pipeline.py`, `src/Orchestrator/**` |
 | Transaction & Data Quality Gate | Keep daily writes atomic and stop commit on blocking validation failures | `DuckDBUnitOfWork`, `DataQualityOrchestration.py`, `DataValidation.py` |
 | CherryMon DuckDB | Persist `raw_*`, `dim_*`, `cal_*`, `sys_*` data | centralized connection layer, `src/DuckDB/sql/**` |
-| Analytics & Calculation Engines | Build Trend, Indicators, R/S and SmartMoney outputs | `src/calcEngine/**` |
+| Analytics & Calculation Engines | Build Trend, Indicators, R/S and SmartMoney outputs; drill-down detail in `Analytics_Calculation_Engines.md` | `src/calcEngine/**`, detail architecture doc |
 | Public Read Contracts | Expose stable `vw_*` consumer-oriented read surfaces | `vw_Ticker_OHLC_D`, Indicator Engine and SmartMoney architecture contracts |
 | Web & Chart Presentation | Present grids/charts and analytical views | `src/webapp/**`, `src/Chart/**`, `src/Presentation/**` |
 | Operational Interfaces | Expose guarded MCP access and operational automation/notification surfaces | `src/mcp_server/**`, `src/Telegram/**`, `scripts/**` |
@@ -121,6 +121,38 @@ The source uses Archify `architecture` schema v1, `quality_profile=showcase`, at
 
 Because authored labels are Vietnamese while Archify's renderer-owned locale currently supports only `en` and `zh-CN`, `meta.locale` is intentionally omitted; fixed Viewer UI falls back to English while authored CherryStock content remains unchanged.
 
+### Root / drill-down navigation
+
+`CherryStock_High_Level.html` is the root/main interactive architecture page. Domain detail pages are generated beside it under the same directory and are linked through stable Archify node ids.
+
+Current navigation:
+
+```text
+CherryStock_High_Level.html
+        │
+        │ double-click node id = analytics
+        ▼
+CherryStock_Analytics_Calculation_Engines.html
+        │
+        └─ ← High Level
+```
+
+The mapping is stored outside generated HTML in:
+
+```text
+docs/architecture/diagrams/cherrystock-archify-navigation.json
+```
+
+and is applied after Archify delivery by:
+
+```text
+scripts/customize_archify_navigation.py
+```
+
+This keeps navigation deterministic across regeneration. The generated HTML files use relative links, so the hierarchy works for local `file://` viewing and static hosting as long as the generated pages remain in `docs/architecture/generated/`.
+
+Normal Archify single-click behavior remains available; CherryStock uses **double-click** for node drill-down to avoid replacing node inspection behavior. Pressing `Enter` on a focused drill-down node also opens its detail page.
+
 ### Artifact synchronization contract
 
 The Archify typed source and generated HTML are a synchronized pair. Whenever this high-level design changes, both files MUST be updated in the same change set. The HTML MUST be regenerated from the typed source; it must not be maintained as an independent design source.
@@ -154,9 +186,10 @@ Source/path details    → Archify JetBrains Mono stack
 This is implemented as a **post-processing presentation layer**, not a fork or patch of the globally installed Archify package:
 
 - `scripts/customize_archify_typography.py` injects an idempotent CherryStock CSS override and font picker into the delivered HTML.
-- `scripts/render_archify_cherrystock.ps1` runs validate → deliver → typography/font-picker post-process → open.
+- `scripts/customize_archify_navigation.py` injects configuration-driven drill-down/back navigation.
+- `scripts/render_archify_cherrystock.ps1` runs validate → deliver → typography/font-picker → navigation → open.
 - The Archify JSON, geometry, evidence verification and quality checks remain unchanged and authoritative for the generated diagram.
-- The script references local/system fonts when available; no additional font binaries are stored in this repository.
+- The scripts reference local/system fonts when available; no additional font binaries are stored in this repository.
 
 ### One-command render
 
@@ -166,7 +199,7 @@ Preferred command from the CherryStock repository root:
 .\scripts\render_archify_cherrystock.ps1
 ```
 
-This command is mandatory after a high-level design change because it validates the current typed source and regenerates `CherryStock_High_Level.html` with the repository presentation layer.
+This command is mandatory after a high-level design change because it validates the current typed source and regenerates `CherryStock_High_Level.html` with the repository presentation/navigation layer.
 
 Use another initial sans-serif font without modifying Archify or the architecture JSON:
 
@@ -188,7 +221,7 @@ To render without automatically opening the browser:
 
 ### Manual deliver
 
-If the CherryStock presentation post-process is intentionally not required for a temporary raw artifact, raw Archify delivery remains available:
+If the CherryStock presentation/navigation post-process is intentionally not required for a temporary raw artifact, raw Archify delivery remains available:
 
 ```powershell
 New-Item -ItemType Directory -Force docs/architecture/generated | Out-Null
@@ -196,7 +229,7 @@ $archify = "$env:USERPROFILE\.agents\skills\archify\bin\archify.mjs"
 node $archify deliver architecture docs/architecture/diagrams/cherrystock-high-level.architecture.json docs/architecture/generated/CherryStock_High_Level.html --repo-root . --quality showcase --open --json
 ```
 
-For committed high-level artifacts, the repository wrapper is preferred so generated HTML remains consistent with CherryStock presentation features.
+For committed high-level artifacts, the repository wrapper is preferred so generated HTML remains consistent with CherryStock presentation and navigation features.
 
 The HTML is a derived presentation artifact. The architectural facts remain governed by this document, related domain architecture documents, ADRs and runtime source.
 
@@ -209,6 +242,7 @@ The HTML is a derived presentation artifact. The architectural facts remain gove
 
 ## Related Architecture
 
+- `docs/architecture/Analytics_Calculation_Engines.md`
 - `docs/architecture/Data_Architecture.md`
 - `docs/architecture/Indicator_Engine.md`
 - `docs/architecture/SmartMoneyScore.md`
@@ -236,7 +270,7 @@ and regenerate the HTML with:
 
 Domain-only design changes that do not affect this high-level abstraction do not need to churn the high-level map, but they still MUST update their own relevant Archify diagram + generated HTML pair under the mandatory synchronization contract.
 
-Typography customization is presentation-only. It must not alter architecture semantics, source evidence, diagram geometry or quality validation rules.
+Typography and navigation customization are presentation-only. They must not alter architecture semantics, source evidence, diagram geometry or quality validation rules.
 
 ## ADR
 
