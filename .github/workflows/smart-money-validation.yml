@@ -16,15 +16,20 @@ on:
       - "src/cherrystock/infrastructure/database/unit_of_work.py"
       - "src/DuckDB/sql/smart_money_v1_schema.sql"
       - "src/DuckDB/sql/smart_money_v1_preflight.sql"
+      - "src/webapp/NiceGUI_chart.py"
+      - "src/webapp/smart_money_tab.py"
+      - "src/webapp/smart_money_state_flow.py"
       - "scripts/initload/init_reload_smart_money_score.py"
       - "scripts/run_smart_money.py"
       - "scripts/run_smart_money_preflight.py"
       - "scripts/validate_smart_money_incremental.py"
+      - "scripts/validate_smart_money_ui_snapshot.py"
       - "scripts/evaluate_smart_money_v1.py"
       - "tests/test_smart_money_score.py"
       - "tests/test_smart_money_evaluation.py"
       - "tests/test_smart_money_integration.py"
       - "tests/test_smart_money_strategy.py"
+      - "tests/test_smart_money_state_flow.py"
       - "tests/test_sync_write_pipeline_service.py"
       - "tests/test_data_quality_orchestration.py"
   pull_request:
@@ -42,10 +47,14 @@ on:
       - "src/cherrystock/infrastructure/database/unit_of_work.py"
       - "src/DuckDB/sql/smart_money_v1_schema.sql"
       - "src/DuckDB/sql/smart_money_v1_preflight.sql"
+      - "src/webapp/NiceGUI_chart.py"
+      - "src/webapp/smart_money_tab.py"
+      - "src/webapp/smart_money_state_flow.py"
       - "scripts/initload/init_reload_smart_money_score.py"
       - "scripts/run_smart_money.py"
       - "scripts/run_smart_money_preflight.py"
       - "scripts/validate_smart_money_incremental.py"
+      - "scripts/validate_smart_money_ui_snapshot.py"
       - "scripts/evaluate_smart_money_v1.py"
       - "tests/test_data_quality_orchestration.py"
       - "tests/test_sync_write_pipeline_service.py"
@@ -53,6 +62,7 @@ on:
       - "tests/test_smart_money_evaluation.py"
       - "tests/test_smart_money_integration.py"
       - "tests/test_smart_money_strategy.py"
+      - "tests/test_smart_money_state_flow.py"
 
 jobs:
   unit:
@@ -88,16 +98,20 @@ jobs:
           python -m py_compile src/Ults/DataQualityOrchestration.py
           python -m py_compile src/Ults/DataValidation.py
           python -m py_compile src/cherrystock/config/settings.py
+          python -m py_compile src/webapp/NiceGUI_chart.py
+          python -m py_compile src/webapp/smart_money_tab.py
+          python -m py_compile src/webapp/smart_money_state_flow.py
           python -m py_compile scripts/initload/init_reload_smart_money_score.py
           python -m py_compile scripts/run_smart_money.py
           python -m py_compile scripts/run_smart_money_preflight.py
           python -m py_compile scripts/validate_smart_money_incremental.py
+          python -m py_compile scripts/validate_smart_money_ui_snapshot.py
           python -m py_compile scripts/evaluate_smart_money_v1.py
 
-      - name: Collect SmartMoney strategy tests
+      - name: Collect focused SmartMoney tests
         run: |
-          python -m pytest tests/test_smart_money_strategy.py tests/test_smart_money_integration.py --collect-only -q
+          python -m pytest tests/test_smart_money_strategy.py tests/test_smart_money_integration.py tests/test_smart_money_state_flow.py --collect-only -q
 
       - name: Run focused unit tests
         run: |
-          python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py tests/test_smart_money_integration.py tests/test_smart_money_strategy.py tests/test_sync_write_pipeline_service.py tests/test_data_quality_orchestration.py -v
+          python -m pytest tests/test_smart_money_score.py tests/test_smart_money_evaluation.py tests/test_smart_money_integration.py tests/test_smart_money_strategy.py tests/test_smart_money_state_flow.py tests/test_sync_write_pipeline_service.py tests/test_data_quality_orchestration.py -v
