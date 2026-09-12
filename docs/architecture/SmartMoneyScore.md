@@ -1095,35 +1095,25 @@ Public/downstream Smart Money Single Source of Truth.
 
 One latest-enabled-model row per `Ticker + Date`.
 
-The view exposes final score/state fields from `cal_smart_money_ticker_score` together with a wide projection of the selected factor `NormalizedValue` rows from `cal_smart_money_factor_values`. It does not recalculate the model; calculation ownership remains in `src/calcEngine/smartMoneyScore.py` and the internal `cal_*` persistence tables.
+View hiện có **19 columns**, được ghép từ `cal_smart_money_ticker_score`, metadata model và phần pivot `NormalizedValue` từ `cal_smart_money_factor_values`. View chỉ là public/read contract; nó không tính lại model. Calculation ownership vẫn nằm trong `src/calcEngine/smartMoneyScore.py` và các bảng `cal_*` nội bộ.
 
-### Source summary
+Điểm cần hiểu trước: các score như `FreshFlowScore`, `RelativeLiquidityScore`, `RelativeStrengthScore`, `AccumulationScore`, `TrendScore`, `DistributionScore` chủ yếu được **cross-sectional percentile theo toàn bộ universe cùng ngày**, tức giá trị raw cao hơn trong universe sẽ có percentile cao hơn và các giá trị đứng đầu thị trường tiến gần 100. `AccumulationMemoryScore`, `SupplyLockScore`, `LimitUpScore` là score tính trực tiếp/composite và không percentile lại. Normalization chỉ chạy khi cùng ngày có tối thiểu 5 giá trị hợp lệ.
 
-The V1 runtime uses these upstream contracts:
+### Nguồn dữ liệu chính
 
-| Source | Used for |
+| Source | Dùng cho |
 |---|---|
-| `main.vw_Ticker_OHLC_D` | OHLCV, `TradingValue`, TradingValue provenance/quality |
-| `main.raw_index_eod` (`VNINDEX`) | benchmark returns for RS5/20/60 |
+| `main.vw_Ticker_OHLC_D` | OHLCV, `TradingValue`, provenance/quality của TradingValue |
+| `main.raw_index_eod` (`VNINDEX`) | benchmark return cho RS5/20/60 |
 | `main.vw_Ticker_indicators` + `main.vw_Indicator_config` | `MA20_D`, `MA50_D`, `OBV_D`, `AD_D` |
-| `main.vw_stock_market_limit_eod` when available | trusted `LimitUp`, `LimitUpStreak`, market-limit quality |
-| `main.dim_smart_money_model/config/state_weight/factor` | model identity, thresholds and state-specific weights |
-| `main.cal_smart_money_factor_values` | long-form raw/normalized factor persistence |
-| `main.cal_smart_money_ticker_score` | final SmartMoneyScore, ConfidenceScore, MarketState and quality fields |
+| `main.vw_stock_market_limit_eod` khi available | `LimitUp`, `LimitUpStreak`, market-limit quality đáng tin cậy |
+| `main.dim_smart_money_model/config/state_weight/factor` | model identity, threshold, factor metadata và state-specific weights |
+| `main.cal_smart_money_factor_values` | long-form raw/normalized factor values |
+| `main.cal_smart_money_ticker_score` | final score, state, confidence và data-quality fields |
 
-### Normalization convention
+### Quy ước normalization
 
-Most raw component factors are normalized to `0..100` using **same-date cross-sectional percentile ranking over the eligible active universe**:
-
-```text
-PercentileScore(Ticker, Date) = percentile rank of RawValue
-                                among eligible tickers on the same Date
-                                × 100
-```
-
-The implementation requires at least 5 valid observations on the same date; otherwise the percentile score is unavailable (`NULL`).
-
-The following public columns are percentile-normalized from raw features:
+Các column sau được normalize từ raw feature bằng **same-date cross-sectional percentile** trên eligible active universe:
 
 ```text
 FreshFlowScore
@@ -1135,7 +1125,17 @@ TrendScore
 DistributionScore
 ```
 
-The following public columns are already bounded/composite state scores and are persisted without another percentile pass:
+Công thức khái quát:
+
+```text
+PercentileScore(Ticker, Date) = percentile rank của RawValue
+                                trong eligible universe cùng Date
+                                × 100
+```
+
+Nếu cùng ngày có ít hơn 5 giá trị hợp lệ thì percentile score là `NULL`.
+
+Các column sau đã là bounded/composite score và **không percentile lại**:
 
 ```text
 AccumulationMemoryScore
@@ -1143,33 +1143,33 @@ SupplyLockScore
 LimitUpScore
 ```
 
-Therefore two values such as `RelativeStrengthScore=80` and `SupplyLockScore=80` are both on a `0..100` public scale but do not represent the same normalization method.
+Vì vậy `RelativeStrengthScore = 80` và `SupplyLockScore = 80` đều nằm trên thang `0..100`, nhưng không mang cùng một ý nghĩa normalization.
 
-### Column definitions
+### Chi tiết 19 columns
 
-| Column | Meaning | Short source description | V1 formula / logic |
-|---|---|---|---|
-| `Ticker` | Security code. | `cal_smart_money_ticker_score`. | Preserved ticker identity for the calculated result. |
-| `Date` | As-of trading date for the score. | `cal_smart_money_ticker_score`. | Point-in-time date; all features for T use observations `<= T`. |
-| `ModelCode` | Stable Smart Money model family code. | `dim_smart_money_model`. | Current V1 seed: `SMART_MONEY_V1`. |
-| `ModelVersion` | Human-readable executable model version. | `dim_smart_money_model`. | Current V1 seed: `1.0.0`; allows score reproduction/version comparison. |
-| `SmartMoneyScore` | Final directional strength of Smart Money evidence, `0..100`. High = stronger positive evidence after distribution penalty. | State-specific positive factors + `dim_smart_money_state_weight` + `DistributionScore`. | `PositiveScore = sum(weight_i × factor_i) / sum(weight_i of available factors)`. Then `SmartMoneyScore = clip(PositiveScore - DistributionPenaltyFactor(state) × DistributionScore, 0, 100)`. Default penalty=`0.35`; `DISTRIBUTION` state penalty=`0.75`. |
-| `ConfidenceScore` | Reliability of the SmartMoneyScore, not bullish/bearish direction. High = evidence is more complete/mature/trustworthy. | Factor coverage, history depth, liquidity adequacy, TradingValue quality, benchmark availability, OBV/AD availability and market-limit evidence. | `0.30×FactorCoverage×100 + 0.15×History + 0.15×LiquidityAdequacy + 0.15×TradingValueQuality + 0.10×Benchmark + 0.10×IndicatorAvailability + 0.05×MarketLimitAvailability`, clipped `0..100`. |
-| `MarketState` | Primary detected state of the ticker on the date. | Normalized component scores + configured thresholds. | Supported states: `ACCUMULATION`, `BREAKOUT`, `DEMAND_EXPANSION`, `SUPPLY_LOCK`, `MARKUP`, `DISTRIBUTION`, `LIQUIDITY_DRYUP`, `SELLING_CLIMAX`, `NEUTRAL`. Rules are applied deterministically; `DISTRIBUTION` has highest V1 precedence. |
-| `FactorCoverage` | Fraction of the state-specific positive factor weight that had usable data. Range `0..1`. | State weight metadata + non-NULL factor values. | `available configured positive weight / total configured positive weight` for the detected state. Missing evidence is not converted to zero. |
-| `DataQualityStatus` | Consumer-facing score quality status. | Final score + confidence + factor coverage. | `INVALID` if SmartMoneyScore is NULL; `PASS` when `ConfidenceScore >= 60` and `FactorCoverage >= PREFERRED_FACTOR_COVERAGE` (V1 default `0.80`); otherwise `WARNING`. |
-| `FreshFlowScore` | Measures fresh participation accompanied by strong close/short-term price impulse. High = current participation is entering with stronger price confirmation. | OHLCV + TradingValue from `vw_Ticker_OHLC_D`; `RS5` also uses VNINDEX. | `FreshFlowRaw = (CLV + 2×Return5 + 1.5×RS5) × ln(1 + max(RVAL20,0))`, with unavailable short inputs filled as implemented; then same-date percentile to `0..100`. |
-| `RelativeLiquidityScore` | Current TradingValue relative to the ticker's 20-session baseline. High = today's value traded is unusually large relative to its own recent history. | `TradingValue` from `vw_Ticker_OHLC_D`. | `ALV20 = MA20(TradingValue)`; `RVAL20 = TradingValue / ALV20` when `ALV20>0`; `RVAL20` is then same-date percentile-ranked. |
-| `LiquidityAccelerationScore` | Short-term liquidity acceleration against the medium-term baseline. High = recent 5-session TradingValue is expanding versus 20-session TradingValue. | `TradingValue` from `vw_Ticker_OHLC_D`. | `ALV5 = MA5(TradingValue)`; `ALV20 = MA20(TradingValue)`; `LiquidityAccelerationRaw = ALV5 / ALV20`; then same-date percentile. |
-| `RelativeStrengthScore` | Multi-horizon price strength relative to VNINDEX. High = ticker outperforms benchmark across the configured horizons. | Ticker Close from `vw_Ticker_OHLC_D` + VNINDEX Close from `raw_index_eod`. | `RS5=Return5Ticker-Return5VNINDEX`, `RS20=...`, `RS60=...`; `RelativeStrengthRaw = 0.20×RS5 + 0.50×RS20 + 0.30×RS60`; then same-date percentile. |
-| `AccumulationScore` | Evidence of sustained accumulation rather than one-session flow. High = closes/relative strength and optional OBV/AD slopes support accumulation. | OHLCV + VNINDEX + `OBV_D`/`AD_D` from Indicator Engine. | `AccumulationRaw = mean(CLV20, RS20×10, OBVSlope20, ADSlope20)` over available inputs, requiring at least 2 available components; then same-date percentile. `OBVSlope20=(OBV_t-OBV_t-20)/MA20(Volume)` and analogously for AD. |
-| `AccumulationMemoryScore` | Persistent memory of prior accumulation evidence. High = accumulation has remained strong over time, even if the latest session is quieter. | Historical `AccumulationScore` plus optional persisted incremental seed. | EWMA with V1 `MEMORY_LAMBDA=0.90`: conceptually `Memory_t = 0.90×Memory_(t-1) + 0.10×AccumulationScore_t`. Implemented with `ewm(alpha=0.10, adjust=False, ignore_na=True)` and deterministic seeding for incremental refresh. |
-| `SupplyLockScore` | Bullish supply-contraction/lock evidence. High requires strong accumulated demand/price structure plus liquidity compression and low distribution. | `AccumulationMemoryScore`, close strength, RS, trend, liquidity compression, DistributionScore. | Geometric composite of `AccumulationMemoryScore`, `CloseStrengthScore`, `RelativeStrengthScore`, `TrendScore`, `LiquidityCompressionScore` with at least 4/5 available, then `SupplyLockScore = composite × (1 - DistributionScore/100)`, clipped `0..100`. |
-| `LimitUpScore` | Trusted limit-up/streak evidence. NULL means evidence unavailable, not bearish zero. | `vw_stock_market_limit_eod` when quality is trusted. | For trusted quality and `LimitUp=True`: `100 × (1 - exp(-0.55 × LimitUpStreak))`; `LimitUp=False` → `0`; untrusted/unavailable market-limit evidence → `NULL`. |
-| `TrendScore` | Price position relative to MA20/MA50. High = stronger positive trend position. | Close from `vw_Ticker_OHLC_D`; `MA20_D` and `MA50_D` from `vw_Ticker_indicators`. | `TrendRaw = mean(Close/MA20 - 1, Close/MA50 - 1)` over valid MA inputs; then same-date percentile. |
-| `DistributionScore` | Explicit negative distribution evidence. High = high participation occurs together with weak close, weak return and/or benchmark underperformance. | OHLCV + TradingValue + VNINDEX benchmark. | `Participation=max(RVAL20-1,0)`; `Weakness=max(-Return5,0)`; `RelativeWeakness=max(-RS20,0)`; `CloseWeakness=max(-CLV,0)`; `DistributionRaw = Participation × (0.40×CloseWeakness + 0.35×Weakness×10 + 0.25×RelativeWeakness×10)`; then same-date percentile. |
+| Column | Ý nghĩa | Nguồn dữ liệu chính | Công thức / logic V1 |
+| --- | --- | --- | --- |
+| `Ticker` | Mã cổ phiếu | `cal_smart_money_ticker_score` | Giữ nguyên mã chứng khoán của kết quả tính. |
+| `Date` | Ngày giao dịch / ngày tính score | `cal_smart_money_ticker_score` | As-of date; toàn bộ feature của ngày T chỉ dùng dữ liệu có ngày `<= T`, không dùng future data. |
+| `ModelCode` | Mã model Smart Money | `dim_smart_money_model` | V1 hiện là `SMART_MONEY_V1`. |
+| `ModelVersion` | Version model | `dim_smart_money_model` | V1 hiện là `1.0.0`; dùng để reproduce/backtest đúng model version. |
+| **`SmartMoneyScore`** | Điểm tổng hợp sức mạnh dòng tiền thông minh, `0..100` | Các factor score + `dim_smart_money_state_weight` + `DistributionScore` | `PositiveScore = Σ(weight × factor) / Σ(weight khả dụng)`. Sau đó `SmartMoneyScore = clip(PositiveScore - Penalty(state) × DistributionScore, 0,100)`. Penalty mặc định `0.35`; state `DISTRIBUTION` dùng `0.75`. |
+| **`ConfidenceScore`** | Độ tin cậy của `SmartMoneyScore`; không phải bullish/bearish score | Coverage + history + liquidity + TradingValue quality + benchmark + indicator + market-limit evidence | `30% FactorCoverage + 15% History + 15% LiquidityAdequacy + 15% TradingValueQuality + 10% Benchmark + 10% IndicatorAvailability + 5% MarketLimit`. Tất cả quy về `0..100`. |
+| **`MarketState`** | Trạng thái thị trường chính của ticker trong ngày | Các normalized factors + config thresholds | State gồm `ACCUMULATION`, `BREAKOUT`, `DEMAND_EXPANSION`, `SUPPLY_LOCK`, `MARKUP`, `DISTRIBUTION`, `LIQUIDITY_DRYUP`, `SELLING_CLIMAX`, `NEUTRAL`. `DISTRIBUTION` có precedence cao nhất V1. |
+| **`FactorCoverage`** | Bao nhiêu trọng số factor cần cho state hiện tại thực sự có dữ liệu | State weight + các factor non-NULL | `AvailableWeight / TotalWeight`. Range `0..1`. Ví dụ state cần tổng weight 1.0 nhưng chỉ có factor tương ứng 0.8 weight → coverage `0.8`. Missing evidence không bị biến thành zero evidence. |
+| **`DataQualityStatus`** | Trạng thái sử dụng kết quả | `SmartMoneyScore`, `ConfidenceScore`, `FactorCoverage` | `INVALID` nếu SmartMoneyScore NULL; `PASS` nếu Confidence ≥60 **và** FactorCoverage ≥0.80; còn lại `WARNING`. |
+| **`FreshFlowScore`** | Dòng tiền mới đang vào kèm sức mạnh giá/ngày đóng cửa | OHLCV + TradingValue từ `vw_Ticker_OHLC_D`; VNINDEX cho `RS5` | Raw: `(CLV + 2×Return5 + 1.5×RS5) × ln(1 + max(RVAL20,0))`; sau đó percentile cùng ngày → `0..100`. |
+| **`RelativeLiquidityScore`** | Thanh khoản hiện tại lớn đến đâu so với bình quân 20 phiên của chính cổ phiếu | `TradingValue` từ `vw_Ticker_OHLC_D` | `RVAL20 = TradingValue / ALV20`; `ALV20 = MA20(TradingValue)`; sau đó percentile cùng ngày. |
+| **`LiquidityAccelerationScore`** | Thanh khoản ngắn hạn đang tăng tốc hay giảm so với nền 20 phiên | `TradingValue` từ `vw_Ticker_OHLC_D` | `LiquidityAccelerationRaw = ALV5 / ALV20`, trong đó `ALV5 = MA5(TradingValue)`; sau đó percentile cùng ngày. |
+| **`RelativeStrengthScore`** | Sức mạnh giá cổ phiếu so với VNINDEX trên nhiều horizon | Close ticker + `raw_index_eod` VNINDEX | `RSn = Return_n(ticker) - Return_n(VNINDEX)`. Raw = `20%×RS5 + 50%×RS20 + 30%×RS60`; sau đó percentile cùng ngày. |
+| **`AccumulationScore`** | Mức độ tích lũy: đóng cửa mạnh, outperform, OBV/AD cải thiện | OHLCV + VNINDEX + `OBV_D`, `AD_D` từ `vw_Ticker_indicators` | Raw = mean của các evidence khả dụng: `CLV20`, `RS20×10`, `OBVSlope20`, `ADSlope20`; cần ít nhất **2/4** evidence; sau đó percentile. `OBVSlope20=(OBV_t-OBV_t-20)/MA20(Volume)`; AD tương tự. |
+| **`AccumulationMemoryScore`** | “Bộ nhớ” tích lũy, tránh việc một phiên yếu làm mất ngay tín hiệu tích lũy trước đó | `AccumulationScore` lịch sử + optional persisted incremental seed | EWMA với `MEMORY_LAMBDA=0.90`: xấp xỉ `Memory_t = 0.90×Memory_(t-1) + 0.10×AccumulationScore_t`. Không percentile lại. |
+| **`SupplyLockScore`** | Đo trạng thái nguồn cung bị khóa/cạn trong khi giá và RS vẫn khỏe | Memory + CloseStrength + RS + Trend + LiquidityCompression + Distribution | Geometric composite của `AccumulationMemory`, `CloseStrength`, `RelativeStrength`, `Trend`, `LiquidityCompression`; cần ≥4/5 thành phần. Sau đó `× (1 - DistributionScore/100)`, clip `0..100`. |
+| **`LimitUpScore`** | Evidence cổ phiếu tăng trần và chuỗi tăng trần | `vw_stock_market_limit_eod`: `LimitUp`, `LimitUpStreak`, quality | Khi source đáng tin: nếu `LimitUp=True`: `100 × (1 - exp(-0.55 × LimitUpStreak))`; nếu `False` → `0`; evidence không đủ tin cậy → `NULL`. |
+| **`TrendScore`** | Vị trí giá so với trend MA20/MA50 | Close + `MA20_D`, `MA50_D` từ Indicator Engine | `TrendRaw = mean(Close/MA20 - 1, Close/MA50 - 1)` trên giá trị khả dụng; sau đó percentile. |
+| **`DistributionScore`** | Mức độ phân phối: thanh khoản cao nhưng đóng cửa yếu, giá yếu và underperform | OHLCV + TradingValue + VNINDEX | `Participation=max(RVAL20-1,0)`. `Raw = Participation × [0.40×max(-CLV,0) + 0.35×max(-Return5,0)×10 + 0.25×max(-RS20,0)×10]`; sau đó percentile. |
 
-### Supporting formulas
+### Công thức hỗ trợ
 
 #### Return
 
@@ -1177,7 +1177,7 @@ Therefore two values such as `RelativeStrengthScore=80` and `SupplyLockScore=80`
 ReturnN_t = Close_t / Close_(t-N) - 1
 ```
 
-V1 calculates `Return1`, `Return5`, `Return20`, `Return60` per ticker without look-ahead.
+V1 tính `Return1`, `Return5`, `Return20`, `Return60` theo từng ticker và không look-ahead.
 
 #### Close Location Value (CLV)
 
@@ -1185,17 +1185,17 @@ V1 calculates `Return1`, `Return5`, `Return20`, `Return60` per ticker without lo
 CLV = ((Close - Low) - (High - Close)) / (High - Low)
 ```
 
-Interpretation:
+Diễn giải:
 
 ```text
-CLV near +1 → Close near daily High
-CLV near  0 → Close near middle of range
-CLV near -1 → Close near daily Low
+CLV gần +1 → Close gần High trong ngày
+CLV gần  0 → Close gần giữa range
+CLV gần -1 → Close gần Low trong ngày
 ```
 
-When `High == Low`, CLV is unavailable (`NULL`) rather than dividing by zero.
+Khi `High == Low`, CLV là `NULL`, không chia cho 0.
 
-#### Liquidity baselines
+#### Liquidity baseline
 
 ```text
 ALV5  = MA5(TradingValue)
@@ -1208,7 +1208,7 @@ LiquidityAccelerationLong = ALV20 / ALV60
 LiquidityCompressionRaw   = 1 - clip(ALV5 / ALV20, 0, 1)
 ```
 
-`RelativeLiquidityScore` answers **how abnormal today's liquidity is**, while `LiquidityAccelerationScore` answers **whether recent liquidity is accelerating relative to the 20-session baseline**.
+`RelativeLiquidityScore` trả lời **hôm nay thanh khoản bất thường đến đâu so với nền 20 phiên của chính ticker**, còn `LiquidityAccelerationScore` trả lời **5 phiên gần đây thanh khoản có đang tăng tốc so với nền 20 phiên hay không**.
 
 #### Relative Strength
 
@@ -1223,11 +1223,11 @@ RelativeStrengthRaw =
   + 0.30 × RS60
 ```
 
-The 20-session horizon carries the largest V1 weight.
+Horizon 20 phiên có trọng số lớn nhất trong V1.
 
 ### MarketState rules — implemented V1
 
-State assignment starts from `NEUTRAL`; lower-precedence matches are applied first and higher-precedence matches overwrite them later. The effective rules are:
+State assignment bắt đầu từ `NEUTRAL`; state precedence thấp được áp trước và state precedence cao overwrite sau:
 
 ```text
 LIQUIDITY_DRYUP
@@ -1265,17 +1265,17 @@ DISTRIBUTION
   DistributionScore >= STATE_DISTRIBUTION_THRESHOLD (70)
 ```
 
-`DISTRIBUTION` is the highest-precedence V1 state. Therefore a ticker can satisfy a lower-precedence bullish state rule but still finish as `DISTRIBUTION` if its DistributionScore crosses the configured threshold.
+`DISTRIBUTION` là state có precedence cao nhất trong V1. Vì vậy ticker có thể đồng thời thỏa một state bullish phía dưới nhưng kết quả cuối cùng vẫn là `DISTRIBUTION` nếu DistributionScore vượt threshold.
 
-### How to read the three primary public outputs
+### Cách đọc 3 output chính
 
 ```text
-SmartMoneyScore  = How strong is the net positive Smart Money evidence?
-MarketState      = What phase/state best describes that evidence now?
-ConfidenceScore  = How trustworthy/complete is the evidence behind the conclusion?
+SmartMoneyScore  = Dòng tiền đang mạnh đến đâu sau khi trừ Distribution penalty?
+MarketState      = Dòng tiền đó đang ở pha nào?
+ConfidenceScore  = Có thể tin kết luận trên đến mức nào?
 ```
 
-Example:
+Ví dụ:
 
 ```text
 SmartMoneyScore = 82
@@ -1283,9 +1283,9 @@ MarketState     = ACCUMULATION
 ConfidenceScore = 88
 ```
 
-means the model sees strong accumulation evidence with relatively high confidence.
+→ model thấy tín hiệu tích lũy mạnh và evidence tương đối đầy đủ/đáng tin.
 
-By contrast:
+Trong khi:
 
 ```text
 SmartMoneyScore = 85
@@ -1293,11 +1293,11 @@ MarketState     = SUPPLY_LOCK
 ConfidenceScore = 42
 ```
 
-means the directional/composite signal is strong but the supporting evidence is incomplete or lower quality, for example because benchmark/indicator/market-limit evidence is missing or TradingValue quality is weaker.
+→ directional/composite signal mạnh nhưng supporting evidence còn thiếu hoặc quality thấp, ví dụ thiếu benchmark/indicator/market-limit evidence hoặc TradingValue chỉ có quality thấp hơn.
 
 ### View construction
 
-The SQL view is intentionally thin:
+SQL view cố tình giữ mỏng:
 
 ```text
 cal_smart_money_ticker_score
@@ -1309,7 +1309,7 @@ pivot cal_smart_money_factor_values.NormalizedValue by FactorCode
 vw_Ticker_SmartMoney
 ```
 
-The factor-wide columns are produced with conditional aggregation over `NormalizedValue`; the view does not recompute factor formulas. This keeps the long-form `cal_smart_money_factor_values` table as the internal component-value owner and avoids a duplicate persisted SSOT.
+Các factor-wide column được tạo bằng conditional aggregation trên `NormalizedValue`; view không tính lại factor formula. `cal_smart_money_factor_values` long-form vẫn là internal owner của component values, tránh duplicate persisted SSOT.
 
 Future sector/group engines should consume this view unless a more specific public Smart Money contract is introduced.
 
