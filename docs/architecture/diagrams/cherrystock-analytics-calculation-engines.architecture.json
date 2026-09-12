@@ -76,7 +76,7 @@
       "id": "analytics_inputs",
       "type": "database",
       "label": "Analytics Input Contracts",
-      "sublabel": "raw_* · ticker/FA · vw_Ticker_OHLC_D · indicator config",
+      "sublabel": "raw_* · FA · OHLC · indicator config",
       "pos": [25, 260],
       "size": [210, 92],
       "sources": [
