@@ -67,10 +67,19 @@ total distinct tickers
 BUY count
 HOLD count
 SELL count
-ticker list
 ```
 
-Ticker order inside each block:
+Below the summary, ticker rows are split into three explicit `TradeAction` subgroups in this order:
+
+```text
+BUY
+HOLD
+SELL
+```
+
+Each subgroup shows its own count and ticker list. Empty subgroups remain visible as `0 / Không có ticker`, so the action breakdown is explicit rather than inferred from missing UI.
+
+Ticker order **inside each TradeAction subgroup**:
 
 ```text
 TradeActionConfidenceScore DESC
@@ -167,7 +176,8 @@ PASS proves:
 canonical MarketState block ordering
 empty canonical blocks remain visible
 BUY/HOLD/SELL counts match block total
-ticker ranking is TradeActionConfidenceScore DESC
+BUY/HOLD/SELL subgroups are materialized explicitly
+ticker ranking inside each subgroup is TradeActionConfidenceScore DESC
 future unknown state is not dropped
 duplicate ticker input is handled deterministically
 ```
@@ -198,7 +208,8 @@ snapshot contains tickers
 canonical block order is preserved
 all snapshot tickers are represented exactly once in UI blocks
 action counts sum to each block total
-ticker confidence ranking is descending inside every block
+each BUY/HOLD/SELL subgroup count matches its rows
+TradeActionConfidenceScore is descending inside each subgroup
 ```
 
 This step does not write to DuckDB.
@@ -226,10 +237,11 @@ Validate only these UI items:
 2. Tab opens without exception.
 3. Header shows latest SmartMoney date and total ticker count.
 4. Nine canonical MarketState blocks appear in the documented order.
-5. Every block shows total tickers and BUY/HOLD/SELL counts.
-6. Ticker rows are visibly ordered by TradeActionConfidenceScore descending.
-7. Refresh reloads the latest public-view snapshot.
-8. Empty states render as an empty block, not as a missing block.
+5. Every block shows total tickers and BUY/HOLD/SELL summary counts.
+6. Every non-empty block contains explicit BUY/HOLD/SELL subgroup sections.
+7. Tickers inside each subgroup are ordered by TradeActionConfidenceScore descending.
+8. Refresh reloads the latest public-view snapshot.
+9. Empty MarketStates render as an empty block, not as a missing block.
 ```
 
 Do not judge Strategy quality from this visual smoke; this step validates rendering only.
@@ -248,6 +260,7 @@ focused unit test PASS
 real snapshot validator PASS
 SmartMoney tab placement PASS
 SmartMoney tab render PASS
+TradeAction subgroup render PASS
 ```
 
 If any item fails:
@@ -276,7 +289,8 @@ Snapshot date: <date>
 Snapshot tickers: <count>
 Tab order R/S -> SmartMoney -> Vận Hành: PASS | FAIL
 Nine canonical blocks: PASS | FAIL
-Ticker confidence order: PASS | FAIL
+TradeAction subgroups: PASS | FAIL
+Ticker confidence order per subgroup: PASS | FAIL
 Refresh smoke: PASS | FAIL
 
 Verdict: PASS | FAIL | BLOCKED
