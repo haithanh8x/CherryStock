@@ -24,6 +24,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from webapp import NiceGUI_grid_market_tb
 importlib.reload(NiceGUI_grid_market_tb)
 from webapp.NiceGUI_grid import create_market_grid
+from webapp.smart_money_tab import smart_money_tab_content
 from DuckDB.Data import view_to_dataframe
 from Ults.DuckLib import DuckDBManager
 import Chart.plot as chart_plot
@@ -2129,6 +2130,7 @@ def build_page() -> None:
             ui.tab("market", label="Screener", icon="filter_alt")
             ui.tab("portfolio", label="Danh mục", icon="account_balance_wallet")
             ui.tab("rs", label="R/S", icon="vertical_align_center")
+            ui.tab("smart_money", label="SmartMoney", icon="account_tree")
             ui.tab("operations", label="Vận Hành", icon="settings_suggest")
 
         with ui.tab_panels(tabs, value="overview").classes(
@@ -2142,6 +2144,8 @@ def build_page() -> None:
                 portfolio_tab_content()
             with ui.tab_panel("rs").classes("p-0 gap-4"):
                 rs_tab_content()
+            with ui.tab_panel("smart_money").classes("p-0 gap-4"):
+                smart_money_tab_content()
             with ui.tab_panel("operations").classes("p-0 gap-4"):
                 operations_tab_content()
 
