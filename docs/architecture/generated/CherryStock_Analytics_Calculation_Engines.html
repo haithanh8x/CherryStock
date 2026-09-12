@@ -5024,6 +5024,50 @@ html[data-theme="light"] #cherrystock-archify-font-picker select {
   color: #0f172a;
 }
 </style>
+<style id="cherrystock-archify-navigation-style">
+/* CherryStock Archify drill-down navigation. */
+svg .cherrystock-drilldown-node {
+  cursor: zoom-in;
+}
+
+svg .cherrystock-drilldown-node [data-node-label] {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+svg .cherrystock-drilldown-node:hover {
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.45));
+}
+
+#cherrystock-archify-back-link {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.90);
+  color: #e2e8f0;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  font: 12px/1.2 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+}
+
+#cherrystock-archify-back-link:hover {
+  border-color: rgba(56, 189, 248, 0.65);
+}
+
+html[data-theme="light"] #cherrystock-archify-back-link {
+  background: rgba(255,255,255,0.94);
+  color: #0f172a;
+  border-color: rgba(100,116,139,0.30);
+}
+</style>
 </head>
 <body>
   <!-- Toolbar: theme, live visual style, trace motion, presentation stage, and export.
@@ -15199,6 +15243,63 @@ html[data-theme="light"] #cherrystock-archify-font-picker select {
   select.addEventListener('change', function () {
     apply(select.value);
     try { localStorage.setItem(key, select.value); } catch (_) {}
+  });
+})();
+</script>
+<a id="cherrystock-archify-back-link" href="CherryStock_High_Level.html" aria-label="← High Level">← High Level</a>
+<script id="cherrystock-archify-navigation-script">
+(function () {
+  var nodes = {};
+
+  function navigate(target) {
+    if (!target) return;
+    window.location.href = target;
+  }
+
+  Object.keys(nodes).forEach(function (nodeId) {
+    var cfg = nodes[nodeId] || {};
+    var candidates = document.querySelectorAll('[data-node-id="' + nodeId + '"]');
+    if (!candidates.length) return;
+
+    candidates.forEach(function (node) {
+      node.classList.add('cherrystock-drilldown-node');
+      node.setAttribute('tabindex', '0');
+      node.setAttribute('role', 'link');
+      node.setAttribute('aria-label', cfg.label || ('Open ' + nodeId + ' detail'));
+      node.setAttribute('data-drilldown-target', cfg.target || '');
+
+      var title = node.querySelector(':scope > title[data-cherrystock-drilldown-title]');
+      if (!title) {
+        title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        title.setAttribute('data-cherrystock-drilldown-title', 'true');
+        node.insertBefore(title, node.firstChild);
+      }
+      title.textContent = (cfg.label || ('Open ' + nodeId + ' detail')) +
+        ((cfg.interaction || 'double-click') === 'click' ? ' — click' : ' — double-click');
+
+      var interaction = cfg.interaction || 'double-click';
+      if (interaction === 'click') {
+        node.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          navigate(cfg.target);
+        });
+      } else {
+        node.addEventListener('dblclick', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          navigate(cfg.target);
+        });
+      }
+
+      node.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          event.stopPropagation();
+          navigate(cfg.target);
+        }
+      });
+    });
   });
 })();
 </script>
