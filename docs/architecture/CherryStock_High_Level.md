@@ -119,15 +119,17 @@ From the CherryStock repository after Archify has been installed globally:
 
 ```powershell
 $archify = "$env:USERPROFILE\.agents\skills\archify\bin\archify.mjs"
-node $archify validate architecture docs/architecture/diagrams/cherrystock-high-level.architecture.json --quality showcase --json
+node $archify validate architecture docs/architecture/diagrams/cherrystock-high-level.architecture.json --repo-root . --quality showcase --json
 ```
+
+`--repo-root .` is required because the diagram declares `meta.repository` and component `sources`. Archify verifies the configured repository origin, pinned commit and source paths against the local Git checkout before rendering.
 
 ### Deliver interactive HTML
 
 ```powershell
 New-Item -ItemType Directory -Force docs/architecture/generated | Out-Null
 $archify = "$env:USERPROFILE\.agents\skills\archify\bin\archify.mjs"
-node $archify deliver architecture docs/architecture/diagrams/cherrystock-high-level.architecture.json docs/architecture/generated/CherryStock_High_Level.html --quality showcase --json
+node $archify deliver architecture docs/architecture/diagrams/cherrystock-high-level.architecture.json docs/architecture/generated/CherryStock_High_Level.html --repo-root . --quality showcase --open --json
 ```
 
 The HTML is a derived presentation artifact. The architectural facts remain governed by this document, related domain architecture documents, ADRs and runtime source.
