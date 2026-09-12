@@ -8,7 +8,7 @@ from webapp.smart_money_state_flow import (
 )
 
 
-def test_state_blocks_follow_flow_and_rank_confidence_descending() -> None:
+def test_state_blocks_follow_flow_group_actions_and_rank_confidence_descending() -> None:
     snapshot = pd.DataFrame(
         [
             {
@@ -26,6 +26,14 @@ def test_state_blocks_follow_flow_and_rank_confidence_descending() -> None:
                 "TradeActionConfidenceScore": 91.75,
                 "SmartMoneyScore": 86.0,
                 "ConfidenceScore": 94.0,
+            },
+            {
+                "Ticker": "EEE",
+                "MarketState": "ACCUMULATION",
+                "TradeAction": "HOLD",
+                "TradeActionConfidenceScore": 55.0,
+                "SmartMoneyScore": 65.0,
+                "ConfidenceScore": 58.0,
             },
             {
                 "Ticker": "CCC",
@@ -53,17 +61,22 @@ def test_state_blocks_follow_flow_and_rank_confidence_descending() -> None:
     ]
 
     accumulation = next(block for block in blocks if block["market_state"] == "ACCUMULATION")
-    assert accumulation["total_tickers"] == 2
-    assert accumulation["action_counts"] == {"BUY": 2, "HOLD": 0, "SELL": 0}
-    assert [row["Ticker"] for row in accumulation["rows"]] == ["BBB", "AAA"]
+    assert accumulation["total_tickers"] == 3
+    assert accumulation["action_counts"] == {"BUY": 2, "HOLD": 1, "SELL": 0}
+    assert [row["Ticker"] for row in accumulation["rows"]] == ["BBB", "AAA", "EEE"]
+    assert [row["Ticker"] for row in accumulation["action_rows"]["BUY"]] == ["BBB", "AAA"]
+    assert [row["Ticker"] for row in accumulation["action_rows"]["HOLD"]] == ["EEE"]
+    assert accumulation["action_rows"]["SELL"] == []
 
     distribution = next(block for block in blocks if block["market_state"] == "DISTRIBUTION")
     assert distribution["total_tickers"] == 1
     assert distribution["action_counts"] == {"BUY": 0, "HOLD": 0, "SELL": 1}
+    assert [row["Ticker"] for row in distribution["action_rows"]["SELL"]] == ["CCC"]
 
     supply_lock = next(block for block in blocks if block["market_state"] == "SUPPLY_LOCK")
     assert supply_lock["total_tickers"] == 0
     assert supply_lock["rows"] == []
+    assert supply_lock["action_rows"] == {"BUY": [], "HOLD": [], "SELL": []}
 
 
 def test_state_blocks_append_unknown_state_and_deduplicate_ticker() -> None:
@@ -92,3 +105,4 @@ def test_state_blocks_append_unknown_state_and_deduplicate_ticker() -> None:
     assert future["action_counts"] == {"BUY": 1, "HOLD": 0, "SELL": 0}
     assert future["rows"][0]["Ticker"] == "XYZ"
     assert future["rows"][0]["TradeActionConfidenceScore"] == 70.0
+    assert [row["Ticker"] for row in future["action_rows"]["BUY"]] == ["XYZ"]
