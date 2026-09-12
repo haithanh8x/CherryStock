@@ -76,14 +76,30 @@ def main() -> int:
                 f"total={total}, action_total={action_total}"
             )
 
-        confidences = [
+        block_confidences = [
             float(row["TradeActionConfidenceScore"])
             for row in block["rows"]
         ]
-        if confidences != sorted(confidences, reverse=True):
+        if block_confidences != sorted(block_confidences, reverse=True):
             raise RuntimeError(
                 f"Ticker confidence ranking is not descending for {block['market_state']}"
             )
+
+        for action in TRADE_ACTION_ORDER:
+            action_rows = list(block["action_rows"].get(action, []))
+            if len(action_rows) != int(block["action_counts"].get(action, 0)):
+                raise RuntimeError(
+                    f"TradeAction subgroup count mismatch for {block['market_state']} / {action}"
+                )
+            action_confidences = [
+                float(row["TradeActionConfidenceScore"])
+                for row in action_rows
+            ]
+            if action_confidences != sorted(action_confidences, reverse=True):
+                raise RuntimeError(
+                    f"Confidence ranking is not descending for "
+                    f"{block['market_state']} / {action}"
+                )
 
     print("SMART MONEY UI SNAPSHOT — PASS")
     print(f"Date: {dates[0]}")
