@@ -13,6 +13,7 @@ AI agents MUST use this page to discover relevant engineering knowledge before a
 - [[../.github/agents/Indicator_Management.agent|Indicator Management Agent]]
 - [[../.github/agents/GeneralCoding.agent|General Coding Agent]]
 - [[../.github/agents/TestEngineer.agent|Test Engineer Agent]]
+- [[../.github/instructions/python.instructions|Python Execution Instructions]]
 
 ## Requirement / Backlog Routing
 
@@ -88,7 +89,9 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 ### Testing / Validation
 - [[../.github/agents/TestEngineer.agent|Test Engineer Agent]]
 - [[../.github/instructions/testing.instructions|Testing Instructions]]
+- [[../.github/instructions/python.instructions|Python Execution Instructions]]
 - [[development/Development_Workflow|Development Workflow]]
+- [[development/Python_Execution_Conventions|Python Execution & Import Conventions]]
 
 Testing requests should use the Test Engineer Agent first, then the testing instructions. Test execution must be bounded: one objective/hypothesis at a time, finite retry budget, explicit terminal verdict, and STOP after the objective is decided.
 
@@ -142,6 +145,7 @@ Backlog documents record planned work and technical debt only. They are not the 
 ## Development
 - [[development/README|Development Materials]]
 - [[development/Development_Workflow|Development Workflow]]
+- [[development/Python_Execution_Conventions|Python Execution & Import Conventions]]
 - [[development/implementation-notes/README|Implementation Notes]]
 
 ## Knowledge Ownership
@@ -156,6 +160,7 @@ Backlog documents record planned work and technical debt only. They are not the 
 | General implementation workflow | .github/agents/GeneralCoding.agent.md | Focused implementation and validation handoff |
 | Test workflow | .github/agents/TestEngineer.agent.md | How AI designs/executes focused tests and terminates bounded investigations |
 | Domain execution rules | .github/instructions/*.instructions.md | MUST/MUST NOT rules for implementation |
+| Python execution/import conventions | docs/development/Python_Execution_Conventions.md | Reproducible imports and runbook commands across pytest/root/scripts |
 | System architecture | docs/architecture/** | How the system works |
 | Architecture decisions | docs/adr/** | Why important decisions were made |
 | Requirement backlog | docs/backlog/requirements/** | Business/functional requirements and readiness state |
