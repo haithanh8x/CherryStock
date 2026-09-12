@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-12T02:51:26.238982+00:00
+- Generated at: 2026-09-12T11:54:04.174502+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -1032,6 +1032,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `MarketState` | `VARCHAR` | `YES` | `` |
 | `FactorCoverage` | `DOUBLE` | `YES` | `` |
 | `DataQualityStatus` | `VARCHAR` | `YES` | `` |
+| `TradeAction` | `VARCHAR` | `YES` | `` |
 | `FreshFlowScore` | `DOUBLE` | `YES` | `` |
 | `RelativeLiquidityScore` | `DOUBLE` | `YES` | `` |
 | `LiquidityAccelerationScore` | `DOUBLE` | `YES` | `` |

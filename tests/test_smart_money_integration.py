@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 
-from calcEngine.smartMoneyScore import refresh_smart_money_score
-from cherrystock.infrastructure.database.repositories.smart_money_repository import (
+from src.calcEngine.smartMoneyScore import refresh_smart_money_score
+from src.cherrystock.infrastructure.database.repositories.smart_money_repository import (
     SmartMoneyRepository,
 )
 

@@ -1,7 +1,7 @@
 ---
 id: REQ-0026
 title: Smart Money BUY / HOLD / SELL Strategy Action
-status: IMPLEMENTED_PENDING_VALIDATION
+status: FUNCTIONALLY_VALIDATED
 priority: P1
 owner: BusinessAnalyst
 primary_next_owner: TestEngineer

@@ -4,7 +4,7 @@
 - **Upstream model:** [[SmartMoneyScore|SmartMoneyScore V1]]
 - **Public contract:** `"CherryMon"."main"."vw_Ticker_SmartMoney"`
 - **Strategy output:** `TradeAction`
-- **Status:** IMPLEMENTED_PENDING_VALIDATION
+- **Status:** FUNCTIONALLY_VALIDATED
 
 ## Purpose
 
