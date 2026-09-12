@@ -62,6 +62,8 @@ Read the Markdown file for structure, then the CSV snapshots for current indicat
 - [[architecture/AsTraded_Market_Limit|As-Traded Market Limit Architecture]]
 - [[backlog/requirements/REQ-0025-smart-money-score|REQ-0025 Ticker-level SmartMoneyScore]]
 - [[architecture/SmartMoneyScore|SmartMoneyScore Architecture]]
+- [[backlog/requirements/REQ-0026-smart-money-strategy|REQ-0026 Smart Money BUY/HOLD/SELL Strategy]]
+- [[architecture/SmartMoneyStrategy|SmartMoneyStrategy BUY/HOLD/SELL]]
 - [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
 - Uses [[architecture/Data_Architecture|Data Architecture]] and may consume [[architecture/Indicator_Engine|Indicator Engine]] through public indicator contracts.
 
@@ -96,6 +98,7 @@ Testing requests should use the Test Engineer Agent first, then the testing inst
 - [[architecture/Indicator_Engine|Indicator Engine]]
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[architecture/SmartMoneyScore|SmartMoneyScore]]
+- [[architecture/SmartMoneyStrategy|SmartMoneyStrategy]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/RS_Ladder|RS Ladder Architecture]]
@@ -165,7 +168,7 @@ Backlog documents record planned work and technical debt only. They are not the 
 - .github/** defines AI/developer governance.
 - docs/** is the engineering knowledge base and primary research surface for architecture/design.
 - docs/architecture/** describes how the system works.
-- docs/adr/** records why important architecture decisions were made.
+- docs/adr/** records why important decisions were made.
 - docs/backlog/** records planned work and technical debt; it must not be treated as implemented architecture.
 - docs/00_HOME.md is the routing index, not a duplicate of detailed documentation.
 - Design agents should load only relevant documents, then verify assumptions against existing source code.
