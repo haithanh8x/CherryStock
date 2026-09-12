@@ -1,10 +1,17 @@
 """Runbook runner: smart_money_v1_preflight.sql (read-only, statement-by-statement)."""
 
+from __future__ import annotations
+
+import sys
 from pathlib import Path
 
-from src.Ults.DuckLib import DuckDBManager
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-SQL_PATH = Path(__file__).resolve().parents[1] / "src" / "DuckDB" / "sql" / "smart_money_v1_preflight.sql"
+from src.Ults.DuckLib import DuckDBManager  # noqa: E402
+
+SQL_PATH = PROJECT_ROOT / "src" / "DuckDB" / "sql" / "smart_money_v1_preflight.sql"
 
 
 def statements(script: str):
