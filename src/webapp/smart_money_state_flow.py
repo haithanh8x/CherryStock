@@ -32,8 +32,9 @@ def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any
 
     Canonical states always appear in the configured flow order. Any future/unknown
     MarketState found in the public view is appended rather than silently dropped.
-    Within each state, tickers are sorted by TradeActionConfidenceScore descending,
-    then Ticker ascending for deterministic ties.
+    Within each state and each TradeAction subgroup, tickers are sorted by
+    TradeActionConfidenceScore descending, then Ticker ascending for deterministic
+    ties.
     """
     missing = _REQUIRED_COLUMNS.difference(snapshot.columns)
     if missing:
@@ -84,8 +85,12 @@ def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any
             kind="stable",
         )
 
+        action_rows = {
+            action: state_rows.loc[state_rows["TradeAction"] == action].to_dict("records")
+            for action in TRADE_ACTION_ORDER
+        }
         action_counts = {
-            action: int((state_rows["TradeAction"] == action).sum())
+            action: len(action_rows[action])
             for action in TRADE_ACTION_ORDER
         }
         blocks.append(
@@ -97,6 +102,7 @@ def build_smart_money_state_blocks(snapshot: pd.DataFrame) -> list[dict[str, Any
                 ),
                 "total_tickers": int(state_rows["Ticker"].nunique()),
                 "action_counts": action_counts,
+                "action_rows": action_rows,
                 "rows": state_rows.to_dict("records"),
             }
         )
