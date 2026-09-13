@@ -11,16 +11,15 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from Ults.DuckLib import DuckDBManager  # noqa: E402
+from webapp.smart_money_snapshot_query import (  # noqa: E402
+    MODEL_CODE,
+    latest_smart_money_snapshot_sql,
+)
 from webapp.smart_money_state_flow import (  # noqa: E402
     SMART_MONEY_STATE_FLOW,
     TRADE_ACTION_ORDER,
     build_smart_money_state_blocks,
 )
-
-
-SMART_MONEY_VIEW = '"CherryMon"."main"."vw_Ticker_SmartMoney"'
-INDICATOR_VIEW = '"CherryMon"."main"."vw_Ticker_indicators"'
-MODEL_CODE = "SMART_MONEY_V1"
 
 
 def _sequence_tickers(sequence: str) -> list[str]:
@@ -58,35 +57,11 @@ def _validate_bucket_sequence(
 
 
 def main() -> int:
-    sql = f"""
-        WITH latest AS (
-            SELECT MAX(Date) AS Date
-            FROM {SMART_MONEY_VIEW}
-            WHERE ModelCode = ?
-        )
-        SELECT
-            v.Ticker,
-            v.Date,
-            v.MarketState,
-            v.TradeAction,
-            v.TradeActionConfidenceScore,
-            v.SmartMoneyScore,
-            v.ConfidenceScore,
-            v.DataQualityStatus,
-            i.Close,
-            i.MA200
-        FROM {SMART_MONEY_VIEW} AS v
-        INNER JOIN latest AS d
-            ON d.Date = v.Date
-        LEFT JOIN {INDICATOR_VIEW} AS i
-            ON i.Ticker = v.Ticker
-           AND i.Date = v.Date
-        WHERE v.ModelCode = ?
-        ORDER BY v.MarketState, v.TradeActionConfidenceScore DESC, v.Ticker
-    """
-
     with DuckDBManager(read_only=True) as connection:
-        snapshot = connection.execute(sql, [MODEL_CODE, MODEL_CODE]).df()
+        snapshot = connection.execute(
+            latest_smart_money_snapshot_sql(),
+            [MODEL_CODE, MODEL_CODE],
+        ).df()
 
     if snapshot.empty:
         raise RuntimeError("Latest SMART_MONEY_V1 snapshot is empty.")
