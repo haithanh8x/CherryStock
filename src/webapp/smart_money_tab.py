@@ -7,51 +7,22 @@ from nicegui import ui
 
 from Presentation.theme import THEME, with_alpha
 from Ults.DuckLib import DuckDBManager
+from webapp.smart_money_snapshot_query import (
+    MODEL_CODE,
+    latest_smart_money_snapshot_sql,
+)
 from webapp.smart_money_state_flow import (
     TRADE_ACTION_ORDER,
     build_smart_money_state_blocks,
 )
 
 
-SMART_MONEY_VIEW = '"CherryMon"."main"."vw_Ticker_SmartMoney"'
-SMART_MONEY_INDICATOR_VIEW = '"CherryMon"."main"."vw_Ticker_indicators"'
-SMART_MONEY_MODEL_CODE = "SMART_MONEY_V1"
-
-
 def load_latest_smart_money_snapshot() -> pd.DataFrame:
     """Load latest SmartMoney V1 snapshot plus Close/MA200 for UI segmentation."""
-    sql = f"""
-        WITH latest AS (
-            SELECT MAX(Date) AS Date
-            FROM {SMART_MONEY_VIEW}
-            WHERE ModelCode = ?
-        )
-        SELECT
-            v.Ticker,
-            v.Date,
-            v.ModelCode,
-            v.ModelVersion,
-            v.SmartMoneyScore,
-            v.ConfidenceScore,
-            v.MarketState,
-            v.DataQualityStatus,
-            v.TradeAction,
-            v.TradeActionConfidenceScore,
-            i.Close,
-            i.MA200
-        FROM {SMART_MONEY_VIEW} AS v
-        INNER JOIN latest AS d
-            ON d.Date = v.Date
-        LEFT JOIN {SMART_MONEY_INDICATOR_VIEW} AS i
-            ON i.Ticker = v.Ticker
-           AND i.Date = v.Date
-        WHERE v.ModelCode = ?
-        ORDER BY v.MarketState, v.TradeActionConfidenceScore DESC, v.Ticker
-    """
     with DuckDBManager(read_only=True) as connection:
         return connection.execute(
-            sql,
-            [SMART_MONEY_MODEL_CODE, SMART_MONEY_MODEL_CODE],
+            latest_smart_money_snapshot_sql(),
+            [MODEL_CODE, MODEL_CODE],
         ).df()
 
 
