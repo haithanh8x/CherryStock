@@ -8,18 +8,18 @@ from nicegui import ui
 from Presentation.theme import THEME, with_alpha
 from Ults.DuckLib import DuckDBManager
 from webapp.smart_money_state_flow import (
-    SMART_MONEY_STATE_FLOW,
     TRADE_ACTION_ORDER,
     build_smart_money_state_blocks,
 )
 
 
 SMART_MONEY_VIEW = '"CherryMon"."main"."vw_Ticker_SmartMoney"'
+SMART_MONEY_INDICATOR_VIEW = '"CherryMon"."main"."vw_Ticker_indicators"'
 SMART_MONEY_MODEL_CODE = "SMART_MONEY_V1"
 
 
 def load_latest_smart_money_snapshot() -> pd.DataFrame:
-    """Load the latest available SmartMoney V1 cross-sectional snapshot."""
+    """Load latest SmartMoney V1 snapshot plus Close/MA200 for UI segmentation."""
     sql = f"""
         WITH latest AS (
             SELECT MAX(Date) AS Date
@@ -36,10 +36,15 @@ def load_latest_smart_money_snapshot() -> pd.DataFrame:
             v.MarketState,
             v.DataQualityStatus,
             v.TradeAction,
-            v.TradeActionConfidenceScore
+            v.TradeActionConfidenceScore,
+            i.Close,
+            i.MA200
         FROM {SMART_MONEY_VIEW} AS v
         INNER JOIN latest AS d
             ON d.Date = v.Date
+        LEFT JOIN {SMART_MONEY_INDICATOR_VIEW} AS i
+            ON i.Ticker = v.Ticker
+           AND i.Date = v.Date
         WHERE v.ModelCode = ?
         ORDER BY v.MarketState, v.TradeActionConfidenceScore DESC, v.Ticker
     """
@@ -77,15 +82,36 @@ def _state_title(state: str) -> str:
     return state.replace("_", " ")
 
 
+def _render_ticker_bucket(title: str, count: int, ticker_sequence: str) -> None:
+    with ui.column().classes(
+        "w-full min-w-0 gap-1.5 rounded-xl border p-3 "
+        f"bg-[{THEME['surface_alt']}] border-[{THEME['border']}]"
+    ):
+        with ui.row().classes("w-full items-center justify-between gap-2"):
+            ui.label(title).classes(f"text-xs font-bold text-[{THEME['text']}]")
+            ui.label(str(count)).classes(
+                f"text-xs font-bold text-[{THEME['primary']}]"
+            )
+
+        if ticker_sequence:
+            ui.markdown(ticker_sequence).classes(
+                f"w-full text-sm leading-7 text-[{THEME['text']}]"
+            )
+        else:
+            ui.label("Không có ticker").classes(
+                f"text-xs italic text-[{THEME['muted']}] py-1"
+            )
+
+
 def _render_state_block(block: dict) -> None:
     state = str(block["market_state"])
     total = int(block["total_tickers"])
     action_counts = dict(block["action_counts"])
-    ticker_sequence = str(block.get("ticker_sequence") or "")
+    anchor_id = str(block["anchor_id"])
 
-    with ui.card().classes(_card_classes("p-4 w-full")):
-        with ui.row().classes("w-full items-start justify-between gap-4 no-wrap"):
-            with ui.row().classes("items-start gap-3 min-w-0 flex-1 no-wrap"):
+    with ui.element("section").props(f"id={anchor_id}").classes("w-full scroll-mt-4"):
+        with ui.card().classes(_card_classes("p-4 w-full")):
+            with ui.row().classes("w-full items-start gap-4 no-wrap"):
                 ui.label(str(block["stage"])).classes(
                     f"w-8 h-8 rounded-full flex items-center justify-center shrink-0 "
                     f"font-bold text-[{THEME['primary']}] bg-[{THEME['surface_alt']}]"
@@ -112,32 +138,64 @@ def _render_state_block(block: dict) -> None:
                     ui.label(str(block["description"])).classes(
                         f"text-[11px] leading-snug text-[{THEME['muted']}]"
                     )
-            with ui.column().classes("gap-0 items-end shrink-0"):
-                ui.label(str(total)).classes(
-                    f"text-2xl font-bold text-[{THEME['primary']}]"
+
+            ui.separator().classes(f"my-3 bg-[{THEME['border']}]")
+
+            if total <= 0:
+                ui.label("Không có ticker ở phiên mới nhất").classes(
+                    f"text-xs italic text-[{THEME['muted']}] py-2"
                 )
-                ui.label("tickers").classes(
-                    f"text-[10px] uppercase tracking-wide text-[{THEME['muted']}]"
+                return
+
+            with ui.element("div").classes(
+                "grid grid-cols-1 lg:grid-cols-2 gap-3 w-full"
+            ):
+                _render_ticker_bucket(
+                    ">= MA200",
+                    int(block["above_ma200_count"]),
+                    str(block.get("above_ma200_ticker_sequence") or ""),
+                )
+                _render_ticker_bucket(
+                    "< MA200",
+                    int(block["below_ma200_count"]),
+                    str(block.get("below_ma200_ticker_sequence") or ""),
                 )
 
-        ui.separator().classes(f"my-3 bg-[{THEME['border']}]")
+            unavailable_count = int(block.get("ma200_unavailable_count", 0))
+            if unavailable_count > 0:
+                with ui.row().classes("w-full items-start gap-2 mt-2 flex-wrap"):
+                    ui.label(f"MA200 N/A · {unavailable_count}").classes(
+                        f"text-[10px] font-semibold text-[{THEME['muted']}]"
+                    )
+                    ui.markdown(
+                        str(block.get("ma200_unavailable_ticker_sequence") or "")
+                    ).classes(
+                        f"min-w-0 flex-1 text-xs leading-6 text-[{THEME['muted']}]"
+                    )
 
-        if not ticker_sequence:
-            ui.label("Không có ticker ở phiên mới nhất").classes(
-                f"text-xs italic text-[{THEME['muted']}] py-2"
+
+def _render_state_flow_links(container, blocks: list[dict]) -> None:
+    container.clear()
+    with container:
+        for index, block in enumerate(blocks):
+            if index:
+                ui.icon("arrow_forward").classes(
+                    f"text-xs text-[{THEME['muted']}]"
+                )
+            state = str(block["market_state"])
+            total = int(block["total_tickers"])
+            ui.link(
+                f"{_state_title(state)} · {total}",
+                f"#{block['anchor_id']}",
+            ).classes(
+                f"text-[10px] font-semibold px-2 py-1 rounded-lg no-underline "
+                f"bg-[{THEME['surface_alt']}] text-[{THEME['primary']}] "
+                "hover:underline"
             )
-            return
-
-        ui.label("Tickers · TradeActionConfidenceScore ↓").classes(
-            f"text-[10px] uppercase tracking-wide font-semibold text-[{THEME['muted']}] mb-1"
-        )
-        ui.markdown(ticker_sequence).classes(
-            f"w-full text-sm leading-7 text-[{THEME['text']}]"
-        )
 
 
 def smart_money_tab_content() -> None:
-    """Render full-width SmartMoney MarketState blocks from the latest snapshot."""
+    """Render SmartMoney MarketState flow with MA200 detail segmentation."""
     latest_date_label: ui.label
     total_tickers_label: ui.label
 
@@ -153,7 +211,7 @@ def smart_money_tab_content() -> None:
                         f"text-lg font-bold text-[{THEME['text']}]"
                     )
                     ui.label(
-                        "Latest snapshot · MarketState / TradeAction · confidence-ranked tickers"
+                        "Latest snapshot · MarketState / TradeAction · MA200 position"
                     ).classes(f"text-xs text-[{THEME['muted']}]")
             refresh_button = ui.button("Refresh", icon="refresh").props(
                 "outline dense no-caps"
@@ -167,21 +225,15 @@ def smart_money_tab_content() -> None:
                 f"text-xs font-semibold text-[{THEME['primary']}]"
             )
 
-        with ui.row().classes("w-full items-center gap-1.5 flex-wrap mt-3"):
-            for index, (state, _) in enumerate(SMART_MONEY_STATE_FLOW):
-                if index:
-                    ui.icon("arrow_forward").classes(
-                        f"text-xs text-[{THEME['muted']}]"
-                    )
-                ui.label(_state_title(state)).classes(
-                    f"text-[10px] font-semibold px-2 py-1 rounded-lg "
-                    f"bg-[{THEME['surface_alt']}] text-[{THEME['muted']}]"
-                )
+        state_flow_container = ui.row().classes(
+            "w-full items-center gap-1.5 flex-wrap mt-3"
+        )
 
     state_container = ui.column().classes("w-full gap-4")
 
     def refresh_snapshot() -> None:
         state_container.clear()
+        state_flow_container.clear()
         try:
             snapshot = load_latest_smart_money_snapshot()
             blocks = build_smart_money_state_blocks(snapshot)
@@ -217,6 +269,8 @@ def smart_money_tab_content() -> None:
         total_tickers = int(snapshot["Ticker"].astype(str).nunique())
         latest_date_label.set_text(f"As of {latest_date_text}")
         total_tickers_label.set_text(f"{total_tickers:,} tickers")
+
+        _render_state_flow_links(state_flow_container, blocks)
 
         with state_container:
             for block in blocks:
