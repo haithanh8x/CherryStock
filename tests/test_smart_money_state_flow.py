@@ -6,10 +6,11 @@ from webapp.smart_money_state_flow import (
     SMART_MONEY_STATE_FLOW,
     build_smart_money_state_blocks,
     format_ticker_sequence,
+    market_state_anchor_id,
 )
 
 
-def test_state_blocks_follow_flow_and_rank_one_flat_ticker_sequence() -> None:
+def test_state_blocks_follow_flow_and_split_tickers_by_ma200() -> None:
     snapshot = pd.DataFrame(
         [
             {
@@ -17,48 +18,48 @@ def test_state_blocks_follow_flow_and_rank_one_flat_ticker_sequence() -> None:
                 "MarketState": "ACCUMULATION",
                 "TradeAction": "BUY",
                 "TradeActionConfidenceScore": 81.25,
-                "SmartMoneyScore": 78.0,
-                "ConfidenceScore": 84.0,
+                "Close": 95.0,
+                "MA200": 100.0,
             },
             {
                 "Ticker": "BBB",
                 "MarketState": "ACCUMULATION",
                 "TradeAction": "BUY",
                 "TradeActionConfidenceScore": 91.75,
-                "SmartMoneyScore": 86.0,
-                "ConfidenceScore": 94.0,
+                "Close": 110.0,
+                "MA200": 100.0,
             },
             {
                 "Ticker": "FFF",
                 "MarketState": "ACCUMULATION",
                 "TradeAction": "HOLD",
                 "TradeActionConfidenceScore": 75.0,
-                "SmartMoneyScore": 70.0,
-                "ConfidenceScore": 76.0,
+                "Close": 100.0,
+                "MA200": 100.0,
             },
             {
                 "Ticker": "EEE",
                 "MarketState": "ACCUMULATION",
                 "TradeAction": "HOLD",
                 "TradeActionConfidenceScore": 55.0,
-                "SmartMoneyScore": 65.0,
-                "ConfidenceScore": 58.0,
+                "Close": 90.0,
+                "MA200": 100.0,
             },
             {
                 "Ticker": "CCC",
                 "MarketState": "DISTRIBUTION",
                 "TradeAction": "SELL",
                 "TradeActionConfidenceScore": 88.5,
-                "SmartMoneyScore": 35.0,
-                "ConfidenceScore": 90.0,
+                "Close": 101.0,
+                "MA200": 99.0,
             },
             {
                 "Ticker": "DDD",
                 "MarketState": "NEUTRAL",
                 "TradeAction": "HOLD",
                 "TradeActionConfidenceScore": 72.0,
-                "SmartMoneyScore": 51.0,
-                "ConfidenceScore": 72.0,
+                "Close": 80.0,
+                "MA200": 90.0,
             },
         ]
     )
@@ -70,6 +71,7 @@ def test_state_blocks_follow_flow_and_rank_one_flat_ticker_sequence() -> None:
     ]
 
     accumulation = next(block for block in blocks if block["market_state"] == "ACCUMULATION")
+    assert accumulation["anchor_id"] == "smart-money-state-accumulation"
     assert accumulation["total_tickers"] == 4
     assert accumulation["action_counts"] == {"BUY": 2, "HOLD": 2, "SELL": 0}
     assert [row["Ticker"] for row in accumulation["rows"]] == [
@@ -78,21 +80,60 @@ def test_state_blocks_follow_flow_and_rank_one_flat_ticker_sequence() -> None:
         "FFF",
         "EEE",
     ]
-    assert accumulation["ticker_sequence"] == "**BBB, AAA**, FFF, EEE"
-    assert "action_rows" not in accumulation
+    assert [row["Ticker"] for row in accumulation["above_ma200_rows"]] == ["BBB", "FFF"]
+    assert [row["Ticker"] for row in accumulation["below_ma200_rows"]] == ["AAA", "EEE"]
+    assert accumulation["above_ma200_count"] == 2
+    assert accumulation["below_ma200_count"] == 2
+    assert accumulation["ma200_unavailable_count"] == 0
+    assert accumulation["above_ma200_ticker_sequence"] == "**BBB, FFF**"
+    assert accumulation["below_ma200_ticker_sequence"] == "**AAA, EEE**"
 
     distribution = next(block for block in blocks if block["market_state"] == "DISTRIBUTION")
-    assert distribution["total_tickers"] == 1
-    assert distribution["action_counts"] == {"BUY": 0, "HOLD": 0, "SELL": 1}
-    assert distribution["ticker_sequence"] == "**CCC**"
+    assert distribution["above_ma200_ticker_sequence"] == "**CCC**"
 
     supply_lock = next(block for block in blocks if block["market_state"] == "SUPPLY_LOCK")
     assert supply_lock["total_tickers"] == 0
-    assert supply_lock["rows"] == []
-    assert supply_lock["ticker_sequence"] == ""
+    assert supply_lock["above_ma200_rows"] == []
+    assert supply_lock["below_ma200_rows"] == []
 
 
-def test_state_blocks_append_unknown_state_and_deduplicate_ticker() -> None:
+def test_state_blocks_keep_ma200_unavailable_tickers_without_misclassification() -> None:
+    snapshot = pd.DataFrame(
+        [
+            {
+                "Ticker": "NEW",
+                "MarketState": "MARKUP",
+                "TradeAction": "HOLD",
+                "TradeActionConfidenceScore": 70.0,
+                "Close": 25.0,
+                "MA200": None,
+            },
+            {
+                "Ticker": "OK",
+                "MarketState": "MARKUP",
+                "TradeAction": "HOLD",
+                "TradeActionConfidenceScore": 60.0,
+                "Close": 30.0,
+                "MA200": 20.0,
+            },
+        ]
+    )
+
+    markup = next(
+        block
+        for block in build_smart_money_state_blocks(snapshot)
+        if block["market_state"] == "MARKUP"
+    )
+
+    assert markup["total_tickers"] == 2
+    assert markup["above_ma200_count"] == 1
+    assert markup["below_ma200_count"] == 0
+    assert markup["ma200_unavailable_count"] == 1
+    assert markup["above_ma200_ticker_sequence"] == "**OK**"
+    assert markup["ma200_unavailable_ticker_sequence"] == "**NEW**"
+
+
+def test_unknown_state_is_appended_and_duplicate_ticker_keeps_strongest_row() -> None:
     snapshot = pd.DataFrame(
         [
             {
@@ -100,12 +141,16 @@ def test_state_blocks_append_unknown_state_and_deduplicate_ticker() -> None:
                 "MarketState": "FUTURE_STATE",
                 "TradeAction": "HOLD",
                 "TradeActionConfidenceScore": 60.0,
+                "Close": 90.0,
+                "MA200": 100.0,
             },
             {
                 "Ticker": "xyz",
                 "MarketState": "FUTURE_STATE",
                 "TradeAction": "BUY",
                 "TradeActionConfidenceScore": 70.0,
+                "Close": 105.0,
+                "MA200": 100.0,
             },
         ]
     )
@@ -114,14 +159,15 @@ def test_state_blocks_append_unknown_state_and_deduplicate_ticker() -> None:
     future = blocks[-1]
 
     assert future["market_state"] == "FUTURE_STATE"
+    assert future["anchor_id"] == "smart-money-state-future-state"
     assert future["total_tickers"] == 1
     assert future["action_counts"] == {"BUY": 1, "HOLD": 0, "SELL": 0}
     assert future["rows"][0]["Ticker"] == "XYZ"
     assert future["rows"][0]["TradeActionConfidenceScore"] == 70.0
-    assert future["ticker_sequence"] == "**XYZ**"
+    assert future["above_ma200_ticker_sequence"] == "**XYZ**"
 
 
-def test_format_ticker_sequence_bolds_top_two_and_uses_comma_separator() -> None:
+def test_format_ticker_sequence_and_anchor_id_are_deterministic() -> None:
     rows = [
         {"Ticker": "MCH"},
         {"Ticker": "VC3"},
@@ -131,3 +177,5 @@ def test_format_ticker_sequence_bolds_top_two_and_uses_comma_separator() -> None
 
     assert format_ticker_sequence(rows) == "**MCH, VC3**, CTR, CTF"
     assert format_ticker_sequence(rows, bold_top_n=0) == "MCH, VC3, CTR, CTF"
+    assert market_state_anchor_id("SELLING_CLIMAX") == "smart-money-state-selling-climax"
+    assert market_state_anchor_id(" Future State ") == "smart-money-state-future-state"
