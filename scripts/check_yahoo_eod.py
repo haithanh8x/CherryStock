@@ -5,19 +5,22 @@ import sys
 from datetime import date
 from pathlib import Path
 
-import pandas as pd
 import yfinance as yf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+SRC_ROOT = PROJECT_ROOT / "src"
+for candidate in (PROJECT_ROOT, SRC_ROOT):
+    if str(candidate) not in sys.path:
+        sys.path.insert(0, str(candidate))
 
-from src.CrawlStock.readYahooFinance import (  # noqa: E402
+# Production modules still use top-level imports such as Ults.* internally,
+# so direct script execution needs src/ on sys.path in addition to repo root.
+from CrawlStock.readYahooFinance import (  # noqa: E402
     YAHOO_OTHER_TICKERS,
     _normalize_yf_eod,
     syncYahooFinance_EOD,
 )
-from src.Ults.DuckLib import DuckDBManager  # noqa: E402
+from Ults.DuckLib import DuckDBManager  # noqa: E402
 
 TARGET_TABLE = '"CherryMon"."main"."raw_other_eod"'
 
@@ -206,7 +209,12 @@ def main() -> int:
     passed = bool(results) and all(results)
     _print_section("Verdict")
     print("PASS" if passed else "FAIL")
-    print("Action:", "STOP" if passed else "Use docs/runbook/Yahoo_EOD_Diagnostic.md and STOP after the matching branch.")
+    print(
+        "Action:",
+        "STOP"
+        if passed
+        else "Use docs/runbook/Yahoo_EOD_Diagnostic.md and STOP after the matching branch.",
+    )
     return 0 if passed else 1
 
 
