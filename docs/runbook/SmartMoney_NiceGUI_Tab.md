@@ -1,35 +1,76 @@
-# SmartMoney NiceGUI Tab — Vertical MarketState Deployment
+# SmartMoney NiceGUI Tab — MarketState Flow + MA200 Split Deployment
 
+- **Status:** ACTIVE
 - **UI entry:** `src/webapp/NiceGUI_chart.py`
 - **Renderer:** `src/webapp/smart_money_tab.py`
 - **State-flow model:** `src/webapp/smart_money_state_flow.py`
-- **Public data contract:** `"CherryMon"."main"."vw_Ticker_SmartMoney"`
+- **Snapshot validator:** `scripts/validate_smart_money_ui_snapshot.py`
+- **Focused unit test:** `tests/test_smart_money_state_flow.py`
+- **SmartMoney source:** `"CherryMon"."main"."vw_Ticker_SmartMoney"`
+- **MA200 source:** `"CherryMon"."main"."vw_Ticker_indicators"`
 - **Model:** `SMART_MONEY_V1`
 - **Validation owner:** `TestEngineer`
 
-## 1. Purpose
+## 1. Objective
 
-Deploy the `SmartMoney` tab immediately after `R/S` with a compact vertical flow:
+Deploy the SmartMoney tab presentation change without modifying SmartMoney scoring/state logic.
+
+Required UI behavior:
 
 ```text
-... → Danh mục → R/S → SmartMoney → Vận Hành
+1. Remove the label: "Tickers · TradeActionConfidenceScore ↓".
+2. Remove the MarketState total shown on the far right of each detail block header.
+3. In the top "SmartMoney State Flow" box:
+   - show total ticker count beside each MarketState;
+   - make each MarketState a link to its corresponding detail block.
+4. In each MarketState detail block:
+   - left column: Close >= MA200;
+   - right column: Close < MA200.
 ```
 
-Each `MarketState` occupies one **full-width block** and blocks are stacked vertically in canonical flow order.
+The global latest-snapshot ticker total below the SmartMoney header remains visible. Only the duplicate per-MarketState total on the right side of each detail header is removed.
 
-This is an **UI/read-only deployment**. Do not recalculate SmartMoney and do not rerun historical initload. The historical SmartMoney rollout remains independently governed by `SmartMoneyTradeActionConfidence_V1.md`.
+This is a UI/read-only deployment. Do not recalculate SmartMoneyScore and do not run SmartMoney historical initload.
 
 ---
 
-## 2. UI contract
+## 2. Data contract
 
-The tab reads only the latest available `SMART_MONEY_V1` snapshot from:
+The latest `SMART_MONEY_V1` cross-section is read from:
 
 ```text
 "CherryMon"."main"."vw_Ticker_SmartMoney"
 ```
 
-Canonical vertical block order:
+`Close` and `MA200` are joined read-only from:
+
+```text
+"CherryMon"."main"."vw_Ticker_indicators"
+```
+
+Join key:
+
+```text
+Ticker + Date
+```
+
+No SmartMoney schema migration is required.
+
+MA200 classification:
+
+```text
+Close >= MA200  -> left column
+Close <  MA200  -> right column
+Close/MA200 NULL -> MA200 N/A line below the two columns
+```
+
+`MA200 N/A` exists only to preserve ticker coverage for newly listed or otherwise incomplete indicator history. Such a ticker must not be falsely classified into either MA200 side.
+
+---
+
+## 3. MarketState flow contract
+
+Canonical order remains:
 
 ```text
 1. ACCUMULATION
@@ -43,137 +84,118 @@ Canonical vertical block order:
 9. NEUTRAL
 ```
 
-Any future unknown `MarketState` is appended after these nine canonical states rather than silently dropped.
+Unknown future states are appended after the canonical states.
 
-### 2.1 MarketState block layout
-
-Every MarketState block must be:
+Top flow rendering example:
 
 ```text
-full width
-one block per row
-vertical ordering only
+ACCUMULATION · 62 -> SUPPLY LOCK · 39 -> DEMAND EXPANSION · 18 -> ...
 ```
 
-Header contract:
+Each flow item is an in-page link to a stable anchor:
 
 ```text
-[stage] MARKET_STATE  [TradeAction count badge(s)]                 <total tickers>
-        state description
+#smart-money-state-accumulation
+#smart-money-state-supply-lock
+...
 ```
 
-Examples:
+Clicking a flow item must navigate to the corresponding detail block.
+
+---
+
+## 4. Detail block contract
+
+Header:
 
 ```text
-01  ACCUMULATION  [BUY 75]                                        75 tickers
-02  SUPPLY LOCK   [HOLD 1]                                         1 ticker
+[stage] MARKET STATE [BUY/HOLD/SELL count badge(s)]
+        description
 ```
 
-There are **no BUY/HOLD/SELL subgroups below the MarketState**.
-
-TradeAction is summarized beside `MarketState` instead:
+The following old right-side element must be absent:
 
 ```text
-BUY <count>
-HOLD <count>
-SELL <count>
+<number>
+tickers
 ```
 
-Only actions with count greater than zero are rendered. This preserves exceptional cases such as a normally-BUY MarketState containing a `HOLD` ticker because of upstream data-quality rules, without splitting the ticker list into multiple sections.
-
-An empty MarketState remains visible and uses:
+The following old label must also be absent:
 
 ```text
-NO TICKER
+Tickers · TradeActionConfidenceScore ↓
 ```
 
-### 2.2 Ticker sequence contract
+Detail body:
 
-All tickers in one MarketState share a **single sequence**, regardless of TradeAction.
+```text
++---------------------------+---------------------------+
+| >= MA200 · <count>        | < MA200 · <count>         |
+| ticker sequence           | ticker sequence           |
++---------------------------+---------------------------+
+| MA200 N/A · <count> ...   | only when required        |
++-------------------------------------------------------+
+```
 
-Ordering:
+Ticker ordering inside each bucket remains:
 
 ```text
 TradeActionConfidenceScore DESC
 Ticker ASC  # deterministic tie-break
 ```
 
-Rendering:
-
-```text
-**MCH, VC3**, CTR, CTF, ...
-```
-
-Rules:
-
-```text
-tickers are separated by ", "
-first two tickers are bold
-remaining tickers use normal weight
-one ticker only -> that ticker is bold
-empty state -> no sequence, show empty-state message
-```
-
-The ticker string does not display subgroup headings and does not reorder by TradeAction.
-
-`TradeActionConfidenceScore` remains full precision in the public view. The UI ordering uses the original numeric value; bold formatting and comma-separated rendering are presentation-only.
+First two tickers in each bucket remain bold as a presentation-only emphasis.
 
 ---
 
-## 3. Preconditions
-
-Required upstream state:
-
-```text
-SmartMoney historical rollout: PASS / KEEP
-vw_Ticker_SmartMoney exists
-TradeAction exists
-TradeActionConfidenceScore exists
-latest SMART_MONEY_V1 snapshot is non-empty
-```
-
-Do not rerun historical initload merely to deploy this UI layout.
-
----
-
-## 4. Step 1 — Safe sync
+## 5. Preconditions
 
 From repository root:
 
 ```powershell
 git status --short
-```
-
-If unexpected local changes exist:
-
-```text
-Verdict: BLOCKED
-Action: STOP
-```
-
-If clean:
-
-```powershell
-git fetch origin
 git checkout main
 git pull --ff-only origin main
-git log -1 --oneline
+python --version
 ```
+
+Required local data objects:
+
+```text
+vw_Ticker_SmartMoney
+vw_Ticker_indicators
+```
+
+Required latest indicator columns:
+
+```text
+Ticker
+Date
+Close
+MA200
+```
+
+If either view is unavailable, classify deployment validation as `BLOCKED` rather than changing the UI contract.
 
 ---
 
-## 5. Step 2 — Compile focused UI files
+## 6. Minimum test — syntax
 
 Run:
 
 ```powershell
-python -m py_compile src\webapp\NiceGUI_chart.py
-python -m py_compile src\webapp\smart_money_tab.py
 python -m py_compile src\webapp\smart_money_state_flow.py
+python -m py_compile src\webapp\smart_money_tab.py
 python -m py_compile scripts\validate_smart_money_ui_snapshot.py
 ```
 
-Any compile error:
+PASS criteria:
+
+```text
+all three commands exit 0
+```
+
+Any syntax/import parse failure:
 
 ```text
 Verdict: FAIL
@@ -182,7 +204,7 @@ Action: STOP
 
 ---
 
-## 6. Step 3 — Focused state-flow unit test
+## 7. Minimum test — focused unit test
 
 Run only:
 
@@ -190,25 +212,32 @@ Run only:
 python -m pytest tests\test_smart_money_state_flow.py -q
 ```
 
-PASS proves:
+Expected:
 
 ```text
-canonical MarketState ordering
-empty canonical states remain represented
-all ticker rows are globally ranked inside MarketState
-TradeAction counts still reconcile to MarketState total
-no action_rows/subgroup contract remains
-ticker sequence is comma-separated
-first two confidence-ranked tickers are bold
-future unknown MarketState is not dropped
-duplicate ticker input is handled deterministically
+4 passed
 ```
 
-Do not expand automatically to the full pytest suite.
+This focused test proves:
+
+```text
+canonical MarketState order is preserved
+stable anchor ids are generated
+Close == MA200 belongs to >= MA200
+Close > MA200 belongs to >= MA200
+Close < MA200 belongs to < MA200
+missing MA200 is not misclassified
+bucket counts reconcile to MarketState total
+confidence ordering is preserved per bucket
+unknown future MarketState is appended
+duplicate ticker input keeps the strongest confidence row
+```
+
+Do not automatically expand to the full pytest suite for this UI change.
 
 ---
 
-## 7. Step 4 — Validate real local snapshot
+## 8. Minimum test — real snapshot validator
 
 Run:
 
@@ -222,32 +251,38 @@ Required first line:
 SMART MONEY UI SNAPSHOT — PASS
 ```
 
-The validator is read-only and checks:
+The validator is read-only and verifies:
 
 ```text
-latest SMART_MONEY_V1 date exists
-snapshot is non-empty
-canonical MarketState prefix is preserved
-all snapshot tickers are represented exactly once
-TradeAction summary counts equal each MarketState total
-MarketState rows are TradeActionConfidenceScore DESC
-ticker sequence matches the row ranking exactly
-first two ticker symbols are bolded in the rendered sequence
+latest SMART_MONEY_V1 snapshot exists
+one latest date only
+canonical state prefix is preserved
+all tickers are represented exactly once
+TradeAction counts reconcile to MarketState total
+>= MA200 + < MA200 + MA200 N/A = MarketState total
+all >= MA200 rows satisfy Close >= MA200
+all < MA200 rows satisfy Close < MA200
+all MA200 N/A rows have missing Close or MA200
+confidence ordering and ticker sequence agree
 ```
 
-This step does not write to DuckDB.
+Expected per-state evidence format:
+
+```text
+01. ACCUMULATION: total=... >=MA200=... <MA200=... NA=... BUY=...
+```
 
 ---
 
-## 8. Step 5 — Start NiceGUI and visual smoke
+## 9. Visual smoke
 
-Run:
+Start NiceGUI:
 
 ```powershell
 python src\webapp\NiceGUI_chart.py
 ```
 
-Open the existing NiceGUI endpoint, normally:
+Open the existing endpoint, normally:
 
 ```text
 http://127.0.0.1:8081
@@ -256,75 +291,44 @@ http://127.0.0.1:8081
 Validate only:
 
 ```text
-1. SmartMoney remains immediately after R/S and before Vận Hành.
-2. Tab opens without exception.
-3. Header shows latest snapshot date and total ticker count.
-4. Nine canonical MarketState blocks appear in documented order.
-5. Every MarketState block spans full available width.
-6. Blocks are stacked vertically, one block per row.
-7. BUY/HOLD/SELL subgroup sections are absent.
-8. Non-zero TradeAction badge(s) appear beside MarketState name.
-9. Tickers are shown as one comma-separated string per MarketState.
-10. First two ticker symbols are bold.
-11. Ticker order follows TradeActionConfidenceScore descending.
-12. Refresh reloads the same/latest public-view snapshot correctly.
-13. Empty MarketStates remain visible.
+1. SmartMoney tab opens without exception.
+2. "Tickers · TradeActionConfidenceScore ↓" is absent everywhere.
+3. Per-MarketState total on the far right of detail headers is absent.
+4. SmartMoney State Flow shows a total beside every MarketState.
+5. Clicking each MarketState flow item jumps to the matching detail block.
+6. Each non-empty MarketState detail block has two columns on desktop:
+   left >= MA200, right < MA200.
+7. Responsive narrow layout may stack the two columns vertically.
+8. Ticker counts in the two MA200 buckets match the validator output.
+9. Any MA200 N/A ticker appears below the grid, not inside either MA200 bucket.
+10. BUY/HOLD/SELL badges remain beside the MarketState name.
+11. Refresh rebuilds flow counts, links and detail buckets from the latest snapshot.
 ```
-
-Do not judge strategy quality from this smoke test; this validates presentation only.
 
 Stop the NiceGUI process after the smoke check.
 
 ---
 
-## 9. PASS / FAIL contract
+## 10. Deployment result contract
 
-PASS requires:
-
-```text
-focused compile PASS
-focused unit test PASS
-real snapshot validator PASS
-SmartMoney tab placement PASS
-full-width vertical block layout PASS
-TradeAction-beside-MarketState layout PASS
-flat comma-separated ticker sequence PASS
-confidence ordering PASS
-refresh smoke PASS
-```
-
-If any item fails:
+Return:
 
 ```text
-Verdict: FAIL | BLOCKED
-Action: STOP
-```
-
-Do not rerun SmartMoney historical initload as a UI repair action.
-
----
-
-## 10. Required result
-
-Return only:
-
-```text
-SMART MONEY NICEGUI TAB — VERTICAL LAYOUT DEPLOYMENT
+SMART MONEY NICEGUI — MA200 FLOW DEPLOYMENT
 
 HEAD: <sha>
 Compile: PASS | FAIL
-Focused state-flow test: PASS | FAIL
+Focused unit test: PASS | FAIL
 Snapshot validator: PASS | FAIL | BLOCKED
 Snapshot date: <date>
 Snapshot tickers: <count>
-Tab order R/S -> SmartMoney -> Vận Hành: PASS | FAIL
-Nine canonical blocks: PASS | FAIL
-Full-width vertical blocks: PASS | FAIL
-TradeAction beside MarketState: PASS | FAIL
-No TradeAction subgroups: PASS | FAIL
-Comma-separated ticker sequence: PASS | FAIL
-Top-two ticker emphasis: PASS | FAIL
-Ticker confidence order per MarketState: PASS | FAIL
+Old ticker heading removed: PASS | FAIL
+Detail-header right total removed: PASS | FAIL
+State Flow totals: PASS | FAIL
+State Flow anchor navigation: PASS | FAIL
+>= MA200 bucket: PASS | FAIL
+< MA200 bucket: PASS | FAIL
+MA200 N/A coverage: PASS | FAIL
 Refresh smoke: PASS | FAIL
 
 Verdict: PASS | FAIL | BLOCKED
@@ -337,15 +341,14 @@ After terminal verdict, STOP.
 
 ## 11. Deliberately skipped validation
 
-This UI deployment does not run:
+Do not run for this deployment:
 
 ```text
 SmartMoney historical initload
 smart_money_v1_preflight.sql
-SmartMoney integration regression
-full pytest suite
 run.py daily pipeline
 OOS/backtest evaluation
+full pytest suite
 ```
 
-Those belong to separate contracts and do not provide additional evidence for this NiceGUI presentation change.
+Those validate different contracts and are not required to prove this presentation change.
