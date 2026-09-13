@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
@@ -16,15 +18,50 @@ from webapp.smart_money_state_flow import (  # noqa: E402
 )
 
 
-VIEW = '"CherryMon"."main"."vw_Ticker_SmartMoney"'
+SMART_MONEY_VIEW = '"CherryMon"."main"."vw_Ticker_SmartMoney"'
+INDICATOR_VIEW = '"CherryMon"."main"."vw_Ticker_indicators"'
 MODEL_CODE = "SMART_MONEY_V1"
+
+
+def _sequence_tickers(sequence: str) -> list[str]:
+    normalized = sequence.replace("**", "")
+    return normalized.split(", ") if normalized else []
+
+
+def _validate_bucket_sequence(
+    block: dict,
+    *,
+    rows_key: str,
+    sequence_key: str,
+    bucket_name: str,
+) -> None:
+    rows = list(block[rows_key])
+    expected_tickers = [str(row["Ticker"]).upper() for row in rows]
+    sequence = str(block.get(sequence_key) or "")
+    actual_tickers = _sequence_tickers(sequence)
+    if actual_tickers != expected_tickers:
+        raise RuntimeError(
+            f"{bucket_name} ticker sequence mismatch for {block['market_state']}: "
+            f"expected={expected_tickers}, actual={actual_tickers}"
+        )
+
+    if len(expected_tickers) >= 2:
+        expected_prefix = f"**{expected_tickers[0]}, {expected_tickers[1]}**"
+        if not sequence.startswith(expected_prefix):
+            raise RuntimeError(
+                f"{bucket_name} top-two ticker emphasis mismatch for {block['market_state']}"
+            )
+    elif len(expected_tickers) == 1 and sequence != f"**{expected_tickers[0]}**":
+        raise RuntimeError(
+            f"{bucket_name} single ticker emphasis mismatch for {block['market_state']}"
+        )
 
 
 def main() -> int:
     sql = f"""
         WITH latest AS (
             SELECT MAX(Date) AS Date
-            FROM {VIEW}
+            FROM {SMART_MONEY_VIEW}
             WHERE ModelCode = ?
         )
         SELECT
@@ -35,9 +72,15 @@ def main() -> int:
             v.TradeActionConfidenceScore,
             v.SmartMoneyScore,
             v.ConfidenceScore,
-            v.DataQualityStatus
-        FROM {VIEW} AS v
-        INNER JOIN latest AS d ON d.Date = v.Date
+            v.DataQualityStatus,
+            i.Close,
+            i.MA200
+        FROM {SMART_MONEY_VIEW} AS v
+        INNER JOIN latest AS d
+            ON d.Date = v.Date
+        LEFT JOIN {INDICATOR_VIEW} AS i
+            ON i.Ticker = v.Ticker
+           AND i.Date = v.Date
         WHERE v.ModelCode = ?
         ORDER BY v.MarketState, v.TradeActionConfidenceScore DESC, v.Ticker
     """
@@ -86,35 +129,67 @@ def main() -> int:
                 f"rows={len(rows)}, total={total}"
             )
 
-        confidences = [
-            float(row["TradeActionConfidenceScore"])
-            for row in rows
-        ]
+        confidences = [float(row["TradeActionConfidenceScore"]) for row in rows]
         if confidences != sorted(confidences, reverse=True):
             raise RuntimeError(
                 f"Ticker confidence ranking is not descending for {block['market_state']}"
             )
 
-        expected_tickers = [str(row["Ticker"]).upper() for row in rows]
-        sequence = str(block.get("ticker_sequence") or "")
-        normalized_sequence = sequence.replace("**", "")
-        actual_tickers = normalized_sequence.split(", ") if normalized_sequence else []
-        if actual_tickers != expected_tickers:
+        above = list(block["above_ma200_rows"])
+        below = list(block["below_ma200_rows"])
+        unavailable = list(block["ma200_unavailable_rows"])
+        bucket_total = len(above) + len(below) + len(unavailable)
+        if bucket_total != total:
             raise RuntimeError(
-                f"Ticker sequence mismatch for {block['market_state']}: "
-                f"expected={expected_tickers}, actual={actual_tickers}"
+                f"MA200 bucket coverage mismatch for {block['market_state']}: "
+                f"total={total}, bucket_total={bucket_total}"
             )
 
-        if len(expected_tickers) >= 2:
-            expected_prefix = f"**{expected_tickers[0]}, {expected_tickers[1]}**"
-            if not sequence.startswith(expected_prefix):
+        for row in above:
+            if (
+                pd.isna(row["Close"])
+                or pd.isna(row["MA200"])
+                or float(row["Close"]) < float(row["MA200"])
+            ):
                 raise RuntimeError(
-                    f"Top-two ticker emphasis mismatch for {block['market_state']}"
+                    f">= MA200 classification mismatch for {block['market_state']}: "
+                    f"{row['Ticker']}"
                 )
-        elif len(expected_tickers) == 1 and sequence != f"**{expected_tickers[0]}**":
-            raise RuntimeError(
-                f"Single ticker emphasis mismatch for {block['market_state']}"
-            )
+        for row in below:
+            if (
+                pd.isna(row["Close"])
+                or pd.isna(row["MA200"])
+                or float(row["Close"]) >= float(row["MA200"])
+            ):
+                raise RuntimeError(
+                    f"< MA200 classification mismatch for {block['market_state']}: "
+                    f"{row['Ticker']}"
+                )
+        for row in unavailable:
+            if not (pd.isna(row["Close"]) or pd.isna(row["MA200"])):
+                raise RuntimeError(
+                    f"MA200 N/A classification mismatch for {block['market_state']}: "
+                    f"{row['Ticker']}"
+                )
+
+        _validate_bucket_sequence(
+            block,
+            rows_key="above_ma200_rows",
+            sequence_key="above_ma200_ticker_sequence",
+            bucket_name=">= MA200",
+        )
+        _validate_bucket_sequence(
+            block,
+            rows_key="below_ma200_rows",
+            sequence_key="below_ma200_ticker_sequence",
+            bucket_name="< MA200",
+        )
+        _validate_bucket_sequence(
+            block,
+            rows_key="ma200_unavailable_rows",
+            sequence_key="ma200_unavailable_ticker_sequence",
+            bucket_name="MA200 N/A",
+        )
 
     print("SMART MONEY UI SNAPSHOT — PASS")
     print(f"Date: {dates[0]}")
@@ -128,7 +203,11 @@ def main() -> int:
         ) or "NO_TICKER"
         print(
             f"{block['stage']:02d}. {block['market_state']}: "
-            f"total={block['total_tickers']} {actions}"
+            f"total={block['total_tickers']} "
+            f">=MA200={block['above_ma200_count']} "
+            f"<MA200={block['below_ma200_count']} "
+            f"NA={block['ma200_unavailable_count']} "
+            f"{actions}"
         )
     return 0
 
