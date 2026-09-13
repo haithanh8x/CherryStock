@@ -9,8 +9,11 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from CrawlStock.readAmi import syncAmibroker_EOD, syncAmibroker_Intraday  # noqa: E402
+from CrawlStock.readYahooFinance import syncYahooFinance_EOD  # noqa: E402
 from Ults.DuckLib import executeDuckSQL  # noqa: E402
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory  # noqa: E402
+
+YAHOO_HISTORY_START = "2024-04-01"
 
 DEPENDENT_VIEWS = (
     (
@@ -61,26 +64,22 @@ def _recreate_daily_views() -> None:
 
 
 def main() -> None:
-    """
-    Full reload all AmiBroker market data managed by CherryStock.
-
-    Order:
-    1. Full EOD reload for every configured EOD source.
-    2. Reset and full reload all configured Intraday sources.
-
-    This script is destructive for the managed raw EOD/Intraday targets because
-    full-load mode rebuilds those datasets from their AmiBroker source folders.
-    """
+    """Full reload AmiBroker data and restore Yahoo history in shared raw_other_eod."""
     print("=" * 72)
     print("CherryStock - FULL AMIBROKER MARKET DATA RELOAD")
     print("=" * 72)
 
     _drop_daily_views()
 
-    print("[1/2] Full reload AmiBroker EOD...")
+    print("[1/3] Full reload AmiBroker EOD...")
     syncAmibroker_EOD(from_last_day=None)
 
-    print("[2/2] Full reload AmiBroker Intraday...")
+    # raw_other_eod is shared by AmiBroker EOD/other and Yahoo Finance. AmiBroker
+    # full-load mode rebuilds the table, so Yahoo history must be restored after it.
+    print(f"[2/3] Upsert Yahoo EOD history from {YAHOO_HISTORY_START}...")
+    syncYahooFinance_EOD(start_date=YAHOO_HISTORY_START)
+
+    print("[3/3] Full reload AmiBroker Intraday...")
     syncAmibroker_Intraday(from_last_day=None, reset=True)
 
     _recreate_daily_views()
