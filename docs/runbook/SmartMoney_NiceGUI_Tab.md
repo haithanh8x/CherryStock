@@ -3,11 +3,15 @@
 - **Status:** ACTIVE
 - **UI entry:** `src/webapp/NiceGUI_chart.py`
 - **Renderer:** `src/webapp/smart_money_tab.py`
+- **Snapshot query:** `src/webapp/smart_money_snapshot_query.py`
 - **State-flow model:** `src/webapp/smart_money_state_flow.py`
 - **Snapshot validator:** `scripts/validate_smart_money_ui_snapshot.py`
-- **Focused unit test:** `tests/test_smart_money_state_flow.py`
+- **Focused tests:** `tests/test_smart_money_state_flow.py`, `tests/test_smart_money_snapshot_query.py`
 - **SmartMoney source:** `"CherryMon"."main"."vw_Ticker_SmartMoney"`
-- **MA200 source:** `"CherryMon"."main"."vw_Ticker_indicators"`
+- **Close source:** `"CherryMon"."main"."vw_Ticker_OHLC_D"`
+- **Indicator values:** `"CherryMon"."main"."vw_Ticker_indicators"`
+- **Indicator config SSOT:** `"CherryMon"."main"."vw_Indicator_config"`
+- **MA200 config:** `MA200_D` / `VALUE`
 - **Model:** `SMART_MONEY_V1`
 - **Validation owner:** `TestEngineer`
 
@@ -34,37 +38,65 @@ This is a UI/read-only deployment. Do not recalculate SmartMoneyScore and do not
 
 ---
 
-## 2. Data contract
+## 2. Correct data contract
 
-The latest `SMART_MONEY_V1` cross-section is read from:
+The previous draft incorrectly assumed `vw_Ticker_indicators` was wide-format with `Close` and `MA200` columns. That assumption is invalid.
 
-```text
-"CherryMon"."main"."vw_Ticker_SmartMoney"
-```
-
-`Close` and `MA200` are joined read-only from:
+The actual Indicator Engine public contract is **long format**:
 
 ```text
-"CherryMon"."main"."vw_Ticker_indicators"
+Ticker
+Date
+ConfigId
+ComponentCode
+Value
+IndicatorCode
+Timeframe
+WarmupBars
 ```
 
-Join key:
+Therefore the UI snapshot must resolve the two comparison values from their canonical sources:
+
+```text
+Close
+  <- "CherryMon"."main"."vw_Ticker_OHLC_D".Close
+
+MA200
+  <- "CherryMon"."main"."vw_Ticker_indicators".Value
+  JOIN "CherryMon"."main"."vw_Indicator_config"
+       ON ConfigId + ComponentCode
+  WHERE ConfigCode = 'MA200_D'
+    AND ComponentCode = 'VALUE'
+    AND ConfigIsEnabled = TRUE
+    AND IndicatorIsActive = TRUE
+    AND ComponentIsActive = TRUE
+```
+
+Join grain:
 
 ```text
 Ticker + Date
 ```
 
-No SmartMoney schema migration is required.
+The shared implementation is centralized in:
+
+```text
+src/webapp/smart_money_snapshot_query.py
+```
+
+Both NiceGUI and the real snapshot validator must use this same query builder so their contracts cannot drift.
+
+No new wide-format view is required. No schema migration is required. Do not hard-code a `ConfigId`; resolve MA200 through `ConfigCode='MA200_D'`.
 
 MA200 classification:
 
 ```text
-Close >= MA200  -> left column
-Close <  MA200  -> right column
+Close >= MA200   -> left column
+Close <  MA200   -> right column
 Close/MA200 NULL -> MA200 N/A line below the two columns
 ```
 
-`MA200 N/A` exists only to preserve ticker coverage for newly listed or otherwise incomplete indicator history. Such a ticker must not be falsely classified into either MA200 side.
+`MA200 N/A` preserves ticker coverage for incomplete history without falsely assigning a ticker to either side.
 
 ---
 
@@ -92,15 +124,12 @@ Top flow rendering example:
 ACCUMULATION · 62 -> SUPPLY LOCK · 39 -> DEMAND EXPANSION · 18 -> ...
 ```
 
-Each flow item is an in-page link to a stable anchor:
+Each flow item is an in-page link to a stable anchor such as:
 
 ```text
 #smart-money-state-accumulation
 #smart-money-state-supply-lock
-...
 ```
-
-Clicking a flow item must navigate to the corresponding detail block.
 
 ---
 
@@ -113,14 +142,14 @@ Header:
         description
 ```
 
-The following old right-side element must be absent:
+The old right-side element must be absent:
 
 ```text
 <number>
 tickers
 ```
 
-The following old label must also be absent:
+The old label must also be absent:
 
 ```text
 Tickers · TradeActionConfidenceScore ↓
@@ -137,62 +166,48 @@ Detail body:
 +-------------------------------------------------------+
 ```
 
-Ticker ordering inside each bucket remains:
+Ticker ordering inside each bucket:
 
 ```text
 TradeActionConfidenceScore DESC
-Ticker ASC  # deterministic tie-break
+Ticker ASC
 ```
 
-First two tickers in each bucket remain bold as a presentation-only emphasis.
+First two tickers in each bucket remain bold as presentation-only emphasis.
 
 ---
 
-## 5. Preconditions
+## 5. Step 1 — Safe sync
 
 From repository root:
 
 ```powershell
 git status --short
-git checkout main
 git pull --ff-only origin main
-python --version
+git log -1 --oneline
 ```
 
-Required local data objects:
+Unexpected local changes:
 
 ```text
-vw_Ticker_SmartMoney
-vw_Ticker_indicators
+Verdict: BLOCKED
+Action: STOP
 ```
-
-Required latest indicator columns:
-
-```text
-Ticker
-Date
-Close
-MA200
-```
-
-If either view is unavailable, classify deployment validation as `BLOCKED` rather than changing the UI contract.
 
 ---
 
-## 6. Minimum test — syntax
+## 6. Step 2 — Minimum compile
 
 Run:
 
 ```powershell
-python -m py_compile src\webapp\smart_money_state_flow.py
-python -m py_compile src\webapp\smart_money_tab.py
-python -m py_compile scripts\validate_smart_money_ui_snapshot.py
+python -m py_compile src\webapp\NiceGUI_chart.py src\webapp\smart_money_tab.py src\webapp\smart_money_snapshot_query.py src\webapp\smart_money_state_flow.py scripts\validate_smart_money_ui_snapshot.py
 ```
 
-PASS criteria:
+Required:
 
 ```text
-all three commands exit 0
+exit=0
 ```
 
 Any syntax/import parse failure:
@@ -204,40 +219,50 @@ Action: STOP
 
 ---
 
-## 7. Minimum test — focused unit test
+## 7. Step 3 — Minimum focused tests
 
 Run only:
 
 ```powershell
-python -m pytest tests\test_smart_money_state_flow.py -q
+python -m pytest tests\test_smart_money_state_flow.py tests\test_smart_money_snapshot_query.py -q
 ```
 
 Expected:
 
 ```text
-4 passed
+5 passed
 ```
 
-This focused test proves:
+The four state-flow tests prove:
 
 ```text
-canonical MarketState order is preserved
-stable anchor ids are generated
-Close == MA200 belongs to >= MA200
-Close > MA200 belongs to >= MA200
-Close < MA200 belongs to < MA200
+canonical MarketState order
+stable anchor ids
+Close == MA200 -> >= MA200
+Close > MA200 -> >= MA200
+Close < MA200 -> < MA200
 missing MA200 is not misclassified
 bucket counts reconcile to MarketState total
 confidence ordering is preserved per bucket
-unknown future MarketState is appended
-duplicate ticker input keeps the strongest confidence row
+unknown MarketState is appended
+duplicate ticker input keeps strongest confidence row
 ```
 
-Do not automatically expand to the full pytest suite for this UI change.
+The snapshot-query contract test additionally creates a minimal DuckDB fixture with the **real long-format indicator schema** and proves:
+
+```text
+Close is read from vw_Ticker_OHLC_D
+MA200 is read from vw_Ticker_indicators.Value
+MA200 is selected through vw_Indicator_config ConfigCode='MA200_D'
+MA50_D or other MA rows are not substituted
+query binds successfully without i.Close / i.MA200 assumptions
+```
+
+Do not automatically expand to the full pytest suite.
 
 ---
 
-## 8. Minimum test — real snapshot validator
+## 8. Step 4 — Real local snapshot validator
 
 Run:
 
@@ -251,7 +276,9 @@ Required first line:
 SMART MONEY UI SNAPSHOT — PASS
 ```
 
-The validator is read-only and verifies:
+The validator is read-only and uses the exact same snapshot query as NiceGUI.
+
+It verifies:
 
 ```text
 latest SMART_MONEY_V1 snapshot exists
@@ -266,17 +293,19 @@ all MA200 N/A rows have missing Close or MA200
 confidence ordering and ticker sequence agree
 ```
 
-Expected per-state evidence format:
+Expected per-state evidence:
 
 ```text
 01. ACCUMULATION: total=... >=MA200=... <MA200=... NA=... BUY=...
 ```
 
+If the validator reports a missing canonical public view (`vw_Ticker_OHLC_D`, `vw_Ticker_indicators`, or `vw_Indicator_config`), classify as `BLOCKED`. Do not create an ad-hoc wide indicator view as a repair action.
+
 ---
 
-## 9. Visual smoke
+## 9. Step 5 — Visual smoke
 
-Start NiceGUI:
+Run:
 
 ```powershell
 python src\webapp\NiceGUI_chart.py
@@ -296,16 +325,16 @@ Validate only:
 3. Per-MarketState total on the far right of detail headers is absent.
 4. SmartMoney State Flow shows a total beside every MarketState.
 5. Clicking each MarketState flow item jumps to the matching detail block.
-6. Each non-empty MarketState detail block has two columns on desktop:
+6. Each non-empty MarketState has two columns on desktop:
    left >= MA200, right < MA200.
 7. Responsive narrow layout may stack the two columns vertically.
-8. Ticker counts in the two MA200 buckets match the validator output.
-9. Any MA200 N/A ticker appears below the grid, not inside either MA200 bucket.
-10. BUY/HOLD/SELL badges remain beside the MarketState name.
-11. Refresh rebuilds flow counts, links and detail buckets from the latest snapshot.
+8. Ticker counts match validator output.
+9. MA200 N/A tickers appear below the grid, not in either MA200 bucket.
+10. BUY/HOLD/SELL badges remain beside MarketState.
+11. Refresh rebuilds flow counts, links and MA200 buckets from latest snapshot.
 ```
 
-Stop the NiceGUI process after the smoke check.
+Stop the NiceGUI process after smoke check.
 
 ---
 
@@ -318,7 +347,8 @@ SMART MONEY NICEGUI — MA200 FLOW DEPLOYMENT
 
 HEAD: <sha>
 Compile: PASS | FAIL
-Focused unit test: PASS | FAIL
+Focused tests: PASS | FAIL
+Snapshot query contract: PASS | FAIL
 Snapshot validator: PASS | FAIL | BLOCKED
 Snapshot date: <date>
 Snapshot tickers: <count>
@@ -351,4 +381,4 @@ OOS/backtest evaluation
 full pytest suite
 ```
 
-Those validate different contracts and are not required to prove this presentation change.
+Those validate different contracts and do not provide additional evidence for this presentation change.
