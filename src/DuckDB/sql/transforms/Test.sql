@@ -27,3 +27,8 @@ select * from "CherryMon"."main"."vw_Ticker_SmartMoney" where date='2026-09-11' 
 
 
 select * from "CherryMon"."main"."dim_smart_money_config";
+
+
+& C:\Program1\Python\Python313\python.exe c:/Github/CherryStock/src/webapp/NiceGUI_chart.py;
+
+& scripts\git_auto_sync.ps1;
