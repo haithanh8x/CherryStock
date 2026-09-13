@@ -32,6 +32,12 @@ def _parse_iso_date(value: str, name: str) -> date:
         raise ValueError(f"Invalid {name}: {value!r}. Expected YYYY-MM-DD.") from exc
 
 
+def _as_date(value) -> date | None:
+    if value is None:
+        return None
+    return date.fromisoformat(str(value)[:10])
+
+
 def _verify(start_date: str, end_date: str | None) -> bool:
     start = _parse_iso_date(start_date, "start_date")
     end = _parse_iso_date(end_date, "end_date") if end_date else None
@@ -92,7 +98,8 @@ def _verify(start_date: str, end_date: str | None) -> bool:
     latest_allowed_first_date = start + timedelta(days=7)
     late_tickers = []
     for row in summary.itertuples(index=False):
-        if row.min_date is None or row.min_date > latest_allowed_first_date:
+        first_date = _as_date(row.min_date)
+        if first_date is None or first_date > latest_allowed_first_date:
             late_tickers.append(str(row.Ticker))
 
     if late_tickers:
