@@ -9,8 +9,11 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from CrawlStock.readAmi import syncAmibroker_EOD  # noqa: E402
+from CrawlStock.readYahooFinance import syncYahooFinance_EOD  # noqa: E402
 from Ults.DuckLib import executeDuckSQL  # noqa: E402
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory  # noqa: E402
+
+YAHOO_HISTORY_START = "2024-04-01"
 
 DEPENDENT_VIEWS = (
     (
@@ -61,14 +64,17 @@ def _recreate_daily_views() -> None:
 
 
 def main() -> None:
-    """
-    Full reload all configured AmiBroker EOD sources.
-
-    syncAmibroker_EOD(from_last_day=None) follows the existing EOD contract:
-    each configured target is rebuilt from the complete source folder.
-    """
+    """Full reload AmiBroker EOD, then restore Yahoo history in shared raw_other_eod."""
     _drop_daily_views()
+
+    print("[1/2] Full reload AmiBroker EOD...")
     syncAmibroker_EOD(from_last_day=None)
+
+    # raw_other_eod is shared by AmiBroker EOD/other and Yahoo Finance. AmiBroker
+    # full-load mode rebuilds the table, so Yahoo history must be restored after it.
+    print(f"[2/2] Upsert Yahoo EOD history from {YAHOO_HISTORY_START}...")
+    syncYahooFinance_EOD(start_date=YAHOO_HISTORY_START)
+
     _recreate_daily_views()
 
 
