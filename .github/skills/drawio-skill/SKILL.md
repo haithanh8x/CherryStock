@@ -65,9 +65,34 @@ Draw.io belongs to the **Skill → Tool** part of the harness. It does not own a
 python "$HOME\.agents\skills\drawio-skill\scripts\validate.py" <diagram.drawio> --score
 ```
 
-9. When Draw.io Desktop is available, export a draft PNG and visually inspect overlap, clipping, label readability and edge routing.
-10. Stop automatic repair after two focused rounds; report any remaining limitation instead of looping.
-11. Preserve the editable `.drawio` source as the review artifact; generated PNG/SVG/PDF is presentation output.
+9. For CherryStock local native PNG export, **do not call `draw.io.exe` directly from ad-hoc scripts**. Use the repository-owned wrapper in `scripts/lib/DrawioCli.psm1`, which isolates Electron `--user-data-dir`, waits for a stable file and validates the PNG signature. The demo runner already uses this wrapper:
+
+```powershell
+.\scripts\run_drawio_harness_demo.ps1
+```
+
+10. When Draw.io Desktop is available, export a draft PNG and visually inspect overlap, clipping, label readability and edge routing.
+11. Stop automatic repair after two focused rounds; report any remaining limitation instead of looping.
+12. Preserve the editable `.drawio` source as the review artifact; generated PNG/SVG/PDF is presentation output.
+
+## Native export invariant
+
+Draw.io Desktop is single-instance Electron software. A normal GUI session may already hold the application lock. Therefore CherryStock native automation MUST route through:
+
+```text
+scripts/lib/DrawioCli.psm1
+```
+
+The wrapper owns:
+
+- executable discovery;
+- unique `--user-data-dir` isolation per export;
+- explicit `--export --format png --output <file>` invocation;
+- bounded output polling;
+- PNG signature validation;
+- cleanup of the temporary isolated profile.
+
+Do not reimplement this logic in individual Agents, Skills or runbooks.
 
 ## File placement
 
