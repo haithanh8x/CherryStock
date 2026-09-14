@@ -1,0 +1,76 @@
+param(
+    [string]$SkillRoot = (Join-Path $HOME ".agents\skills\drawio-skill"),
+    [string]$Diagram = "docs\architecture\diagrams\agent-harness-five-components.drawio",
+    [switch]$SkipExport
+)
+
+$ErrorActionPreference = "Stop"
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$diagramPath = Join-Path $repoRoot $Diagram
+$generatedDir = Join-Path $repoRoot "docs\architecture\generated"
+$pngPath = Join-Path $generatedDir "Agent_Harness_Five_Components.png"
+$validator = Join-Path $SkillRoot "scripts\validate.py"
+
+if (-not (Test-Path $diagramPath)) {
+    throw "Demo diagram not found: $diagramPath"
+}
+if (-not (Test-Path $validator)) {
+    throw "drawio-skill validator not found at $validator. Run .\scripts\install_drawio_skill.ps1 first."
+}
+
+$python = Get-Command "python" -ErrorAction SilentlyContinue
+$usePyLauncher = $false
+if (-not $python) {
+    $python = Get-Command "py" -ErrorAction SilentlyContinue
+    $usePyLauncher = $true
+}
+if (-not $python) {
+    throw "Python 3 was not found in PATH."
+}
+
+Write-Host "[1/2] Structural validation"
+if ($usePyLauncher) {
+    & $python.Source -3 $validator $diagramPath --score
+}
+else {
+    & $python.Source $validator $diagramPath --score
+}
+if ($LASTEXITCODE -ne 0) {
+    throw "drawio-skill structural validation failed with exit code $LASTEXITCODE"
+}
+Write-Host "PASS: structural validation"
+
+if ($SkipExport) {
+    Write-Host "[2/2] Export skipped by -SkipExport"
+    exit 0
+}
+
+$drawioCandidates = @()
+$cmd = Get-Command "drawio" -ErrorAction SilentlyContinue
+if ($cmd) { $drawioCandidates += $cmd.Source }
+$drawioCandidates += "C:\Program Files\draw.io\draw.io.exe"
+if ($env:LOCALAPPDATA) {
+    $drawioCandidates += (Join-Path $env:LOCALAPPDATA "Programs\draw.io\draw.io.exe")
+}
+$drawioExe = $drawioCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+
+if (-not $drawioExe) {
+    Write-Warning "Draw.io Desktop CLI was not found. Validation passed; PNG export skipped."
+    Write-Host "Open the editable source manually: $diagramPath"
+    exit 0
+}
+
+New-Item -ItemType Directory -Path $generatedDir -Force | Out-Null
+Write-Host "[2/2] Exporting draft PNG with $drawioExe"
+& $drawioExe -x -f png --width 2000 -o $pngPath $diagramPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Draw.io export failed with exit code $LASTEXITCODE"
+}
+
+if (-not (Test-Path $pngPath)) {
+    throw "Draw.io reported success but output was not created: $pngPath"
+}
+
+Write-Host "PASS: PNG generated"
+Write-Host "Editable source: $diagramPath"
+Write-Host "Draft PNG:      $pngPath"
