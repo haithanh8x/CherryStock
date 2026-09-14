@@ -47,7 +47,7 @@
     {"id": "final", "lane": "product", "col": 5, "type": "backend", "label": "User Decision", "sublabel": "accept · reprioritize · iterate", "width": 158},
     {"id": "router", "lane": "orchestration", "col": 0, "type": "messagebus", "label": "Default Repository Agent", "sublabel": ".github/copilot-instructions.md", "tag": "classify · route · handoff", "width": 198},
     {"id": "rework", "lane": "orchestration", "col": 5, "type": "messagebus", "label": "Feedback Router", "sublabel": "requirement→BA · design→SA · defect→owner", "tag": "FAIL · BLOCKED · REGRESSION", "width": 210},
-    {"id": "cherrymon", "lane": "constitution", "col": 0, "type": "security", "label": "CherryMon.agent.md", "sublabel": "architecture constitution · shared mandatory read", "tag": "stable project boundaries", "width": 208},
+    {"id": "cherrymon", "lane": "constitution", "col": 0, "type": "security", "label": "CherryMon.agent.md", "sublabel": "shared constitution", "tag": "architecture baseline", "width": 208},
     {"id": "ba", "lane": "analysis", "col": 1, "type": "backend", "label": "BusinessAnalyst.agent.md", "sublabel": "frame → define → testable AC → route", "tag": "READY_FOR_DESIGN / IMPLEMENTATION", "width": 210},
     {"id": "sa", "lane": "architecture", "col": 2, "type": "backend", "label": "SolutionArchitect.agent.md", "sublabel": "context → current state → design → decision", "tag": "APPROVED_FOR_IMPLEMENTATION", "width": 214},
     {"id": "chart_context", "lane": "chart_lane", "col": 1, "type": "database", "label": "Chart Context", "sublabel": "Chart_Architecture.md · chart.instructions.md", "tag": "chart-authoring/SKILL.md", "width": 204},
