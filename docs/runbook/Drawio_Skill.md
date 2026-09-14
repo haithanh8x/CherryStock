@@ -232,6 +232,25 @@ Then confirm:
 Test-Path "$HOME\.agents\skills\drawio-skill\scripts\validate.py"
 ```
 
+### Installer prints `Draw.io Desktop CLI detected: C`
+
+This symptom came from treating a single PowerShell pipeline result as an array and then indexing `[0]`, which returns the first character of a scalar string path such as `C:\Program Files\draw.io\draw.io.exe`.
+
+The installer was fixed to select a full path directly and to treat Draw.io Desktop as an optional capability. Pull the latest CherryStock changes and rerun:
+
+```powershell
+git pull
+.\scripts\install_drawio_skill.ps1
+```
+
+A valid detection now looks like:
+
+```text
+Draw.io Desktop CLI detected: C:\Program Files\draw.io\draw.io.exe
+```
+
+If Draw.io Desktop is not installed, the installer should finish with a warning rather than fail. Core Python workflows remain available.
+
 ### Draw.io export skipped
 
 Install Draw.io Desktop and verify one of the common Windows paths:
@@ -239,6 +258,13 @@ Install Draw.io Desktop and verify one of the common Windows paths:
 ```text
 C:\Program Files\draw.io\draw.io.exe
 %LOCALAPPDATA%\Programs\draw.io\draw.io.exe
+```
+
+You can check directly in PowerShell:
+
+```powershell
+Test-Path "C:\Program Files\draw.io\draw.io.exe"
+Test-Path "$env:LOCALAPPDATA\Programs\draw.io\draw.io.exe"
 ```
 
 Then rerun:
