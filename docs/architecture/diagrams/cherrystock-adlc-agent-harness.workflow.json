@@ -1,0 +1,390 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "CherryStock ADLC Agent Harness",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "happy-path",
+        "label": "Material change",
+        "focus": [
+          "user_request",
+          "router",
+          "ba",
+          "sa",
+          "dev",
+          "test",
+          "verdict",
+          "final"
+        ],
+        "note": "Canonical ADLC path for a material or initially unclear change."
+      },
+      {
+        "id": "fast-path",
+        "label": "Clear small change",
+        "focus": [
+          "user_request",
+          "router",
+          "dev",
+          "test",
+          "verdict",
+          "final"
+        ],
+        "note": "A clear, bounded change may bypass BA/SA but never independent validation."
+      },
+      {
+        "id": "feedback-loops",
+        "label": "Failure routing",
+        "focus": [
+          "test",
+          "verdict",
+          "router",
+          "ba",
+          "sa",
+          "dev"
+        ],
+        "note": "Validation findings return to the owner of the failed outcome."
+      },
+      {
+        "id": "artifact-trace",
+        "label": "Repository evidence",
+        "focus": [
+          "req_artifact",
+          "arch_artifact",
+          "impl_artifact",
+          "test_artifact"
+        ],
+        "note": "Durable artifacts preserve traceability from intent through evidence."
+      }
+    ],
+    "output": "docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html"
+  },
+  "lanes": [
+    {
+      "id": "product",
+      "label": "User / Product"
+    },
+    {
+      "id": "orchestration",
+      "label": "Default Agent / Router"
+    },
+    {
+      "id": "analysis",
+      "label": "Business Analyst"
+    },
+    {
+      "id": "architecture",
+      "label": "Solution Architect"
+    },
+    {
+      "id": "implementation",
+      "label": "GeneralCoding / Domain Agent"
+    },
+    {
+      "id": "validation",
+      "label": "Test Engineer"
+    },
+    {
+      "id": "evidence",
+      "label": "Repository Artifacts"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "Intake + route",
+      "fromCol": 0,
+      "toCol": 0
+    },
+    {
+      "id": "definition",
+      "label": "Define + design",
+      "fromCol": 1,
+      "toCol": 2,
+      "variant": "emphasis"
+    },
+    {
+      "id": "delivery",
+      "label": "Implement + validate",
+      "fromCol": 3,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "groups": [
+    {
+      "id": "definition_gates",
+      "label": "Definition gates",
+      "lane": "analysis",
+      "fromCol": 1,
+      "toCol": 2,
+      "variant": "emphasis"
+    },
+    {
+      "id": "delivery_gates",
+      "label": "Delivery gates",
+      "lane": "validation",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "security"
+    },
+    {
+      "id": "traceability",
+      "label": "Durable evidence",
+      "lane": "evidence",
+      "fromCol": 1,
+      "toCol": 4,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "user_request",
+    "router",
+    "ba",
+    "sa",
+    "dev",
+    "test",
+    "verdict",
+    "final"
+  ],
+  "nodes": [
+    {
+      "id": "user_request",
+      "lane": "product",
+      "col": 0,
+      "type": "external",
+      "label": "Change Request",
+      "sublabel": "goal · priority · scope",
+      "width": 142
+    },
+    {
+      "id": "final",
+      "lane": "product",
+      "col": 5,
+      "type": "backend",
+      "label": "User Decision",
+      "sublabel": "accept · prioritize · iterate",
+      "width": 142
+    },
+    {
+      "id": "router",
+      "lane": "orchestration",
+      "col": 0,
+      "type": "messagebus",
+      "label": "ADLC Router",
+      "sublabel": "classify · route · handoff",
+      "tag": "no domain ownership",
+      "width": 148
+    },
+    {
+      "id": "ba",
+      "lane": "analysis",
+      "col": 1,
+      "type": "backend",
+      "label": "Business Analyst",
+      "sublabel": "requirement · AC · rules",
+      "tag": "requirements gate",
+      "width": 148
+    },
+    {
+      "id": "sa",
+      "lane": "architecture",
+      "col": 2,
+      "type": "backend",
+      "label": "Solution Architect",
+      "sublabel": "contracts · boundaries · ADR",
+      "tag": "design gate",
+      "width": 158
+    },
+    {
+      "id": "dev",
+      "lane": "implementation",
+      "col": 3,
+      "type": "backend",
+      "label": "Implementation Owner",
+      "sublabel": "code · scripts · migrations",
+      "tag": "delivery gate",
+      "width": 164
+    },
+    {
+      "id": "test",
+      "lane": "validation",
+      "col": 4,
+      "type": "security",
+      "label": "Test Engineer",
+      "sublabel": "independent evidence",
+      "tag": "no self-certification",
+      "width": 148
+    },
+    {
+      "id": "verdict",
+      "lane": "validation",
+      "col": 5,
+      "type": "security",
+      "label": "Validation Verdict",
+      "sublabel": "PASS · FAIL · BLOCKED · REGRESSION",
+      "width": 170
+    },
+    {
+      "id": "req_artifact",
+      "lane": "evidence",
+      "col": 1,
+      "type": "database",
+      "label": "Requirement Artifact",
+      "sublabel": "docs/backlog/requirements",
+      "width": 152
+    },
+    {
+      "id": "arch_artifact",
+      "lane": "evidence",
+      "col": 2,
+      "type": "database",
+      "label": "Architecture Artifacts",
+      "sublabel": "docs/architecture · docs/adr",
+      "width": 158
+    },
+    {
+      "id": "impl_artifact",
+      "lane": "evidence",
+      "col": 3,
+      "type": "database",
+      "label": "Implementation Diff",
+      "sublabel": "src · scripts · docs",
+      "width": 152
+    },
+    {
+      "id": "test_artifact",
+      "lane": "evidence",
+      "col": 4,
+      "type": "database",
+      "label": "Test Evidence",
+      "sublabel": "tests · runbook · logs",
+      "width": 148
+    }
+  ],
+  "edges": [
+    {
+      "id": "request-route",
+      "from": "user_request",
+      "to": "router",
+      "label": "intent",
+      "variant": "emphasis"
+    },
+    {
+      "id": "route-ba",
+      "from": "router",
+      "to": "ba",
+      "label": "unclear / material",
+      "variant": "default"
+    },
+    {
+      "id": "ba-sa",
+      "from": "ba",
+      "to": "sa",
+      "label": "READY_FOR_DESIGN",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sa-dev",
+      "from": "sa",
+      "to": "dev",
+      "label": "APPROVED_FOR_IMPLEMENTATION",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ba-dev-fast",
+      "from": "ba",
+      "to": "dev",
+      "label": "READY_FOR_IMPLEMENTATION",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "router-dev-fast",
+      "from": "router",
+      "to": "dev",
+      "label": "clear bounded change",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "dev-test",
+      "from": "dev",
+      "to": "test",
+      "label": "IMPLEMENTED_PENDING_VALIDATION",
+      "variant": "emphasis"
+    },
+    {
+      "id": "test-verdict",
+      "from": "test",
+      "to": "verdict",
+      "label": "evidence-backed",
+      "variant": "security"
+    },
+    {
+      "id": "pass-final",
+      "from": "verdict",
+      "to": "final",
+      "label": "PASS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "failed-route",
+      "from": "verdict",
+      "to": "router",
+      "label": "FAIL / BLOCKED / REGRESSION",
+      "variant": "dashed",
+      "role": "return",
+      "route": "bottom-channel"
+    },
+    {
+      "id": "ba-req",
+      "from": "ba",
+      "to": "req_artifact",
+      "label": "write",
+      "variant": "dashed"
+    },
+    {
+      "id": "sa-arch",
+      "from": "sa",
+      "to": "arch_artifact",
+      "label": "design + Archify",
+      "variant": "dashed"
+    },
+    {
+      "id": "dev-impl",
+      "from": "dev",
+      "to": "impl_artifact",
+      "label": "commit",
+      "variant": "dashed"
+    },
+    {
+      "id": "test-evidence",
+      "from": "test",
+      "to": "test_artifact",
+      "label": "record",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Outcome Ownership",
+      "items": [
+        "Router orchestrates; BA, SA, implementation and Test retain specialist outcome ownership.",
+        "Each owner certifies only its gate; Test Engineer owns the terminal validation verdict."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trace + Feedback",
+      "items": [
+        "REQ-* → architecture/ADR → source diff → test evidence keeps delivery auditable.",
+        "Requirement gap → BA · design gap → SA · code defect → implementation owner."
+      ]
+    }
+  ]
+}
