@@ -337,8 +337,7 @@
       "to": "router",
       "label": "FAIL / BLOCKED / REGRESSION",
       "variant": "dashed",
-      "role": "return",
-      "route": "bottom-channel"
+      "role": "return"
     },
     {
       "id": "ba-req",
