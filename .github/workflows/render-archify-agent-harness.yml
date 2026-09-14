@@ -6,8 +6,11 @@ on:
       - main
     paths:
       - "docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json"
+      - "docs/architecture/diagrams/cherrystock-adlc-agent-harness.passport.json"
       - "docs/architecture/agent-harness/AGENT_EXECUTION_FLOW.md"
       - "scripts/customize_archify_typography.py"
+      - "scripts/enrich_archify_agent_harness.py"
+      - "scripts/render_archify_agent_harness.ps1"
       - ".github/workflows/render-archify-agent-harness.yml"
   workflow_dispatch:
 
@@ -22,6 +25,7 @@ env:
   ARCHIFY_VERSION: v2.16.0
   ARCHIFY_UPDATE_CHECK_DISABLED: "1"
   SOURCE_FILE: docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json
+  DETAILS_FILE: docs/architecture/diagrams/cherrystock-adlc-agent-harness.passport.json
   OUTPUT_FILE: docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html
   STATUS_FILE: docs/architecture/agent-harness/README.md
 
@@ -83,6 +87,15 @@ jobs:
           python scripts/customize_archify_typography.py "$OUTPUT_FILE" --sans-font Inter
           test -s "$OUTPUT_FILE"
           grep -q "CherryStock ADLC Agent Harness" "$OUTPUT_FILE"
+
+      - name: Enrich Semantic Passport with agent execution detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/enrich_archify_agent_harness.py "$OUTPUT_FILE" "$DETAILS_FILE"
+          grep -q "cherrystock-agent-passport-detail" "$OUTPUT_FILE"
+          grep -q "BusinessAnalyst.agent.md — requirement readiness" "$OUTPUT_FILE"
+          grep -q "FAIL / REGRESSION → AUTOFIX" "$OUTPUT_FILE"
 
       - name: Synchronize ADLC visualization status
         shell: bash
