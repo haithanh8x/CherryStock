@@ -29,17 +29,33 @@ public static class FakeDrawioExporter
     public static int Main(string[] args)
     {
         string output = null;
+        string input = null;
 
         for (int i = 0; i < args.Length; i++)
         {
+            // Regression guard for draw.io Desktop 28.x: these are not
+            // commander-registered draw.io options and must not be passed in argv.
+            if (args[i] == "--disable-update" ||
+                args[i] == "--disable-gpu" ||
+                args[i].StartsWith("--user-data-dir", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Error.WriteLine("unsupported argv token: " + args[i]);
+                return 9;
+            }
+
             if (args[i] == "--output" && i + 1 < args.Length)
             {
                 output = args[++i];
             }
+            else if (!args[i].StartsWith("-", StringComparison.Ordinal))
+            {
+                input = args[i];
+            }
         }
 
-        if (String.IsNullOrWhiteSpace(output))
+        if (String.IsNullOrWhiteSpace(output) || String.IsNullOrWhiteSpace(input) || !File.Exists(input))
         {
+            Console.Error.WriteLine("input/output contract invalid");
             return 2;
         }
 
@@ -59,39 +75,48 @@ public static class FakeDrawioExporter
         };
 
         File.WriteAllBytes(output, png);
+        Console.WriteLine(input + " -> " + output);
         return 0;
     }
 }
 '@
 
     Add-Type -TypeDefinition $source -OutputAssembly $fakeExe -OutputType ConsoleApplication
-    Set-Content -LiteralPath $inputDrawio -Value '<mxfile><diagram id="test"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>' -Encoding UTF8
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText(
+        $inputDrawio,
+        '<mxfile><diagram id="test"><mxGraphModel shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>',
+        $utf8NoBom
+    )
 
     $started = Get-Date
     $result = Invoke-DrawioPngExport `
         -InputPath $inputDrawio `
         -OutputPath $outputPng `
         -DrawioExe $fakeExe `
-        -TimeoutSeconds 10
+        -TimeoutSeconds 10 `
+        -Verbose
     $elapsed = [int]((Get-Date) - $started).TotalMilliseconds
 
     if (-not (Test-Path -LiteralPath $outputPng -PathType Leaf)) {
         throw "FAIL: helper returned but fake exporter output does not exist."
     }
-
     if (-not (Test-DrawioPngFile -Path $outputPng)) {
         throw "FAIL: helper returned an output that does not pass PNG signature validation."
     }
-
     if ($elapsed -lt 1000) {
-        throw "FAIL: helper returned too early (${elapsed}ms); expected it to wait for the delayed GUI exporter."
+        throw "FAIL: helper returned too early (${elapsed}ms); expected it to wait for delayed process completion."
     }
-
     if (-not $result.PngValid) {
         throw "FAIL: helper did not mark PNG as valid."
     }
+    if ($result.Strategy -ne "registered-cli-options") {
+        throw "FAIL: unexpected CLI strategy '$($result.Strategy)'."
+    }
 
-    Write-Host "PASS: DrawioCli helper waits for delayed GUI process completion"
+    Write-Host "PASS: DrawioCli waits for delayed process completion"
+    Write-Host "PASS: DrawioCli argv contains only draw.io-registered options"
     Write-Host ("Strategy:  {0}" -f $result.Strategy)
     Write-Host ("Elapsed:   {0} ms" -f $elapsed)
     Write-Host ("PNG bytes: {0}" -f $result.Bytes)
