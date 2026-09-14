@@ -27,11 +27,12 @@ ADLC does **not** mean every change must pass through every specialist. A clear,
 ## Artifact status for this ADLC visualization
 
 - Canonical ADLC Markdown: **UPDATED**
-- Archify typed workflow source: **UPDATED**
-- Archify schema/layout/composition validation: **PENDING_LOCAL_ARCHIFY_VALIDATION_AND_RENDER**
-- Generated HTML: **PENDING_LOCAL_ARCHIFY_VALIDATION_AND_RENDER**
+- Detailed agent/file execution map: **UPDATED** — `docs/architecture/agent-harness/AGENT_EXECUTION_FLOW.md`
+- Archify typed workflow source: **VALIDATED (showcase)** — `docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json`
+- Generated HTML: **SYNCHRONIZED** — `docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html`
+- GitHub renderer: **ACTIVE** — `.github/workflows/render-archify-agent-harness.yml`
 
-The repository change must not be treated as Archify-validated or as a synchronized generated visualization until `scripts/render_archify_agent_harness.ps1` succeeds locally and the generated HTML is committed. Generated HTML must not be hand-edited to bypass this gate.
+The typed workflow is validated and rendered on GitHub with pinned Archify `v2.16.0`. The generated HTML is presentation output only and must not be hand-edited. Changes to agent routing, gates, file ownership or execution flow must update the canonical Markdown and typed Archify source, then pass this workflow before the visualization is treated as synchronized.
 
 ---
 
