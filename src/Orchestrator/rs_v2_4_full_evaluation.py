@@ -44,6 +44,8 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Iterable, Sequence
 
+import pandas as pd
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
@@ -61,7 +63,9 @@ from calcEngine.levelLadder import (  # noqa: E402
     SUPPORTED_TIMEFRAMES,
     V1_MA_LENGTHS,
 )
+from calcEngine.rsEvaluation import select_evaluation_snapshot_dates  # noqa: E402
 from calcEngine.rsSourceIdentity import canonical_source_key  # noqa: E402
+from calcEngine.volumeProfile import VolumeProfileConfig  # noqa: E402
 from cherrystock.config.settings import settings  # noqa: E402
 from cherrystock.infrastructure.database.connection import (  # noqa: E402
     DuckDBConnectionFactory,
@@ -436,23 +440,52 @@ def _expected_snapshot_count(
     snapshot_step: int,
 ) -> int:
     placeholders = ",".join("?" for _ in tickers)
+    profile_config = VolumeProfileConfig()
+    lookback_days = max(540, profile_config.window_bars * 3)
+    history_start = window.start_date - timedelta(days=lookback_days)
     rows = connection.execute(
         f"""
         SELECT
             "Ticker",
-            COUNT(*) AS "BarCount"
+            "Date",
+            "High",
+            "Low",
+            "Close",
+            "Volume"
         FROM "CherryMon"."main"."raw_stock_eod"
         WHERE "Ticker" IN ({placeholders})
           AND "Date" BETWEEN ? AND ?
-        GROUP BY "Ticker";
+        ORDER BY "Ticker", "Date";
         """,
-        [*tickers, window.start_date, window.evaluation_end],
+        [*tickers, history_start, window.evaluation_end],
     ).fetchall()
-    counts = {str(row[0]).upper(): int(row[1]) for row in rows}
-    missing = sorted(set(tickers) - set(counts))
+    if not rows:
+        raise ValueError("snapshot-count source data is empty")
+
+    frame = pd.DataFrame(
+        rows,
+        columns=["Ticker", "Date", "High", "Low", "Close", "Volume"],
+    )
+    frame["Ticker"] = frame["Ticker"].astype(str).str.upper()
+
+    missing = sorted(set(tickers) - set(frame["Ticker"]))
     if missing:
         raise ValueError(f"snapshot-count source data missing tickers: {missing}")
-    return sum((counts[ticker] + snapshot_step - 1) // snapshot_step for ticker in tickers)
+
+    total = 0
+    for ticker in tickers:
+        ticker_frame = frame[frame["Ticker"] == ticker].copy()
+        selected = select_evaluation_snapshot_dates(
+            ticker_frame,
+            start_date=window.start_date,
+            end_date=window.evaluation_end,
+            snapshot_step=snapshot_step,
+            enabled_sources=("VOLUME_PROFILE",),
+            volume_profile_min_records=profile_config.min_records,
+            volume_profile_window_bars=profile_config.window_bars,
+        )
+        total += len(selected)
+    return total
 
 
 def _indicator_source_specs(connection) -> set[SourceSpec]:

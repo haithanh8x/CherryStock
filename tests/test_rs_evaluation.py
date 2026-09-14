@@ -25,6 +25,7 @@ from src.calcEngine.rsEvaluation import (
     metrics_to_dataframe,
     promotion_gate,
     rank_calibration_candidates,
+    select_evaluation_snapshot_dates,
     validate_golden_ladder_invariants,
 )
 
@@ -202,6 +203,61 @@ def test_aggregate_metrics_is_deterministic() -> None:
     assert first.touch_rate == 1.0
     assert first.hold_rate_given_touch == 1.0
     assert 0 <= first.quality_score <= 1
+
+
+def test_snapshot_selection_skips_volume_profile_warmup_without_shifting_cadence() -> None:
+    dates = pd.date_range("2026-01-01", periods=40, freq="D")
+    frame = pd.DataFrame(
+        {
+            "Date": dates,
+            "High": [11.0] * 40,
+            "Low": [10.0] * 40,
+            "Close": [10.5] * 40,
+            "Volume": [1000.0] * 40,
+        }
+    )
+
+    selected = select_evaluation_snapshot_dates(
+        frame,
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 2, 9),
+        snapshot_step=5,
+        enabled_sources=("MA", "VOLUME_PROFILE"),
+        volume_profile_min_records=30,
+        volume_profile_window_bars=120,
+    )
+
+    assert selected == (
+        date(2026, 1, 31),
+        date(2026, 2, 5),
+    )
+
+
+def test_snapshot_selection_has_no_warmup_gate_without_volume_profile() -> None:
+    dates = pd.date_range("2026-01-01", periods=12, freq="D")
+    frame = pd.DataFrame(
+        {
+            "Date": dates,
+            "High": [11.0] * 12,
+            "Low": [10.0] * 12,
+            "Close": [10.5] * 12,
+            "Volume": [1000.0] * 12,
+        }
+    )
+
+    selected = select_evaluation_snapshot_dates(
+        frame,
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 12),
+        snapshot_step=5,
+        enabled_sources=("MA",),
+    )
+
+    assert selected == (
+        date(2026, 1, 1),
+        date(2026, 1, 6),
+        date(2026, 1, 11),
+    )
 
 
 def test_temporal_split_is_chronological() -> None:
