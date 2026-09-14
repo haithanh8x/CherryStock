@@ -94,21 +94,17 @@ try {
     $drawioExe = Find-DrawioExecutable
 
     if ($drawioExe) {
+        $drawioInfo = Get-DrawioExecutableInfo -DrawioExe $drawioExe
         Write-Host "Draw.io Desktop CLI detected: $drawioExe"
-        try {
-            & $drawioExe --version
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "Draw.io Desktop '--version' returned exit code $LASTEXITCODE."
-            }
-        }
-        catch {
-            throw "Draw.io Desktop was found at '$drawioExe' but could not be executed: $($_.Exception.Message)"
+        if ($drawioInfo) {
+            Write-Host ("File version:    {0}" -f $drawioInfo.FileVersion)
+            Write-Host ("Product version: {0}" -f $drawioInfo.ProductVersion)
         }
 
         if (-not $SkipNativeExportProbe) {
-            Write-Host "Running isolated native PNG export probe..."
-            $probe = Test-DrawioNativeExportCapability -DrawioExe $drawioExe -TimeoutSeconds 45
-            Write-Host ("PASS: native PNG export probe ({0} bytes)" -f $probe.Bytes)
+            Write-Host "Running native PNG export probe..."
+            $probe = Test-DrawioNativeExportCapability -DrawioExe $drawioExe -TimeoutSeconds 30 -Verbose
+            Write-Host ("PASS: native PNG export probe ({0} bytes, strategy={1}, elapsed={2}ms)" -f $probe.Bytes, $probe.Strategy, $probe.ElapsedMs)
         }
         else {
             Write-Host "Native PNG export probe skipped by -SkipNativeExportProbe"
