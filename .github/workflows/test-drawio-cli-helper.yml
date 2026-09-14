@@ -1,0 +1,28 @@
+name: Test Draw.io CLI Helper
+
+on:
+  push:
+    paths:
+      - "scripts/lib/DrawioCli.psm1"
+      - "tests/test_drawio_cli_helper.ps1"
+      - ".github/workflows/test-drawio-cli-helper.yml"
+  pull_request:
+    paths:
+      - "scripts/lib/DrawioCli.psm1"
+      - "tests/test_drawio_cli_helper.ps1"
+      - ".github/workflows/test-drawio-cli-helper.yml"
+  workflow_dispatch:
+
+jobs:
+  helper-regression:
+    name: PowerShell native CLI contract
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Draw.io CLI helper regression test
+        shell: pwsh
+        run: ./tests/test_drawio_cli_helper.ps1
