@@ -2,62 +2,100 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "CherryStock ADLC Agent Harness",
+    "title": "CherryStock ADLC Agent Harness — Agents, Files & Handoffs",
     "animation": "trace",
     "visual_preset": "signal-flow",
     "quality_profile": "showcase",
     "views": [
       {
-        "id": "happy-path",
-        "label": "Material change",
+        "id": "core-adlc",
+        "label": "Core ADLC",
         "focus": [
           "user_request",
           "router",
+          "cherrymon",
           "ba",
           "sa",
           "dev",
           "test",
           "verdict",
-          "final"
+          "final",
+          "governance_material",
+          "req_material",
+          "design_material",
+          "impl_material",
+          "test_material"
         ],
-        "note": "Canonical ADLC path for a material or initially unclear change."
+        "note": "Canonical material-change path with the exact CherryStock agent files and durable repository artifacts."
       },
       {
-        "id": "fast-path",
-        "label": "Clear small change",
+        "id": "indicator-lifecycle",
+        "label": "Indicator lifecycle",
         "focus": [
           "user_request",
           "router",
+          "cherrymon",
+          "indicator_context",
+          "indicator",
+          "test",
+          "verdict",
+          "final",
+          "test_material"
+        ],
+        "note": "Concrete indicator work is owned end-to-end by Indicator_Management, then independently validated by TestEngineer."
+      },
+      {
+        "id": "chart-authoring",
+        "label": "Chart / Flint",
+        "focus": [
+          "user_request",
+          "router",
+          "cherrymon",
+          "chart_context",
+          "chart",
           "dev",
           "test",
           "verdict",
-          "final"
+          "final",
+          "impl_material"
         ],
-        "note": "A clear, bounded change may bypass BA/SA but never independent validation."
+        "note": "Chart owns recommendation/spec/render. GeneralCoding joins only when production integration is requested."
       },
       {
-        "id": "feedback-loops",
+        "id": "repository-contract",
+        "label": "Files & folders",
+        "focus": [
+          "governance_material",
+          "req_material",
+          "design_material",
+          "domain_material",
+          "impl_material",
+          "test_material",
+          "generated_artifact",
+          "router",
+          "ba",
+          "sa",
+          "indicator",
+          "chart",
+          "dev",
+          "test"
+        ],
+        "note": "Shows where governance, requirements, design, domain policy, implementation, validation and generated presentation live."
+      },
+      {
+        "id": "feedback-routing",
         "label": "Failure routing",
         "focus": [
-          "test",
           "verdict",
           "router",
           "ba",
           "sa",
-          "dev"
+          "indicator",
+          "chart",
+          "dev",
+          "test"
         ],
-        "note": "Validation findings return to the owner of the failed outcome."
-      },
-      {
-        "id": "artifact-trace",
-        "label": "Repository evidence",
-        "focus": [
-          "req_artifact",
-          "arch_artifact",
-          "impl_artifact",
-          "test_artifact"
-        ],
-        "note": "Durable artifacts preserve traceability from intent through evidence."
+        "note": "FAIL/REGRESSION returns through the router to the owner of the failed outcome; BLOCKED returns to the dependency owner or user."
       }
     ],
     "output": "docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html"
@@ -69,7 +107,11 @@
     },
     {
       "id": "orchestration",
-      "label": "Default Agent / Router"
+      "label": "Default Repository Agent / Router"
+    },
+    {
+      "id": "constitution",
+      "label": "Shared Architecture Constitution"
     },
     {
       "id": "analysis",
@@ -80,28 +122,40 @@
       "label": "Solution Architect"
     },
     {
+      "id": "indicator_lane",
+      "label": "Indicator Management"
+    },
+    {
+      "id": "chart_lane",
+      "label": "Chart / Flint"
+    },
+    {
       "id": "implementation",
-      "label": "GeneralCoding / Domain Agent"
+      "label": "General Coding"
     },
     {
       "id": "validation",
       "label": "Test Engineer"
     },
     {
-      "id": "evidence",
-      "label": "Repository Artifacts"
+      "id": "domain_policy",
+      "label": "Domain Execution Policy"
+    },
+    {
+      "id": "materials",
+      "label": "Repository Files / Durable Materials"
     }
   ],
   "phases": [
     {
       "id": "intake",
-      "label": "Intake + route",
+      "label": "Intake + governance",
       "fromCol": 0,
       "toCol": 0
     },
     {
       "id": "definition",
-      "label": "Define + design",
+      "label": "Requirements + design",
       "fromCol": 1,
       "toCol": 2,
       "variant": "emphasis"
@@ -110,22 +164,37 @@
       "id": "delivery",
       "label": "Implement + validate",
       "fromCol": 3,
-      "toCol": 5,
+      "toCol": 4,
       "variant": "dashed"
+    },
+    {
+      "id": "close",
+      "label": "Verdict + user decision",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "security"
     }
   ],
   "groups": [
     {
       "id": "definition_gates",
-      "label": "Definition gates",
+      "label": "Readiness gates",
       "lane": "analysis",
       "fromCol": 1,
       "toCol": 2,
       "variant": "emphasis"
     },
     {
+      "id": "specialist_routes",
+      "label": "Domain-specialist routes",
+      "lane": "indicator_lane",
+      "fromCol": 1,
+      "toCol": 3,
+      "variant": "dashed"
+    },
+    {
       "id": "delivery_gates",
-      "label": "Delivery gates",
+      "label": "Independent validation",
       "lane": "validation",
       "fromCol": 4,
       "toCol": 5,
@@ -133,10 +202,10 @@
     },
     {
       "id": "traceability",
-      "label": "Durable evidence",
-      "lane": "evidence",
-      "fromCol": 1,
-      "toCol": 4,
+      "label": "Durable repository trace",
+      "lane": "materials",
+      "fromCol": 0,
+      "toCol": 5,
       "variant": "dashed"
     }
   ],
@@ -158,7 +227,7 @@
       "type": "external",
       "label": "Change Request",
       "sublabel": "goal · priority · scope",
-      "width": 142
+      "width": 148
     },
     {
       "id": "final",
@@ -166,58 +235,108 @@
       "col": 5,
       "type": "backend",
       "label": "User Decision",
-      "sublabel": "accept · prioritize · iterate",
-      "width": 142
+      "sublabel": "accept · reprioritize · iterate",
+      "width": 158
     },
     {
       "id": "router",
       "lane": "orchestration",
       "col": 0,
       "type": "messagebus",
-      "label": "ADLC Router",
-      "sublabel": "classify · route · handoff",
-      "tag": "no domain ownership",
-      "width": 148
+      "label": "Default Repository Agent",
+      "sublabel": ".github/copilot-instructions.md",
+      "tag": "classify · route · handoff",
+      "width": 198
+    },
+    {
+      "id": "cherrymon",
+      "lane": "constitution",
+      "col": 0,
+      "type": "security",
+      "label": "CherryMon.agent.md",
+      "sublabel": "architecture constitution · shared read",
+      "tag": "stable project boundaries",
+      "width": 190
     },
     {
       "id": "ba",
       "lane": "analysis",
       "col": 1,
       "type": "backend",
-      "label": "Business Analyst",
-      "sublabel": "requirement · AC · rules",
-      "tag": "requirements gate",
-      "width": 148
+      "label": "BusinessAnalyst.agent.md",
+      "sublabel": "frame → define → make testable → route",
+      "tag": "READY_FOR_DESIGN / IMPLEMENTATION",
+      "width": 206
     },
     {
       "id": "sa",
       "lane": "architecture",
       "col": 2,
       "type": "backend",
-      "label": "Solution Architect",
-      "sublabel": "contracts · boundaries · ADR",
-      "tag": "design gate",
-      "width": 158
+      "label": "SolutionArchitect.agent.md",
+      "sublabel": "context → current state → target design → decision",
+      "tag": "APPROVED_FOR_IMPLEMENTATION",
+      "width": 210
+    },
+    {
+      "id": "indicator_context",
+      "lane": "indicator_lane",
+      "col": 1,
+      "type": "database",
+      "label": "Indicator context",
+      "sublabel": "Indicator_Engine.md · indicators.instructions.md",
+      "tag": "calcEngine + MCP contract",
+      "width": 206
+    },
+    {
+      "id": "indicator",
+      "lane": "indicator_lane",
+      "col": 2,
+      "type": "backend",
+      "label": "Indicator_Management.agent.md",
+      "sublabel": "discover → metadata → backfill → validate",
+      "tag": "IMPLEMENTED_PENDING_VALIDATION",
+      "width": 220
+    },
+    {
+      "id": "chart_context",
+      "lane": "chart_lane",
+      "col": 1,
+      "type": "database",
+      "label": "Chart context",
+      "sublabel": "Chart_Architecture.md · chart.instructions.md",
+      "tag": "chart-authoring/SKILL.md",
+      "width": 200
+    },
+    {
+      "id": "chart",
+      "lane": "chart_lane",
+      "col": 2,
+      "type": "frontend",
+      "label": "Chart.agent.md",
+      "sublabel": "understand → recommend → Flint validate/render",
+      "tag": "CHART_* outcome",
+      "width": 204
     },
     {
       "id": "dev",
       "lane": "implementation",
       "col": 3,
       "type": "backend",
-      "label": "Implementation Owner",
-      "sublabel": "code · scripts · migrations",
-      "tag": "delivery gate",
-      "width": 164
+      "label": "GeneralCoding.agent.md",
+      "sublabel": "confirm → inspect → implement → verify → handoff",
+      "tag": "IMPLEMENTED_PENDING_VALIDATION",
+      "width": 210
     },
     {
       "id": "test",
       "lane": "validation",
       "col": 4,
       "type": "security",
-      "label": "Test Engineer",
-      "sublabel": "independent evidence",
-      "tag": "no self-certification",
-      "width": 148
+      "label": "TestEngineer.agent.md",
+      "sublabel": "define → prepare → execute → evaluate",
+      "tag": "independent verdict owner",
+      "width": 204
     },
     {
       "id": "verdict",
@@ -226,43 +345,71 @@
       "type": "security",
       "label": "Validation Verdict",
       "sublabel": "PASS · FAIL · BLOCKED · REGRESSION",
-      "width": 170
+      "width": 180
     },
     {
-      "id": "req_artifact",
-      "lane": "evidence",
-      "col": 1,
-      "type": "database",
-      "label": "Requirement Artifact",
-      "sublabel": "docs/backlog/requirements",
-      "width": 152
-    },
-    {
-      "id": "arch_artifact",
-      "lane": "evidence",
+      "id": "domain_material",
+      "lane": "domain_policy",
       "col": 2,
       "type": "database",
-      "label": "Architecture Artifacts",
-      "sublabel": "docs/architecture · docs/adr",
-      "width": 158
+      "label": "Domain Execution Rules",
+      "sublabel": ".github/instructions/*.instructions.md",
+      "width": 204
     },
     {
-      "id": "impl_artifact",
-      "lane": "evidence",
+      "id": "governance_material",
+      "lane": "materials",
+      "col": 0,
+      "type": "database",
+      "label": "Governance + Knowledge Router",
+      "sublabel": ".github/** · docs/00_HOME.md",
+      "width": 198
+    },
+    {
+      "id": "req_material",
+      "lane": "materials",
+      "col": 1,
+      "type": "database",
+      "label": "Requirement Contract",
+      "sublabel": "docs/backlog/requirements/REQ-*.md",
+      "width": 198
+    },
+    {
+      "id": "design_material",
+      "lane": "materials",
+      "col": 2,
+      "type": "database",
+      "label": "Design + Decisions",
+      "sublabel": "docs/architecture/** · docs/adr/**",
+      "width": 194
+    },
+    {
+      "id": "impl_material",
+      "lane": "materials",
       "col": 3,
       "type": "database",
-      "label": "Implementation Diff",
-      "sublabel": "src · scripts · docs",
-      "width": 152
+      "label": "Implementation Evidence",
+      "sublabel": "src/** · scripts/** · docs/development/**",
+      "width": 206
     },
     {
-      "id": "test_artifact",
-      "lane": "evidence",
+      "id": "test_material",
+      "lane": "materials",
       "col": 4,
       "type": "database",
-      "label": "Test Evidence",
-      "sublabel": "tests · runbook · logs",
-      "width": 148
+      "label": "Validation Evidence",
+      "sublabel": "tests/** · docs/runbook/** · logs",
+      "width": 190
+    },
+    {
+      "id": "generated_artifact",
+      "lane": "materials",
+      "col": 5,
+      "type": "database",
+      "label": "Archify Presentation",
+      "sublabel": "docs/architecture/generated/*.html",
+      "tag": "generated — not Source of Truth",
+      "width": 196
     }
   ],
   "edges": [
@@ -274,11 +421,57 @@
       "variant": "emphasis"
     },
     {
-      "id": "route-ba",
+      "id": "router-ba",
       "from": "router",
       "to": "ba",
-      "label": "unclear / material",
+      "label": "unclear / material requirement",
       "variant": "default"
+    },
+    {
+      "id": "router-sa",
+      "from": "router",
+      "to": "sa",
+      "label": "explicit architecture/design",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "router-dev",
+      "from": "router",
+      "to": "dev",
+      "label": "clear bounded implementation",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "router-indicator",
+      "from": "router",
+      "to": "indicator_context",
+      "label": "concrete indicator lifecycle",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "indicator-context-agent",
+      "from": "indicator_context",
+      "to": "indicator",
+      "label": "mandatory domain context",
+      "variant": "emphasis"
+    },
+    {
+      "id": "router-chart",
+      "from": "router",
+      "to": "chart_context",
+      "label": "chart / visualization / Flint",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "chart-context-agent",
+      "from": "chart_context",
+      "to": "chart",
+      "label": "mandatory chart context",
+      "variant": "emphasis"
     },
     {
       "id": "ba-sa",
@@ -288,14 +481,7 @@
       "variant": "emphasis"
     },
     {
-      "id": "sa-dev",
-      "from": "sa",
-      "to": "dev",
-      "label": "APPROVED_FOR_IMPLEMENTATION",
-      "variant": "emphasis"
-    },
-    {
-      "id": "ba-dev-fast",
+      "id": "ba-dev",
       "from": "ba",
       "to": "dev",
       "label": "READY_FOR_IMPLEMENTATION",
@@ -303,12 +489,42 @@
       "role": "branch"
     },
     {
-      "id": "router-dev-fast",
-      "from": "router",
+      "id": "sa-dev",
+      "from": "sa",
       "to": "dev",
-      "label": "clear bounded change",
+      "label": "APPROVED_FOR_IMPLEMENTATION",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sa-indicator",
+      "from": "sa",
+      "to": "indicator",
+      "label": "approved indicator contract",
       "variant": "dashed",
       "role": "branch"
+    },
+    {
+      "id": "chart-dev",
+      "from": "chart",
+      "to": "dev",
+      "label": "production integration requested",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "chart-final",
+      "from": "chart",
+      "to": "final",
+      "label": "advice/spec/render can be terminal",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "indicator-test",
+      "from": "indicator",
+      "to": "test",
+      "label": "IMPLEMENTED_PENDING_VALIDATION",
+      "variant": "emphasis"
     },
     {
       "id": "dev-test",
@@ -340,49 +556,131 @@
       "role": "return"
     },
     {
-      "id": "ba-req",
-      "from": "ba",
-      "to": "req_artifact",
-      "label": "write",
+      "id": "router-governance",
+      "from": "router",
+      "to": "governance_material",
+      "label": "governed by",
       "variant": "dashed"
     },
     {
-      "id": "sa-arch",
+      "id": "ba-requirement",
+      "from": "ba",
+      "to": "req_material",
+      "label": "writes / updates",
+      "variant": "dashed"
+    },
+    {
+      "id": "sa-design",
       "from": "sa",
-      "to": "arch_artifact",
-      "label": "design + Archify",
+      "to": "design_material",
+      "label": "writes design + ADR + Archify source",
+      "variant": "dashed"
+    },
+    {
+      "id": "indicator-domain-policy",
+      "from": "indicator",
+      "to": "domain_material",
+      "label": "follows",
+      "variant": "dashed"
+    },
+    {
+      "id": "chart-domain-policy",
+      "from": "chart",
+      "to": "domain_material",
+      "label": "follows",
       "variant": "dashed"
     },
     {
       "id": "dev-impl",
       "from": "dev",
-      "to": "impl_artifact",
-      "label": "commit",
+      "to": "impl_material",
+      "label": "changes",
       "variant": "dashed"
     },
     {
       "id": "test-evidence",
       "from": "test",
-      "to": "test_artifact",
-      "label": "record",
+      "to": "test_material",
+      "label": "records",
+      "variant": "dashed"
+    },
+    {
+      "id": "sa-generated",
+      "from": "sa",
+      "to": "generated_artifact",
+      "label": "Archify validate + deliver",
       "variant": "dashed"
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Outcome Ownership",
+      "title": "Shared bootstrap for every routed task",
       "items": [
-        "Router orchestrates; BA, SA, implementation and Test retain specialist outcome ownership.",
-        "Each owner certifies only its gate; Test Engineer owns the terminal validation verdict."
+        "1) .github/copilot-instructions.md — repository governance, intent classification, owner selection and handoff rules.",
+        "2) .github/agents/CherryMon.agent.md — stable architecture constitution, module responsibilities and Source-of-Truth principles.",
+        "3) Intent-specific *.agent.md — WHO owns the current engineering outcome.",
+        "4) Matching .github/instructions/*.instructions.md — HOW that domain must execute safely.",
+        "5) docs/00_HOME.md → relevant docs/** → existing source/tests — smallest evidence set needed for the task."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "BusinessAnalyst.agent.md",
+      "items": [
+        "Reads: governance + CherryMon + docs/00_HOME.md + existing REQ-* + relevant architecture/ADR/domain policy.",
+        "Runs: Frame → Define → Make Testable → Decompose/Route.",
+        "Writes: docs/backlog/requirements/REQ-*.md using REQUIREMENT_TEMPLATE.md.",
+        "Exits: READY_FOR_DESIGN → SolutionArchitect; READY_FOR_IMPLEMENTATION → GeneralCoding/domain owner; ambiguity stays with BA."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "SolutionArchitect.agent.md",
+      "items": [
+        "Reads: ready requirement + docs/00_HOME.md + docs/architecture/** + docs/adr/** + domain instructions + source/tests.",
+        "Runs: Context → Current State → Proposed Design → Decision Check; Archify represents approved design, never invents it.",
+        "Writes: docs/architecture/**, docs/adr/** when required, typed diagrams under docs/architecture/diagrams/** and generated HTML.",
+        "Exits only after synchronized Archify validation: APPROVED_FOR_IMPLEMENTATION → GeneralCoding or authoritative domain agent."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Specialist agents",
+      "items": [
+        "Indicator_Management.agent.md: Indicator_Engine.md + indicators.instructions.md + legacy Indicator_Engine reference + calcEngine/MCP → metadata → targeted backfill → validation → TestEngineer.",
+        "Chart.agent.md: chart.instructions.md + chart-authoring/SKILL.md + Chart_Architecture.md + actual data contract → recommend → Flint spec → validate/render.",
+        "Chart advisory may end at the user; production integration hands the approved chart/data contract to GeneralCoding."
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "GeneralCoding.agent.md",
+      "items": [
+        "Reads: clear request/REQ-* or approved design/ADR + matching domain instructions + canonical docs + current code/tests.",
+        "Runs: Confirm → Inspect → Implement smallest compatible change → Update Materials → Developer Verification → Handoff.",
+        "Writes: src/**, scripts/**, affected tests/docs; optional docs/development/implementation-notes/** when non-obvious.",
+        "Exit: IMPLEMENTED_PENDING_VALIDATION. It must never self-declare PASS."
       ]
     },
     {
       "dot": "rose",
-      "title": "Trace + Feedback",
+      "title": "TestEngineer.agent.md",
       "items": [
-        "REQ-* → architecture/ADR → source diff → test evidence keeps delivery auditable.",
-        "Requirement gap → BA · design gap → SA · code defect → implementation owner."
+        "Reads: testing.instructions.md + requirement/AC + implementation handoff + docs/00_HOME.md + domain policy + architecture/ADR + code/tests/runbooks.",
+        "Runs finite state machine: DEFINE → PREPARE → EXECUTE → EVALUATE; retries are bounded and unchanged retries are prohibited.",
+        "Writes/records: tests/** and durable runbook/evidence where needed.",
+        "Owns terminal verdict: PASS | FAIL | BLOCKED | REGRESSION; routes the defect to BA, SA, implementation/domain owner, or user as appropriate."
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Folder purpose",
+      "items": [
+        ".github/agents/** = outcome ownership; .github/instructions/** = domain execution policy; .github/skills/** = reusable tool/authoring skills.",
+        "docs/backlog/requirements/** = durable requirement contract; docs/architecture/** = system/design Source of Truth; docs/adr/** = durable cross-module decisions.",
+        "src/** = runtime implementation; scripts/** = focused execution/migration/backfill/render helpers; tests/** = executable validation.",
+        "docs/runbook/** = reproducible operational/test procedure; docs/ChangeRequest/** = change/release traceability; docs/architecture/generated/** = presentation output only."
       ]
     }
   ]
