@@ -15,8 +15,10 @@ New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 
 try {
     $fakeExe = Join-Path $tempRoot "fake-drawio-exporter.exe"
-    $inputDrawio = Join-Path $tempRoot "input.drawio"
-    $outputPng = Join-Path $tempRoot "output.png"
+    $ioRoot = Join-Path $tempRoot "path with spaces"
+    New-Item -ItemType Directory -Path $ioRoot -Force | Out-Null
+    $inputDrawio = Join-Path $ioRoot "input diagram.drawio"
+    $outputPng = Join-Path $ioRoot "output image.png"
 
     $source = @'
 using System;
@@ -28,6 +30,12 @@ public static class FakeDrawioExporter
     [STAThread]
     public static int Main(string[] args)
     {
+        if (!String.Equals(Environment.GetEnvironmentVariable("DRAWIO_DISABLE_UPDATE"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.Error.WriteLine("DRAWIO_DISABLE_UPDATE environment contract missing");
+            return 8;
+        }
+
         string output = null;
         string input = null;
 
@@ -59,7 +67,6 @@ public static class FakeDrawioExporter
             return 2;
         }
 
-        // Deliberately behave like a GUI application that completes later.
         Thread.Sleep(1200);
 
         string dir = Path.GetDirectoryName(output);
@@ -114,9 +121,14 @@ public static class FakeDrawioExporter
     if ($result.Strategy -ne "registered-cli-options") {
         throw "FAIL: unexpected CLI strategy '$($result.Strategy)'."
     }
+    if ($result.StdOut -notmatch "input diagram\.drawio") {
+        throw "FAIL: quoted input path with spaces was not preserved by native argv. stdout='$($result.StdOut)'"
+    }
 
     Write-Host "PASS: DrawioCli waits for delayed process completion"
     Write-Host "PASS: DrawioCli argv contains only draw.io-registered options"
+    Write-Host "PASS: DRAWIO_DISABLE_UPDATE is supplied through environment"
+    Write-Host "PASS: native input/output paths with spaces are preserved"
     Write-Host ("Strategy:  {0}" -f $result.Strategy)
     Write-Host ("Elapsed:   {0} ms" -f $elapsed)
     Write-Host ("PNG bytes: {0}" -f $result.Bytes)
