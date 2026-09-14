@@ -12,13 +12,13 @@ $pngPath = Join-Path $generatedDir "Agent_Harness_Five_Components.png"
 $validator = Join-Path $SkillRoot "scripts\validate.py"
 $drawioModule = Join-Path $PSScriptRoot "lib\DrawioCli.psm1"
 
-if (-not (Test-Path -LiteralPath $diagramPath)) {
+if (-not (Test-Path -LiteralPath $diagramPath -PathType Leaf)) {
     throw "Demo diagram not found: $diagramPath"
 }
-if (-not (Test-Path -LiteralPath $validator)) {
+if (-not (Test-Path -LiteralPath $validator -PathType Leaf)) {
     throw "drawio-skill validator not found at $validator. Run .\scripts\install_drawio_skill.ps1 first."
 }
-if (-not (Test-Path -LiteralPath $drawioModule)) {
+if (-not (Test-Path -LiteralPath $drawioModule -PathType Leaf)) {
     throw "CherryStock Draw.io CLI helper not found: $drawioModule"
 }
 
@@ -47,7 +47,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "PASS: structural validation"
 
 if ($SkipExport) {
-    Write-Host "[2/3] Native CLI probe skipped by -SkipExport"
+    Write-Host "[2/3] Native CLI compatibility probe skipped by -SkipExport"
     Write-Host "[3/3] Demo export skipped by -SkipExport"
     exit 0
 }
@@ -65,16 +65,9 @@ if ($drawioInfo) {
     Write-Host ("File version:    {0}" -f $drawioInfo.FileVersion)
     Write-Host ("Product version: {0}" -f $drawioInfo.ProductVersion)
 }
+Write-Host "CLI policy: registered draw.io options only; update checks disabled via DRAWIO_DISABLE_UPDATE environment variable."
 
-$runningDrawio = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @("draw.io", "drawio") })
-if ($runningDrawio.Count -gt 0) {
-    Write-Host ("Detected {0} running Draw.io process(es). The helper will avoid relying on the normal GUI instance." -f $runningDrawio.Count)
-}
-else {
-    Write-Host "No running Draw.io GUI process detected. The helper will try the documented CLI path first."
-}
-
-Write-Host "[2/3] Native CLI export probe"
+Write-Host "[2/3] Native CLI compatibility probe"
 $probe = Test-DrawioNativeExportCapability -DrawioExe $drawioExe -TimeoutSeconds 30 -Verbose
 Write-Host ("PASS: native CLI probe ({0} bytes, strategy={1}, elapsed={2}ms)" -f $probe.Bytes, $probe.Strategy, $probe.ElapsedMs)
 
