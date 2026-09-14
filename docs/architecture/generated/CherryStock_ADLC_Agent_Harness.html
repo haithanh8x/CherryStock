@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 2.16.0">
-  <title>CherryStock ADLC Agent Harness — Responsibility Hierarchy &amp; Handoffs Diagram</title>
+  <title>CherryStock ADLC Agent Harness — Agent · Skill · Instruction · Docs · Tool Diagram</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -5051,11 +5051,12 @@ html[data-theme="light"] #cherrystock-archify-font-picker select {
            data-preset-badge-blueprint="BLUEPRINT / REV 01"
            data-preset-badge-editorial="EDITORIAL / FIELD NOTE">
         <div class="pulse-dot"></div>
-        <h1>CherryStock ADLC Agent Harness — Responsibility Hierarchy &amp; Handoffs</h1>
+        <h1>CherryStock ADLC Agent Harness — Agent · Skill · Instruction · Docs · Tool</h1>
       </div>
+      <p class="subtitle">WHO owns outcome · HOW is procedural · RULES constrain · KNOWLEDGE explains · TOOLS execute</p>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"core-adlc","label":"Core ADLC","focus":["user_request","router","cherrymon","ba","sa","dev","test","verdict","final"],"note":"Canonical material-change path: route → requirement → design → implementation → independent validation."},{"id":"responsibility-hierarchy","label":"L0–L7 hierarchy","focus":["governance_material","ba","sa","domain_material","skill_material","design_material","tool_material","impl_material","test_material"],"note":"Official L0–L7 ownership hierarchy separating Agent, Instruction, Skill, Docs, Tool, Implementation and Verification."},{"id":"autofix-loop","label":"Dev ↔ Test autofix","focus":["dev","test"],"note":"Implementation FAIL/REGRESSION returns to GeneralCoding for bounded repair, then TestEngineer retests the same scope."},{"id":"indicator-lifecycle","label":"Indicator lifecycle","focus":["indicator_context","indicator","skill_material","indicator_ready","test","verdict"],"note":"Indicator Management owns outcome; indicator-onboarding owns procedure; TestEngineer owns final validation."},{"id":"chart-authoring","label":"Chart / Flint","focus":["chart_context","chart","skill_material","tool_material","dev","test","verdict"],"note":"Chart owns visualization outcome; chart-authoring owns procedure; Flint provides execution capability."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"relationship-model","label":"Agent · Skill · Instruction · Docs · Tool","focus":["governance_model","agent_model","instruction_model","docs_model","skill_model","tool_model","impl_material","test_material","result_model"],"note":"Governance routes WHO; Agent owns outcome; Rules constrain; Docs inform; Skill defines HOW; Tool executes."},{"id":"runtime-flow","label":"Runtime loading flow","focus":["governance_model","agent_model","instruction_model","docs_model","skill_model","tool_model","impl_material","test_material","result_model"],"note":"Governance → Agent → Instructions + Docs → optional Skill → Tool → Implementation → Verification → Result."},{"id":"agent-adlc","label":"Agent-to-Agent ADLC","focus":["user_request","router","ba","sa","dev","test","verdict","final"],"note":"Core ADLC is BA → SA → implementation/domain owner → TestEngineer, with bounded repair on failure."},{"id":"architecture-example","label":"SolutionArchitect → Archify","focus":["sa","architecture_skill","archify_tool","instruction_model","docs_model"],"note":"SA owns design readiness; architecture-design owns procedure; Archify only renders and validates the artifact."},{"id":"specialist-examples","label":"Indicator + Chart specialist lanes","focus":["indicator","indicator_skill","duckdb_tool","indicator_ready","chart","chart_skill","flint_tool","chart_ready"],"note":"Indicator uses indicator-onboarding + DuckDB/Python; Chart uses chart-authoring + Flint. Agents retain outcome ownership."}]</script>
 
     <script id="archify-i18n-data" type="application/json">{"locale":"en","messages":{"viewer.kind.frontend":"Frontend","viewer.kind.backend":"Backend","viewer.kind.database":"Database","viewer.kind.cloud":"Cloud","viewer.kind.security":"Security","viewer.kind.messagebus":"Message bus","viewer.kind.external":"External","viewer.kind.neutral":"Neutral","viewer.kind.node":"Node","viewer.kind.start":"Start","viewer.kind.active":"Active","viewer.kind.waiting":"Waiting","viewer.kind.decision":"Decision","viewer.kind.success":"Success","viewer.kind.failure":"Failure","viewer.toolbar.actions":"Diagram actions","viewer.theme.toggle.title":"Toggle theme (T)","viewer.theme.toggle":"Toggle color theme","viewer.theme.dark":"Dark","viewer.theme.light":"Light","viewer.preset.choose.title":"Choose visual style (S cycles)","viewer.preset.choose":"Choose visual style","viewer.preset.style":"Style","viewer.preset.menu":"Visual style","viewer.preset.identity":"Visual identity","viewer.preset.cycles":"S cycles","viewer.preset.classic":"Classic","viewer.preset.classic.short":"Classic","viewer.preset.classic.hint":"Stable technical default","viewer.preset.flow":"Signal Flow","viewer.preset.flow.short":"Flow","viewer.preset.flow.hint":"Motion-forward presentation","viewer.preset.blueprint":"Blueprint","viewer.preset.blueprint.hint":"Engineering review","viewer.preset.editorial":"Editorial","viewer.preset.editorial.hint":"Publication and launch notes","viewer.preset.badge.signalFlow":"SIGNAL FLOW","viewer.preset.badge.blueprint":"BLUEPRINT / REV 01","viewer.preset.badge.editorial":"EDITORIAL / FIELD NOTE","viewer.preset.badge.editorialPlate":"ARCHIFY / PLATE 04","viewer.preset.current":"Visual style: {style}. Choose visual style","viewer.motion.live":"Live","viewer.motion.still":"Still","viewer.motion.pause":"Pause motion","viewer.motion.resume":"Resume motion","viewer.motion.reduced":"Motion paused by reduced-motion preference","viewer.motion.hidden":"Motion paused while this page is hidden","viewer.motion.yielding":"Pause motion; currently yielding to {owner}","viewer.motion.yielding.title":"Live preview enabled · yielding to {owner}","viewer.owner.story":"the guided story","viewer.owner.chapter":"the active chapter","viewer.owner.chapterPreview":"the chapter delta preview","viewer.owner.handoff":"the chapter handoff","viewer.owner.route":"Route Probe","viewer.owner.lens":"Semantic Lens","viewer.owner.relationship":"Relationship Preview","viewer.owner.intent":"Intent Trace","viewer.owner.focus":"semantic focus","viewer.owner.legend":"legend preview","viewer.owner.reader":"reader interaction","viewer.present.enter":"Enter presentation stage","viewer.present.enter.title":"Presentation stage (F)","viewer.present.exit":"Exit presentation stage","viewer.present.exit.title":"Exit presentation stage (F or Escape)","viewer.present.present":"Present","viewer.present.exit.label":"Exit","viewer.export.button":"Export","viewer.export.button.title":"Export diagram (E)","viewer.export.diagram":"Export diagram","viewer.export.menu":"Export","viewer.export.subtitle":"Portable, clean outputs","viewer.export.share":"Share","viewer.export.shareCard":"Share Card","viewer.export.routeShareCard":"Route Share Card","viewer.export.reachShareCard":"Reach Share Card","viewer.export.copyShareCard":"Copy Share Card","viewer.export.copyDiagram":"Copy diagram","viewer.export.clipboardPng":"PNG to clipboard","viewer.export.raster":"Raster images","viewer.export.image":"Image","viewer.export.lossless":"Lossless image","viewer.export.compact":"Compact image","viewer.export.modern":"Modern image","viewer.export.vectorMotion":"Vector and motion","viewer.export.vectorMotion.heading":"Vector \u0026 motion","viewer.export.editable":"Editable vector","viewer.export.motion6s":"6s motion","viewer.export.unsupported":"Not supported by this browser","viewer.export.clipboardUnsupported":"Clipboard image write not supported by this browser","viewer.export.clipboardUnsupported.period":"Clipboard image write not supported by this browser.","viewer.export.clipboardUnsupported.short":"Clipboard image write not supported in this browser.","viewer.export.motionUnavailable":"Motion capture unavailable in this browser","viewer.export.webmUnavailable":"WebM unavailable in this browser","viewer.export.failed":"Export failed: {message}","viewer.export.unknownVariant":"Unknown Share Card variant: {variant}","viewer.export.routeRequired":"Trace a route before exporting a Route Share Card","viewer.export.reachRequired":"Trace authored reach before exporting a Reach Share Card","viewer.export.unknown":"unknown","viewer.export.routeFailed":"Route Share Card export failed: {message}","viewer.export.reachFailed":"Reach Share Card export failed: {message}","viewer.export.copyFailed":"Copy failed: {message}","viewer.export.copiedPng":"Copied PNG to clipboard","viewer.export.copiedShare":"Copied Share Card","viewer.export.downloadedShare":"Downloaded Share Card","viewer.export.downloadedRoute":"Downloaded Route Share Card","viewer.export.downloadedReach":"Downloaded Reach Share Card","viewer.export.downloadedWebm":"Downloaded WebM","viewer.export.recording":"Recording 6 seconds of motion…","viewer.export.card.routeSummary.one":"Route: {source} → {target} · {count} directed hop","viewer.export.card.routeSummary.other":"Route: {source} → {target} · {count} directed hops","viewer.export.card.reachSummary":"Authored {direction} from {origin} · {nodes} · {links} · max {hops}","viewer.export.card.node.one":"{count} node","viewer.export.card.node.other":"{count} nodes","viewer.export.card.link.one":"{count} link","viewer.export.card.link.other":"{count} links","viewer.export.card.hop.one":"{count} hop","viewer.export.card.hop.other":"{count} hops","viewer.export.card.routeBadge":"ARCHIFY · ROUTE · {hops}","viewer.export.card.reachBadge":"ARCHIFY · {direction} REACH","viewer.export.card.defaultBadge":"ARCHIFY · {preset} · {theme}","viewer.export.direction.upstream":"Upstream","viewer.export.direction.downstream":"Downstream","viewer.export.error.canvasUnavailable":"Canvas unavailable for {label}","viewer.export.error.contextUnavailable":"2D canvas context unavailable for {label}","viewer.export.error.toBlobUnavailable":"canvas.toBlob unavailable for {label}","viewer.export.error.toBlobNull":"canvas.toBlob returned no data for {label}","viewer.export.error.variantsCombined":"Share Card variants cannot be combined","viewer.export.error.viewerState":"Share Card export could not remove temporary viewer state","viewer.export.error.routeState":"Route Card export could not preserve the resolved route safely","viewer.export.error.reachState":"Reach Card export could not preserve authored reach safely","viewer.export.error.webmRequirements":"WebM motion export requires a trace animation and browser MediaRecorder support","viewer.export.error.mediaRecorder":"MediaRecorder failed","viewer.export.error.emptyWebm":"MediaRecorder produced an empty WebM","viewer.export.error.webmBackground":"SVG background could not be loaded for WebM export","viewer.guided.region":"Guided diagram views","viewer.guided.previous":"Previous guided view","viewer.guided.previous.title":"Previous guided view ([)","viewer.guided.next":"Next guided view","viewer.guided.next.title":"Next guided view (])","viewer.guided.views":"Guided views","viewer.guided.explore":"Explore this system","viewer.guided.intro":"Step through curated paths without changing the source diagram.","viewer.guided.trail":"Story trail","viewer.guided.beat":"Beat","viewer.guided.nextBeat":"Next","viewer.guided.play":"Play guided story","viewer.guided.play.title":"Play guided story (P)","viewer.guided.pause":"Pause guided story","viewer.guided.pause.title":"Pause guided story (P)","viewer.guided.replay":"Replay guided story","viewer.guided.replay.title":"Replay guided story (P)","viewer.guided.playStory":"Play story","viewer.guided.pauseStory":"Pause","viewer.guided.replayStory":"Replay story","viewer.guided.motionUnavailable":"Story playback unavailable while motion is Still","viewer.guided.enableMotion":"Switch motion to Live to play the guided story","viewer.guided.selectBeatLink":"Select a Story Beat to copy its exact link","viewer.guided.copyMoment":"Copy moment","viewer.guided.momentCopied":"Moment link copied","viewer.guided.momentCopyFailed":"Could not copy story moment link","viewer.guided.copied":"Copied","viewer.guided.copyFailed":"Copy failed","viewer.guided.showAll":"Show all","viewer.guided.showAll.aria":"Show entire diagram","viewer.guided.chapters":"Story chapters","viewer.guided.storyTrail":"Story trail for {label}: {count} beats","viewer.guided.chapter.open":"Open chapter {index} of {total}: {label}, {count} stops","viewer.guided.chapter.current":"Current chapter {index} of {total}: {label}, {count} stops","viewer.guided.chapter.selectedNodes":"{count} selected nodes","viewer.guided.chapter.stops":"{count} stops","viewer.guided.chapter.stop.one":"{count} stop","viewer.guided.chapter.stop.other":"{count} stops","viewer.guided.chapter.current.title":"{label} — current chapter, {count} stops","viewer.guided.chapter.delta.expanded":"{stay} stay, {enter} enter, {leave} leave","viewer.guided.chapter.delta.aria":"Open chapter {index} of {total}: {label}. Chapter focus delta: {delta}","viewer.guided.chapter.delta.title":"{label} — {delta} chapter focus","viewer.guided.handoff":"{from} → {to} · via {label}","viewer.guided.share.chapter":"Chapter {index} / {total}","viewer.guided.share.initial":"Chapter 01 / 01","viewer.guided.share.default":"Guided chapter","viewer.guided.state.ready":"Ready","viewer.guided.state.playing":"Playing","viewer.guided.state.settled":"Settled","viewer.guided.state.paused":"Paused","viewer.guided.state.pinned":"Pinned","viewer.guided.state.still":"Still","viewer.guided.share.step":"Step {index} / {total} · {label}","viewer.guided.share.staticMoment":"{step} · Static moment","viewer.guided.share.complete":"{count} steps complete · {note}","viewer.guided.share.settled":"Path settled for reading.","viewer.guided.share.staticPath":"{count} steps · Static path","viewer.guided.share.ready":"{count} steps · Ready","viewer.guided.share.aria":"{state} chapter {index} of {total}: {label}. {beat}. {route}","viewer.guided.beat.start":"Beat {index} / {total} · {label} · starting point","viewer.guided.beat.forward":"Beat {index} / {total} · {from} → {to}","viewer.guided.beat.reverse":"Beat {index} / {total} · {from} → {to} · reverse authored link","viewer.guided.beat.multiple":"Beat {index} / {total} · {from} ⇄ {to} · {count} authored links","viewer.guided.beat.group":"Beat {index} / {total} · {from} · {to} · grouped · no direct link","viewer.guided.beat.aria.prefix":"Story beat {index} of {total}: {label}. ","viewer.guided.beat.aria.start":"Starting point.","viewer.guided.beat.aria.forward":"From {from} through one authored forward relationship.","viewer.guided.beat.aria.reverse":"From {from}; the authored relationship points from {to} to {from}.","viewer.guided.beat.aria.multiple":"From {from} through {count} authored relationships; shown without arbitrary motion.","viewer.guided.beat.aria.group":"Grouped from {from} with no direct authored relationship.","viewer.guided.caption.start":"Starting point","viewer.guided.caption.grouped":"Grouped transition · no direct authored link","viewer.guided.caption.more":" +{count} more","viewer.guided.caption.reverse":"Reverse authored relationship","viewer.guided.caption.relationships":"{count} authored relationships","viewer.guided.caption.relationship":"Authored relationship","viewer.guided.caption.direction":"authored direction: {from} → {to}","viewer.guided.caption.starting":"Authored starting point","viewer.guided.beatLink":"Copy link to current story moment: Beat {index} of {total}: {label}","viewer.guided.noStory":"This diagram has no authored guided story.","viewer.guide.eyebrow":"Diagram guide","viewer.guide.close":"Close diagram guide","viewer.guide.inspecting":"Inspecting compiled semantics","viewer.guide.actions":"Diagram exploration actions","viewer.guide.find":"Find any node","viewer.guide.find.hint":"Search labels, responsibilities, kinds, and stable IDs.","viewer.guide.route":"Trace a route","viewer.guide.route.aria":"Trace a directed route","viewer.guide.route.hint":"Ask how two semantic nodes connect in authored direction.","viewer.guide.map":"See the whole system","viewer.guide.map.hint":"Open Semantic Radar with a live viewport and stable nodes.","viewer.guide.lens":"Compare semantic kinds","viewer.guide.lens.hint":"Count roles, reveal their traffic, and compare direct authored links.","viewer.guide.story":"Play the guided story","viewer.guide.story.hint":"Walk the authored chapters and real relationships.","viewer.guide.present":"Enter Presentation Stage","viewer.guide.present.hint":"Give the live diagram the viewport without changing export.","viewer.guide.shortcuts":"Additional keyboard shortcuts","viewer.guide.shortcut.export":"Export","viewer.guide.shortcut.theme":"Theme","viewer.guide.shortcut.style":"Style","viewer.guide.shortcut.reset":"Reset","viewer.guide.shortcut.zoomIn":"Zoom in","viewer.guide.shortcut.zoomOut":"Zoom out","viewer.guide.shortcut.close":"Close","viewer.guide.facts":"{nodes} · {relationships} · {views}","viewer.guide.fact.node.one":"{count} semantic node","viewer.guide.fact.node.other":"{count} semantic nodes","viewer.guide.fact.relationship.one":"{count} relationship","viewer.guide.fact.relationship.other":"{count} relationships","viewer.guide.fact.view.one":"{count} guided view","viewer.guide.fact.view.other":"{count} guided views","viewer.guide.story.available.one":"Walk {count} authored chapter and its real relationships.","viewer.guide.story.available.other":"Walk {count} authored chapters and their real relationships.","viewer.guide.story.unavailable":"No authored guided story in this diagram.","viewer.guide.open":"Open diagram guide","viewer.guide.noStory":"This diagram has no authored guided story.","viewer.finder.title":"Find a node","viewer.finder.close":"Close node finder","viewer.finder.placeholder":"Search labels or IDs","viewer.finder.search":"Search diagram nodes","viewer.finder.results":"Diagram nodes","viewer.finder.empty":"No matching nodes","viewer.finder.result.focus":"Focus {label}","viewer.finder.result.routeStart":"Choose {label} as route start","viewer.finder.result.routeTarget":"Choose {label} as route destination, {links}","viewer.finder.status.empty":"No matching nodes","viewer.finder.status.count.one":"{count} matching node","viewer.finder.status.count.other":"{count} matching nodes","viewer.finder.noun.nodes":"nodes","viewer.finder.link.one":"{count} link","viewer.finder.link.other":"{count} links","viewer.finder.result.focus.one":"Focus {label}, {count} related connection","viewer.finder.result.focus.other":"Focus {label}, {count} related connections","viewer.finder.status.filtered":"{visible} of {available} {noun}","viewer.finder.status.all":"{available} {noun}","viewer.passport.eyebrow":"Semantic passport","viewer.passport.metadata":"Node metadata","viewer.passport.evidence":"Verified source evidence","viewer.passport.verified":"Verified source","viewer.passport.reach":"Authored reach","viewer.passport.reach.trace":"Trace authored reachability","viewer.passport.upstream":"Upstream","viewer.passport.downstream":"Downstream","viewer.passport.upstream.trace":"Trace upstream authored reachability","viewer.passport.downstream.trace":"Trace downstream authored reachability","viewer.passport.close":"Close semantic passport","viewer.passport.copy":"Copy link","viewer.passport.copy.focus":"Copy link to focused node","viewer.passport.relations":"Relations","viewer.passport.relations.show":"Show connected relationships","viewer.passport.relations.hide":"Hide connected relationships","viewer.passport.relations.list":"Connected relationships","viewer.passport.copyRelation":"Copy relation","viewer.passport.copyNode":"Copy node","viewer.passport.copyPinned":"Copy link to pinned relationship","viewer.passport.copySource":"Copy link to source node","viewer.passport.copy.focused.success":"Focused node link copied","viewer.passport.copy.pinned.success":"Pinned relationship link copied","viewer.passport.copy.focused.failed":"Could not copy focused node link","viewer.passport.copy.pinned.failed":"Could not copy pinned relationship link","viewer.passport.relationship.none":"No connected relationships","viewer.passport.relationship.count.one":"{count} relation","viewer.passport.relationship.count.other":"{count} relations","viewer.passport.relationship.show.one":"Show {count} connected relationship","viewer.passport.relationship.show.other":"Show {count} connected relationships","viewer.passport.relationship.summary":"{out} outgoing · {in} incoming{loops}","viewer.passport.relationship.loops":" · {count} loop","viewer.passport.relationship.explorer":"Direct relationship explorer","viewer.passport.relationship.help":"Use arrow keys to explore relationships. Press Enter or Space to pin details; Escape clears.","viewer.passport.relationship.loopsBack":"loops back","viewer.passport.relationship.connectsTo":"connects to","viewer.passport.relationship.connectsFrom":"connects from","viewer.passport.relationship.pinned":"Pinned relationship · {from} → {to} · {label}","viewer.passport.relationship.inspect":"Inspect relationship {index} of {total}: {from} to {to}, {label}. Press Enter for details.","viewer.passport.relationship.group.out":"Outgoing","viewer.passport.relationship.group.in":"Incoming","viewer.passport.relationship.group.loop":"Self loops","viewer.passport.relationship.row":"{group}: {relationship}, {neighbor}","viewer.passport.relationship.direction.out":"OUT →","viewer.passport.relationship.direction.in":"← IN","viewer.passport.relationship.direction.loop":"LOOP","viewer.passport.sourceCount.one":"{count} verified source reference","viewer.passport.sourceCount.other":"{count} verified source references","viewer.passport.sourceMarker":"SRC","viewer.passport.beacon.one":"{count} verified source; focus this node to inspect","viewer.passport.beacon.other":"{count} verified sources; focus this node to inspect","viewer.passport.repository.open":"Open verified repository revision {revision}","viewer.passport.source.open":"Open verified source {path} at revision {revision}","viewer.passport.source.openLink":"Open ↗","viewer.passport.reach.upstream.one":"Trace {count} upstream authored node","viewer.passport.reach.upstream.other":"Trace {count} upstream authored nodes","viewer.passport.reach.downstream.one":"Trace {count} downstream authored node","viewer.passport.reach.downstream.other":"Trace {count} downstream authored nodes","viewer.passport.reach.noUpstream":"No upstream authored nodes","viewer.passport.reach.noDownstream":"No downstream authored nodes","viewer.passport.reach.status":"{direction} · {nodes} nodes · {links} links · max {hops} hops","viewer.route.eyebrow":"Route probe","viewer.route.start":"Choose a start node","viewer.route.start.find":"Find start","viewer.route.start.find.aria":"Find a route start","viewer.route.copy":"Copy link","viewer.route.copy.aria":"Copy link to traced route","viewer.route.clear":"Clear","viewer.route.clear.aria":"Clear route probe","viewer.route.traced":"Traced route","viewer.route.pickTwo":"Pick two semantic nodes on the diagram","viewer.route.pickOne":"Pick a semantic node on the diagram","viewer.route.controls":"Route journey controls","viewer.route.previous":"Previous route position","viewer.route.play":"Play route journey","viewer.route.pause":"Pause route journey","viewer.route.replay":"Replay route journey","viewer.route.next":"Next route position","viewer.route.journey":"Journey","viewer.route.pause.label":"Pause","viewer.route.replay.label":"Replay","viewer.route.overview":"Overview","viewer.route.overview.aria":"Show complete route overview","viewer.route.instructions":"Choose the source, then the destination. Direction matters.","viewer.route.destination":"Choose a destination from {label}","viewer.route.destination.find":"Find target","viewer.route.destination.find.aria":"Find a reachable route destination","viewer.route.differentDestination":"Choose a different destination","viewer.route.distinct":"A route needs two distinct semantic nodes.","viewer.route.unreachable":"No directed route to {label}","viewer.route.unreachable.detail":"{target} is not reachable from {source}. Pick a highlighted destination.","viewer.route.start.instructions":"Select the source. The next step will reveal only directed destinations.","viewer.route.copy.success":"Traced route link copied","viewer.route.copy.failed":"Could not copy traced route link","viewer.route.position":"Route position {index} of {total}: {label}","viewer.route.step":"Step {index} of {total} · {phase} · {label}","viewer.route.motionRequired":"Automatic journey requires Live motion","viewer.route.trigger.clear":"Clear traced route","viewer.route.overview.status":"{nodes} · {hops} · shortest authored route","viewer.route.overview.node.one":"{count} node","viewer.route.overview.node.other":"{count} nodes","viewer.route.overview.hop.one":"{count} directed hop","viewer.route.overview.hop.other":"{count} directed hops","viewer.route.phase.playing":"Playing","viewer.route.phase.complete":"Complete","viewer.route.phase.inspecting":"Inspecting","viewer.route.destination.count.one":"{count} directed destination available. Pick a highlighted node.","viewer.route.destination.count.other":"{count} directed destinations available. Pick a highlighted node.","viewer.route.noOutgoing":"No outgoing route starts here. Clear and choose another source.","viewer.route.result.title":"{source} to {target}","viewer.route.finder.source.title":"Choose route start","viewer.route.finder.source.placeholder":"Search route sources","viewer.route.finder.source.empty":"No matching route sources","viewer.route.finder.source.results":"Nodes that can start a route","viewer.route.finder.source.noun":"route sources","viewer.route.finder.source.badge":"start","viewer.route.finder.target.title":"Destination from {label}","viewer.route.finder.target.placeholder":"Search reachable destinations","viewer.route.finder.target.empty":"No matching reachable destinations","viewer.route.finder.target.results":"Reachable route destinations","viewer.route.finder.target.noun":"reachable destinations","viewer.route.hop.one":"{count} hop","viewer.route.hop.other":"{count} hops","viewer.lens.eyebrow":"Semantic lens","viewer.lens.title":"Compare system roles","viewer.lens.close":"Close semantic lens","viewer.lens.instruction":"Choose up to two semantic kinds. One reveals its real traffic; two compare only direct authored relationships.","viewer.lens.kinds":"Semantic kinds","viewer.lens.choose":"Choose a kind to inspect its nodes and touching relationships.","viewer.lens.copy":"Copy link to semantic lens","viewer.lens.clear":"Clear semantic lens","viewer.lens.open":"Open semantic lens","viewer.lens.openActive":"Open active semantic lens","viewer.lens.legend":"Semantic legend","viewer.lens.legend.inspect.one":"Inspect {label}, {count} node","viewer.lens.legend.inspect.other":"Inspect {label}, {count} nodes","viewer.lens.kind.count.one":"{label}, {count} node","viewer.lens.kind.count.other":"{label}, {count} nodes","viewer.lens.compare.one":"{first} → {second}: {forward} · {second} → {first}: {reverse} · {count} direct relationship","viewer.lens.compare.other":"{first} → {second}: {forward} · {second} → {first}: {reverse} · {count} direct relationships","viewer.lens.single":"{nodes} · {relationships} · connected peers remain visible","viewer.lens.node.one":"{count} {label} node","viewer.lens.node.other":"{count} {label} nodes","viewer.lens.relationship.one":"{count} touching relationship","viewer.lens.relationship.other":"{count} touching relationships","viewer.radar.title":"Semantic radar","viewer.radar.building":"Building overview","viewer.radar.openFull":"Open full semantic radar","viewer.radar.open":"Open radar","viewer.radar.close":"Close semantic radar","viewer.radar.surface":"Diagram overview. Click a node to focus it, or use arrow keys to pan.","viewer.radar.click":"Click node","viewer.radar.drag":"Drag to pan","viewer.radar.space":"Semantic radar needs more MAP space.","viewer.radar.nodes":"Semantic diagram radar nodes","viewer.radar.focus":"Focus {label} from Semantic Radar","viewer.radar.status":"{count} nodes · {viewport}","viewer.radar.fullMap":"{count} nodes · full map","viewer.radar.compacted":"Radar compacted to avoid covering the Semantic Passport or MAP controls.","viewer.radar.cancelWaiting":"Cancel semantic radar waiting for more MAP space","viewer.radar.needsSpace":"Semantic radar needs more visible MAP space","viewer.radar.viewport.full":"full map","viewer.radar.viewport.width":"{percent}% width","viewer.radar.viewport.scale":"{percent}% viewport","viewer.nav.controls":"Diagram view controls","viewer.nav.route":"Trace a directed route","viewer.nav.route.title":"Trace route (R)","viewer.nav.route.short":"PATH","viewer.nav.radar":"Open semantic radar","viewer.nav.radar.title":"Semantic radar (M)","viewer.nav.radar.short":"MAP","viewer.nav.lens":"Open semantic lens","viewer.nav.lens.title":"Semantic lens (L)","viewer.nav.lens.short":"LENS","viewer.nav.find":"Find a node","viewer.nav.find.title":"Find a node (/)","viewer.nav.guide":"Open diagram guide","viewer.nav.guide.title":"Diagram guide (?)","viewer.nav.zoomOut":"Zoom out","viewer.nav.zoomOut.title":"Zoom out (-)","viewer.nav.reset":"Reset diagram view","viewer.nav.reset.title":"Reset view (0)","viewer.nav.read":"READ","viewer.nav.zoomIn":"Zoom in","viewer.nav.zoomIn.title":"Zoom in (+)","viewer.nav.camera":"{hint}. Reset diagram view","viewer.nav.camera.title":"{semantic}{hint} · reset view (0)","viewer.nav.camera.semantic":"Semantic camera active · ","viewer.nav.level.map":"MAP","viewer.nav.level.read":"READ","viewer.nav.level.full":"FULL","viewer.nav.level.auto":"AUTO","viewer.nav.detail.map":"Zoom in to reveal relationship labels and node context","viewer.nav.detail.read":"Zoom in again to reveal tags and annotations","viewer.nav.detail.full":"Full diagram detail","viewer.intent.summary":"{label}. {out} outgoing, {in} incoming{loops}. {total} connections. Press Enter for details.","viewer.intent.loops":", {count} self loop","viewer.common.copied":"Copied","viewer.common.copyFailed":"Copy failed","viewer.common.copyLink":"Copy link","viewer.common.clear":"Clear","viewer.common.close":"Close"}}</script>
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
@@ -5100,9 +5101,9 @@ html[data-theme="light"] #cherrystock-archify-font-picker select {
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / PLATE 04">
-      <svg viewBox="0 0 1677 1520" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="signal-flow" data-quality-profile="showcase">
-        <title id="archify-diagram-title">CherryStock ADLC Agent Harness — Responsibility Hierarchy &amp; Handoffs</title>
-        <desc id="archify-diagram-description">A workflow diagram generated by Archify.</desc>
+      <svg viewBox="0 0 1234 2760" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="signal-flow" data-quality-profile="showcase">
+        <title id="archify-diagram-title">CherryStock ADLC Agent Harness — Agent · Skill · Instruction · Docs · Tool</title>
+        <desc id="archify-diagram-description">WHO owns outcome · HOW is procedural · RULES constrain · KNOWLEDGE explains · TOOLS execute</desc>
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -5126,446 +5127,580 @@ html[data-theme="light"] #cherrystock-archify-font-picker select {
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Swimlanes -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / User / Product</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="198" class="t-dim" font-size="10" font-weight="600">02 / L0 Governance / Router</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / Shared Architecture Constitution</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / L1 Business Analyst</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / L1 Business Analyst</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / L1 Solution Architect</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="548" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="570" class="t-dim" font-size="10" font-weight="600">05 / L1 Solution Architect</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="548" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="570" class="t-dim" font-size="10" font-weight="600">05 / L1 General Coding</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-5" x="40" y="672" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="694" class="t-dim" font-size="10" font-weight="600">06 / L1 Chart / Flint</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-5" x="40" y="672" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="694" class="t-dim" font-size="10" font-weight="600">06 / L1 Test Engineer</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-6" x="40" y="796" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="818" class="t-dim" font-size="10" font-weight="600">07 / L1 General Coding</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-6" x="40" y="796" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="818" class="t-dim" font-size="10" font-weight="600">07 / Verification Verdict</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-7" x="40" y="920" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="942" class="t-dim" font-size="10" font-weight="600">08 / L1 Test Engineer</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-7" x="40" y="920" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="942" class="t-dim" font-size="10" font-weight="600">08 / Completion</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-8" x="40" y="1044" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="1066" class="t-dim" font-size="10" font-weight="600">09 / L1 Indicator Management</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-8" x="40" y="1044" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-8-exception" x="46" y="1050" width="1154" height="92" rx="8" class="c-security-group" stroke-width="1"/>
+        <text x="54" y="1066" class="t-security" font-size="10" font-weight="600">EX / L1 Indicator Management</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-9" x="40" y="1168" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="1190" class="t-dim" font-size="10" font-weight="600">10 / L2/L3/L5 Constraints · Procedure · Tools</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-9" x="40" y="1168" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-9-exception" x="46" y="1174" width="1154" height="92" rx="8" class="c-security-group" stroke-width="1"/>
+        <text x="54" y="1190" class="t-security" font-size="10" font-weight="600">EX / Indicator validation</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-10" x="40" y="1292" width="1609" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="1314" class="t-dim" font-size="10" font-weight="600">11 / L4/L6/L7 Durable Materials · Runtime · Evidence</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-10" x="40" y="1292" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-10-exception" x="46" y="1298" width="1154" height="92" rx="8" class="c-security-group" stroke-width="1"/>
+        <text x="54" y="1314" class="t-security" font-size="10" font-weight="600">EX / L1 Chart / Flint</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-11" x="40" y="1416" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-11-exception" x="46" y="1422" width="1154" height="92" rx="8" class="c-security-group" stroke-width="1"/>
+        <text x="54" y="1438" class="t-security" font-size="10" font-weight="600">EX / Chart output</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-12" x="40" y="1540" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="1562" class="t-dim" font-size="10" font-weight="600">13 / Relationship — Governance</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-13" x="40" y="1664" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="1686" class="t-dim" font-size="10" font-weight="600">14 / Relationship — Agent</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-14" x="40" y="1788" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="1810" class="t-dim" font-size="10" font-weight="600">15 / L2 Instruction — RULES</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-15" x="40" y="1912" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="1934" class="t-dim" font-size="10" font-weight="600">16 / L4 Docs — KNOWLEDGE</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-16" x="40" y="2036" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="2058" class="t-dim" font-size="10" font-weight="600">17 / L3 Skill — HOW</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-17" x="40" y="2160" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="2182" class="t-dim" font-size="10" font-weight="600">18 / L5 Tool — CAPABILITY</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-18" x="40" y="2284" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="2306" class="t-dim" font-size="10" font-weight="600">19 / L6 Implementation</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-19" x="40" y="2408" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="2430" class="t-dim" font-size="10" font-weight="600">20 / L7 Verification</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-20" x="40" y="2532" width="1166" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="2554" class="t-dim" font-size="10" font-weight="600">21 / Result / Evidence</text>
 
         <!-- Phase headers -->
-        <line x1="101" y1="35" x2="215.39999999999998" y2="35" class="a-default" stroke-width="1.1"/>
-        <rect x="101" y="27" width="114.39999999999999" height="16" rx="4" class="c-mask"/>
-        <text x="158.2" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Intake + governance</text>
-        <line x1="288" y1="35" x2="680.6" y2="35" class="a-emphasis" stroke-width="1.1"/>
-        <rect x="288" y="27" width="392.6" height="16" rx="4" class="c-mask"/>
-        <text x="484.3" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">Requirements + design</text>
-        <line x1="898.5999999999999" y1="35" x2="1278.4" y2="35" class="a-dashed" stroke-width="1.1"/>
-        <rect x="898.5999999999999" y="27" width="379.80000000000007" height="16" rx="4" class="c-mask"/>
-        <text x="1088.5" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">Procedure + implement + validate</text>
-        <line x1="1480.4" y1="35" x2="1589.2" y2="35" class="a-security" stroke-width="1.1"/>
-        <rect x="1480.4" y="27" width="108.8" height="16" rx="4" class="c-mask"/>
-        <text x="1534.8000000000002" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">Verdict + decision</text>
+        <line x1="92" y1="35" x2="184" y2="35" class="a-default" stroke-width="1.1"/>
+        <rect x="92" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="138" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">Route</text>
+        <line x1="212" y1="35" x2="348.79999999999995" y2="35" class="a-emphasis" stroke-width="1.1"/>
+        <rect x="212" y="27" width="136.79999999999998" height="16" rx="4" class="c-mask"/>
+        <text x="280.4" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">WHO / RULES / KNOWLEDGE</text>
+        <line x1="535.2" y1="35" x2="655.2" y2="35" class="a-dashed" stroke-width="1.1"/>
+        <rect x="535.2" y="27" width="120" height="16" rx="4" class="c-mask"/>
+        <text x="595.2" y="39" class="t-messagebus" font-size="8" font-weight="600" text-anchor="middle">HOW / implementation</text>
+        <line x1="822.5" y1="35" x2="953.7" y2="35" class="a-security" stroke-width="1.1"/>
+        <rect x="822.5" y="27" width="131.2" height="16" rx="4" class="c-mask"/>
+        <text x="888.1" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">Tool / verify / result</text>
 
         <!-- Workflow groups -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-0" x="232" y="462" width="452.6" height="62" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="242" y="460" class="t-backend" font-size="7" font-weight="600">Readiness gates</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-1" x="238" y="710" width="492.6" height="62" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="248" y="708" class="t-messagebus" font-size="7" font-weight="600">Specialist chart route</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-2" x="1134.4" y="958" width="506" height="62" rx="9" class="c-security-group" stroke-width="1"/>
-        <text x="1144.4" y="956" class="t-security" font-size="7" font-weight="600">Independent validation</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-3" x="235" y="1082" width="812.5999999999999" height="62" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="245" y="1080" class="t-messagebus" font-size="7" font-weight="600">Specialist indicator route</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-4" x="532.6" y="1206" width="798.8000000000001" height="62" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="542.6" y="1204" class="t-messagebus" font-size="7" font-weight="600">Instruction → Skill → Tool</text>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="group" data-composition-frame-id="group-5" x="56" y="1330" width="1569.4" height="62" rx="9" class="c-lane" stroke-width="1"/>
-        <text x="66" y="1328" class="t-messagebus" font-size="7" font-weight="600">Durable repository trace</text>
+
 
         <!-- Edge paths -->
-        <path data-edge-from="ba" data-edge-to="sa" data-edge-label="READY_FOR_DESIGN" data-edge-key="0" data-edge-id="ba-sa" data-composition-points="334,517;334,615;534.6,615" d="M 334 517 L 334 615 L 534.6 615" class="a-emphasis" data-animate="edge" style="--step:2" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="chart_context" data-edge-to="chart" data-edge-label="data + architecture context" data-edge-key="1" data-edge-id="chart-context-agent" data-composition-points="334,765;334,792;634.6,792;634.6,765" d="M 334 765 L 334 792 L 634.6 792 L 634.6 765" class="a-emphasis" data-animate="edge" style="--step:9" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="chart" data-edge-to="dev" data-edge-label="production integration" data-edge-key="2" data-edge-id="chart-dev" data-composition-points="634.6,765;634.6,863;847.6,863" d="M 634.6 765 L 634.6 863 L 847.6 863" class="a-dashed" data-animate="edge" style="--step:10" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="dev" data-edge-to="test" data-edge-label="IMPLEMENTED_PENDING_VALIDATION" data-edge-key="3" data-edge-id="dev-test" data-composition-points="937.6,889;937.6,977;1138.4,977" d="M 937.6 889 L 937.6 977 L 1138.4 977" class="a-emphasis" data-animate="edge" style="--step:4" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="indicator_context" data-edge-to="indicator" data-edge-label="canonical context" data-edge-key="4" data-edge-id="indicator-context-agent" data-composition-points="429,1111;528.6,1111" d="M 429 1111 L 528.6 1111" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="indicator" data-edge-to="indicator_ready" data-edge-label="metadata + backfill evidence" data-edge-key="5" data-edge-id="indicator-handoff" data-composition-points="634.6,1085;634.6,1069;944.6,1069;944.6,1085" d="M 634.6 1085 L 634.6 1069 L 944.6 1069 L 944.6 1085" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="indicator_ready" data-edge-to="test" data-edge-label="independent validation" data-edge-key="6" data-edge-id="indicator-test" data-composition-points="1043.6,1111;1232.4,1111;1232.4,1013" d="M 1043.6 1111 L 1232.4 1111 L 1232.4 1013" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="domain_material" data-edge-to="skill_material" data-edge-label="constrains procedure" data-edge-key="7" data-edge-id="instruction-skill" data-composition-points="732.6,1235;846.6,1235" d="M 732.6 1235 L 846.6 1235" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="verdict" data-edge-to="final" data-edge-label="PASS / decision" data-edge-key="8" data-edge-id="pass-final" data-composition-points="1636.4,987;1661,987;1661,77;1526.4,77;1526.4,93" d="M 1636.4 987 L 1661 987 L 1661 77 L 1526.4 77 L 1526.4 93" class="a-emphasis" data-animate="edge" style="--step:6" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="user_request" data-edge-to="router" data-edge-label="intent" data-edge-key="9" data-edge-id="request-route" data-composition-points="73,119;20,119;20,243;48,243" d="M 73 119 L 20 119 L 20 243 L 48 243" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="router" data-edge-to="ba" data-edge-label="material / unclear" data-edge-key="10" data-edge-id="router-ba" data-composition-points="246,243;262,243;262,160;334,160;334,465" d="M 246 243 L 262 243 L 262 160 L 334 160 L 334 465" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="sa" data-edge-to="dev" data-edge-label="APPROVED_FOR_IMPLEMENTATION" data-edge-key="11" data-edge-id="sa-dev" data-composition-points="734.6,615;944.6,615;944.6,837" d="M 734.6 615 L 944.6 615 L 944.6 837" class="a-emphasis" data-animate="edge" style="--step:3" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="skill_material" data-edge-to="tool_material" data-edge-label="executes through" data-edge-key="12" data-edge-id="skill-tool" data-composition-points="944.6,1261;944.6,1277;1232.4,1277;1232.4,1261" d="M 944.6 1261 L 944.6 1277 L 1232.4 1277 L 1232.4 1261" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="test" data-edge-to="dev" data-edge-label="FAIL / REGRESSION → AUTOFIX" data-edge-key="13" data-edge-id="test-dev-autofix" data-composition-points="1232.4,1013;1232.4,1040;944.6,1040;944.6,889" d="M 1232.4 1013 L 1232.4 1040 L 944.6 1040 L 944.6 889" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="test" data-edge-to="verdict" data-edge-label="evidence-backed" data-edge-key="14" data-edge-id="test-verdict" data-composition-points="1326.4,987;1416.4,987" d="M 1326.4 987 L 1416.4 987" class="a-security" data-animate="edge" style="--step:5" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="tool_material" data-edge-to="impl_material" data-edge-label="changes / evidence" data-edge-key="15" data-edge-id="tool-implementation" data-composition-points="1327.4,1235;1343.4,1235;1343.4,1412;944.6,1412;944.6,1385" d="M 1327.4 1235 L 1343.4 1235 L 1343.4 1412 L 944.6 1412 L 944.6 1385" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="agent_model" data-edge-to="docs_model" data-edge-label="reads knowledge" data-edge-key="0" data-edge-id="agent-docs" data-composition-points="175.5,1731;20,1731;20,1979;165.5,1979" d="M 175.5 1731 L 20 1731 L 20 1979 L 165.5 1979" class="a-default" data-animate="edge" style="--step:8" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="agent_model" data-edge-to="instruction_model" data-edge-label="MUST obey" data-edge-key="1" data-edge-id="agent-instruction" data-composition-points="340.5,1731;1218,1731;1218,1855;350.5,1855" d="M 340.5 1731 L 1218 1731 L 1218 1855 L 350.5 1855" class="a-security" data-animate="edge" style="--step:9" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="agent_model" data-edge-to="skill_model" data-edge-label="invokes if applicable" data-edge-key="2" data-edge-id="agent-skill" data-composition-points="258,1705;258,1648;581.2,1648;581.2,2077" d="M 258 1705 L 258 1648 L 581.2 1648 L 581.2 2077" class="a-dashed" data-animate="edge" style="--step:10" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="architecture_skill" data-edge-to="archify_tool" data-edge-label="uses" data-edge-key="3" data-edge-id="architecture-skill-archify" data-composition-points="673.7,491;796,491" d="M 673.7 491 L 796 491" class="a-emphasis" data-animate="edge" style="--step:11" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="ba" data-edge-to="sa" data-edge-label="READY_FOR_DESIGN" data-edge-key="4" data-edge-id="ba-sa" data-composition-points="163,367;20,367;20,491;160.5,491" d="M 163 367 L 20 367 L 20 491 L 160.5 491" class="a-emphasis" data-animate="edge" style="--step:2" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="flint_tool" data-edge-to="chart_ready" data-edge-label="render result" data-edge-key="5" data-edge-id="chart-ready-edge" data-composition-points="943.5,1359;1218,1359;1218,1483;966,1483" d="M 943.5 1359 L 1218 1359 L 1218 1483 L 966 1483" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="chart" data-edge-to="chart_skill" data-edge-label="uses procedure" data-edge-key="6" data-edge-id="chart-skill-edge" data-composition-points="345.5,1359;491.20000000000005,1359" d="M 345.5 1359 L 491.20000000000005 1359" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="chart_skill" data-edge-to="flint_tool" data-edge-label="uses" data-edge-key="7" data-edge-id="chart-tool-edge" data-composition-points="671.2,1359;793.5,1359" d="M 671.2 1359 L 793.5 1359" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="dev" data-edge-to="test" data-edge-label="IMPLEMENTED_PENDING_VALIDATION" data-edge-key="8" data-edge-id="dev-test" data-composition-points="676.2,615;868.5,615;868.5,713" d="M 676.2 615 L 868.5 615 L 868.5 713" class="a-emphasis" data-animate="edge" style="--step:4" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="governance_model" data-edge-to="agent_model" data-edge-label="route WHO" data-edge-key="9" data-edge-id="governance-agent" data-composition-points="138,1633;138,1654;258,1654;258,1705" d="M 138 1633 L 138 1654 L 258 1654 L 258 1705" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="impl_material" data-edge-to="test_material" data-edge-label="verified by" data-edge-key="10" data-edge-id="implementation-test-material" data-composition-points="956,2351;1218,2351;1218,2475;951,2475" d="M 956 2351 L 1218 2351 L 1218 2475 L 951 2475" class="a-security" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="duckdb_tool" data-edge-to="indicator_ready" data-edge-label="implementation evidence" data-edge-key="11" data-edge-id="indicator-ready-edge" data-composition-points="966,1111;1218,1111;1218,1235;961,1235" d="M 966 1111 L 1218 1111 L 1218 1235 L 961 1235" class="a-security" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="indicator" data-edge-to="indicator_skill" data-edge-label="uses procedure" data-edge-key="12" data-edge-id="indicator-skill-edge" data-composition-points="360.5,1111;486.20000000000005,1111" d="M 360.5 1111 L 486.20000000000005 1111" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="indicator_skill" data-edge-to="duckdb_tool" data-edge-label="executes through" data-edge-key="13" data-edge-id="indicator-tool-edge" data-composition-points="676.2,1111;771,1111" d="M 676.2 1111 L 771 1111" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="user_request" data-edge-to="router" data-edge-label="request" data-edge-key="14" data-edge-id="request-route" data-composition-points="65.5,119;20,119;20,243;48,243" d="M 65.5 119 L 20 119 L 20 243 L 48 243" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="router" data-edge-to="ba" data-edge-label="material / unclear requirement" data-edge-key="15" data-edge-id="router-ba" data-composition-points="138,269;138,290;258,290;258,341" d="M 138 269 L 138 290 L 258 290 L 258 341" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="sa" data-edge-to="architecture_skill" data-edge-label="uses mandatory procedure" data-edge-key="16" data-edge-id="sa-architecture-skill" data-composition-points="355.5,491;488.70000000000005,491" d="M 355.5 491 L 488.70000000000005 491" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="sa" data-edge-to="dev" data-edge-label="APPROVED_FOR_IMPLEMENTATION" data-edge-key="17" data-edge-id="sa-dev" data-composition-points="258,517;258,615;486.20000000000005,615" d="M 258 517 L 258 615 L 486.20000000000005 615" class="a-emphasis" data-animate="edge" style="--step:3" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="skill_model" data-edge-to="docs_model" data-edge-label="reads / references" data-edge-key="18" data-edge-id="skill-docs" data-composition-points="581.2,2077;581.2,1979;350.5,1979" d="M 581.2 2077 L 581.2 1979 L 350.5 1979" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="skill_model" data-edge-to="instruction_model" data-edge-label="must comply" data-edge-key="19" data-edge-id="skill-instruction" data-composition-points="581.2,2077;581.2,1772;258,1772;258,1829" d="M 581.2 2077 L 581.2 1772 L 258 1772 L 258 1829" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="skill_model" data-edge-to="tool_model" data-edge-label="uses capability" data-edge-key="20" data-edge-id="skill-tool" data-composition-points="581.2,2129;581.2,2227;776,2227" d="M 581.2 2129 L 581.2 2227 L 776 2227" class="a-emphasis" data-animate="edge" style="--step:12" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="test" data-edge-to="dev" data-edge-label="FAIL / REGRESSION → AUTOFIX (bounded)" data-edge-key="21" data-edge-id="test-dev" data-composition-points="776,739;581.2,739;581.2,641" d="M 776 739 L 581.2 739 L 581.2 641" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="test_material" data-edge-to="result_model" data-edge-label="validation evidence" data-edge-key="22" data-edge-id="test-material-result" data-composition-points="786,2475;20,2475;20,2599;778.5,2599" d="M 786 2475 L 20 2475 L 20 2599 L 778.5 2599" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="test" data-edge-to="verdict" data-edge-label="evidence-backed verdict" data-edge-key="23" data-edge-id="test-verdict" data-composition-points="961,739;1218,739;1218,863;966,863" d="M 961 739 L 1218 739 L 1218 863 L 966 863" class="a-security" data-animate="edge" style="--step:5" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="tool_model" data-edge-to="impl_material" data-edge-label="execute / modify" data-edge-key="24" data-edge-id="tool-implementation" data-composition-points="961,2227;977,2227;977,2274;868.5,2274;868.5,2325" d="M 961 2227 L 977 2227 L 977 2274 L 868.5 2274 L 868.5 2325" class="a-dashed" data-animate="edge" style="--step:12" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="verdict" data-edge-to="final" data-edge-label="PASS / stop / decision" data-edge-key="25" data-edge-id="verdict-final" data-composition-points="966,863;1218,863;1218,987;958.5,987" d="M 966 863 L 1218 863 L 1218 987 L 958.5 987" class="a-emphasis" data-animate="edge" style="--step:6" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Nodes -->
-        <g id="node-user_request" data-node-id="user_request" data-node-label="Change Request" tabindex="0" role="button" aria-label="Focus Change Request, User / Product › Intake + governance" aria-pressed="false" data-node-kind="external" data-node-context="User / Product › Intake + governance">
-          <title>Change Request · User / Product › Intake + governance</title>
-          <rect x="73" y="93" width="148" height="52" rx="6" class="c-mask"/>
-          <rect x="73" y="93" width="148" height="52" rx="6" class="c-external" data-animate="node" style="--step:0" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(79 99) scale(0.6875)">
+        <g id="node-user_request" data-node-id="user_request" data-node-label="User Request" tabindex="0" role="button" aria-label="Focus User Request, User / Product › Route" aria-pressed="false" data-node-kind="external" data-node-context="User / Product › Route">
+          <title>User Request · User / Product › Route</title>
+          <rect x="65.5" y="93" width="145" height="52" rx="6" class="c-mask"/>
+          <rect x="65.5" y="93" width="145" height="52" rx="6" class="c-external" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(71.5 99) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" x="147" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Change Request</text>
+          <text data-node-label="" x="138" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">User Request</text>
         </g>
 
-        <g id="node-final" data-node-id="final" data-node-label="User Decision" tabindex="0" role="button" aria-label="Focus User Decision, User / Product › Verdict + decision" aria-pressed="false" data-node-kind="backend" data-node-context="User / Product › Verdict + decision">
-          <title>User Decision · User / Product › Verdict + decision</title>
-          <rect x="1447.4" y="93" width="158" height="52" rx="6" class="c-mask"/>
-          <rect x="1447.4" y="93" width="158" height="52" rx="6" class="c-backend" data-animate="node" style="--step:7" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1453.4 99) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" x="1526.4" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">User Decision</text>
-        </g>
-
-        <g id="node-router" data-node-id="router" data-node-label="L0 copilot-instructions.md" tabindex="0" role="button" aria-label="Focus L0 copilot-instructions.md, L0 Governance / Router › Intake + governance" aria-pressed="false" data-node-kind="messagebus" data-node-context="L0 Governance / Router › Intake + governance">
-          <title>L0 copilot-instructions.md · L0 Governance / Router › Intake + governance</title>
-          <rect x="48" y="217" width="198" height="52" rx="6" class="c-mask"/>
-          <rect x="48" y="217" width="198" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:1" stroke-width="1.5"/>
+        <g id="node-router" data-node-id="router" data-node-label="Global Governance" tabindex="0" role="button" aria-label="Focus Global Governance, copilot-instructions.md, L0 Governance / Router › Route" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="copilot-instructions.md" data-node-context="L0 Governance / Router › Route">
+          <title>Global Governance · copilot-instructions.md · L0 Governance / Router › Route</title>
+          <rect x="48" y="217" width="180" height="52" rx="6" class="c-mask"/>
+          <rect x="48" y="217" width="180" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:1" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(54 223) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="147" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L0 copilot-instructions.md</text>
+          <text data-node-label="" data-detail-anchor="" x="138" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Global Governance</text>
+          <text data-detail="context" x="138" y="255" class="t-muted" font-size="8" text-anchor="middle">copilot-instructions.md</text>
         </g>
 
-        <g id="node-rework" data-node-id="rework" data-node-label="Feedback Router" tabindex="0" role="button" aria-label="Focus Feedback Router, L0 Governance / Router › Verdict + decision" aria-pressed="false" data-node-kind="messagebus" data-node-context="L0 Governance / Router › Verdict + decision">
-          <title>Feedback Router · L0 Governance / Router › Verdict + decision</title>
-          <rect x="1431.4" y="217" width="190" height="52" rx="6" class="c-mask"/>
-          <rect x="1431.4" y="217" width="190" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:11" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(1437.4 223) scale(0.6875)">
+        <g id="node-ba" data-node-id="ba" data-node-label="BusinessAnalyst.agent.md" tabindex="0" role="button" aria-label="Focus BusinessAnalyst.agent.md, requirement readiness, L1 Business Analyst › WHO / RULES / KNOWLEDGE" aria-pressed="false" data-node-kind="backend" data-node-sublabel="requirement readiness" data-node-context="L1 Business Analyst › WHO / RULES / KNOWLEDGE">
+          <title>BusinessAnalyst.agent.md · requirement readiness · L1 Business Analyst › WHO / RULES / KNOWLEDGE</title>
+          <rect x="163" y="341" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="163" y="341" width="190" height="52" rx="6" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(169 347) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="258" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">BusinessAnalyst.agent.md</text>
+          <text data-detail="context" x="258" y="379" class="t-muted" font-size="8" text-anchor="middle">requirement readiness</text>
+        </g>
+
+        <g id="node-sa" data-node-id="sa" data-node-label="SolutionArchitect.agent.md" tabindex="0" role="button" aria-label="Focus SolutionArchitect.agent.md, design readiness, L1 Solution Architect › WHO / RULES / KNOWLEDGE" aria-pressed="false" data-node-kind="backend" data-node-sublabel="design readiness" data-node-context="L1 Solution Architect › WHO / RULES / KNOWLEDGE">
+          <title>SolutionArchitect.agent.md · design readiness · L1 Solution Architect › WHO / RULES / KNOWLEDGE</title>
+          <rect x="160.5" y="465" width="195" height="52" rx="6" class="c-mask"/>
+          <rect x="160.5" y="465" width="195" height="52" rx="6" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(166.5 471) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="258" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SolutionArchitect.agent.md</text>
+          <text data-detail="context" x="258" y="503" class="t-muted" font-size="8" text-anchor="middle">design readiness</text>
+        </g>
+
+        <g id="node-architecture_skill" data-node-id="architecture_skill" data-node-label="architecture-design Skill" tabindex="0" role="button" aria-label="Focus architecture-design Skill, design procedure, L1 Solution Architect › HOW / implementation" aria-pressed="false" data-node-kind="backend" data-node-sublabel="design procedure" data-node-context="L1 Solution Architect › HOW / implementation">
+          <title>architecture-design Skill · design procedure · L1 Solution Architect › HOW / implementation</title>
+          <rect x="488.70000000000005" y="465" width="185" height="52" rx="6" class="c-mask"/>
+          <rect x="488.70000000000005" y="465" width="185" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(494.70000000000005 471) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="581.2" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">architecture-design Skill</text>
+          <text data-detail="context" x="581.2" y="503" class="t-muted" font-size="8" text-anchor="middle">design procedure</text>
+        </g>
+
+        <g id="node-archify_tool" data-node-id="archify_tool" data-node-label="Archify" tabindex="0" role="button" aria-label="Focus Archify, render + validate, L1 Solution Architect › Tool / verify / result" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="render + validate" data-node-context="L1 Solution Architect › Tool / verify / result">
+          <title>Archify · render + validate · L1 Solution Architect › Tool / verify / result</title>
+          <rect x="796" y="465" width="145" height="52" rx="6" class="c-mask"/>
+          <rect x="796" y="465" width="145" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(802 471) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="1526.4" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Feedback Router</text>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Archify</text>
+          <text data-detail="context" x="868.5" y="503" class="t-muted" font-size="8" text-anchor="middle">render + validate</text>
         </g>
 
-        <g id="node-cherrymon" data-node-id="cherrymon" data-node-label="CherryMon.agent.md" tabindex="0" role="button" aria-label="Focus CherryMon.agent.md, Shared Architecture Constitution › Intake + governance" aria-pressed="false" data-node-kind="security" data-node-context="Shared Architecture Constitution › Intake + governance">
-          <title>CherryMon.agent.md · Shared Architecture Constitution › Intake + governance</title>
-          <rect x="53" y="341" width="188" height="52" rx="6" class="c-mask"/>
-          <rect x="53" y="341" width="188" height="52" rx="6" class="c-security" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(59 347) scale(0.6875)">
+        <g id="node-dev" data-node-id="dev" data-node-label="GeneralCoding.agent.md" tabindex="0" role="button" aria-label="Focus GeneralCoding.agent.md, implementation readiness, L1 General Coding › HOW / implementation" aria-pressed="false" data-node-kind="backend" data-node-sublabel="implementation readiness" data-node-context="L1 General Coding › HOW / implementation">
+          <title>GeneralCoding.agent.md · implementation readiness · L1 General Coding › HOW / implementation</title>
+          <rect x="486.20000000000005" y="589" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="486.20000000000005" y="589" width="190" height="52" rx="6" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(492.20000000000005 595) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="581.2" y="610" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">GeneralCoding.agent.md</text>
+          <text data-detail="context" x="581.2" y="627" class="t-muted" font-size="8" text-anchor="middle">implementation readiness</text>
+        </g>
+
+        <g id="node-test" data-node-id="test" data-node-label="TestEngineer.agent.md" tabindex="0" role="button" aria-label="Focus TestEngineer.agent.md, independent validation, L1 Test Engineer › Tool / verify / result" aria-pressed="false" data-node-kind="security" data-node-sublabel="independent validation" data-node-context="L1 Test Engineer › Tool / verify / result">
+          <title>TestEngineer.agent.md · independent validation · L1 Test Engineer › Tool / verify / result</title>
+          <rect x="776" y="713" width="185" height="52" rx="6" class="c-mask"/>
+          <rect x="776" y="713" width="185" height="52" rx="6" class="c-security" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(782 719) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" x="147" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CherryMon.agent.md</text>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">TestEngineer.agent.md</text>
+          <text data-detail="context" x="868.5" y="751" class="t-muted" font-size="8" text-anchor="middle">independent validation</text>
         </g>
 
-        <g id="node-ba" data-node-id="ba" data-node-label="BusinessAnalyst.agent.md" tabindex="0" role="button" aria-label="Focus BusinessAnalyst.agent.md, L1 Business Analyst › Readiness gates › Requirements + design" aria-pressed="false" data-node-kind="backend" data-node-context="L1 Business Analyst › Readiness gates › Requirements + design">
-          <title>BusinessAnalyst.agent.md · L1 Business Analyst › Readiness gates › Requirements + design</title>
-          <rect x="236" y="465" width="196" height="52" rx="6" class="c-mask"/>
-          <rect x="236" y="465" width="196" height="52" rx="6" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(242 471) scale(0.6875)">
+        <g id="node-verdict" data-node-id="verdict" data-node-label="PASS · FAIL · BLOCKED" tabindex="0" role="button" aria-label="Focus PASS · FAIL · BLOCKED, or REGRESSION, Verification Verdict › Tool / verify / result" aria-pressed="false" data-node-kind="security" data-node-sublabel="or REGRESSION" data-node-context="Verification Verdict › Tool / verify / result">
+          <title>PASS · FAIL · BLOCKED · or REGRESSION · Verification Verdict › Tool / verify / result</title>
+          <rect x="771" y="837" width="195" height="52" rx="6" class="c-mask"/>
+          <rect x="771" y="837" width="195" height="52" rx="6" class="c-security" data-animate="node" style="--step:6" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(777 843) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="858" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">PASS · FAIL · BLOCKED</text>
+          <text data-detail="context" x="868.5" y="875" class="t-muted" font-size="8" text-anchor="middle">or REGRESSION</text>
+        </g>
+
+        <g id="node-final" data-node-id="final" data-node-label="DONE / User Decision" tabindex="0" role="button" aria-label="Focus DONE / User Decision, Completion › Tool / verify / result" aria-pressed="false" data-node-kind="backend" data-node-context="Completion › Tool / verify / result">
+          <title>DONE / User Decision · Completion › Tool / verify / result</title>
+          <rect x="778.5" y="961" width="180" height="52" rx="6" class="c-mask"/>
+          <rect x="778.5" y="961" width="180" height="52" rx="6" class="c-backend" data-animate="node" style="--step:7" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(784.5 967) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="334" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">BusinessAnalyst.agent.md</text>
+          <text data-node-label="" x="868.5" y="982" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">DONE / User Decision</text>
         </g>
 
-        <g id="node-sa" data-node-id="sa" data-node-label="SolutionArchitect.agent.md" tabindex="0" role="button" aria-label="Focus SolutionArchitect.agent.md, L1 Solution Architect › Requirements + design" aria-pressed="false" data-node-kind="backend" data-node-context="L1 Solution Architect › Requirements + design">
-          <title>SolutionArchitect.agent.md · L1 Solution Architect › Requirements + design</title>
-          <rect x="534.6" y="589" width="200" height="52" rx="6" class="c-mask"/>
-          <rect x="534.6" y="589" width="200" height="52" rx="6" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(540.6 595) scale(0.6875)">
+        <g id="node-indicator" data-node-id="indicator" data-node-label="Indicator_Management.agent.md" tabindex="0" role="button" aria-label="Focus Indicator_Management.agent.md, owns indicator lifecycle, L1 Indicator Management › WHO / RULES / KNOWLEDGE" aria-pressed="false" data-node-kind="backend" data-node-sublabel="owns indicator lifecycle" data-node-context="L1 Indicator Management › WHO / RULES / KNOWLEDGE">
+          <title>Indicator_Management.agent.md · owns indicator lifecycle · L1 Indicator Management › WHO / RULES / KNOWLEDGE</title>
+          <rect x="155.5" y="1085" width="205" height="52" rx="6" class="c-mask"/>
+          <rect x="155.5" y="1085" width="205" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(161.5 1091) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="634.6" y="610" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SolutionArchitect.agent.md</text>
+          <text data-node-label="" data-detail-anchor="" x="258" y="1106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Indicator_Management.agent.md</text>
+          <text data-detail="context" x="258" y="1123" class="t-muted" font-size="8" text-anchor="middle">owns indicator lifecycle</text>
         </g>
 
-        <g id="node-chart_context" data-node-id="chart_context" data-node-label="Chart Context / Docs" tabindex="0" role="button" aria-label="Focus Chart Context / Docs, L1 Chart / Flint › Specialist chart route › Requirements + design" aria-pressed="false" data-node-kind="database" data-node-context="L1 Chart / Flint › Specialist chart route › Requirements + design">
-          <title>Chart Context / Docs · L1 Chart / Flint › Specialist chart route › Requirements + design</title>
-          <rect x="242" y="713" width="184" height="52" rx="6" class="c-mask"/>
-          <rect x="242" y="713" width="184" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(248 719) scale(0.6875)">
-            <ellipse cx="8" cy="4" rx="5" ry="2"/>
-            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
+        <g id="node-indicator_skill" data-node-id="indicator_skill" data-node-label="indicator-onboarding Skill" tabindex="0" role="button" aria-label="Focus indicator-onboarding Skill, repeatable HOW, L1 Indicator Management › HOW / implementation" aria-pressed="false" data-node-kind="backend" data-node-sublabel="repeatable HOW" data-node-context="L1 Indicator Management › HOW / implementation">
+          <title>indicator-onboarding Skill · repeatable HOW · L1 Indicator Management › HOW / implementation</title>
+          <rect x="486.20000000000005" y="1085" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="486.20000000000005" y="1085" width="190" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(492.20000000000005 1091) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="334" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Chart Context / Docs</text>
+          <text data-node-label="" data-detail-anchor="" x="581.2" y="1106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">indicator-onboarding Skill</text>
+          <text data-detail="context" x="581.2" y="1123" class="t-muted" font-size="8" text-anchor="middle">repeatable HOW</text>
         </g>
 
-        <g id="node-chart" data-node-id="chart" data-node-label="Chart.agent.md" tabindex="0" role="button" aria-label="Focus Chart.agent.md, L1 Chart / Flint › Specialist chart route › Requirements + design" aria-pressed="false" data-node-kind="frontend" data-node-context="L1 Chart / Flint › Specialist chart route › Requirements + design">
-          <title>Chart.agent.md · L1 Chart / Flint › Specialist chart route › Requirements + design</title>
-          <rect x="542.6" y="713" width="184" height="52" rx="6" class="c-mask"/>
-          <rect x="542.6" y="713" width="184" height="52" rx="6" class="c-frontend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(548.6 719) scale(0.6875)">
+        <g id="node-duckdb_tool" data-node-id="duckdb_tool" data-node-label="DuckDB · Python · GitHub" tabindex="0" role="button" aria-label="Focus DuckDB · Python · GitHub, execution capability, L1 Indicator Management › Tool / verify / result" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="execution capability" data-node-context="L1 Indicator Management › Tool / verify / result">
+          <title>DuckDB · Python · GitHub · execution capability · L1 Indicator Management › Tool / verify / result</title>
+          <rect x="771" y="1085" width="195" height="52" rx="6" class="c-mask"/>
+          <rect x="771" y="1085" width="195" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(777 1091) scale(0.6875)">
+            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
+            <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
+            <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
+            <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="1106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">DuckDB · Python · GitHub</text>
+          <text data-detail="context" x="868.5" y="1123" class="t-muted" font-size="8" text-anchor="middle">execution capability</text>
+        </g>
+
+        <g id="node-indicator_ready" data-node-id="indicator_ready" data-node-label="TestEngineer Handoff" tabindex="0" role="button" aria-label="Focus TestEngineer Handoff, independent validation, Indicator validation › Tool / verify / result" aria-pressed="false" data-node-kind="security" data-node-sublabel="independent validation" data-node-context="Indicator validation › Tool / verify / result">
+          <title>TestEngineer Handoff · independent validation · Indicator validation › Tool / verify / result</title>
+          <rect x="776" y="1209" width="185" height="52" rx="6" class="c-mask"/>
+          <rect x="776" y="1209" width="185" height="52" rx="6" class="c-security" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(782 1215) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="1230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">TestEngineer Handoff</text>
+          <text data-detail="context" x="868.5" y="1247" class="t-muted" font-size="8" text-anchor="middle">independent validation</text>
+        </g>
+
+        <g id="node-chart" data-node-id="chart" data-node-label="Chart.agent.md" tabindex="0" role="button" aria-label="Focus Chart.agent.md, owns visualization outcome, L1 Chart / Flint › WHO / RULES / KNOWLEDGE" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="owns visualization outcome" data-node-context="L1 Chart / Flint › WHO / RULES / KNOWLEDGE">
+          <title>Chart.agent.md · owns visualization outcome · L1 Chart / Flint › WHO / RULES / KNOWLEDGE</title>
+          <rect x="170.5" y="1333" width="175" height="52" rx="6" class="c-mask"/>
+          <rect x="170.5" y="1333" width="175" height="52" rx="6" class="c-frontend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(176.5 1339) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="634.6" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Chart.agent.md</text>
+          <text data-node-label="" data-detail-anchor="" x="258" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Chart.agent.md</text>
+          <text data-detail="context" x="258" y="1371" class="t-muted" font-size="8" text-anchor="middle">owns visualization outcome</text>
         </g>
 
-        <g id="node-dev" data-node-id="dev" data-node-label="GeneralCoding.agent.md" tabindex="0" role="button" aria-label="Focus GeneralCoding.agent.md, L1 General Coding › Procedure + implement + validate" aria-pressed="false" data-node-kind="backend" data-node-context="L1 General Coding › Procedure + implement + validate">
-          <title>GeneralCoding.agent.md · L1 General Coding › Procedure + implement + validate</title>
-          <rect x="847.6" y="837" width="194" height="52" rx="6" class="c-mask"/>
-          <rect x="847.6" y="837" width="194" height="52" rx="6" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(853.6 843) scale(0.6875)">
+        <g id="node-chart_skill" data-node-id="chart_skill" data-node-label="chart-authoring Skill" tabindex="0" role="button" aria-label="Focus chart-authoring Skill, visualization HOW, L1 Chart / Flint › HOW / implementation" aria-pressed="false" data-node-kind="backend" data-node-sublabel="visualization HOW" data-node-context="L1 Chart / Flint › HOW / implementation">
+          <title>chart-authoring Skill · visualization HOW · L1 Chart / Flint › HOW / implementation</title>
+          <rect x="491.20000000000005" y="1333" width="180" height="52" rx="6" class="c-mask"/>
+          <rect x="491.20000000000005" y="1333" width="180" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(497.20000000000005 1339) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="944.6" y="858" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">GeneralCoding.agent.md</text>
+          <text data-node-label="" data-detail-anchor="" x="581.2" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">chart-authoring Skill</text>
+          <text data-detail="context" x="581.2" y="1371" class="t-muted" font-size="8" text-anchor="middle">visualization HOW</text>
         </g>
 
-        <g id="node-test" data-node-id="test" data-node-label="TestEngineer.agent.md" tabindex="0" role="button" aria-label="Focus TestEngineer.agent.md, L1 Test Engineer › Independent validation › Procedure + implement + validate" aria-pressed="false" data-node-kind="security" data-node-context="L1 Test Engineer › Independent validation › Procedure + implement + validate">
-          <title>TestEngineer.agent.md · L1 Test Engineer › Independent validation › Procedure + implement + validate</title>
-          <rect x="1138.4" y="961" width="188" height="52" rx="6" class="c-mask"/>
-          <rect x="1138.4" y="961" width="188" height="52" rx="6" class="c-security" data-animate="node" style="--step:5" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(1144.4 967) scale(0.6875)">
-            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
-            <path d="m5.8 8 1.5 1.5 3-3"/>
-          </g>
-          <text data-node-label="" x="1232.4" y="982" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">TestEngineer.agent.md</text>
-        </g>
-
-        <g id="node-verdict" data-node-id="verdict" data-node-label="PASS · FAIL · BLOCKED · REG." tabindex="0" role="button" aria-label="Focus PASS · FAIL · BLOCKED · REG., L1 Test Engineer › Independent validation › Verdict + decision" aria-pressed="false" data-node-kind="security" data-node-context="L1 Test Engineer › Independent validation › Verdict + decision">
-          <title>PASS · FAIL · BLOCKED · REG. · L1 Test Engineer › Independent validation › Verdict + decision</title>
-          <rect x="1416.4" y="961" width="220" height="52" rx="6" class="c-mask"/>
-          <rect x="1416.4" y="961" width="220" height="52" rx="6" class="c-security" data-animate="node" style="--step:6" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(1422.4 967) scale(0.6875)">
-            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
-            <path d="m5.8 8 1.5 1.5 3-3"/>
-          </g>
-          <text data-node-label="" x="1526.4" y="982" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">PASS · FAIL · BLOCKED · REG.</text>
-        </g>
-
-        <g id="node-indicator_context" data-node-id="indicator_context" data-node-label="Indicator Docs / ADR / DB" tabindex="0" role="button" aria-label="Focus Indicator Docs / ADR / DB, L1 Indicator Management › Specialist indicator route › Requirements + design" aria-pressed="false" data-node-kind="database" data-node-context="L1 Indicator Management › Specialist indicator route › Requirements + design">
-          <title>Indicator Docs / ADR / DB · L1 Indicator Management › Specialist indicator route › Requirements + design</title>
-          <rect x="239" y="1085" width="190" height="52" rx="6" class="c-mask"/>
-          <rect x="239" y="1085" width="190" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(245 1091) scale(0.6875)">
-            <ellipse cx="8" cy="4" rx="5" ry="2"/>
-            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
-          </g>
-          <text data-node-label="" x="334" y="1106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Indicator Docs / ADR / DB</text>
-        </g>
-
-        <g id="node-indicator" data-node-id="indicator" data-node-label="Indicator_Management.agent.md" tabindex="0" role="button" aria-label="Focus Indicator_Management.agent.md, L1 Indicator Management › Specialist indicator route › Requirements + design" aria-pressed="false" data-node-kind="backend" data-node-context="L1 Indicator Management › Specialist indicator route › Requirements + design">
-          <title>Indicator_Management.agent.md · L1 Indicator Management › Specialist indicator route › Requirements + design</title>
-          <rect x="528.6" y="1085" width="212" height="52" rx="6" class="c-mask"/>
-          <rect x="528.6" y="1085" width="212" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(534.6 1091) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" x="634.6" y="1106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Indicator_Management.agent.md</text>
-        </g>
-
-        <g id="node-indicator_ready" data-node-id="indicator_ready" data-node-label="Indicator Lifecycle Handoff" tabindex="0" role="button" aria-label="Focus Indicator Lifecycle Handoff, L1 Indicator Management › Specialist indicator route › Procedure + implement + validate" aria-pressed="false" data-node-kind="messagebus" data-node-context="L1 Indicator Management › Specialist indicator route › Procedure + implement + validate">
-          <title>Indicator Lifecycle Handoff · L1 Indicator Management › Specialist indicator route › Procedure + implement + validate</title>
-          <rect x="845.6" y="1085" width="198" height="52" rx="6" class="c-mask"/>
-          <rect x="845.6" y="1085" width="198" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(851.6 1091) scale(0.6875)">
+        <g id="node-flint_tool" data-node-id="flint_tool" data-node-label="Flint MCP" tabindex="0" role="button" aria-label="Focus Flint MCP, render capability, L1 Chart / Flint › Tool / verify / result" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="render capability" data-node-context="L1 Chart / Flint › Tool / verify / result">
+          <title>Flint MCP · render capability · L1 Chart / Flint › Tool / verify / result</title>
+          <rect x="793.5" y="1333" width="150" height="52" rx="6" class="c-mask"/>
+          <rect x="793.5" y="1333" width="150" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(799.5 1339) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="944.6" y="1106" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Indicator Lifecycle Handoff</text>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Flint MCP</text>
+          <text data-detail="context" x="868.5" y="1371" class="t-muted" font-size="8" text-anchor="middle">render capability</text>
         </g>
 
-        <g id="node-domain_material" data-node-id="domain_material" data-node-label="L2 *.instructions.md" tabindex="0" role="button" aria-label="Focus L2 *.instructions.md, L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Requirements + design" aria-pressed="false" data-node-kind="security" data-node-context="L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Requirements + design">
-          <title>L2 *.instructions.md · L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Requirements + design</title>
-          <rect x="536.6" y="1209" width="196" height="52" rx="6" class="c-mask"/>
-          <rect x="536.6" y="1209" width="196" height="52" rx="6" class="c-security" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(542.6 1215) scale(0.6875)">
-            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
-            <path d="m5.8 8 1.5 1.5 3-3"/>
+        <g id="node-chart_ready" data-node-id="chart_ready" data-node-label="Chart Spec / Render Ready" tabindex="0" role="button" aria-label="Focus Chart Spec / Render Ready, Chart output › Tool / verify / result" aria-pressed="false" data-node-kind="frontend" data-node-context="Chart output › Tool / verify / result">
+          <title>Chart Spec / Render Ready · Chart output › Tool / verify / result</title>
+          <rect x="771" y="1457" width="195" height="52" rx="6" class="c-mask"/>
+          <rect x="771" y="1457" width="195" height="52" rx="6" class="c-frontend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(777 1463) scale(0.6875)">
+            <rect x="2" y="3" width="12" height="10" rx="2"/>
+            <path d="M2 6.5h12"/>
+            <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
+            <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="634.6" y="1230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L2 *.instructions.md</text>
+          <text data-node-label="" x="868.5" y="1478" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Chart Spec / Render Ready</text>
         </g>
 
-        <g id="node-skill_material" data-node-id="skill_material" data-node-label="L3 *.skills/SKILL.md" tabindex="0" role="button" aria-label="Focus L3 *.skills/SKILL.md, L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Procedure + implement + validate" aria-pressed="false" data-node-kind="backend" data-node-context="L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Procedure + implement + validate">
-          <title>L3 *.skills/SKILL.md · L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Procedure + implement + validate</title>
-          <rect x="846.6" y="1209" width="196" height="52" rx="6" class="c-mask"/>
-          <rect x="846.6" y="1209" width="196" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(852.6 1215) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" x="944.6" y="1230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L3 *.skills/SKILL.md</text>
-        </g>
-
-        <g id="node-tool_material" data-node-id="tool_material" data-node-label="L5 Tools / MCP" tabindex="0" role="button" aria-label="Focus L5 Tools / MCP, L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Procedure + implement + validate" aria-pressed="false" data-node-kind="messagebus" data-node-context="L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Procedure + implement + validate">
-          <title>L5 Tools / MCP · L2/L3/L5 Constraints · Procedure · Tools › Instruction → Skill → Tool › Procedure + implement + validate</title>
-          <rect x="1137.4" y="1209" width="190" height="52" rx="6" class="c-mask"/>
-          <rect x="1137.4" y="1209" width="190" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(1143.4 1215) scale(0.6875)">
+        <g id="node-governance_model" data-node-id="governance_model" data-node-label="Governance" tabindex="0" role="button" aria-label="Focus Governance, global routing policy, Relationship — Governance › Route" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="global routing policy" data-node-context="Relationship — Governance › Route">
+          <title>Governance · global routing policy · Relationship — Governance › Route</title>
+          <rect x="55.5" y="1581" width="165" height="52" rx="6" class="c-mask"/>
+          <rect x="55.5" y="1581" width="165" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(61.5 1587) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="1232.4" y="1230" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L5 Tools / MCP</text>
+          <text data-node-label="" data-detail-anchor="" x="138" y="1602" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Governance</text>
+          <text data-detail="context" x="138" y="1619" class="t-muted" font-size="8" text-anchor="middle">global routing policy</text>
         </g>
 
-        <g id="node-governance_material" data-node-id="governance_material" data-node-label="L0 Governance" tabindex="0" role="button" aria-label="Focus L0 Governance, L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Intake + governance" aria-pressed="false" data-node-kind="database" data-node-context="L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Intake + governance">
-          <title>L0 Governance · L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Intake + governance</title>
-          <rect x="60" y="1333" width="174" height="52" rx="6" class="c-mask"/>
-          <rect x="60" y="1333" width="174" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(66 1339) scale(0.6875)">
+        <g id="node-agent_model" data-node-id="agent_model" data-node-label="Agent = WHO" tabindex="0" role="button" aria-label="Focus Agent = WHO, owns the OUTCOME, Relationship — Agent › WHO / RULES / KNOWLEDGE" aria-pressed="false" data-node-kind="backend" data-node-sublabel="owns the OUTCOME" data-node-context="Relationship — Agent › WHO / RULES / KNOWLEDGE">
+          <title>Agent = WHO · owns the OUTCOME · Relationship — Agent › WHO / RULES / KNOWLEDGE</title>
+          <rect x="175.5" y="1705" width="165" height="52" rx="6" class="c-mask"/>
+          <rect x="175.5" y="1705" width="165" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(181.5 1711) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="258" y="1726" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Agent = WHO</text>
+          <text data-detail="context" x="258" y="1743" class="t-muted" font-size="8" text-anchor="middle">owns the OUTCOME</text>
+        </g>
+
+        <g id="node-instruction_model" data-node-id="instruction_model" data-node-label="Instruction = RULES" tabindex="0" role="button" aria-label="Focus Instruction = RULES, mandatory constraints, L2 Instruction — RULES › WHO / RULES / KNOWLEDGE" aria-pressed="false" data-node-kind="security" data-node-sublabel="mandatory constraints" data-node-context="L2 Instruction — RULES › WHO / RULES / KNOWLEDGE">
+          <title>Instruction = RULES · mandatory constraints · L2 Instruction — RULES › WHO / RULES / KNOWLEDGE</title>
+          <rect x="165.5" y="1829" width="185" height="52" rx="6" class="c-mask"/>
+          <rect x="165.5" y="1829" width="185" height="52" rx="6" class="c-security" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(171.5 1835) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="258" y="1850" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Instruction = RULES</text>
+          <text data-detail="context" x="258" y="1867" class="t-muted" font-size="8" text-anchor="middle">mandatory constraints</text>
+        </g>
+
+        <g id="node-docs_model" data-node-id="docs_model" data-node-label="Docs = KNOWLEDGE" tabindex="0" role="button" aria-label="Focus Docs = KNOWLEDGE, durable design / why, L4 Docs — KNOWLEDGE › WHO / RULES / KNOWLEDGE" aria-pressed="false" data-node-kind="database" data-node-sublabel="durable design / why" data-node-context="L4 Docs — KNOWLEDGE › WHO / RULES / KNOWLEDGE">
+          <title>Docs = KNOWLEDGE · durable design / why · L4 Docs — KNOWLEDGE › WHO / RULES / KNOWLEDGE</title>
+          <rect x="165.5" y="1953" width="185" height="52" rx="6" class="c-mask"/>
+          <rect x="165.5" y="1953" width="185" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(171.5 1959) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="147" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L0 Governance</text>
+          <text data-node-label="" data-detail-anchor="" x="258" y="1974" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Docs = KNOWLEDGE</text>
+          <text data-detail="context" x="258" y="1991" class="t-muted" font-size="8" text-anchor="middle">durable design / why</text>
         </g>
 
-        <g id="node-req_material" data-node-id="req_material" data-node-label="L4 REQ-* Requirements" tabindex="0" role="button" aria-label="Focus L4 REQ-* Requirements, L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Requirements + design" aria-pressed="false" data-node-kind="database" data-node-context="L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Requirements + design">
-          <title>L4 REQ-* Requirements · L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Requirements + design</title>
-          <rect x="242" y="1333" width="184" height="52" rx="6" class="c-mask"/>
-          <rect x="242" y="1333" width="184" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(248 1339) scale(0.6875)">
+        <g id="node-skill_model" data-node-id="skill_model" data-node-label="Skill = HOW" tabindex="0" role="button" aria-label="Focus Skill = HOW, reusable procedure, L3 Skill — HOW › HOW / implementation" aria-pressed="false" data-node-kind="backend" data-node-sublabel="reusable procedure" data-node-context="L3 Skill — HOW › HOW / implementation">
+          <title>Skill = HOW · reusable procedure · L3 Skill — HOW › HOW / implementation</title>
+          <rect x="498.70000000000005" y="2077" width="165" height="52" rx="6" class="c-mask"/>
+          <rect x="498.70000000000005" y="2077" width="165" height="52" rx="6" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(504.70000000000005 2083) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="581.2" y="2098" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Skill = HOW</text>
+          <text data-detail="context" x="581.2" y="2115" class="t-muted" font-size="8" text-anchor="middle">reusable procedure</text>
+        </g>
+
+        <g id="node-tool_model" data-node-id="tool_model" data-node-label="Tool = CAPABILITY" tabindex="0" role="button" aria-label="Focus Tool = CAPABILITY, MCP · script · CLI · API, L5 Tool — CAPABILITY › Tool / verify / result" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="MCP · script · CLI · API" data-node-context="L5 Tool — CAPABILITY › Tool / verify / result">
+          <title>Tool = CAPABILITY · MCP · script · CLI · API · L5 Tool — CAPABILITY › Tool / verify / result</title>
+          <rect x="776" y="2201" width="185" height="52" rx="6" class="c-mask"/>
+          <rect x="776" y="2201" width="185" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(782 2207) scale(0.6875)">
+            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
+            <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
+            <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
+            <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="2222" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Tool = CAPABILITY</text>
+          <text data-detail="context" x="868.5" y="2239" class="t-muted" font-size="8" text-anchor="middle">MCP · script · CLI · API</text>
+        </g>
+
+        <g id="node-impl_material" data-node-id="impl_material" data-node-label="L6 Implementation" tabindex="0" role="button" aria-label="Focus L6 Implementation, src/** runtime behavior, L6 Implementation › Tool / verify / result" aria-pressed="false" data-node-kind="database" data-node-sublabel="src/** runtime behavior" data-node-context="L6 Implementation › Tool / verify / result">
+          <title>L6 Implementation · src/** runtime behavior · L6 Implementation › Tool / verify / result</title>
+          <rect x="781" y="2325" width="175" height="52" rx="6" class="c-mask"/>
+          <rect x="781" y="2325" width="175" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(787 2331) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="334" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L4 REQ-* Requirements</text>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="2346" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L6 Implementation</text>
+          <text data-detail="context" x="868.5" y="2363" class="t-muted" font-size="8" text-anchor="middle">src/** runtime behavior</text>
         </g>
 
-        <g id="node-design_material" data-node-id="design_material" data-node-label="L4 Docs · Architecture · ADR" tabindex="0" role="button" aria-label="Focus L4 Docs · Architecture · ADR, L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Requirements + design" aria-pressed="false" data-node-kind="database" data-node-context="L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Requirements + design">
-          <title>L4 Docs · Architecture · ADR · L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Requirements + design</title>
-          <rect x="536.6" y="1333" width="196" height="52" rx="6" class="c-mask"/>
-          <rect x="536.6" y="1333" width="196" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(542.6 1339) scale(0.6875)">
+        <g id="node-test_material" data-node-id="test_material" data-node-label="L7 Verification" tabindex="0" role="button" aria-label="Focus L7 Verification, tests/** evidence, L7 Verification › Tool / verify / result" aria-pressed="false" data-node-kind="database" data-node-sublabel="tests/** evidence" data-node-context="L7 Verification › Tool / verify / result">
+          <title>L7 Verification · tests/** evidence · L7 Verification › Tool / verify / result</title>
+          <rect x="786" y="2449" width="165" height="52" rx="6" class="c-mask"/>
+          <rect x="786" y="2449" width="165" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(792 2455) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="634.6" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L4 Docs · Architecture · ADR</text>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="2470" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L7 Verification</text>
+          <text data-detail="context" x="868.5" y="2487" class="t-muted" font-size="8" text-anchor="middle">tests/** evidence</text>
         </g>
 
-        <g id="node-impl_material" data-node-id="impl_material" data-node-label="L6 src/** Implementation" tabindex="0" role="button" aria-label="Focus L6 src/** Implementation, L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Procedure + implement + validate" aria-pressed="false" data-node-kind="database" data-node-context="L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Procedure + implement + validate">
-          <title>L6 src/** Implementation · L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Procedure + implement + validate</title>
-          <rect x="848.6" y="1333" width="192" height="52" rx="6" class="c-mask"/>
-          <rect x="848.6" y="1333" width="192" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(854.6 1339) scale(0.6875)">
-            <ellipse cx="8" cy="4" rx="5" ry="2"/>
-            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
+        <g id="node-result_model" data-node-id="result_model" data-node-label="Result / Evidence" tabindex="0" role="button" aria-label="Focus Result / Evidence, Agent evaluates outcome, Result / Evidence › Tool / verify / result" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="Agent evaluates outcome" data-node-context="Result / Evidence › Tool / verify / result">
+          <title>Result / Evidence · Agent evaluates outcome · Result / Evidence › Tool / verify / result</title>
+          <rect x="778.5" y="2573" width="180" height="52" rx="6" class="c-mask"/>
+          <rect x="778.5" y="2573" width="180" height="52" rx="6" class="c-messagebus" data-animate="node" style="--step:12" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(784.5 2579) scale(0.6875)">
+            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
+            <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
+            <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
+            <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="944.6" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L6 src/** Implementation</text>
-        </g>
-
-        <g id="node-test_material" data-node-id="test_material" data-node-label="L7 tests/** Verification" tabindex="0" role="button" aria-label="Focus L7 tests/** Verification, L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Procedure + implement + validate" aria-pressed="false" data-node-kind="database" data-node-context="L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Procedure + implement + validate">
-          <title>L7 tests/** Verification · L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Procedure + implement + validate</title>
-          <rect x="1140.4" y="1333" width="184" height="52" rx="6" class="c-mask"/>
-          <rect x="1140.4" y="1333" width="184" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(1146.4 1339) scale(0.6875)">
-            <ellipse cx="8" cy="4" rx="5" ry="2"/>
-            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
-          </g>
-          <text data-node-label="" x="1232.4" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">L7 tests/** Verification</text>
-        </g>
-
-        <g id="node-generated_artifact" data-node-id="generated_artifact" data-node-label="Generated Archify HTML" tabindex="0" role="button" aria-label="Focus Generated Archify HTML, L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Verdict + decision" aria-pressed="false" data-node-kind="database" data-node-context="L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Verdict + decision">
-          <title>Generated Archify HTML · L4/L6/L7 Durable Materials · Runtime · Evidence › Durable repository trace › Verdict + decision</title>
-          <rect x="1431.4" y="1333" width="190" height="52" rx="6" class="c-mask"/>
-          <rect x="1431.4" y="1333" width="190" height="52" rx="6" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(1437.4 1339) scale(0.6875)">
-            <ellipse cx="8" cy="4" rx="5" ry="2"/>
-            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
-          </g>
-          <text data-node-label="" x="1526.4" y="1354" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Generated Archify HTML</text>
+          <text data-node-label="" data-detail-anchor="" x="868.5" y="2594" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Result / Evidence</text>
+          <text data-detail="context" x="868.5" y="2611" class="t-muted" font-size="8" text-anchor="middle">Agent evaluates outcome</text>
         </g>
 
         <!-- Edge labels -->
-        <g data-detail="context" data-edge-from="ba" data-edge-to="sa" data-edge-label="READY_FOR_DESIGN" data-edge-key="0" data-edge-id="ba-sa">
-          <rect x="390.90000000000003" y="595" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="434.3" y="605" class="t-backend" font-size="8" text-anchor="middle">READY_FOR_DESIGN</text>
+        <g data-detail="context" data-edge-from="agent_model" data-edge-to="docs_model" data-edge-label="reads knowledge" data-edge-key="0" data-edge-id="agent-docs">
+          <rect x="56.75" y="1711" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="97.75" y="1721" class="t-muted" font-size="8" text-anchor="middle">reads knowledge</text>
         </g>
-        <g data-detail="context" data-edge-from="chart_context" data-edge-to="chart" data-edge-label="data + architecture context" data-edge-key="1" data-edge-id="chart-context-agent">
-          <rect x="414.5" y="772" width="139.6" height="14" rx="3" class="c-mask"/>
-          <text x="484.3" y="782" class="t-backend" font-size="8" text-anchor="middle">data + architecture context</text>
+        <g data-detail="context" data-edge-from="agent_model" data-edge-to="instruction_model" data-edge-label="MUST obey" data-edge-key="1" data-edge-id="agent-instruction">
+          <rect x="752.65" y="1711" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="779.25" y="1721" class="t-security" font-size="8" text-anchor="middle">MUST obey</text>
         </g>
-        <g data-detail="context" data-edge-from="chart" data-edge-to="dev" data-edge-label="production integration" data-edge-key="2" data-edge-id="chart-dev">
-          <rect x="683.3000000000001" y="843" width="115.6" height="14" rx="3" class="c-mask"/>
-          <text x="741.1" y="853" class="t-database" font-size="8" text-anchor="middle">production integration</text>
+        <g data-detail="context" data-edge-from="agent_model" data-edge-to="skill_model" data-edge-label="invokes if applicable" data-edge-key="2" data-edge-id="agent-skill">
+          <rect x="364.20000000000005" y="1628" width="110.8" height="14" rx="3" class="c-mask"/>
+          <text x="419.6" y="1638" class="t-database" font-size="8" text-anchor="middle">invokes if applicable</text>
         </g>
-        <g data-detail="context" data-edge-from="dev" data-edge-to="test" data-edge-label="IMPLEMENTED_PENDING_VALIDATION" data-edge-key="3" data-edge-id="dev-test">
-          <rect x="961" y="957" width="154" height="14" rx="3" class="c-mask"/>
-          <text x="1038" y="967" class="t-backend" font-size="8" text-anchor="middle">IMPLEMENTED_PENDING_VALIDATION</text>
+        <g data-detail="context" data-edge-from="architecture_skill" data-edge-to="archify_tool" data-edge-label="uses" data-edge-key="3" data-edge-id="architecture-skill-archify">
+          <rect x="719.85" y="471" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="734.85" y="481" class="t-backend" font-size="8" text-anchor="middle">uses</text>
         </g>
-        <g data-detail="context" data-edge-from="indicator_context" data-edge-to="indicator" data-edge-label="canonical context" data-edge-key="4" data-edge-id="indicator-context-agent">
-          <rect x="433" y="1091" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="478.8" y="1101" class="t-backend" font-size="8" text-anchor="middle">canonical context</text>
+        <g data-detail="context" data-edge-from="ba" data-edge-to="sa" data-edge-label="READY_FOR_DESIGN" data-edge-key="4" data-edge-id="ba-sa">
+          <rect x="48.1" y="347" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="91.5" y="357" class="t-backend" font-size="8" text-anchor="middle">READY_FOR_DESIGN</text>
         </g>
-        <g data-detail="context" data-edge-from="indicator" data-edge-to="indicator_ready" data-edge-label="metadata + backfill evidence" data-edge-key="5" data-edge-id="indicator-handoff">
-          <rect x="717.4" y="1049" width="144.4" height="14" rx="3" class="c-mask"/>
-          <text x="789.6" y="1059" class="t-backend" font-size="8" text-anchor="middle">metadata + backfill evidence</text>
+        <g data-detail="context" data-edge-from="flint_tool" data-edge-to="chart_ready" data-edge-label="render result" data-edge-key="5" data-edge-id="chart-ready-edge">
+          <rect x="1044.55" y="1339" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="1080.75" y="1349" class="t-backend" font-size="8" text-anchor="middle">render result</text>
         </g>
-        <g data-detail="context" data-edge-from="indicator_ready" data-edge-to="test" data-edge-label="independent validation" data-edge-key="6" data-edge-id="indicator-test">
-          <rect x="1080.2" y="1091" width="115.6" height="14" rx="3" class="c-mask"/>
-          <text x="1138" y="1101" class="t-database" font-size="8" text-anchor="middle">independent validation</text>
+        <g data-detail="context" data-edge-from="chart" data-edge-to="chart_skill" data-edge-label="uses procedure" data-edge-key="6" data-edge-id="chart-skill-edge">
+          <rect x="379.75" y="1339" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="418.35" y="1349" class="t-backend" font-size="8" text-anchor="middle">uses procedure</text>
         </g>
-        <g data-detail="context" data-edge-from="domain_material" data-edge-to="skill_material" data-edge-label="constrains procedure" data-edge-key="7" data-edge-id="instruction-skill">
-          <rect x="736.6" y="1215" width="106" height="14" rx="3" class="c-mask"/>
-          <text x="789.6" y="1225" class="t-database" font-size="8" text-anchor="middle">constrains procedure</text>
+        <g data-detail="context" data-edge-from="chart_skill" data-edge-to="flint_tool" data-edge-label="uses" data-edge-key="7" data-edge-id="chart-tool-edge">
+          <rect x="717.35" y="1339" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="732.35" y="1349" class="t-backend" font-size="8" text-anchor="middle">uses</text>
         </g>
-        <g data-detail="context" data-edge-from="verdict" data-edge-to="final" data-edge-label="PASS / decision" data-edge-key="8" data-edge-id="pass-final">
-          <rect x="1552.7" y="57" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="1593.7" y="67" class="t-backend" font-size="8" text-anchor="middle">PASS / decision</text>
+        <g data-detail="context" data-edge-from="dev" data-edge-to="test" data-edge-label="IMPLEMENTED_PENDING_VALIDATION" data-edge-key="8" data-edge-id="dev-test">
+          <rect x="695.35" y="595" width="154" height="14" rx="3" class="c-mask"/>
+          <text x="772.35" y="605" class="t-backend" font-size="8" text-anchor="middle">IMPLEMENTED_PENDING_VALIDATION</text>
         </g>
-        <g data-detail="context" data-edge-from="user_request" data-edge-to="router" data-edge-label="intent" data-edge-key="9" data-edge-id="request-route">
-          <rect x="27.1" y="99" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="46.5" y="109" class="t-backend" font-size="8" text-anchor="middle">intent</text>
+        <g data-detail="context" data-edge-from="governance_model" data-edge-to="agent_model" data-edge-label="route WHO" data-edge-key="9" data-edge-id="governance-agent">
+          <rect x="171.4" y="1634" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="198" y="1644" class="t-backend" font-size="8" text-anchor="middle">route WHO</text>
         </g>
-        <g data-detail="context" data-edge-from="router" data-edge-to="ba" data-edge-label="material / unclear" data-edge-key="10" data-edge-id="router-ba">
-          <rect x="249.8" y="140" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
-          <text x="298" y="150" class="t-muted" font-size="8" text-anchor="middle">material / unclear</text>
+        <g data-detail="context" data-edge-from="impl_material" data-edge-to="test_material" data-edge-label="verified by" data-edge-key="10" data-edge-id="implementation-test-material">
+          <rect x="1053.1" y="2455" width="62.8" height="14" rx="3" class="c-mask"/>
+          <text x="1084.5" y="2465" class="t-security" font-size="8" text-anchor="middle">verified by</text>
         </g>
-        <g data-detail="context" data-edge-from="sa" data-edge-to="dev" data-edge-label="APPROVED_FOR_IMPLEMENTATION" data-edge-key="11" data-edge-id="sa-dev">
-          <rect x="769.8000000000001" y="595" width="139.6" height="14" rx="3" class="c-mask"/>
-          <text x="839.6" y="605" class="t-backend" font-size="8" text-anchor="middle">APPROVED_FOR_IMPLEMENTATION</text>
+        <g data-detail="context" data-edge-from="duckdb_tool" data-edge-to="indicator_ready" data-edge-label="implementation evidence" data-edge-key="11" data-edge-id="indicator-ready-edge">
+          <rect x="1029.3" y="1215" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="1089.5" y="1225" class="t-security" font-size="8" text-anchor="middle">implementation evidence</text>
         </g>
-        <g data-detail="context" data-edge-from="skill_material" data-edge-to="tool_material" data-edge-label="executes through" data-edge-key="12" data-edge-id="skill-tool">
-          <rect x="1045.1" y="1257" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="1088.5" y="1267" class="t-database" font-size="8" text-anchor="middle">executes through</text>
+        <g data-detail="context" data-edge-from="indicator" data-edge-to="indicator_skill" data-edge-label="uses procedure" data-edge-key="12" data-edge-id="indicator-skill-edge">
+          <rect x="384.75" y="1091" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="423.35" y="1101" class="t-backend" font-size="8" text-anchor="middle">uses procedure</text>
         </g>
-        <g data-detail="context" data-edge-from="test" data-edge-to="dev" data-edge-label="FAIL / REGRESSION → AUTOFIX" data-edge-key="13" data-edge-id="test-dev-autofix">
-          <rect x="1018.7" y="1020" width="139.6" height="14" rx="3" class="c-mask"/>
-          <text x="1088.5" y="1030" class="t-database" font-size="8" text-anchor="middle">FAIL / REGRESSION → AUTOFIX</text>
+        <g data-detail="context" data-edge-from="indicator_skill" data-edge-to="duckdb_tool" data-edge-label="executes through" data-edge-key="13" data-edge-id="indicator-tool-edge">
+          <rect x="680.2" y="1091" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="723.6" y="1101" class="t-backend" font-size="8" text-anchor="middle">executes through</text>
         </g>
-        <g data-detail="context" data-edge-from="test" data-edge-to="verdict" data-edge-label="evidence-backed" data-edge-key="14" data-edge-id="test-verdict">
-          <rect x="1330.4" y="967" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="1371.4" y="977" class="t-security" font-size="8" text-anchor="middle">evidence-backed</text>
+        <g data-detail="context" data-edge-from="user_request" data-edge-to="router" data-edge-label="request" data-edge-key="14" data-edge-id="request-route">
+          <rect x="20.95" y="99" width="43.6" height="14" rx="3" class="c-mask"/>
+          <text x="42.75" y="109" class="t-backend" font-size="8" text-anchor="middle">request</text>
         </g>
-        <g data-detail="context" data-edge-from="tool_material" data-edge-to="impl_material" data-edge-label="changes / evidence" data-edge-key="15" data-edge-id="tool-implementation">
-          <rect x="1095.8" y="1392" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
-          <text x="1144" y="1402" class="t-database" font-size="8" text-anchor="middle">changes / evidence</text>
+        <g data-detail="context" data-edge-from="router" data-edge-to="ba" data-edge-label="material / unclear requirement" data-edge-key="15" data-edge-id="router-ba">
+          <rect x="121" y="270" width="154" height="14" rx="3" class="c-mask"/>
+          <text x="198" y="280" class="t-muted" font-size="8" text-anchor="middle">material / unclear requirement</text>
+        </g>
+        <g data-detail="context" data-edge-from="sa" data-edge-to="architecture_skill" data-edge-label="uses mandatory procedure" data-edge-key="16" data-edge-id="sa-architecture-skill">
+          <rect x="359.5" y="471" width="125.19999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="422.1" y="481" class="t-database" font-size="8" text-anchor="middle">uses mandatory procedure</text>
+        </g>
+        <g data-detail="context" data-edge-from="sa" data-edge-to="dev" data-edge-label="APPROVED_FOR_IMPLEMENTATION" data-edge-key="17" data-edge-id="sa-dev">
+          <rect x="302.3" y="595" width="139.6" height="14" rx="3" class="c-mask"/>
+          <text x="372.1" y="605" class="t-backend" font-size="8" text-anchor="middle">APPROVED_FOR_IMPLEMENTATION</text>
+        </g>
+        <g data-detail="context" data-edge-from="skill_model" data-edge-to="docs_model" data-edge-label="reads / references" data-edge-key="18" data-edge-id="skill-docs">
+          <rect x="417.65000000000003" y="1959" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="465.85" y="1969" class="t-database" font-size="8" text-anchor="middle">reads / references</text>
+        </g>
+        <g data-detail="context" data-edge-from="skill_model" data-edge-to="instruction_model" data-edge-label="must comply" data-edge-key="19" data-edge-id="skill-instruction">
+          <rect x="388.20000000000005" y="1752" width="62.8" height="14" rx="3" class="c-mask"/>
+          <text x="419.6" y="1762" class="t-database" font-size="8" text-anchor="middle">must comply</text>
+        </g>
+        <g data-detail="context" data-edge-from="skill_model" data-edge-to="tool_model" data-edge-label="uses capability" data-edge-key="20" data-edge-id="skill-tool">
+          <rect x="637.6" y="2207" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="678.6" y="2217" class="t-backend" font-size="8" text-anchor="middle">uses capability</text>
+        </g>
+        <g data-detail="context" data-edge-from="test" data-edge-to="dev" data-edge-label="FAIL / REGRESSION → AUTOFIX (bounded)" data-edge-key="21" data-edge-id="test-dev">
+          <rect x="584.8000000000001" y="719" width="187.6" height="14" rx="3" class="c-mask"/>
+          <text x="678.6" y="729" class="t-database" font-size="8" text-anchor="middle">FAIL / REGRESSION → AUTOFIX (bounded)</text>
+        </g>
+        <g data-detail="context" data-edge-from="test_material" data-edge-to="result_model" data-edge-label="validation evidence" data-edge-key="22" data-edge-id="test-material-result">
+          <rect x="352.4" y="2455" width="101.2" height="14" rx="3" class="c-mask"/>
+          <text x="403" y="2465" class="t-database" font-size="8" text-anchor="middle">validation evidence</text>
+        </g>
+        <g data-detail="context" data-edge-from="test" data-edge-to="verdict" data-edge-label="evidence-backed verdict" data-edge-key="23" data-edge-id="test-verdict">
+          <rect x="1029.3" y="719" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="1089.5" y="729" class="t-security" font-size="8" text-anchor="middle">evidence-backed verdict</text>
+        </g>
+        <g data-detail="context" data-edge-from="tool_model" data-edge-to="impl_material" data-edge-label="execute / modify" data-edge-key="24" data-edge-id="tool-implementation">
+          <rect x="879.35" y="2254" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="922.75" y="2264" class="t-database" font-size="8" text-anchor="middle">execute / modify</text>
+        </g>
+        <g data-detail="context" data-edge-from="verdict" data-edge-to="final" data-edge-label="PASS / stop / decision" data-edge-key="25" data-edge-id="verdict-final">
+          <rect x="1030.45" y="967" width="115.6" height="14" rx="3" class="c-mask"/>
+          <text x="1088.25" y="977" class="t-backend" font-size="8" text-anchor="middle">PASS / stop / decision</text>
         </g>
 
         <!-- Legend -->
         <g data-legend="" data-legend-bridge="">
-          <text x="20" y="1420" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-kind="frontend" data-legend-label="User UI" data-legend-x="20" data-legend-baseline="1440" data-legend-width="74">
-            <rect x="20" y="1432" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-            <text x="42" y="1440" class="t-muted" font-size="7.5" font-weight="500">User UI</text>
+          <text x="20" y="2660" class="t-primary" font-size="12" font-weight="650">Legend</text>
+          <g data-legend-semantic-kind="frontend" data-legend-kind="frontend" data-legend-label="User UI" data-legend-x="20" data-legend-baseline="2680" data-legend-width="74">
+            <rect x="20" y="2672" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
+            <text x="42" y="2680" class="t-muted" font-size="7.5" font-weight="500">User UI</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="Agent logic" data-legend-x="101" data-legend-baseline="1440" data-legend-width="91">
-            <rect x="101" y="1432" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="123" y="1440" class="t-muted" font-size="7.5" font-weight="500">Agent logic</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="Agent logic" data-legend-x="101" data-legend-baseline="2680" data-legend-width="91">
+            <rect x="101" y="2672" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="123" y="2680" class="t-muted" font-size="7.5" font-weight="500">Agent logic</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="Policy" data-legend-x="199" data-legend-baseline="1440" data-legend-width="70">
-            <rect x="199" y="1432" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-            <text x="221" y="1440" class="t-muted" font-size="7.5" font-weight="500">Policy</text>
+          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="Policy" data-legend-x="199" data-legend-baseline="2680" data-legend-width="70">
+            <rect x="199" y="2672" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="221" y="2680" class="t-muted" font-size="7.5" font-weight="500">Policy</text>
           </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-kind="messagebus" data-legend-label="Tool action" data-legend-x="276" data-legend-baseline="1440" data-legend-width="91">
-            <rect x="276" y="1432" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-            <text x="298" y="1440" class="t-muted" font-size="7.5" font-weight="500">Tool action</text>
+          <g data-legend-semantic-kind="messagebus" data-legend-kind="messagebus" data-legend-label="Tool action" data-legend-x="276" data-legend-baseline="2680" data-legend-width="91">
+            <rect x="276" y="2672" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+            <text x="298" y="2680" class="t-muted" font-size="7.5" font-weight="500">Tool action</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-kind="database" data-legend-label="Context / trace" data-legend-x="374" data-legend-baseline="1440" data-legend-width="109">
-            <rect x="374" y="1432" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-            <text x="396" y="1440" class="t-muted" font-size="7.5" font-weight="500">Context / trace</text>
+          <g data-legend-semantic-kind="database" data-legend-kind="database" data-legend-label="Context / trace" data-legend-x="374" data-legend-baseline="2680" data-legend-width="109">
+            <rect x="374" y="2672" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+            <text x="396" y="2680" class="t-muted" font-size="7.5" font-weight="500">Context / trace</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="External system" data-legend-x="490" data-legend-baseline="1440" data-legend-width="109">
-            <rect x="490" y="1432" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-            <text x="512" y="1440" class="t-muted" font-size="7.5" font-weight="500">External system</text>
+          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="External system" data-legend-x="490" data-legend-baseline="2680" data-legend-width="109">
+            <rect x="490" y="2672" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+            <text x="512" y="2680" class="t-muted" font-size="7.5" font-weight="500">External system</text>
           </g>
         </g>
       </svg>
@@ -5757,108 +5892,51 @@ html[data-theme="light"] #cherrystock-archify-font-picker select {
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Official hierarchy — ADR-011</h3>
+          <h3>Core invariant</h3>
         </div>
         <ul>
-          <li>&bull; L0 Governance → L1 Agent → L2 Instruction → L3 Skill → L4 Docs → L5 Tool → L6 Implementation → L7 Verification.</li>
-          <li>&bull; Agent owns outcome; Skill owns procedure; Instruction owns mandatory constraints; Docs own durable knowledge/design; Tool provides capability.</li>
-          <li>&bull; The hierarchy expresses responsibility/precedence. Operational loading normally reads the smallest relevant Docs before executing the Skill.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot cyan"></div>
-          <h3>Shared bootstrap — every routed task</h3>
-        </div>
-        <ul>
-          <li>&bull; 1) .github/copilot-instructions.md — global routing/governance.</li>
-          <li>&bull; 2) CherryMon.agent.md + intent-specific Agent — constitution and authoritative outcome owner.</li>
-          <li>&bull; 3) Matching .github/instructions/*.instructions.md — mandatory constraints.</li>
-          <li>&bull; 4) docs/00_HOME.md → smallest relevant docs/** set — requirement/design/domain evidence.</li>
-          <li>&bull; 5) Matching .github/skills/*/SKILL.md when a repeatable procedure applies → Tool/implementation/verification.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot emerald"></div>
-          <h3>BusinessAnalyst.agent.md — requirement readiness</h3>
-        </div>
-        <ul>
-          <li>&bull; Writes docs/backlog/requirements/REQ-*.md when durable requirement material is needed.</li>
-          <li>&bull; Owns READY_FOR_DESIGN / READY_FOR_IMPLEMENTATION; does not own design, code or final test verdict.</li>
+          <li>&bull; Agent owns the OUTCOME.</li>
+          <li>&bull; Skill owns the PROCEDURE.</li>
+          <li>&bull; Instruction owns mandatory RULES / CONSTRAINTS.</li>
+          <li>&bull; Docs own durable KNOWLEDGE / DESIGN.</li>
+          <li>&bull; Tool provides EXECUTION CAPABILITY.</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot violet"></div>
-          <h3>SolutionArchitect.agent.md + architecture-design Skill</h3>
+          <h3>Preferred dependencies</h3>
         </div>
         <ul>
-          <li>&bull; Agent owns design readiness; Skill owns current-state → target design → migration/validation → ADR/synchronization procedure.</li>
-          <li>&bull; Canonical meaning lives in docs/architecture/** and docs/adr/**.</li>
-          <li>&bull; Archify is mandatory where the synchronization contract applies; Draw.io is supplemental/editable only.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot amber"></div>
-          <h3>Indicator Management + indicator-onboarding Skill</h3>
-        </div>
-        <ul>
-          <li>&bull; Agent owns lifecycle outcome; indicators.instructions owns invariants/safety; Indicator Engine docs + ADR-002 own architecture.</li>
-          <li>&bull; Skill runs Discover → Metadata/Config → Targeted Backfill → Validation handoff through CherryMon MCP/calcEngine.</li>
-          <li>&bull; Legacy .github/agents/Instructions/Indicator_Engine.md is retired; historical detail is retained under docs/reference only.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot orange"></div>
-          <h3>Chart Agent + chart-authoring Skill + Flint</h3>
-        </div>
-        <ul>
-          <li>&bull; Chart Agent owns recommendation/spec/render outcome.</li>
-          <li>&bull; chart-authoring owns the visualization/Flint procedure; Flint MCP provides execution capability.</li>
-          <li>&bull; Production integration hands the contract to GeneralCoding and then TestEngineer.</li>
+          <li>&bull; Governance → Agent.</li>
+          <li>&bull; Agent → Instruction, Docs, Skill.</li>
+          <li>&bull; Skill → Instruction, Docs, Tool.</li>
+          <li>&bull; Tool executes; it does not own architecture or business decisions.</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot rose"></div>
-          <h3>GeneralCoding ↔ TestEngineer</h3>
+          <h3>Low coupling</h3>
         </div>
         <ul>
-          <li>&bull; GeneralCoding owns IMPLEMENTED_PENDING_VALIDATION and may use duckdb-migration/data-quality Skills when applicable.</li>
-          <li>&bull; TestEngineer owns PASS/FAIL/BLOCKED/REGRESSION and uses regression-testing/data-quality-validation Skills.</li>
-          <li>&bull; FAIL / REGRESSION → AUTOFIX means bounded repair under the repository retry budget; no self-certified PASS.</li>
+          <li>&bull; Skill does not need to know which Agent called it.</li>
+          <li>&bull; Instruction, Docs and Tool do not depend on a specific Agent.</li>
+          <li>&bull; Keep .agent.md focused on role, trigger, workflow, outputs, handoff and stop conditions.</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <div class="card-dot slate"></div>
-          <h3>Repository ownership</h3>
+          <div class="card-dot amber"></div>
+          <h3>ADLC and specialists</h3>
         </div>
         <ul>
-          <li>&bull; .github/agents/** = outcome ownership; .github/instructions/** = mandatory constraints; .github/skills/** = reusable procedures.</li>
-          <li>&bull; docs/** = durable engineering/domain knowledge; src/** = runtime implementation; tests/** = executable verification.</li>
-          <li>&bull; MCP/scripts/CLIs/connectors = tool capability; generated architecture HTML = presentation output only.</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot cyan"></div>
-          <h3>Runtime migration boundary</h3>
-        </div>
-        <ul>
-          <li>&bull; This Harness refactor does not big-bang move legacy runtime packages.</li>
-          <li>&bull; src/cherrystock/** remains the target layered runtime package; legacy modules migrate feature-by-feature under the architecture backlog.</li>
+          <li>&bull; BusinessAnalyst → SolutionArchitect → GeneralCoding/domain owner → TestEngineer.</li>
+          <li>&bull; Indicator Management → indicator-onboarding → DuckDB/Python/GitHub → TestEngineer.</li>
+          <li>&bull; Chart Agent → chart-authoring → Flint; GeneralCoding only for production integration.</li>
         </ul>
       </div>
     </div>
@@ -15297,7 +15375,7 @@ html[data-theme="light"] #cherrystock-archify-font-picker select {
 </script>
 <script id="cherrystock-agent-passport-script">
 (function () {
-  var details = {"router":{"title":"Default Repository Agent — orchestration and routing","items":[{"label":"Reads","text":".github/copilot-instructions.md, .github/agents/CherryMon.agent.md, docs/00_HOME.md and the user request."},{"label":"Runs","text":"Triage → classify intent → select authoritative owner → preserve upstream gate/acceptance criteria → handoff → consolidate result."},{"label":"Writes","text":"Normally no duplicate domain artifact; durable outputs belong to the specialist owner."},{"label":"Routes","text":"Requirement ambiguity → BusinessAnalyst; architecture/design → SolutionArchitect; implementation → GeneralCoding/domain owner; validation → TestEngineer."}]},"cherrymon":{"title":"CherryMon.agent.md — shared architecture constitution","items":[{"label":"Reads","text":"Repository-wide module, dependency, data-contract and Source-of-Truth conventions used by routed agents."},{"label":"Runs","text":"Acts as mandatory shared context rather than a normal sequential delivery stage."},{"label":"Defines","text":"Module responsibilities, dependency direction, database naming/contracts, knowledge routing and stable engineering boundaries."},{"label":"Feeds","text":"BusinessAnalyst, SolutionArchitect, GeneralCoding, TestEngineer and specialist domain agents."}]},"ba":{"title":"BusinessAnalyst.agent.md — requirement readiness","items":[{"label":"Reads","text":"governance, CherryMon, docs/00_HOME.md, existing REQ-*, relevant architecture/ADR and domain constraints."},{"label":"Runs","text":"Frame → Define → Make Testable → Decompose/Route."},{"label":"Writes","text":"docs/backlog/requirements/REQ-*.md using REQUIREMENT_TEMPLATE.md."},{"label":"Handoff","text":"READY_FOR_DESIGN → SolutionArchitect; READY_FOR_IMPLEMENTATION → GeneralCoding/domain owner; ambiguity stays with BA."}]},"sa":{"title":"SolutionArchitect.agent.md — design readiness","items":[{"label":"Reads","text":"ready REQ-*, docs/architecture/**, docs/adr/**, matching domain instructions, current source/tests and CherryMon constraints."},{"label":"Runs","text":"Context → Current State → Proposed Design → Decision Check → Archify synchronization."},{"label":"Writes","text":"docs/architecture/**, docs/adr/** when required, Archify typed source and synchronized generated HTML."},{"label":"Handoff","text":"APPROVED_FOR_IMPLEMENTATION → GeneralCoding/domain owner only after required design artifacts and validation are synchronized."}]},"chart":{"title":"Chart.agent.md — visualization decision and Flint authoring","items":[{"label":"Reads","text":".github/instructions/chart.instructions.md, .github/skills/chart-authoring/SKILL.md, docs/architecture/Chart_Architecture.md and the actual data contract."},{"label":"Runs","text":"Understand → Recommend → Map to Flint → Transform if needed → Validate → Render/Compile → Sanity Check."},{"label":"Writes","text":"Chart recommendation/spec/render artifacts and chart-related durable documentation when needed."},{"label":"Handoff","text":"Advisory/spec/render may return to User; production integration → GeneralCoding → TestEngineer."}]},"dev":{"title":"GeneralCoding.agent.md — implementation readiness","items":[{"label":"Reads","text":"ready requirement/design, CherryMon, matching .github/instructions/*.instructions.md, relevant docs, source, scripts and nearest tests."},{"label":"Runs","text":"Confirm → Inspect → Implement → Update Materials → Developer Verification → Handoff."},{"label":"Writes","text":"src/**, scripts/**, implementation-side tests when in scope, affected canonical docs/runbooks and ChangeRequest trace when applicable."},{"label":"Handoff","text":"IMPLEMENTED_PENDING_VALIDATION → TestEngineer. FAIL/REGRESSION returns from TestEngineer through the bounded AUTOFIX loop; fix the defect and resubmit the same scope for independent validation."}]},"test":{"title":"TestEngineer.agent.md — independent validation","items":[{"label":"Reads","text":".github/instructions/testing.instructions.md, requirement/acceptance criteria, approved architecture/domain contracts, implementation handoff, tests and runbooks."},{"label":"Runs","text":"Define → Prepare → Execute → Evaluate → classify PASS / FAIL / BLOCKED / REGRESSION."},{"label":"Writes","text":"Independent test evidence, tests/** when validation assets belong here, and durable docs/runbook/** evidence when appropriate."},{"label":"Handoff","text":"PASS → verdict/User; FAIL or REGRESSION caused by implementation → GeneralCoding AUTOFIX loop; requirement gap → BA; design gap → SA; blocker → Router/User."}]},"indicator":{"title":"Indicator_Management.agent.md — specialist indicator lifecycle","items":[{"label":"Reads","text":"docs/architecture/Indicator_Engine.md, .github/instructions/indicators.instructions.md, calcEngine source, indicator metadata/config and CherryMon MCP evidence."},{"label":"Runs","text":"Discover → PHASE 1 metadata transaction → PHASE 2 targeted historical backfill → PHASE 3 validation/handoff."},{"label":"Writes","text":"Indicator metadata/config lifecycle and scoped cal_indicator_values/backfill behavior through the approved implementation path."},{"label":"Handoff","text":"IMPLEMENTED_PENDING_VALIDATION with ConfigIds/evidence → TestEngineer; architecture-impacting change routes through SolutionArchitect."}]},"rework":{"title":"Feedback Router — failed-outcome classification","items":[{"label":"Reads","text":"TestEngineer verdict/evidence plus upstream requirement/design/implementation ownership."},{"label":"Runs","text":"Classify the failed outcome instead of sending every failure to a generic repair owner."},{"label":"Routes","text":"Requirement gap → BA; design/contract gap → SA; implementation defect/regression → GeneralCoding or authoritative domain owner; external blocker → User/dependency owner."},{"label":"Autofix","text":"For implementation FAIL/REGRESSION, GeneralCoding fixes the bounded defect and TestEngineer independently reruns validation until PASS or a different owner/blocker is identified."}]}};
+  var details = {"router":{"title":"Default Repository Agent — orchestration and routing","items":[{"label":"Reads","text":".github/copilot-instructions.md, .github/agents/CherryMon.agent.md, docs/00_HOME.md and the user request."},{"label":"Runs","text":"Triage → classify intent → select authoritative owner → preserve upstream gate/acceptance criteria → handoff → consolidate result."},{"label":"Writes","text":"Normally no duplicate domain artifact; durable outputs belong to the specialist owner."},{"label":"Routes","text":"Requirement ambiguity → BusinessAnalyst; architecture/design → SolutionArchitect; implementation → GeneralCoding/domain owner; validation → TestEngineer."}]},"ba":{"title":"BusinessAnalyst.agent.md — requirement readiness","items":[{"label":"Reads","text":"governance, CherryMon, docs/00_HOME.md, existing REQ-*, relevant architecture/ADR and domain constraints."},{"label":"Runs","text":"Frame → Define → Make Testable → Decompose/Route."},{"label":"Writes","text":"docs/backlog/requirements/REQ-*.md using REQUIREMENT_TEMPLATE.md."},{"label":"Handoff","text":"READY_FOR_DESIGN → SolutionArchitect; READY_FOR_IMPLEMENTATION → GeneralCoding/domain owner; ambiguity stays with BA."}]},"sa":{"title":"SolutionArchitect.agent.md — design readiness","items":[{"label":"Reads","text":"ready REQ-*, docs/architecture/**, docs/adr/**, matching domain instructions, current source/tests and CherryMon constraints."},{"label":"Runs","text":"Context → Current State → Proposed Design → Decision Check → Archify synchronization."},{"label":"Writes","text":"docs/architecture/**, docs/adr/** when required, Archify typed source and synchronized generated HTML."},{"label":"Handoff","text":"APPROVED_FOR_IMPLEMENTATION → GeneralCoding/domain owner only after required design artifacts and validation are synchronized."}]},"chart":{"title":"Chart.agent.md — visualization decision and Flint authoring","items":[{"label":"Reads","text":".github/instructions/chart.instructions.md, .github/skills/chart-authoring/SKILL.md, docs/architecture/Chart_Architecture.md and the actual data contract."},{"label":"Runs","text":"Understand → Recommend → Map to Flint → Transform if needed → Validate → Render/Compile → Sanity Check."},{"label":"Writes","text":"Chart recommendation/spec/render artifacts and chart-related durable documentation when needed."},{"label":"Handoff","text":"Advisory/spec/render may return to User; production integration → GeneralCoding → TestEngineer."}]},"dev":{"title":"GeneralCoding.agent.md — implementation readiness","items":[{"label":"Reads","text":"ready requirement/design, CherryMon, matching .github/instructions/*.instructions.md, relevant docs, source, scripts and nearest tests."},{"label":"Runs","text":"Confirm → Inspect → Implement → Update Materials → Developer Verification → Handoff."},{"label":"Writes","text":"src/**, scripts/**, implementation-side tests when in scope, affected canonical docs/runbooks and ChangeRequest trace when applicable."},{"label":"Handoff","text":"IMPLEMENTED_PENDING_VALIDATION → TestEngineer. FAIL/REGRESSION returns from TestEngineer through the bounded AUTOFIX loop; fix the defect and resubmit the same scope for independent validation."}]},"test":{"title":"TestEngineer.agent.md — independent validation","items":[{"label":"Reads","text":".github/instructions/testing.instructions.md, requirement/acceptance criteria, approved architecture/domain contracts, implementation handoff, tests and runbooks."},{"label":"Runs","text":"Define → Prepare → Execute → Evaluate → classify PASS / FAIL / BLOCKED / REGRESSION."},{"label":"Writes","text":"Independent test evidence, tests/** when validation assets belong here, and durable docs/runbook/** evidence when appropriate."},{"label":"Handoff","text":"PASS → verdict/User; FAIL or REGRESSION caused by implementation → GeneralCoding AUTOFIX loop; requirement gap → BA; design gap → SA; blocker → Router/User."}]},"indicator":{"title":"Indicator_Management.agent.md — specialist indicator lifecycle","items":[{"label":"Reads","text":"docs/architecture/Indicator_Engine.md, .github/instructions/indicators.instructions.md, calcEngine source, indicator metadata/config and CherryMon MCP evidence."},{"label":"Runs","text":"Discover → PHASE 1 metadata transaction → PHASE 2 targeted historical backfill → PHASE 3 validation/handoff."},{"label":"Writes","text":"Indicator metadata/config lifecycle and scoped cal_indicator_values/backfill behavior through the approved implementation path."},{"label":"Handoff","text":"IMPLEMENTED_PENDING_VALIDATION with ConfigIds/evidence → TestEngineer; architecture-impacting change routes through SolutionArchitect."}]},"governance_model":{"title":"Governance — global routing policy","items":[{"label":"Owns","text":"Repository-wide routing and precedence, not a domain implementation outcome."},{"label":"Routes","text":"User intent to the authoritative Agent that owns the required outcome."},{"label":"Rule","text":"Governance does not absorb Skill procedures, domain knowledge or Tool syntax."}]},"agent_model":{"title":"Agent = WHO — outcome owner","items":[{"label":"Owns","text":"The engineering outcome and readiness/handoff decision for its role."},{"label":"Reads","text":"Mandatory Instructions and the smallest relevant Docs set."},{"label":"Invokes","text":"A reusable Skill when a specialist procedure applies; evaluates resulting evidence before handoff or completion."}]},"instruction_model":{"title":"Instruction = RULES — mandatory constraints","items":[{"label":"Owns","text":"Non-optional domain constraints and repository rules."},{"label":"Applies to","text":"Agents and Skills operating in the matching scope."},{"label":"Does not own","text":"Step-by-step procedures, architecture explanation or tool capability."}]},"docs_model":{"title":"Docs = KNOWLEDGE — durable engineering context","items":[{"label":"Owns","text":"Current architecture, ADR rationale, domain/reference knowledge and durable design context."},{"label":"Read by","text":"Agents and Skills through docs/00_HOME.md and the smallest relevant document set."},{"label":"Does not own","text":"Runtime orchestration or mandatory procedural enforcement."}]},"skill_model":{"title":"Skill = HOW — reusable specialist procedure","items":[{"label":"Owns","text":"Repeatable procedure for a specialized task."},{"label":"Reads","text":"Matching Instructions and relevant Docs; remains reusable across authorized callers."},{"label":"Uses","text":"Tool/MCP/script/API capability to perform the procedure; does not own the final Agent outcome."}]},"tool_model":{"title":"Tool = CAPABILITY — execution surface","items":[{"label":"Provides","text":"MCP, CLI, script, API, GitHub, DuckDB, Archify, Flint or similar execution capability."},{"label":"Returns","text":"Artifacts, evidence or effects to the invoking procedure/Agent."},{"label":"Does not own","text":"Architecture decisions, business outcomes or final readiness gates."}]}};
   var chip = document.getElementById('focus-chip');
   var focusId = document.getElementById('focus-id');
   if (!chip || !focusId) return;
