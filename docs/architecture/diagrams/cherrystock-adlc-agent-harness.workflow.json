@@ -8,11 +8,10 @@
     "quality_profile": "showcase",
     "views": [
       {"id": "core-adlc", "label": "Core ADLC", "focus": ["user_request", "router", "cherrymon", "ba", "sa", "dev", "test", "verdict", "final"], "note": "Canonical material-change path: route → requirement → design → implementation → independent validation."},
-      {"id": "autofix-loop", "label": "Dev ↔ Test autofix", "focus": ["dev", "test"], "note": "Implementation FAIL/REGRESSION returns from TestEngineer to GeneralCoding for bounded autofix, then the same scope is independently revalidated until PASS or reclassified."},
+      {"id": "autofix-loop", "label": "Dev ↔ Test autofix", "focus": ["dev", "test"], "note": "Implementation FAIL/REGRESSION returns to GeneralCoding for bounded autofix, then TestEngineer independently retests the same scope."},
       {"id": "indicator-lifecycle", "label": "Indicator lifecycle", "focus": ["indicator_context", "indicator", "indicator_ready", "test", "verdict"], "note": "Indicator_Management owns metadata/backfill lifecycle and hands IMPLEMENTED_PENDING_VALIDATION to TestEngineer."},
       {"id": "chart-authoring", "label": "Chart / Flint", "focus": ["chart_context", "chart", "dev", "test", "verdict"], "note": "Chart owns recommendation/spec/render; production integration flows to GeneralCoding and then TestEngineer."},
-      {"id": "repository-contract", "label": "Files & folders", "focus": ["governance_material", "req_material", "design_material", "domain_material", "impl_material", "test_material", "generated_artifact"], "note": "Stage-aligned repository materials show where each ADLC outcome and execution policy lives."},
-      {"id": "feedback-routing", "label": "Failure routing", "focus": ["rework", "ba", "sa", "indicator", "chart", "dev", "test", "verdict"], "note": "FAIL/REGRESSION returns to the owner of the failed outcome; implementation defects use the explicit GeneralCoding ↔ TestEngineer autofix loop."}
+      {"id": "repository-contract", "label": "Files & folders", "focus": ["governance_material", "req_material", "design_material", "domain_material", "impl_material", "test_material", "generated_artifact"], "note": "Stage-aligned repository materials show where each ADLC outcome and execution policy lives."}
     ],
     "output": "docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html"
   },
