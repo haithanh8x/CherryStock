@@ -50,7 +50,7 @@ function Wait-DrawioOutputFile {
                     $stableReads = 0
                 }
 
-                # Require two consecutive stable reads so we do not copy a file
+                # Require two consecutive stable reads so we do not consume a file
                 # while Electron is still flushing it to disk.
                 if ($stableReads -ge 2) {
                     return $item
@@ -62,6 +62,44 @@ function Wait-DrawioOutputFile {
     }
 
     return $null
+}
+
+function Test-DrawioPngFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $false
+    }
+
+    $item = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $item -or $item.Length -lt 8) {
+        return $false
+    }
+
+    $expected = [byte[]](0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+    $buffer = New-Object byte[] 8
+    $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try {
+        $read = $stream.Read($buffer, 0, 8)
+    }
+    finally {
+        $stream.Dispose()
+    }
+
+    if ($read -ne 8) {
+        return $false
+    }
+
+    for ($i = 0; $i -lt 8; $i++) {
+        if ($buffer[$i] -ne $expected[$i]) {
+            return $false
+        }
+    }
+
+    return $true
 }
 
 function Invoke-DrawioPngExport {
@@ -103,8 +141,8 @@ function Invoke-DrawioPngExport {
     # draw.io Desktop is an Electron single-instance application. Its source
     # calls app.requestSingleInstanceLock() and a second instance exits cleanly
     # without performing CLI export. A unique Chromium user-data-dir gives this
-    # export process its own singleton namespace and therefore makes CLI export
-    # reliable even while the normal draw.io GUI is already open.
+    # export process its own singleton namespace and makes CLI export reliable
+    # even while the normal draw.io GUI is already open.
     $profileDir = Join-Path ([System.IO.Path]::GetTempPath()) ("cherrystock-drawio-profile-" + [Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
 
@@ -145,11 +183,12 @@ function Invoke-DrawioPngExport {
 
         $output = Wait-DrawioOutputFile -Path $OutputPath -TimeoutSeconds $TimeoutSeconds
         if (-not $output) {
-            $message = ("Draw.io returned exit code 0 but no stable PNG was created within {0}s. " +
-                        "The export was already isolated from any running GUI instance via --user-data-dir. " +
-                        "Executable='{1}', input='{2}', output='{3}', profile='{4}'.") -f 
-                        $TimeoutSeconds, $DrawioExe, $resolvedInput, $OutputPath, $profileDir
+            $message = ("Draw.io returned exit code 0 but no stable PNG was created within {0}s. The export was isolated from any running GUI instance via --user-data-dir. Executable='{1}', input='{2}', output='{3}', profile='{4}'." -f $TimeoutSeconds, $DrawioExe, $resolvedInput, $OutputPath, $profileDir)
             throw $message
+        }
+
+        if (-not (Test-DrawioPngFile -Path $OutputPath)) {
+            throw "Draw.io created an output file, but it does not have a valid PNG signature: $OutputPath"
         }
 
         return [PSCustomObject]@{
@@ -159,10 +198,10 @@ function Invoke-DrawioPngExport {
             DrawioExe  = $DrawioExe
             InputPath  = $resolvedInput
             ProfileDir = $profileDir
+            PngValid   = $true
         }
     }
     finally {
-        # The export process has exited and the output is stable at this point.
         # Remove only the dedicated temporary profile created by this function.
         if (Test-Path -LiteralPath $profileDir) {
             Remove-Item -LiteralPath $profileDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -170,4 +209,4 @@ function Invoke-DrawioPngExport {
     }
 }
 
-Export-ModuleMember -Function Find-DrawioExecutable, Wait-DrawioOutputFile, Invoke-DrawioPngExport
+Export-ModuleMember -Function Find-DrawioExecutable, Wait-DrawioOutputFile, Test-DrawioPngFile, Invoke-DrawioPngExport
