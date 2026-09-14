@@ -13,20 +13,6 @@ Pinned ref: 7aa92f73819766eb914fffac66762cf2adb5d828
 License: MIT
 ```
 
-## Reason for Change
-
-CherryStock distinguishes:
-
-```text
-Agent        = owns outcome
-Skill        = owns procedure
-Instruction  = owns mandatory rules
-Docs         = own durable knowledge
-Tool         = provides execution capability
-```
-
-A Draw.io Skill adds an editable-diagram procedure for architecture/workflow/data-flow/UML/ERD artifacts and provides a concrete example of the Skill → Tool relationship in the Harness.
-
 ## Added Artifacts
 
 ```text
@@ -42,7 +28,7 @@ docs/runbook/Drawio_Skill.md
 
 ## Architecture Boundary
 
-Draw.io does **not** replace the existing architecture Source of Truth or Solution Architect ownership.
+Draw.io does **not** replace the architecture Source of Truth or Solution Architect ownership.
 
 ```text
 SolutionArchitect Agent
@@ -54,9 +40,7 @@ Upstream drawio-skill / Draw.io CLI
 .drawio artifact
 ```
 
-Canonical architecture meaning remains in `docs/architecture/**` and `docs/adr/**`.
-
-The mandatory Archify synchronization rule in `SolutionArchitect.agent.md` remains unchanged. Draw.io is supplemental, especially for explicit Draw.io/diagrams.net requests and editable review/workshop artifacts.
+Canonical architecture meaning remains in `docs/architecture/**` and `docs/adr/**`. Existing mandatory Archify synchronization rules remain unchanged.
 
 ## Five-Component Demo Semantics
 
@@ -72,33 +56,76 @@ Tool        → Agent : returns evidence / result
 
 ## Native Export Defect Found During Local Validation
 
-### Symptom
-
-The upstream structural validator passed, but Draw.io Desktop native export repeatedly appeared to return success before the expected PNG existed.
-
-Observed pattern:
+### Observed environment
 
 ```text
-0 error(s), 0 warning(s)
-PASS: structural validation
-native invocation appears complete
-PNG: missing at check time
-Draw.io console output appears later
+OS: Windows
+Draw.io Desktop file version: 28.1.2
+Draw.io Desktop product version: 28.1.2.0
 ```
 
-### Root cause refinement
+### Symptom
 
-The first hypothesis was Draw.io's Electron single-instance lock. That remains a real compatibility concern, but subsequent local evidence showed it was **not sufficient to explain the failure** because a minimal isolated-profile probe still reproduced the problem.
+Structural validation passed, but native export printed:
 
-The decisive observation was that Draw.io console output appeared **after** the PowerShell script had already thrown and returned the prompt. `draw.io.exe` is a Windows GUI/Electron executable, so using PowerShell's call operator:
-
-```powershell
-& $drawioExe ...
+```text
+Error: input file/directory not found
 ```
 
-did not provide a reliable synchronous process boundary for export. CherryStock was checking the output before the native GUI process had definitively completed.
+for a `.drawio` file that had already been verified to exist.
 
-### Corrected fix
+The process still returned exit code 0 and produced no PNG.
+
+### Exact root cause
+
+The root cause was verified against the tagged upstream implementation:
+
+```text
+jgraph/drawio-desktop
+Tag: v28.1.2
+File: src/main/electron.js
+```
+
+Draw.io 28.1.2 uses `commander`, registers a fixed set of draw.io CLI options, enables:
+
+```text
+.allowUnknownOption()
+```
+
+and later treats:
+
+```text
+program.args[0]
+```
+
+as the input file path before calling `fs.statSync(paths[0])`.
+
+The earlier CherryStock helper incorrectly mixed Electron/Chromium flags into Draw.io argv:
+
+```text
+--disable-update
+--user-data-dir=...
+--disable-gpu
+```
+
+Those are not registered Draw.io CLI options in v28.1.2. With the 28.x commander parser, an unknown token can leak into `program.args` and become `paths[0]`. Draw.io then tries to stat that token instead of the actual `.drawio` file and reports:
+
+```text
+Error: input file/directory not found
+```
+
+This explains why all three earlier strategies failed identically despite the real input path existing.
+
+### Important correction to previous hypotheses
+
+Two earlier hypotheses were useful diagnostics but were not the final root cause:
+
+1. **single-instance lock** — Draw.io does use `app.requestSingleInstanceLock()`, but in v28.1.2 the `options.export` branch is handled before the normal single-instance application path;
+2. **PowerShell GUI timing** — native process lifetime still needs bounded synchronous handling, but timing does not explain the deterministic `input file/directory not found` emitted by v28.1.2.
+
+The final fix is therefore version-compatible argv construction, plus reliable process execution and output integrity checks.
+
+## Corrected Native Export Contract
 
 Native CLI ownership is centralized in:
 
@@ -106,56 +133,68 @@ Native CLI ownership is centralized in:
 scripts/lib/DrawioCli.psm1
 ```
 
-The helper now uses:
+CherryStock now passes only options registered by Draw.io 28.x:
 
 ```text
-Start-Process -PassThru
-        ↓
-Process.WaitForExit(timeout)
-        ↓
-short output-stability check
-        ↓
-PNG signature validation
+--export
+--format png
+--output <file.png>
+[--transparent]
+[--width N]
+<input.drawio>
 ```
 
-It no longer trusts `$LASTEXITCODE` from a GUI application invocation.
-
-The helper also handles Draw.io/Electron compatibility through deterministic strategies:
+Update checks are disabled using the environment variable supported by Draw.io 28.1.2:
 
 ```text
-1. documented-cli
-2. isolated-profile
-3. isolated-profile-disable-gpu
+DRAWIO_DISABLE_UPDATE=true
 ```
 
-If no normal Draw.io GUI process is detected, the official documented CLI form is attempted first for maximum version compatibility. If needed, later attempts use a unique `--user-data-dir`; the last attempt adds `--disable-gpu`.
+The following are forbidden in Draw.io 28.x export argv:
 
-### Additional guards
+```text
+--disable-update
+--user-data-dir=...
+--disable-gpu
+```
 
-- Draw.io executable file/product version is reported in native diagnostics.
-- Minimal probe uses `shadow="0"` because Draw.io Desktop has a known Windows CLI defect where `mxGraphModel shadow="1"` can return exit code `0` without creating PNG output.
-- Final output must pass the PNG eight-byte signature check.
-- A dedicated regression test compiles a delayed fake GUI exporter and verifies the helper waits for process completion:
+The helper additionally:
+
+1. resolves the executable deterministically;
+2. reports file/product version;
+3. executes with `System.Diagnostics.Process` and `UseShellExecute=false`;
+4. captures stdout/stderr;
+5. waits with a bounded timeout;
+6. checks output stability;
+7. validates the eight-byte PNG signature;
+8. returns structured export evidence.
+
+## Regression Coverage
+
+Focused test:
 
 ```text
 tests/test_drawio_cli_helper.ps1
 ```
 
-## Validation
+The fake exporter deliberately:
 
-### Repository/demo structure
+- sleeps before producing output, proving CherryStock waits for native completion;
+- exits with failure if argv contains `--disable-update`, `--user-data-dir` or `--disable-gpu`;
+- verifies that an input file is actually present;
+- creates a PNG signature only when the command contract is valid.
 
-- XML parses successfully.
-- all edge source/target IDs resolve;
-- all vertices have geometry;
-- all edges have relative `mxGeometry`;
-- stable semantic IDs are used;
-- no reserved `0`/`1` IDs are reused for vertices/edges;
-- demo `mxGraphModel` uses `shadow="0"`.
+Expected test evidence:
 
-### Local validation contract
+```text
+PASS: DrawioCli waits for delayed process completion
+PASS: DrawioCli argv contains only draw.io-registered options
+Strategy: registered-cli-options
+```
 
-Run in this order:
+## Demo Validation Contract
+
+Run:
 
 ```powershell
 git pull
@@ -163,26 +202,30 @@ git pull
 .\scripts\run_drawio_harness_demo.ps1
 ```
 
-Optional reinstall verification:
-
-```powershell
-.\scripts\install_drawio_skill.ps1
-```
-
-Expected terminal evidence:
+Expected:
 
 ```text
-PASS: DrawioCli helper waits for delayed GUI process completion
 PASS: structural validation
-PASS: native CLI probe (... strategy=...)
+PASS: native CLI probe (... strategy=registered-cli-options ...)
 PASS: demo native PNG export
 ```
 
-The demo output is:
+Final demo output:
 
 ```text
 docs/architecture/generated/Agent_Harness_Five_Components.png
 ```
+
+## Repository Validation Already Completed
+
+- demo XML parses successfully;
+- all edge source/target IDs resolve;
+- all vertices have geometry;
+- all edges have relative `mxGeometry`;
+- stable semantic IDs are used;
+- no reserved `0`/`1` IDs are reused for vertices/edges;
+- demo uses `mxGraphModel shadow="0"`;
+- upstream structural validator reported `0 error(s), 0 warning(s)` on the user's local machine.
 
 ## Compatibility
 
@@ -191,8 +234,8 @@ Backward compatible.
 - Existing agents remain unchanged.
 - Existing Archify workflow remains unchanged.
 - Existing Chart/Flint skill remains unchanged.
-- The new skill is additive and task-scoped.
-- Native Draw.io execution is now centralized instead of duplicated across scripts.
+- Draw.io support remains additive and task-scoped.
+- Native Draw.io execution is centralized and tested against the observed 28.1.2 parser behavior.
 
 ## Rollback
 
@@ -219,4 +262,4 @@ Local upstream runtime can then be deleted from:
 
 **Not required for this change.**
 
-Reason: this is an additive specialist Skill/tool integration and does not alter the canonical runtime architecture, data model, Source of Truth, Agent ownership, or the existing mandatory Archify design gate. If Draw.io later replaces Archify or becomes a mandatory architecture lifecycle contract, that change should require an ADR.
+Reason: this is an additive specialist Skill/tool integration and does not alter canonical runtime architecture, data model, Source of Truth, Agent ownership, or the mandatory Archify design gate.
