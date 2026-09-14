@@ -191,7 +191,7 @@ Separate read-oriented market/query capabilities from privileged write/admin cap
 ## CS-ARCH-005 — Migrate domain knowledge out of `.github/agents/Instructions`
 
 **Priority:** P1  
-**Status:** TODO
+**Status:** DONE
 
 ### Problem
 
@@ -235,12 +235,22 @@ Keep `.github/agents/**` focused on agent role, workflow and routing instruction
 
 None.
 
+### Completion Evidence
+
+- `docs/domain/market/Stock_Terms.md`
+- `docs/domain/strategy/Stock_Strategies.md`
+- `docs/reference/Indicator_Engine_Legacy_Reference.md`
+- `docs/architecture/Indicator_Engine.md`
+- `.github/instructions/indicators.instructions.md`
+- `.github/skills/indicator-onboarding/SKILL.md`
+- legacy `.github/agents/Instructions/**` ownership removed.
+
 ---
 
 ## CS-ARCH-006 — Eliminate legacy project-structure documentation
 
 **Priority:** P1  
-**Status:** TODO
+**Status:** DONE
 
 ### Problem
 
@@ -262,6 +272,13 @@ Replace it with canonical architecture documentation under `docs/architecture/**
 ### Dependencies
 
 - CS-ARCH-001.
+
+### Completion Evidence
+
+- `docs/architecture/CherryStock_High_Level.md`
+- `docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md`
+- `docs/00_HOME.md`
+- `.github/agents/Instructions/project_structured.md` removed from the repository.
 
 ---
 
@@ -408,8 +425,8 @@ P0
 CS-ARCH-010 Repository hygiene
 
 P1
-CS-ARCH-005 Knowledge migration
-CS-ARCH-006 Legacy documentation cleanup
+CS-ARCH-005 Knowledge migration [DONE]
+CS-ARCH-006 Legacy documentation cleanup [DONE]
 CS-ARCH-001 Canonical runtime package
 CS-ARCH-002 Application dependency inversion
 CS-ARCH-003 LLM provider layer
