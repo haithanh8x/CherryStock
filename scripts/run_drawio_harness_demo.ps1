@@ -61,62 +61,42 @@ if (-not $drawioExe) {
 }
 
 New-Item -ItemType Directory -Path $generatedDir -Force | Out-Null
-
-# draw.io Desktop CLI behavior for -o differs across Windows builds. To avoid
-# relying on whether -o is interpreted as a file path or a directory, always
-# export into a temporary directory, then detect the actual PNG and move/rename
-# it to CherryStock's deterministic generated-artifact path.
 $tempExportDir = Join-Path ([System.IO.Path]::GetTempPath()) ("cherrystock-drawio-export-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tempExportDir -Force | Out-Null
+$tempPng = Join-Path $tempExportDir "agent-harness-five-components.png"
+
+Write-Host "[2/2] Exporting draft PNG with $drawioExe"
+Write-Host "Temporary PNG target: $tempPng"
 
 try {
-    Write-Host "[2/2] Exporting draft PNG with $drawioExe"
-    Write-Host "Temporary export directory: $tempExportDir"
+    # Use explicit long-form CLI switches and an output FILE, not an output directory.
+    # This is the most consistent syntax across recent draw.io Desktop Windows builds.
+    & $drawioExe --export --format png --output $tempPng $diagramPath
+    $exportExitCode = $LASTEXITCODE
 
-    & $drawioExe -x -f png --width 2000 -o $tempExportDir $diagramPath
-    $drawioExitCode = $LASTEXITCODE
-
-    if ($drawioExitCode -ne 0) {
-        throw "Draw.io export failed with exit code $drawioExitCode"
+    if ($exportExitCode -ne 0) {
+        throw "Draw.io export failed with exit code $exportExitCode"
     }
 
-    $exportedPngs = @(Get-ChildItem -Path $tempExportDir -File -Filter "*.png" -Recurse -ErrorAction SilentlyContinue)
+    if (-not (Test-Path $tempPng)) {
+        $nearSource = [System.IO.Path]::ChangeExtension($diagramPath, ".png")
+        $nearSourceDrawioPng = "$diagramPath.png"
 
-    if ($exportedPngs.Count -eq 0) {
-        # Some Windows builds may still place the generated PNG beside the
-        # source despite -o. Check the source directory as a compatibility
-        # fallback and only consider files newer than the start of this run.
-        $sourceDir = Split-Path -Parent $diagramPath
-        $sourceStem = [System.IO.Path]::GetFileNameWithoutExtension($diagramPath)
-        $fallbackCandidates = @(
-            (Join-Path $sourceDir ($sourceStem + ".png")),
-            (Join-Path $sourceDir ($sourceStem + ".drawio.png"))
-        ) | Where-Object { Test-Path $_ }
-
-        foreach ($candidate in $fallbackCandidates) {
-            $exportedPngs += Get-Item $candidate
+        if (Test-Path $nearSource) {
+            $tempPng = $nearSource
+        }
+        elseif (Test-Path $nearSourceDrawioPng) {
+            $tempPng = $nearSourceDrawioPng
+        }
+        else {
+            throw "Draw.io returned exit code 0 but did not create the requested PNG '$tempPng'. Run '& `"$drawioExe`" --help' and '& `"$drawioExe`" --version' locally and capture their output if this persists."
         }
     }
 
-    if ($exportedPngs.Count -eq 0) {
-        throw "Draw.io returned success but no PNG was found in '$tempExportDir' or beside the source diagram. Run '& `"$drawioExe`" --help' locally to inspect this installed CLI's export syntax."
-    }
-
-    if ($exportedPngs.Count -gt 1) {
-        $names = ($exportedPngs | ForEach-Object { $_.FullName }) -join "; "
-        Write-Warning "Multiple PNG candidates were produced; using the newest one. Candidates: $names"
-    }
-
-    $actualPng = $exportedPngs | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-
-    if (Test-Path $pngPath) {
-        Remove-Item $pngPath -Force
-    }
-
-    Move-Item -Path $actualPng.FullName -Destination $pngPath -Force
+    Copy-Item -Path $tempPng -Destination $pngPath -Force
 
     if (-not (Test-Path $pngPath)) {
-        throw "PNG candidate was detected but could not be moved to: $pngPath"
+        throw "PNG existed after export but could not be copied to: $pngPath"
     }
 
     Write-Host "PASS: PNG generated"
