@@ -78,7 +78,7 @@
     {"id": "ba-sa", "from": "ba", "to": "sa", "label": "READY_FOR_DESIGN", "variant": "emphasis"},
     {"id": "sa-dev", "from": "sa", "to": "dev", "label": "APPROVED_FOR_IMPLEMENTATION", "variant": "emphasis"},
     {"id": "dev-test", "from": "dev", "to": "test", "label": "IMPLEMENTED_PENDING_VALIDATION", "variant": "emphasis"},
-    {"id": "test-dev-autofix", "from": "test", "to": "dev", "label": "FAIL / REGRESSION → AUTOFIX", "variant": "dashed", "role": "return", "route": "bottom-channel"},
+    {"id": "test-dev-autofix", "from": "test", "to": "dev", "label": "FAIL / REGRESSION → AUTOFIX", "variant": "dashed", "role": "return"},
     {"id": "test-verdict", "from": "test", "to": "verdict", "label": "evidence-backed", "variant": "security"},
     {"id": "pass-final", "from": "verdict", "to": "final", "label": "PASS", "variant": "emphasis"},
     {"id": "chart-context-agent", "from": "chart_context", "to": "chart", "label": "chart context", "variant": "emphasis"},
