@@ -4,11 +4,15 @@ on:
   push:
     paths:
       - "scripts/lib/DrawioCli.psm1"
+      - "scripts/install_drawio_skill.ps1"
+      - "scripts/run_drawio_harness_demo.ps1"
       - "tests/test_drawio_cli_helper.ps1"
       - ".github/workflows/test-drawio-cli-helper.yml"
   pull_request:
     paths:
       - "scripts/lib/DrawioCli.psm1"
+      - "scripts/install_drawio_skill.ps1"
+      - "scripts/run_drawio_harness_demo.ps1"
       - "tests/test_drawio_cli_helper.ps1"
       - ".github/workflows/test-drawio-cli-helper.yml"
   workflow_dispatch:
@@ -22,6 +26,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Parse CherryStock Draw.io PowerShell
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = @(
+            'scripts/lib/DrawioCli.psm1',
+            'scripts/install_drawio_skill.ps1',
+            'scripts/run_drawio_harness_demo.ps1',
+            'tests/test_drawio_cli_helper.ps1'
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file),
+              [ref]$tokens,
+              [ref]$errors
+            )
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$file: $($_.Message)" }
+              throw "PowerShell parse failed: $file"
+            }
+            Write-Host "PASS syntax: $file"
+          }
 
       - name: Run Draw.io CLI helper regression test
         shell: pwsh
