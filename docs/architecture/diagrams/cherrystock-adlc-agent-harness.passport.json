@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "diagram": "CherryStock_ADLC_Agent_Harness",
+  "purpose": "CherryStock-specific execution detail rendered inside the Archify Semantic Passport popup. This sidecar enriches presentation only; canonical engineering meaning remains in docs/architecture/agent-harness/README.md and AGENT_EXECUTION_FLOW.md.",
+  "nodes": {
+    "router": {
+      "title": "Default Repository Agent — orchestration and routing",
+      "items": [
+        {"label": "Reads", "text": ".github/copilot-instructions.md, .github/agents/CherryMon.agent.md, docs/00_HOME.md and the user request."},
+        {"label": "Runs", "text": "Triage → classify intent → select authoritative owner → preserve upstream gate/acceptance criteria → handoff → consolidate result."},
+        {"label": "Writes", "text": "Normally no duplicate domain artifact; durable outputs belong to the specialist owner."},
+        {"label": "Routes", "text": "Requirement ambiguity → BusinessAnalyst; architecture/design → SolutionArchitect; implementation → GeneralCoding/domain owner; validation → TestEngineer."}
+      ]
+    },
+    "cherrymon": {
+      "title": "CherryMon.agent.md — shared architecture constitution",
+      "items": [
+        {"label": "Reads", "text": "Repository-wide module, dependency, data-contract and Source-of-Truth conventions used by routed agents."},
+        {"label": "Runs", "text": "Acts as mandatory shared context rather than a normal sequential delivery stage."},
+        {"label": "Defines", "text": "Module responsibilities, dependency direction, database naming/contracts, knowledge routing and stable engineering boundaries."},
+        {"label": "Feeds", "text": "BusinessAnalyst, SolutionArchitect, GeneralCoding, TestEngineer and specialist domain agents."}
+      ]
+    },
+    "ba": {
+      "title": "BusinessAnalyst.agent.md — requirement readiness",
+      "items": [
+        {"label": "Reads", "text": "governance, CherryMon, docs/00_HOME.md, existing REQ-*, relevant architecture/ADR and domain constraints."},
+        {"label": "Runs", "text": "Frame → Define → Make Testable → Decompose/Route."},
+        {"label": "Writes", "text": "docs/backlog/requirements/REQ-*.md using REQUIREMENT_TEMPLATE.md."},
+        {"label": "Handoff", "text": "READY_FOR_DESIGN → SolutionArchitect; READY_FOR_IMPLEMENTATION → GeneralCoding/domain owner; ambiguity stays with BA."}
+      ]
+    },
+    "sa": {
+      "title": "SolutionArchitect.agent.md — design readiness",
+      "items": [
+        {"label": "Reads", "text": "ready REQ-*, docs/architecture/**, docs/adr/**, matching domain instructions, current source/tests and CherryMon constraints."},
+        {"label": "Runs", "text": "Context → Current State → Proposed Design → Decision Check → Archify synchronization."},
+        {"label": "Writes", "text": "docs/architecture/**, docs/adr/** when required, Archify typed source and synchronized generated HTML."},
+        {"label": "Handoff", "text": "APPROVED_FOR_IMPLEMENTATION → GeneralCoding/domain owner only after required design artifacts and validation are synchronized."}
+      ]
+    },
+    "chart": {
+      "title": "Chart.agent.md — visualization decision and Flint authoring",
+      "items": [
+        {"label": "Reads", "text": ".github/instructions/chart.instructions.md, .github/skills/chart-authoring/SKILL.md, docs/architecture/Chart_Architecture.md and the actual data contract."},
+        {"label": "Runs", "text": "Understand → Recommend → Map to Flint → Transform if needed → Validate → Render/Compile → Sanity Check."},
+        {"label": "Writes", "text": "Chart recommendation/spec/render artifacts and chart-related durable documentation when needed."},
+        {"label": "Handoff", "text": "Advisory/spec/render may return to User; production integration → GeneralCoding → TestEngineer."}
+      ]
+    },
+    "dev": {
+      "title": "GeneralCoding.agent.md — implementation readiness",
+      "items": [
+        {"label": "Reads", "text": "ready requirement/design, CherryMon, matching .github/instructions/*.instructions.md, relevant docs, source, scripts and nearest tests."},
+        {"label": "Runs", "text": "Confirm → Inspect → Implement → Update Materials → Developer Verification → Handoff."},
+        {"label": "Writes", "text": "src/**, scripts/**, implementation-side tests when in scope, affected canonical docs/runbooks and ChangeRequest trace when applicable."},
+        {"label": "Handoff", "text": "IMPLEMENTED_PENDING_VALIDATION → TestEngineer. FAIL/REGRESSION returns from TestEngineer through the bounded AUTOFIX loop; fix the defect and resubmit the same scope for independent validation."}
+      ]
+    },
+    "test": {
+      "title": "TestEngineer.agent.md — independent validation",
+      "items": [
+        {"label": "Reads", "text": ".github/instructions/testing.instructions.md, requirement/acceptance criteria, approved architecture/domain contracts, implementation handoff, tests and runbooks."},
+        {"label": "Runs", "text": "Define → Prepare → Execute → Evaluate → classify PASS / FAIL / BLOCKED / REGRESSION."},
+        {"label": "Writes", "text": "Independent test evidence, tests/** when validation assets belong here, and durable docs/runbook/** evidence when appropriate."},
+        {"label": "Handoff", "text": "PASS → verdict/User; FAIL or REGRESSION caused by implementation → GeneralCoding AUTOFIX loop; requirement gap → BA; design gap → SA; blocker → Router/User."}
+      ]
+    },
+    "indicator": {
+      "title": "Indicator_Management.agent.md — specialist indicator lifecycle",
+      "items": [
+        {"label": "Reads", "text": "docs/architecture/Indicator_Engine.md, .github/instructions/indicators.instructions.md, calcEngine source, indicator metadata/config and CherryMon MCP evidence."},
+        {"label": "Runs", "text": "Discover → PHASE 1 metadata transaction → PHASE 2 targeted historical backfill → PHASE 3 validation/handoff."},
+        {"label": "Writes", "text": "Indicator metadata/config lifecycle and scoped cal_indicator_values/backfill behavior through the approved implementation path."},
+        {"label": "Handoff", "text": "IMPLEMENTED_PENDING_VALIDATION with ConfigIds/evidence → TestEngineer; architecture-impacting change routes through SolutionArchitect."}
+      ]
+    },
+    "rework": {
+      "title": "Feedback Router — failed-outcome classification",
+      "items": [
+        {"label": "Reads", "text": "TestEngineer verdict/evidence plus upstream requirement/design/implementation ownership."},
+        {"label": "Runs", "text": "Classify the failed outcome instead of sending every failure to a generic repair owner."},
+        {"label": "Routes", "text": "Requirement gap → BA; design/contract gap → SA; implementation defect/regression → GeneralCoding or authoritative domain owner; external blocker → User/dependency owner."},
+        {"label": "Autofix", "text": "For implementation FAIL/REGRESSION, GeneralCoding fixes the bounded defect and TestEngineer independently reruns validation until PASS or a different owner/blocker is identified."}
+      ]
+    }
+  }
+}
