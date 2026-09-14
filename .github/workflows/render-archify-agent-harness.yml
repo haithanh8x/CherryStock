@@ -1,0 +1,98 @@
+name: Render Archify Agent Harness
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json"
+      - "docs/architecture/agent-harness/AGENT_EXECUTION_FLOW.md"
+      - "scripts/customize_archify_typography.py"
+      - ".github/workflows/render-archify-agent-harness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-archify-agent-harness-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ARCHIFY_VERSION: v2.16.0
+  ARCHIFY_UPDATE_CHECK_DISABLED: "1"
+  SOURCE_FILE: docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json
+  OUTPUT_FILE: docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html
+
+jobs:
+  render:
+    name: Validate and render ADLC workflow
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout CherryStock
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download pinned Archify release
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .archify-tool
+          mkdir -p .archify-tool
+          curl -fsSL "https://github.com/tt-a1i/archify/releases/download/${ARCHIFY_VERSION}/archify.zip" -o /tmp/archify.zip
+          unzip -q /tmp/archify.zip -d .archify-tool
+          ARCHIFY_CLI="$(find .archify-tool -type f -path '*/bin/archify.mjs' -print -quit)"
+          if [[ -z "${ARCHIFY_CLI}" ]]; then
+            echo "Archify CLI was not found in the release archive."
+            find .archify-tool -maxdepth 4 -type f | sort | head -200
+            exit 1
+          fi
+          echo "ARCHIFY_CLI=${ARCHIFY_CLI}" >> "$GITHUB_ENV"
+          node "${ARCHIFY_CLI}" doctor || true
+
+      - name: Validate CherryStock ADLC workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$ARCHIFY_CLI" validate workflow "$SOURCE_FILE" --quality showcase --json
+
+      - name: Deliver CherryStock ADLC workflow HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$OUTPUT_FILE")"
+          node "$ARCHIFY_CLI" deliver workflow "$SOURCE_FILE" "$OUTPUT_FILE" --quality showcase --json
+
+      - name: Apply CherryStock typography
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/customize_archify_typography.py "$OUTPUT_FILE" --sans-font Inter
+          test -s "$OUTPUT_FILE"
+          grep -q "CherryStock ADLC Agent Harness" "$OUTPUT_FILE"
+
+      - name: Commit regenerated artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add "$OUTPUT_FILE"
+          if git diff --cached --quiet; then
+            echo "Generated artifact is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs(archify): regenerate CherryStock ADLC agent harness"
+          git push
