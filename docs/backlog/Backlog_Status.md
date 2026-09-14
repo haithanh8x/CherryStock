@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-09-06
+- **Last reviewed:** 2026-09-15
 - **Purpose:** Central status dashboard for planned CherryStock engineering work.
 - **Scope:** Requirement backlog, Architecture backlog, and Agent Harness backlog.
 - **Status authority:** This file is a summary/index only. The detailed backlog/requirement file remains the authoritative material for each item.
@@ -12,9 +12,9 @@
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
 | Requirements | 4 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN |
-| Architecture | 10 | 10 TODO |
-| Agent Harness | 14 | 14 TODO |
-| **Total** | **28** | **2 DONE · 2 READY_FOR_DESIGN · 24 TODO** |
+| Architecture | 10 | 2 DONE · 8 TODO |
+| Agent Harness | 14 | 2 DONE · 12 TODO |
+| **Total** | **28** | **6 DONE · 2 READY_FOR_DESIGN · 20 TODO** |
 
 ### Priority Summary
 
@@ -142,8 +142,8 @@ Detailed backlog:
 | CS-ARCH-002 | Remove direct legacy imports from Application Services | P1 | **TODO** |
 | CS-ARCH-003 | Refactor `AiModels` into an LLM provider layer | P1 | **TODO** |
 | CS-ARCH-004 | Move MCP into the Interface Layer | P1 | **TODO** |
-| CS-ARCH-005 | Migrate domain knowledge out of `.github/agents/Instructions` | P1 | **TODO** |
-| CS-ARCH-006 | Eliminate legacy project-structure documentation | P1 | **TODO** |
+| CS-ARCH-005 | Migrate domain knowledge out of `.github/agents/Instructions` | P1 | **DONE** |
+| CS-ARCH-006 | Eliminate legacy project-structure documentation | P1 | **DONE** |
 | CS-ARCH-007 | Reduce and dissolve generic `Ults` ownership | P2 | **TODO** |
 | CS-ARCH-008 | Add centralized observability contracts | P2 | **TODO** |
 | CS-ARCH-009 | Add AI evaluation layer for production agents | P3 | **TODO** |
@@ -152,12 +152,15 @@ Detailed backlog:
 ## Suggested Architecture Priority
 
 ```text
+DONE
+CS-ARCH-005 Knowledge migration
+CS-ARCH-006 Legacy documentation cleanup
+
+NEXT
 P0
 CS-ARCH-010 Repository hygiene
         ↓
 P1
-CS-ARCH-005 Knowledge migration
-CS-ARCH-006 Legacy documentation cleanup
 CS-ARCH-001 Canonical runtime package
 CS-ARCH-002 Dependency inversion
 CS-ARCH-003 LLM provider layer
@@ -181,8 +184,8 @@ Detailed backlog:
 
 | ID | Item | Priority | Status |
 |---|---|---:|---|
-| CS-HARNESS-001 | Formalize Developer Harness Architecture | P1 | **TODO** |
-| CS-HARNESS-002 | Introduce Native Skill Files | P1 | **TODO** |
+| CS-HARNESS-001 | Formalize Developer Harness Architecture | P1 | **DONE** |
+| CS-HARNESS-002 | Introduce Native Skill Files | P1 | **DONE** |
 | CS-HARNESS-003 | Introduce Developer Harness Hooks | P1 | **TODO** |
 | CS-HARNESS-004 | Define Semantic Tool Contracts for Agents | P1 | **TODO** |
 | CS-HARNESS-005 | Separate Read Tools from Privileged Admin Tools | P1 | **TODO** |
@@ -199,9 +202,11 @@ Detailed backlog:
 ## Suggested Harness Priority
 
 ```text
-P1 — Developer harness foundation
+DONE — Developer harness foundation
 CS-HARNESS-001
 CS-HARNESS-002
+
+NEXT — Developer harness foundation
 CS-HARNESS-003
 
 P1 — Runtime contracts / safety foundation
@@ -246,11 +251,11 @@ Based on current status and priority, the next actionable queue is:
 | Order | Item | Why now |
 |---:|---|---|
 | 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO. |
-| 2 | **REQ-0025** | Design + ADR are already approved; ready for GeneralCoding implementation. |
-| 3 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
-| 4 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
-| 5 | **CS-HARNESS-001 / 002 / 003** | Formalize the developer harness before adding more repeatable agent procedures. |
-| 6 | **CS-ARCH-005 / 006** | Reduce knowledge duplication/legacy routing before larger package migration. |
+| 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
+| 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
+| 4 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
+| 5 | **CS-ARCH-001 / 002** | Begin incremental runtime package/dependency inversion without a big-bang source move. |
+| 6 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
 
