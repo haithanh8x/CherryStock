@@ -12,15 +12,6 @@
         {"label": "Routes", "text": "Requirement ambiguity → BusinessAnalyst; architecture/design → SolutionArchitect; implementation → GeneralCoding/domain owner; validation → TestEngineer."}
       ]
     },
-    "cherrymon": {
-      "title": "CherryMon.agent.md — shared architecture constitution",
-      "items": [
-        {"label": "Reads", "text": "Repository-wide module, dependency, data-contract and Source-of-Truth conventions used by routed agents."},
-        {"label": "Runs", "text": "Acts as mandatory shared context rather than a normal sequential delivery stage."},
-        {"label": "Defines", "text": "Module responsibilities, dependency direction, database naming/contracts, knowledge routing and stable engineering boundaries."},
-        {"label": "Feeds", "text": "BusinessAnalyst, SolutionArchitect, GeneralCoding, TestEngineer and specialist domain agents."}
-      ]
-    },
     "ba": {
       "title": "BusinessAnalyst.agent.md — requirement readiness",
       "items": [
@@ -75,13 +66,52 @@
         {"label": "Handoff", "text": "IMPLEMENTED_PENDING_VALIDATION with ConfigIds/evidence → TestEngineer; architecture-impacting change routes through SolutionArchitect."}
       ]
     },
-    "rework": {
-      "title": "Feedback Router — failed-outcome classification",
+    "governance_model": {
+      "title": "Governance — global routing policy",
       "items": [
-        {"label": "Reads", "text": "TestEngineer verdict/evidence plus upstream requirement/design/implementation ownership."},
-        {"label": "Runs", "text": "Classify the failed outcome instead of sending every failure to a generic repair owner."},
-        {"label": "Routes", "text": "Requirement gap → BA; design/contract gap → SA; implementation defect/regression → GeneralCoding or authoritative domain owner; external blocker → User/dependency owner."},
-        {"label": "Autofix", "text": "For implementation FAIL/REGRESSION, GeneralCoding fixes the bounded defect and TestEngineer independently reruns validation until PASS or a different owner/blocker is identified."}
+        {"label": "Owns", "text": "Repository-wide routing and precedence, not a domain implementation outcome."},
+        {"label": "Routes", "text": "User intent to the authoritative Agent that owns the required outcome."},
+        {"label": "Rule", "text": "Governance does not absorb Skill procedures, domain knowledge or Tool syntax."}
+      ]
+    },
+    "agent_model": {
+      "title": "Agent = WHO — outcome owner",
+      "items": [
+        {"label": "Owns", "text": "The engineering outcome and readiness/handoff decision for its role."},
+        {"label": "Reads", "text": "Mandatory Instructions and the smallest relevant Docs set."},
+        {"label": "Invokes", "text": "A reusable Skill when a specialist procedure applies; evaluates resulting evidence before handoff or completion."}
+      ]
+    },
+    "instruction_model": {
+      "title": "Instruction = RULES — mandatory constraints",
+      "items": [
+        {"label": "Owns", "text": "Non-optional domain constraints and repository rules."},
+        {"label": "Applies to", "text": "Agents and Skills operating in the matching scope."},
+        {"label": "Does not own", "text": "Step-by-step procedures, architecture explanation or tool capability."}
+      ]
+    },
+    "docs_model": {
+      "title": "Docs = KNOWLEDGE — durable engineering context",
+      "items": [
+        {"label": "Owns", "text": "Current architecture, ADR rationale, domain/reference knowledge and durable design context."},
+        {"label": "Read by", "text": "Agents and Skills through docs/00_HOME.md and the smallest relevant document set."},
+        {"label": "Does not own", "text": "Runtime orchestration or mandatory procedural enforcement."}
+      ]
+    },
+    "skill_model": {
+      "title": "Skill = HOW — reusable specialist procedure",
+      "items": [
+        {"label": "Owns", "text": "Repeatable procedure for a specialized task."},
+        {"label": "Reads", "text": "Matching Instructions and relevant Docs; remains reusable across authorized callers."},
+        {"label": "Uses", "text": "Tool/MCP/script/API capability to perform the procedure; does not own the final Agent outcome."}
+      ]
+    },
+    "tool_model": {
+      "title": "Tool = CAPABILITY — execution surface",
+      "items": [
+        {"label": "Provides", "text": "MCP, CLI, script, API, GitHub, DuckDB, Archify, Flint or similar execution capability."},
+        {"label": "Returns", "text": "Artifacts, evidence or effects to the invoking procedure/Agent."},
+        {"label": "Does not own", "text": "Architecture decisions, business outcomes or final readiness gates."}
       ]
     }
   }
