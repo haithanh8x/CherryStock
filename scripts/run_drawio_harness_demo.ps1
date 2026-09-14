@@ -59,21 +59,30 @@ if (-not $drawioExe) {
     exit 0
 }
 
-$runningDrawio = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @("draw.io", "drawio") })
-if ($runningDrawio.Count -gt 0) {
-    Write-Host ("Detected {0} running Draw.io process(es). Native checks will use isolated Electron user-data directories so the open GUI cannot consume the CLI invocation." -f $runningDrawio.Count)
+$drawioInfo = Get-DrawioExecutableInfo -DrawioExe $drawioExe
+Write-Host "Draw.io CLI: $drawioExe"
+if ($drawioInfo) {
+    Write-Host ("File version:    {0}" -f $drawioInfo.FileVersion)
+    Write-Host ("Product version: {0}" -f $drawioInfo.ProductVersion)
 }
 
-Write-Host "[2/3] Native CLI isolated export probe"
-Write-Host "Draw.io CLI: $drawioExe"
-$probe = Test-DrawioNativeExportCapability -DrawioExe $drawioExe -TimeoutSeconds 45
-Write-Host ("PASS: native CLI probe ({0} bytes)" -f $probe.Bytes)
+$runningDrawio = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @("draw.io", "drawio") })
+if ($runningDrawio.Count -gt 0) {
+    Write-Host ("Detected {0} running Draw.io process(es). The helper will avoid relying on the normal GUI instance." -f $runningDrawio.Count)
+}
+else {
+    Write-Host "No running Draw.io GUI process detected. The helper will try the documented CLI path first."
+}
+
+Write-Host "[2/3] Native CLI export probe"
+$probe = Test-DrawioNativeExportCapability -DrawioExe $drawioExe -TimeoutSeconds 30 -Verbose
+Write-Host ("PASS: native CLI probe ({0} bytes, strategy={1}, elapsed={2}ms)" -f $probe.Bytes, $probe.Strategy, $probe.ElapsedMs)
 
 New-Item -ItemType Directory -Path $generatedDir -Force | Out-Null
 
 Write-Host "[3/3] Demo native PNG export"
 Write-Host "Output: $pngPath"
-$result = Invoke-DrawioPngExport -InputPath $diagramPath -OutputPath $pngPath -DrawioExe $drawioExe -Width 2000 -TimeoutSeconds 45 -Verbose
+$result = Invoke-DrawioPngExport -InputPath $diagramPath -OutputPath $pngPath -DrawioExe $drawioExe -Width 2000 -TimeoutSeconds 30 -Verbose
 
 if (-not (Test-Path -LiteralPath $pngPath -PathType Leaf)) {
     throw "Native export returned but final PNG does not exist: $pngPath"
@@ -83,6 +92,8 @@ if (-not (Test-DrawioPngFile -Path $pngPath)) {
 }
 
 Write-Host "PASS: demo native PNG export"
+Write-Host ("Strategy:        {0}" -f $result.Strategy)
 Write-Host ("PNG bytes:       {0}" -f $result.Bytes)
+Write-Host ("Elapsed:         {0} ms" -f $result.ElapsedMs)
 Write-Host "Editable source: $diagramPath"
 Write-Host "Draft PNG:       $pngPath"
