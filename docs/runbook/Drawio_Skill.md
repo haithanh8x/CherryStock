@@ -16,9 +16,7 @@ The full upstream runtime is installed outside the repository by default at:
 %USERPROFILE%\.agents\skills\drawio-skill
 ```
 
-This avoids vendoring the entire third-party repository while keeping local execution reproducible.
-
-Pinned upstream release for this integration:
+Pinned upstream release:
 
 ```text
 Version: 3.4.0
@@ -39,17 +37,17 @@ Python 3
 PowerShell
 ```
 
-Recommended for native image/PDF export:
+Recommended for native PNG/SVG/PDF export:
 
 ```text
 Draw.io Desktop 30+
 ```
 
-Core upstream IR/XML/query/test/review workflows use Python 3 only. Draw.io Desktop is needed for native PNG/SVG/PDF export.
+Core upstream IR/XML/query/test/review workflows use Python 3 only. Draw.io Desktop is needed only for native export.
 
 ---
 
-## 2. Install the upstream skill runtime
+## 2. Install and verify
 
 From CherryStock repository root:
 
@@ -59,46 +57,94 @@ From CherryStock repository root:
 
 The installer:
 
-1. clones the upstream repository to a temporary folder;
-2. checks out the pinned upstream commit;
-3. copies only `skills/drawio-skill` into `%USERPROFILE%\.agents\skills\drawio-skill`;
-4. stores the pinned ref in `.cherrystock-upstream-ref`;
-5. runs `diagramctl.py doctor` when available;
-6. detects Draw.io Desktop CLI when installed.
+1. clones the pinned upstream repository to a temporary folder;
+2. copies only `skills/drawio-skill` into `%USERPROFILE%\.agents\skills\drawio-skill`;
+3. stores the pinned ref in `.cherrystock-upstream-ref`;
+4. runs `diagramctl.py doctor`;
+5. detects Draw.io Desktop;
+6. when Draw.io Desktop exists, runs a real isolated native PNG export probe and validates the PNG signature.
 
-Expected core files after installation:
+Expected core files:
 
 ```text
 %USERPROFILE%\.agents\skills\drawio-skill\SKILL.md
 %USERPROFILE%\.agents\skills\drawio-skill\scripts\diagramctl.py
 %USERPROFILE%\.agents\skills\drawio-skill\scripts\validate.py
-%USERPROFILE%\.agents\skills\drawio-skill\references\...
 ```
 
----
-
-## 3. Verify installation manually
-
-```powershell
-Test-Path "$HOME\.agents\skills\drawio-skill\SKILL.md"
-Test-Path "$HOME\.agents\skills\drawio-skill\scripts\validate.py"
-python "$HOME\.agents\skills\drawio-skill\scripts\diagramctl.py" doctor
-```
-
-Expected:
+Expected native capability result when Draw.io Desktop is installed:
 
 ```text
-True
-True
+Running isolated native PNG export probe...
+PASS: native PNG export probe (... bytes)
 ```
 
-and `diagramctl doctor` should complete without a fatal Python/runtime error.
+To install the Python skill runtime without probing Draw.io Desktop:
+
+```powershell
+.\scripts\install_drawio_skill.ps1 -SkipNativeExportProbe
+```
 
 ---
 
-## 4. Run the CherryStock demo
+## 3. Why CherryStock isolates Draw.io CLI execution
 
-The committed editable source is:
+Draw.io Desktop is an Electron single-instance application. Its desktop source calls:
+
+```text
+app.requestSingleInstanceLock()
+```
+
+and quits a second process when the lock cannot be obtained.
+
+Therefore this failure mode is possible on Windows:
+
+```text
+Draw.io GUI already open
+        ↓
+CLI process starts
+        ↓
+single-instance lock fails
+        ↓
+CLI exits with code 0
+        ↓
+no PNG is produced
+```
+
+This explains the misleading historical symptom:
+
+```text
+Draw.io returned exit code 0 but did not create PNG
+```
+
+CherryStock no longer invokes native export directly from each script. Shared logic is owned by:
+
+```text
+scripts\lib\DrawioCli.psm1
+```
+
+Every native export receives a unique temporary Chromium/Electron profile:
+
+```text
+--user-data-dir=<unique-temp-profile>
+```
+
+so it has an independent single-instance namespace and does not interfere with a Draw.io GUI that is already open.
+
+The helper additionally:
+
+- waits for the exported file to become stable;
+- validates that the output starts with the PNG signature;
+- removes only its own temporary profile;
+- returns a structured result with path, byte size and exit code.
+
+Do not close a user's open Draw.io GUI merely to make automated export work.
+
+---
+
+## 4. Run the CherryStock Agent Harness demo
+
+Editable source:
 
 ```text
 docs\architecture\diagrams\agent-harness-five-components.drawio
@@ -110,21 +156,37 @@ Run:
 .\scripts\run_drawio_harness_demo.ps1
 ```
 
-The script first executes the upstream structural validator:
+The runner now uses three explicit gates:
 
 ```text
-validate.py <diagram> --score
+[1/3] Structural validation
+      upstream validate.py --score
+
+[2/3] Native CLI isolated export probe
+      generated minimal .drawio → PNG
+      verify PNG signature
+
+[3/3] Demo native PNG export
+      real Harness .drawio → PNG
+      wait for stable file
+      verify PNG signature
 ```
 
-If Draw.io Desktop CLI is found, it also exports:
+Expected successful output includes:
+
+```text
+PASS: structural validation
+PASS: native CLI probe (... bytes)
+PASS: demo native PNG export
+```
+
+Final PNG:
 
 ```text
 docs\architecture\generated\Agent_Harness_Five_Components.png
 ```
 
-If Draw.io Desktop is not installed, structural validation still completes and export is skipped with a warning.
-
-To validate without native export:
+To run only structural validation:
 
 ```powershell
 .\scripts\run_drawio_harness_demo.ps1 -SkipExport
@@ -132,15 +194,30 @@ To validate without native export:
 
 ---
 
-## 5. Open/edit the diagram
+## 5. Manual verification
 
-Open this file in Draw.io Desktop or diagrams.net:
+Core skill:
+
+```powershell
+Test-Path "$HOME\.agents\skills\drawio-skill\SKILL.md"
+Test-Path "$HOME\.agents\skills\drawio-skill\scripts\validate.py"
+python "$HOME\.agents\skills\drawio-skill\scripts\diagramctl.py" doctor
+```
+
+Expected first two results:
+
+```text
+True
+True
+```
+
+Editable diagram can be opened directly in Draw.io Desktop or diagrams.net:
 
 ```text
 docs\architecture\diagrams\agent-harness-five-components.drawio
 ```
 
-The demo models five Harness components:
+The model represents:
 
 ```text
 Agent        → owns OUTCOME
@@ -150,7 +227,7 @@ Docs         → own KNOWLEDGE / DESIGN
 Tool         → provides EXECUTION CAPABILITY
 ```
 
-Relationship details are documented in:
+Detailed relationship contract:
 
 ```text
 docs\architecture\agent-harness\AGENT_SKILL_INSTRUCTION_DOC_TOOL.md
@@ -171,31 +248,34 @@ Create/update editable .drawio
     ↓
 validate.py --score
     ↓
-Draw.io CLI export when available
+Invoke-DrawioPngExport
+    ↓
+isolated native export + output integrity check
     ↓
 Visual review
     ↓
 Commit editable source + required durable docs
 ```
 
-For an approved architecture change, the existing `SolutionArchitect.agent.md` Archify synchronization rules still apply. Draw.io is supplemental unless repository governance is deliberately changed later.
+For approved architecture changes, the existing `SolutionArchitect.agent.md` Archify synchronization rules still apply. Draw.io remains supplemental unless repository governance is deliberately changed.
 
 ---
 
 ## 7. Updating the upstream skill
 
-Do not silently track upstream `main` for architecture work.
+Do not silently track upstream `main`.
 
 When upgrading:
 
-1. inspect the new upstream release/changelog;
-2. update the pinned commit in `.github/skills/drawio-skill/SKILL.md`;
-3. update the default `$UpstreamRef` in `scripts/install_drawio_skill.ps1`;
+1. inspect the upstream release/changelog;
+2. update the pinned ref in `.github/skills/drawio-skill/SKILL.md`;
+3. update `$UpstreamRef` in `scripts/install_drawio_skill.ps1`;
 4. reinstall locally;
 5. run `diagramctl.py doctor`;
-6. run this demo again;
-7. validate existing important `.drawio` artifacts if the upstream validator/schema behavior changed;
-8. record the upgrade in `docs/ChangeRequest/` when material.
+6. require the isolated native PNG probe to PASS when Draw.io Desktop is installed;
+7. run the Harness demo again;
+8. validate important existing `.drawio` artifacts if validator/schema behavior changed;
+9. record material upgrades under `docs/ChangeRequest/`.
 
 ---
 
@@ -203,15 +283,11 @@ When upgrading:
 
 ### `git` not found
 
-Install Git for Windows and confirm:
-
 ```powershell
 git --version
 ```
 
 ### Python not found
-
-Confirm one of:
 
 ```powershell
 python --version
@@ -220,59 +296,45 @@ py -3 --version
 
 ### Validator not found
 
-Reinstall:
-
 ```powershell
 .\scripts\install_drawio_skill.ps1
-```
-
-Then confirm:
-
-```powershell
 Test-Path "$HOME\.agents\skills\drawio-skill\scripts\validate.py"
 ```
 
-### Installer prints `Draw.io Desktop CLI detected: C`
+### `Draw.io Desktop CLI detected: C`
 
-This symptom came from treating a single PowerShell pipeline result as an array and then indexing `[0]`, which returns the first character of a scalar string path such as `C:\Program Files\draw.io\draw.io.exe`.
+This was an old CherryStock PowerShell bug caused by indexing a scalar string as `[0]`. Pull the latest repository; detection now returns the complete executable path.
 
-The installer was fixed to select a full path directly and to treat Draw.io Desktop as an optional capability. Pull the latest CherryStock changes and rerun:
+### Exit code 0 but no PNG
+
+This was traced to Draw.io Desktop's Electron single-instance lock when a normal GUI instance was already open. The current CherryStock helper resolves it with a unique `--user-data-dir` for every automated export.
+
+Update local code and rerun:
 
 ```powershell
 git pull
 .\scripts\install_drawio_skill.ps1
+.\scripts\run_drawio_harness_demo.ps1
 ```
 
-A valid detection now looks like:
+You do **not** need to close Draw.io Desktop before running CherryStock automation.
 
-```text
-Draw.io Desktop CLI detected: C:\Program Files\draw.io\draw.io.exe
-```
+### Draw.io Desktop not detected
 
-If Draw.io Desktop is not installed, the installer should finish with a warning rather than fail. Core Python workflows remain available.
-
-### Draw.io export skipped
-
-Install Draw.io Desktop and verify one of the common Windows paths:
+Common paths:
 
 ```text
 C:\Program Files\draw.io\draw.io.exe
 %LOCALAPPDATA%\Programs\draw.io\draw.io.exe
 ```
 
-You can check directly in PowerShell:
+Check:
 
 ```powershell
 Test-Path "C:\Program Files\draw.io\draw.io.exe"
 Test-Path "$env:LOCALAPPDATA\Programs\draw.io\draw.io.exe"
 ```
 
-Then rerun:
-
-```powershell
-.\scripts\run_drawio_harness_demo.ps1
-```
-
 ### Diagram opens but looks wrong
 
-Do not repair architecture meaning by eye alone. Check the canonical docs/ADR first, then repair the `.drawio` source and rerun the structural validator. For approved CherryStock architecture, also confirm the mandatory Archify source/output remains synchronized.
+Do not repair architecture meaning by eye alone. Check canonical docs/ADR first, repair the `.drawio` source, rerun structural validation and native export, and for approved CherryStock architecture confirm mandatory Archify artifacts remain synchronized.
