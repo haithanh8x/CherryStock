@@ -12,9 +12,9 @@
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
 | Requirements | 4 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN |
-| Architecture | 10 | 2 DONE · 8 TODO |
+| Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **28** | **6 DONE · 2 READY_FOR_DESIGN · 20 TODO** |
+| **Total** | **28** | **6 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 17 TODO** |
 
 ### Priority Summary
 
@@ -138,13 +138,13 @@ Detailed backlog:
 
 | ID | Item | Priority | Status |
 |---|---|---:|---|
-| CS-ARCH-001 | Canonical runtime package under `src/cherrystock` | P1 | **TODO** |
-| CS-ARCH-002 | Remove direct legacy imports from Application Services | P1 | **TODO** |
+| CS-ARCH-001 | Canonical runtime package under `src/cherrystock` | P1 | **IN_PROGRESS** |
+| CS-ARCH-002 | Remove direct legacy imports from Application Services | P1 | **IN_PROGRESS** |
 | CS-ARCH-003 | Refactor `AiModels` into an LLM provider layer | P1 | **TODO** |
 | CS-ARCH-004 | Move MCP into the Interface Layer | P1 | **TODO** |
 | CS-ARCH-005 | Migrate domain knowledge out of `.github/agents/Instructions` | P1 | **DONE** |
 | CS-ARCH-006 | Eliminate legacy project-structure documentation | P1 | **DONE** |
-| CS-ARCH-007 | Reduce and dissolve generic `Ults` ownership | P2 | **TODO** |
+| CS-ARCH-007 | Reduce and dissolve generic `Ults` ownership | P2 | **IN_PROGRESS** |
 | CS-ARCH-008 | Add centralized observability contracts | P2 | **TODO** |
 | CS-ARCH-009 | Add AI evaluation layer for production agents | P3 | **TODO** |
 | CS-ARCH-010 | Repository hygiene: remove tracked local/sensitive artifacts | P0 | **TODO** |
@@ -156,18 +156,22 @@ DONE
 CS-ARCH-005 Knowledge migration
 CS-ARCH-006 Legacy documentation cleanup
 
+IN_PROGRESS
+CS-ARCH-001 Canonical runtime package
+CS-ARCH-002 Dependency inversion
+CS-ARCH-007 Reduce Ults
+
 NEXT
 P0
 CS-ARCH-010 Repository hygiene
         ↓
 P1
-CS-ARCH-001 Canonical runtime package
-CS-ARCH-002 Dependency inversion
+continue CS-ARCH-001 / CS-ARCH-002
 CS-ARCH-003 LLM provider layer
 CS-ARCH-004 MCP interface refactor
         ↓
 P2
-CS-ARCH-007 Reduce Ults
+continue CS-ARCH-007
 CS-ARCH-008 Observability
         ↓
 P3
@@ -250,11 +254,11 @@ Based on current status and priority, the next actionable queue is:
 
 | Order | Item | Why now |
 |---:|---|---|
-| 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO. |
+| 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
 | 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
 | 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
 | 4 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
-| 5 | **CS-ARCH-001 / 002** | Begin incremental runtime package/dependency inversion without a big-bang source move. |
+| 5 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
 | 6 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
