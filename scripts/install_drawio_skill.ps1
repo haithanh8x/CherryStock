@@ -1,6 +1,7 @@
 param(
     [string]$InstallRoot = (Join-Path $HOME ".agents\skills\drawio-skill"),
-    [string]$UpstreamRef = "7aa92f73819766eb914fffac66762cf2adb5d828"
+    [string]$UpstreamRef = "7aa92f73819766eb914fffac66762cf2adb5d828",
+    [switch]$SkipNativeExportProbe
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,6 +9,7 @@ $ErrorActionPreference = "Stop"
 $repoUrl = "https://github.com/Agents365-ai/drawio-skill.git"
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("cherrystock-drawio-skill-" + [Guid]::NewGuid().ToString("N"))
 $cloneRoot = Join-Path $tempRoot "repo"
+$drawioModule = Join-Path $PSScriptRoot "lib\DrawioCli.psm1"
 
 function Require-Command([string]$Name) {
     $cmd = Get-Command $Name -ErrorAction SilentlyContinue
@@ -17,24 +19,10 @@ function Require-Command([string]$Name) {
     return $cmd
 }
 
-function Find-DrawioExecutable {
-    $candidates = @()
-
-    $cmd = Get-Command "drawio" -ErrorAction SilentlyContinue
-    if ($cmd -and $cmd.Source) {
-        $candidates += [string]$cmd.Source
-    }
-
-    $candidates += "C:\Program Files\draw.io\draw.io.exe"
-
-    if ($env:LOCALAPPDATA) {
-        $candidates += (Join-Path $env:LOCALAPPDATA "Programs\draw.io\draw.io.exe")
-    }
-
-    return ($candidates |
-        Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } |
-        Select-Object -First 1)
+if (-not (Test-Path -LiteralPath $drawioModule)) {
+    throw "CherryStock Draw.io CLI helper not found: $drawioModule"
 }
+Import-Module $drawioModule -Force
 
 Write-Host "CherryStock Draw.io Skill installer"
 Write-Host "Upstream: $repoUrl"
@@ -110,11 +98,20 @@ try {
         try {
             & $drawioExe --version
             if ($LASTEXITCODE -ne 0) {
-                Write-Warning "Draw.io Desktop was found but '--version' returned exit code $LASTEXITCODE. Native export may still work; verify with the demo runner."
+                Write-Warning "Draw.io Desktop '--version' returned exit code $LASTEXITCODE."
             }
         }
         catch {
-            Write-Warning "Draw.io Desktop was found at '$drawioExe' but could not be executed: $($_.Exception.Message)"
+            throw "Draw.io Desktop was found at '$drawioExe' but could not be executed: $($_.Exception.Message)"
+        }
+
+        if (-not $SkipNativeExportProbe) {
+            Write-Host "Running isolated native PNG export probe..."
+            $probe = Test-DrawioNativeExportCapability -DrawioExe $drawioExe -TimeoutSeconds 45
+            Write-Host ("PASS: native PNG export probe ({0} bytes)" -f $probe.Bytes)
+        }
+        else {
+            Write-Host "Native PNG export probe skipped by -SkipNativeExportProbe"
         }
     }
     else {
