@@ -31,7 +31,7 @@ The target is not to replace CherryStock's layered architecture with a generic `
 |---|---|---|
 | Tool loop | `.github/copilot-instructions.md`, `.github/agents/TestEngineer.agent.md`, host agent execution | PARTIAL |
 | Tools / MCP | `src/mcp_server/duckdb_mcp.py`, application ports, database/AmiBroker adapters | PARTIAL / GOOD FOUNDATION |
-| Skill files | Procedures currently distributed across `.github/agents/**` and `.github/instructions/**` | PARTIAL |
+| Skill files | Native procedures under `.github/skills/**` with catalog/routing in `.github/skills/README.md` | GOOD / NATIVE SKILLS |
 | Memory | `docs/**`, ADRs, `docs/architecture/Second_Brain.md`, Git history | GOOD FOR DEVELOPMENT / MISSING RUNTIME EPISODIC MEMORY |
 | Hooks | MCP mutation confirmation, transaction boundaries, validation guardrails | MISSING GENERIC HARNESS HOOKS |
 | Execution environment | Git, VS Code, Python, DuckDB, AmiBroker, pytest, scripts, `run.py` | GOOD |
@@ -143,7 +143,7 @@ The runtime agent MUST NOT depend directly on OpenRouter, DuckDB SQL, AmiBroker 
 ## CS-HARNESS-001 — Formalize Developer Harness Architecture
 
 **Priority:** P1  
-**Status:** TODO
+**Status:** DONE
 
 ### Problem
 
@@ -168,12 +168,21 @@ Document the CherryStock Developer Harness architecture and ownership boundaries
 
 None.
 
+### Completion Evidence
+
+- `docs/adr/ADR-011-agent-harness-responsibility-hierarchy.md`
+- `docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md`
+- `docs/architecture/agent-harness/AGENT_EXECUTION_FLOW.md`
+- `.github/copilot-instructions.md`
+- `docs/00_HOME.md`
+- Archify Agent Harness workflow validated/rendered successfully on 2026-09-15.
+
 ---
 
 ## CS-HARNESS-002 — Introduce Native Skill Files
 
 **Priority:** P1  
-**Status:** TODO
+**Status:** DONE
 
 ### Problem
 
@@ -213,6 +222,23 @@ ui-performance-diagnosis
 ### Dependencies
 
 - CS-HARNESS-001.
+
+### Completion Evidence
+
+Native skill catalog now includes:
+
+```text
+.github/skills/
+├── architecture-design/
+├── indicator-onboarding/
+├── regression-testing/
+├── data-quality-validation/
+├── duckdb-migration/
+├── chart-authoring/
+└── drawio-skill/
+```
+
+`SolutionArchitect`, `Indicator_Management`, `GeneralCoding`, `TestEngineer`, and the global router now reference the applicable Skills while Instructions retain mandatory policy ownership.
 
 ---
 
@@ -888,8 +914,8 @@ Generic SQL tools may remain available for engineering/admin workflows but shoul
 
 ```text
 P1 — Developer harness foundation
-CS-HARNESS-001 Formalize Developer Harness Architecture
-CS-HARNESS-002 Native Skill Files
+CS-HARNESS-001 Formalize Developer Harness Architecture [DONE]
+CS-HARNESS-002 Native Skill Files [DONE]
 CS-HARNESS-003 Developer Harness Hooks
 
 P1 — Runtime contracts / safety foundation
