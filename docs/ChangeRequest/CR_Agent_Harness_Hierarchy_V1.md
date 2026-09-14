@@ -3,9 +3,9 @@
 - **Change ID:** `CR-HARNESS-V1-20260915`
 - **Date:** 2026-09-15
 - **Type:** Architecture / AI Agent Harness / Documentation Governance / Refactor
-- **Status:** CODE MERGED pending independent repository validation
+- **Status:** DONE — repository validation PASS
 - **Runtime database migration:** None
-- **Runtime behavior change:** None intended
+- **Runtime behavior change:** None intended; one ATR onboarding helper docstring was updated, with no logic change.
 
 ## 1. Objective
 
@@ -142,7 +142,7 @@ The typed workflow now visualizes:
 - L6 implementation;
 - L7 verification.
 
-The existing GitHub Archify renderer remains the mechanism that validates/regenerates the synchronized HTML artifact after the typed workflow changes.
+GitHub Actions validated the workflow with Archify `v2.16.0`, rendered the synchronized HTML, applied repository typography, enriched the semantic passport, synchronized the status block and committed the regenerated artifact.
 
 ## 5. Compatibility
 
@@ -163,7 +163,7 @@ src/AiModels
 
 remain supported. `src/cherrystock/**` remains the target canonical layered package and will be migrated incrementally in separate changes.
 
-Therefore this release is primarily a governance/material-ownership refactor and should not change market-data, indicator calculation, UI or database runtime behavior by itself.
+Therefore this release is primarily a governance/material-ownership refactor and does not intentionally change market-data, indicator calculation, UI or database runtime behavior.
 
 ## 6. Database impact
 
@@ -174,30 +174,32 @@ View change: NO
 Migration script: N/A
 ```
 
-## 7. Validation plan
+## 7. Validation result
 
-Repository validation should prove:
+**Verdict: PASS** for the scope of this governance/architecture reorganization.
 
-1. no canonical files link to `.github/agents/Instructions/**` as an active owner;
-2. all seven Skills are discoverable under `.github/skills/**`;
+Evidence:
+
+1. legacy `.github/agents/Instructions/**` ownership was removed;
+2. seven Skills are discoverable under `.github/skills/**`;
 3. core Agents point to their applicable Skills;
 4. `docs/00_HOME.md` routes domain knowledge to `docs/domain/**`;
-5. `Indicator_Engine.md` points to the new Skill and historical reference path;
-6. ADR-011 exists and matches governance;
-7. Archify typed workflow parses/validates and regenerated HTML is synchronized;
-8. no runtime source/database behavior changed in the commit.
-
-Final validation verdict remains owned by `TestEngineer.agent.md`.
+5. `Indicator_Engine.md` points to the native lifecycle Skill and historical reference path;
+6. ADR-011 exists and matches repository governance;
+7. Archify workflow `Render Archify Agent Harness` run `34874598478` completed successfully, including validation, rendering, semantic-passport enrichment and generated artifact synchronization;
+8. generated artifact commit: `41456056d00d75085d742db1462344386cb3d899`;
+9. no DuckDB schema/data migration was introduced;
+10. `scripts/seed_atr14_onboarding.py` received documentation-only text updates; calculation/mutation logic was not changed by this Change Request.
 
 ## 8. Rollback
 
 Because there is no database/runtime migration, rollback is Git-based:
 
-- revert this governance/documentation commit if routing breaks;
-- restore the previous Agent/Instruction paths from Git history;
+- revert the harness/governance commits if routing breaks;
+- restore previous Agent/Instruction paths from Git history only as a temporary recovery measure;
 - no data rollback is required.
 
-Do not restore `.github/agents/Instructions/**` as a long-term ownership model; if rollback is needed, treat it as temporary while repairing canonical routing.
+Do not restore `.github/agents/Instructions/**` as a long-term ownership model; repair canonical routing instead.
 
 ## 9. Related material
 
@@ -207,3 +209,4 @@ Do not restore `.github/agents/Instructions/**` as a long-term ownership model; 
 - `.github/skills/README.md`
 - `docs/backlog/Harness_Backlog.md`
 - `docs/backlog/Architecture_Backlog.md`
+- `docs/backlog/Backlog_Status.md`
