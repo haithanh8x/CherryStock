@@ -34,7 +34,7 @@ if (-not $python) {
     throw "Python 3 was not found in PATH."
 }
 
-Write-Host "[1/2] Structural validation"
+Write-Host "[1/3] Structural validation"
 if ($usePyLauncher) {
     & $python.Source -3 $validator $diagramPath --score
 }
@@ -47,28 +47,32 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "PASS: structural validation"
 
 if ($SkipExport) {
-    Write-Host "[2/2] Export skipped by -SkipExport"
+    Write-Host "[2/3] Native CLI probe skipped by -SkipExport"
+    Write-Host "[3/3] Demo export skipped by -SkipExport"
     exit 0
 }
 
 $drawioExe = Find-DrawioExecutable
 if (-not $drawioExe) {
-    Write-Warning "Draw.io Desktop CLI was not found. Validation passed; PNG export skipped."
+    Write-Warning "Draw.io Desktop CLI was not found. Validation passed; native export checks skipped."
     Write-Host "Open the editable source manually: $diagramPath"
     exit 0
 }
 
-New-Item -ItemType Directory -Path $generatedDir -Force | Out-Null
-
 $runningDrawio = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @("draw.io", "drawio") })
 if ($runningDrawio.Count -gt 0) {
-    Write-Host ("Detected {0} running Draw.io process(es). Export will use an isolated Electron user-data-dir so the existing GUI does not block the CLI." -f $runningDrawio.Count)
+    Write-Host ("Detected {0} running Draw.io process(es). Native checks will use isolated Electron user-data directories so the open GUI cannot consume the CLI invocation." -f $runningDrawio.Count)
 }
 
-Write-Host "[2/2] Native PNG export"
+Write-Host "[2/3] Native CLI isolated export probe"
 Write-Host "Draw.io CLI: $drawioExe"
-Write-Host "Output:      $pngPath"
+$probe = Test-DrawioNativeExportCapability -DrawioExe $drawioExe -TimeoutSeconds 45
+Write-Host ("PASS: native CLI probe ({0} bytes)" -f $probe.Bytes)
 
+New-Item -ItemType Directory -Path $generatedDir -Force | Out-Null
+
+Write-Host "[3/3] Demo native PNG export"
+Write-Host "Output: $pngPath"
 $result = Invoke-DrawioPngExport -InputPath $diagramPath -OutputPath $pngPath -DrawioExe $drawioExe -Width 2000 -TimeoutSeconds 45 -Verbose
 
 if (-not (Test-Path -LiteralPath $pngPath -PathType Leaf)) {
@@ -78,7 +82,7 @@ if (-not (Test-DrawioPngFile -Path $pngPath)) {
     throw "Final file exists but is not a valid PNG: $pngPath"
 }
 
-Write-Host "PASS: native PNG export"
+Write-Host "PASS: demo native PNG export"
 Write-Host ("PNG bytes:       {0}" -f $result.Bytes)
 Write-Host "Editable source: $diagramPath"
 Write-Host "Draft PNG:       $pngPath"
