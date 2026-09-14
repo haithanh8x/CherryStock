@@ -8,10 +8,11 @@
     "quality_profile": "showcase",
     "views": [
       {"id": "core-adlc", "label": "Core ADLC", "focus": ["user_request", "router", "cherrymon", "ba", "sa", "dev", "test", "verdict", "final"], "note": "Canonical material-change path: route → requirement → design → implementation → independent validation."},
+      {"id": "autofix-loop", "label": "Dev ↔ Test autofix", "focus": ["dev", "test"], "note": "Implementation FAIL/REGRESSION returns from TestEngineer to GeneralCoding for bounded autofix, then the same scope is independently revalidated until PASS or reclassified."},
       {"id": "indicator-lifecycle", "label": "Indicator lifecycle", "focus": ["indicator_context", "indicator", "indicator_ready", "test", "verdict"], "note": "Indicator_Management owns metadata/backfill lifecycle and hands IMPLEMENTED_PENDING_VALIDATION to TestEngineer."},
       {"id": "chart-authoring", "label": "Chart / Flint", "focus": ["chart_context", "chart", "dev", "test", "verdict"], "note": "Chart owns recommendation/spec/render; production integration flows to GeneralCoding and then TestEngineer."},
       {"id": "repository-contract", "label": "Files & folders", "focus": ["governance_material", "req_material", "design_material", "domain_material", "impl_material", "test_material", "generated_artifact"], "note": "Stage-aligned repository materials show where each ADLC outcome and execution policy lives."},
-      {"id": "feedback-routing", "label": "Failure routing", "focus": ["rework", "ba", "sa", "indicator", "chart", "dev", "test", "verdict"], "note": "FAIL/REGRESSION returns to the owner of the failed outcome; BLOCKED returns to the dependency owner or user."}
+      {"id": "feedback-routing", "label": "Failure routing", "focus": ["rework", "ba", "sa", "indicator", "chart", "dev", "test", "verdict"], "note": "FAIL/REGRESSION returns to the owner of the failed outcome; implementation defects use the explicit GeneralCoding ↔ TestEngineer autofix loop."}
     ],
     "output": "docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html"
   },
@@ -42,6 +43,12 @@
     {"id": "traceability", "label": "Durable repository trace", "lane": "materials", "fromCol": 0, "toCol": 5, "variant": "dashed"}
   ],
   "mainPath": ["user_request", "router", "ba", "sa", "dev", "test", "verdict", "final"],
+  "semanticChecks": {
+    "requiredEdges": [
+      {"from": "dev", "to": "test"},
+      {"from": "test", "to": "dev"}
+    ]
+  },
   "nodes": [
     {"id": "user_request", "lane": "product", "col": 0, "type": "external", "label": "Change Request", "width": 148},
     {"id": "final", "lane": "product", "col": 5, "type": "backend", "label": "User Decision", "width": 158},
@@ -72,6 +79,7 @@
     {"id": "ba-sa", "from": "ba", "to": "sa", "label": "READY_FOR_DESIGN", "variant": "emphasis"},
     {"id": "sa-dev", "from": "sa", "to": "dev", "label": "APPROVED_FOR_IMPLEMENTATION", "variant": "emphasis"},
     {"id": "dev-test", "from": "dev", "to": "test", "label": "IMPLEMENTED_PENDING_VALIDATION", "variant": "emphasis"},
+    {"id": "test-dev-autofix", "from": "test", "to": "dev", "label": "FAIL / REGRESSION → AUTOFIX", "variant": "dashed", "role": "return", "route": "bottom-channel"},
     {"id": "test-verdict", "from": "test", "to": "verdict", "label": "evidence-backed", "variant": "security"},
     {"id": "pass-final", "from": "verdict", "to": "final", "label": "PASS", "variant": "emphasis"},
     {"id": "chart-context-agent", "from": "chart_context", "to": "chart", "label": "chart context", "variant": "emphasis"},
@@ -86,8 +94,8 @@
     {"dot": "violet", "title": "SolutionArchitect.agent.md — design readiness", "items": ["Reads ready REQ-* + docs/architecture/** + docs/adr/** + domain instructions + current source/tests.", "Runs Context → Current State → Proposed Design → Decision Check; defines contracts, boundaries, data model, failure and migration behavior.", "Writes docs/architecture/**, docs/adr/** when required, Archify typed source and synchronized generated HTML.", "Only after Archify validation/synchronization may it emit APPROVED_FOR_IMPLEMENTATION."]},
     {"dot": "amber", "title": "Indicator_Management.agent.md — specialist lifecycle", "items": ["Reads docs/architecture/Indicator_Engine.md + .github/instructions/indicators.instructions.md + legacy Indicator_Engine reference + calcEngine source + CherryMon MCP evidence.", "Runs Discover → PHASE 1 metadata transaction → PHASE 2 targeted historical backfill → PHASE 3 validation.", "Owns dim_indicator, dim_indicator_component, dim_indicator_config and scoped cal_indicator_values lifecycle behavior.", "Hands IMPLEMENTED_PENDING_VALIDATION with ConfigIds/evidence to TestEngineer; no self-declared final PASS."]},
     {"dot": "orange", "title": "Chart.agent.md — visualization decision + Flint", "items": ["Reads .github/instructions/chart.instructions.md + .github/skills/chart-authoring/SKILL.md + docs/architecture/Chart_Architecture.md + actual data contract.", "Runs Understand → Recommend → Map to Flint → Transform if needed → Validate → Render/Compile → Sanity Check.", "Advisory/spec/render may terminate at the user; production integration hands the chart/data-transform contract to GeneralCoding.", "Outcomes include CHART_RECOMMENDATION_READY, CHART_SPEC_READY and CHART_RENDERED."]},
-    {"dot": "rose", "title": "GeneralCoding + TestEngineer — separation of duties", "items": ["GeneralCoding reads the ready request/design + matching instructions; runs Confirm → Inspect → Implement → Update Materials → Developer Verification → Handoff.", "Implementation artifacts live primarily in src/**, scripts/** and affected docs/tests; exit is IMPLEMENTED_PENDING_VALIDATION.", "TestEngineer reads .github/instructions/testing.instructions.md + requirement/AC + implementation handoff + architecture/domain contracts and uses DEFINE → PREPARE → EXECUTE → EVALUATE.", "Only TestEngineer owns PASS | FAIL | BLOCKED | REGRESSION; feedback routes requirement gaps→BA, design gaps→SA, defects→implementation/domain owner."]},
+    {"dot": "rose", "title": "GeneralCoding ↔ TestEngineer — implementation + independent autofix loop", "items": ["GeneralCoding reads the ready request/design + matching instructions; runs Confirm → Inspect → Implement → Update Materials → Developer Verification → Handoff.", "GeneralCoding exits IMPLEMENTED_PENDING_VALIDATION; TestEngineer independently executes DEFINE → PREPARE → EXECUTE → EVALUATE.", "PASS proceeds to the validation verdict. Implementation FAIL/REGRESSION follows the explicit dashed AUTOFIX return edge to GeneralCoding, which fixes only the bounded defect and resubmits the same scope to TestEngineer.", "Requirement gaps still route to BA, design/contract gaps to SA, and blockers to Router/User; the autofix loop does not allow GeneralCoding to self-certify PASS."]},
     {"dot": "slate", "title": "Repository folders — purpose by ADLC stage", "items": [".github/agents/** = outcome ownership; .github/instructions/** = domain execution policy; .github/skills/** = reusable specialist procedures.", "docs/backlog/requirements/** = durable requirement contract; docs/architecture/** = design Source of Truth; docs/adr/** = durable cross-module decisions.", "src/** = runtime implementation; scripts/** = focused execution/migration/backfill/render helpers; tests/** = executable validation.", "docs/runbook/** = reproducible operational/test procedure; docs/ChangeRequest/** = change/release traceability; docs/architecture/generated/** = presentation output only."]},
-    {"dot": "cyan", "title": "Fast paths and feedback are routing rules, not extra mandatory stages", "items": ["Clear bounded change: Router → GeneralCoding/domain owner → TestEngineer; BA/SA are skipped when their outcomes are already explicit.", "Explicit architecture request may route directly to SolutionArchitect; material ambiguity discovered by SA returns to BA.", "Concrete indicator lifecycle routes directly to Indicator_Management; Chart advisory routes directly to Chart.", "The Feedback Router node summarizes rework classification; detailed return edges are intentionally omitted to keep the verified workflow readable."]}
+    {"dot": "cyan", "title": "Fast paths and feedback are routing rules, not extra mandatory stages", "items": ["Clear bounded change: Router → GeneralCoding/domain owner → TestEngineer; BA/SA are skipped when their outcomes are already explicit.", "Explicit architecture request may route directly to SolutionArchitect; material ambiguity discovered by SA returns to BA.", "Concrete indicator lifecycle routes directly to Indicator_Management; Chart advisory routes directly to Chart.", "The Feedback Router classifies requirement/design/domain/blocker feedback; implementation FAIL/REGRESSION is visualized separately as the direct GeneralCoding ↔ TestEngineer AUTOFIX loop."]}
   ]
 }
