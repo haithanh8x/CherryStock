@@ -1,17 +1,27 @@
 # CherryStock Architecture Backlog
 
+- **Last reviewed:** 2026-09-15
+
 ## Purpose
 
 This backlog captures architecture improvements identified while reviewing CherryStock against a responsibility-oriented AI/application project structure.
 
 The target is **not** to copy a generic `agent/tools/models/utils` repository layout. CherryStock should continue evolving toward a layered architecture with explicit Domain, Application, Infrastructure and Interface responsibilities.
 
+## Current Status Summary
+
+| Status | Count | Items |
+|---|---:|---|
+| **DONE** | 2 | CS-ARCH-005, CS-ARCH-006 |
+| **IN_PROGRESS** | 3 | CS-ARCH-001, CS-ARCH-002, CS-ARCH-007 |
+| **TODO** | 5 | CS-ARCH-003, CS-ARCH-004, CS-ARCH-008, CS-ARCH-009, CS-ARCH-010 |
+
 ---
 
 ## CS-ARCH-001 — Canonical runtime package under `src/cherrystock`
 
 **Priority:** P1  
-**Status:** TODO
+**Status:** IN_PROGRESS
 
 ### Problem
 
@@ -64,12 +74,24 @@ config/
 
 - Architecture decision describing package ownership and dependency direction.
 
+### Progress Evidence
+
+Already present under the canonical package:
+
+```text
+src/cherrystock/application/**
+src/cherrystock/infrastructure/**
+src/cherrystock/config/**
+```
+
+Application services, ports, DuckDB infrastructure and AmiBroker adapters already use this package. The item remains `IN_PROGRESS` because `domain/**` and `interfaces/**` are not yet established as canonical owners and major legacy runtime packages still coexist.
+
 ---
 
 ## CS-ARCH-002 — Remove direct legacy imports from Application Services
 
 **Priority:** P1  
-**Status:** TODO
+**Status:** IN_PROGRESS
 
 ### Problem
 
@@ -104,6 +126,18 @@ Infrastructure / Domain Adapter
 ### Dependencies
 
 - CS-ARCH-001.
+
+### Progress Evidence
+
+Existing contracts already include:
+
+```text
+src/cherrystock/application/ports/amibroker.py
+src/cherrystock/application/ports/market_data_sync.py
+src/cherrystock/infrastructure/database/unit_of_work.py
+```
+
+Focused service tests also exist. The item remains `IN_PROGRESS` because `sync_write_pipeline.py` still imports legacy `CrawlStock`, `Ults` and `calcEngine` implementations directly.
 
 ---
 
@@ -285,7 +319,7 @@ Replace it with canonical architecture documentation under `docs/architecture/**
 ## CS-ARCH-007 — Reduce and dissolve generic `Ults` ownership
 
 **Priority:** P2  
-**Status:** TODO
+**Status:** IN_PROGRESS
 
 ### Problem
 
@@ -315,6 +349,17 @@ lstPara                  → config/settings
 ### Dependencies
 
 - CS-ARCH-001.
+
+### Progress Evidence
+
+The canonical package already contains database infrastructure and centralized settings under:
+
+```text
+src/cherrystock/infrastructure/database/**
+src/cherrystock/config/settings.py
+```
+
+The item remains `IN_PROGRESS` because active runtime flows still depend on `src/Ults/**`, including database/data-quality/config helpers.
 
 ---
 
@@ -416,28 +461,32 @@ Remove local/generated/sensitive artifacts from Git tracking while preserving sa
 
 None.
 
+### Current Evidence
+
+Still `TODO`: repository root currently tracks `.env`, `CherryStock.code-workspace` and `__pycache__`. This item should remain the highest-priority repository hygiene task.
+
 ---
 
 ## Suggested Implementation Order
 
 ```text
 P0
-CS-ARCH-010 Repository hygiene
+CS-ARCH-010 Repository hygiene [TODO]
 
 P1
 CS-ARCH-005 Knowledge migration [DONE]
 CS-ARCH-006 Legacy documentation cleanup [DONE]
-CS-ARCH-001 Canonical runtime package
-CS-ARCH-002 Application dependency inversion
-CS-ARCH-003 LLM provider layer
-CS-ARCH-004 MCP interface refactor
+CS-ARCH-001 Canonical runtime package [IN_PROGRESS]
+CS-ARCH-002 Application dependency inversion [IN_PROGRESS]
+CS-ARCH-003 LLM provider layer [TODO]
+CS-ARCH-004 MCP interface refactor [TODO]
 
 P2
-CS-ARCH-007 Reduce Ults
-CS-ARCH-008 Observability
+CS-ARCH-007 Reduce Ults [IN_PROGRESS]
+CS-ARCH-008 Observability [TODO]
 
 P3
-CS-ARCH-009 AI evals
+CS-ARCH-009 AI evals [TODO]
 ```
 
 ## Notes
