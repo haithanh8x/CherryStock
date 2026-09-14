@@ -145,10 +145,11 @@ function Invoke-DrawioPngExport {
 
         $output = Wait-DrawioOutputFile -Path $OutputPath -TimeoutSeconds $TimeoutSeconds
         if (-not $output) {
-            throw ("Draw.io returned exit code 0 but no stable PNG was created within {0}s. " +
-                   "The export was already isolated from any running GUI instance via --user-data-dir. " +
-                   "Executable='{1}', input='{2}', output='{3}', profile='{4}'.") -f \
-                   $TimeoutSeconds, $DrawioExe, $resolvedInput, $OutputPath, $profileDir
+            $message = ("Draw.io returned exit code 0 but no stable PNG was created within {0}s. " +
+                        "The export was already isolated from any running GUI instance via --user-data-dir. " +
+                        "Executable='{1}', input='{2}', output='{3}', profile='{4}'.") -f 
+                        $TimeoutSeconds, $DrawioExe, $resolvedInput, $OutputPath, $profileDir
+            throw $message
         }
 
         return [PSCustomObject]@{
