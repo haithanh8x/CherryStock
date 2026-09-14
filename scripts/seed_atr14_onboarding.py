@@ -4,15 +4,16 @@ Scenario: ACTIVATE
 - ``dim_indicator.ATR`` exists but IsActive=FALSE and ParameterSchema=NULL.
 - No components, no configs.
 
-This script performs PHASE 1 (Config Metadata) of the mandatory three-phase
-state machine in ``.github/agents/Instructions/Indicator_Engine.md``:
+This script performs PHASE 1 (metadata/config) of the canonical indicator
+lifecycle procedure in ``.github/skills/indicator-onboarding/SKILL.md`` and
+must obey ``.github/instructions/indicators.instructions.md``:
 
 1. Upsert ``dim_indicator`` (activate ATR, set ParameterSchema).
 2. Upsert ``dim_indicator_component`` (single-output VALUE contract).
 3. Upsert ``dim_indicator_config`` complete D/W/M family ATR14_D/W/M.
 
-All writes are idempotent upserts inside one transaction. Rerunning does not
-create duplicates. No ``cal_indicator_values`` rows are touched.
+All writes are idempotent upserts. Rerunning does not create duplicates.
+No ``cal_indicator_values`` rows are touched by this PHASE 1 helper.
 
 Usage from CherryStock repository root:
     .venv\\Scripts\\python.exe scripts\\seed_atr14_onboarding.py
