@@ -17,6 +17,25 @@ function Require-Command([string]$Name) {
     return $cmd
 }
 
+function Find-DrawioExecutable {
+    $candidates = @()
+
+    $cmd = Get-Command "drawio" -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source) {
+        $candidates += [string]$cmd.Source
+    }
+
+    $candidates += "C:\Program Files\draw.io\draw.io.exe"
+
+    if ($env:LOCALAPPDATA) {
+        $candidates += (Join-Path $env:LOCALAPPDATA "Programs\draw.io\draw.io.exe")
+    }
+
+    return ($candidates |
+        Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } |
+        Select-Object -First 1)
+}
+
 Write-Host "CherryStock Draw.io Skill installer"
 Write-Host "Upstream: $repoUrl"
 Write-Host "Pinned ref: $UpstreamRef"
@@ -84,16 +103,19 @@ try {
         }
     }
 
-    $drawioCandidates = @(
-        (Get-Command "drawio" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
-        "C:\Program Files\draw.io\draw.io.exe",
-        (Join-Path $env:LOCALAPPDATA "Programs\draw.io\draw.io.exe")
-    ) | Where-Object { $_ -and (Test-Path $_) }
+    $drawioExe = Find-DrawioExecutable
 
-    if ($drawioCandidates.Count -gt 0) {
-        $drawioExe = $drawioCandidates[0]
+    if ($drawioExe) {
         Write-Host "Draw.io Desktop CLI detected: $drawioExe"
-        & $drawioExe --version
+        try {
+            & $drawioExe --version
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Draw.io Desktop was found but '--version' returned exit code $LASTEXITCODE. Native export may still work; verify with the demo runner."
+            }
+        }
+        catch {
+            Write-Warning "Draw.io Desktop was found at '$drawioExe' but could not be executed: $($_.Exception.Message)"
+        }
     }
     else {
         Write-Warning "Draw.io Desktop CLI not detected. Core Python workflows still work; native PNG/SVG/PDF export will be skipped until Draw.io Desktop is installed."
