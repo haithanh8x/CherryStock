@@ -23,6 +23,7 @@ env:
   ARCHIFY_UPDATE_CHECK_DISABLED: "1"
   SOURCE_FILE: docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json
   OUTPUT_FILE: docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html
+  STATUS_FILE: docs/architecture/agent-harness/README.md
 
 jobs:
   render:
@@ -38,7 +39,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -83,13 +84,53 @@ jobs:
           test -s "$OUTPUT_FILE"
           grep -q "CherryStock ADLC Agent Harness" "$OUTPUT_FILE"
 
-      - name: Commit regenerated artifact
+      - name: Synchronize ADLC visualization status
         shell: bash
         run: |
           set -euo pipefail
-          git add "$OUTPUT_FILE"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("docs/architecture/agent-harness/README.md")
+          text = path.read_text(encoding="utf-8")
+
+          pending = """## Artifact status for this ADLC visualization
+
+          - Canonical ADLC Markdown: **UPDATED**
+          - Archify typed workflow source: **UPDATED**
+          - Archify schema/layout/composition validation: **PENDING_LOCAL_ARCHIFY_VALIDATION_AND_RENDER**
+          - Generated HTML: **PENDING_LOCAL_ARCHIFY_VALIDATION_AND_RENDER**
+
+          The repository change must not be treated as Archify-validated or as a synchronized generated visualization until `scripts/render_archify_agent_harness.ps1` succeeds locally and the generated HTML is committed. Generated HTML must not be hand-edited to bypass this gate.
+          """
+
+          synchronized = """## Artifact status for this ADLC visualization
+
+          - Canonical ADLC Markdown: **UPDATED**
+          - Detailed agent/file execution map: **UPDATED** — `docs/architecture/agent-harness/AGENT_EXECUTION_FLOW.md`
+          - Archify typed workflow source: **VALIDATED (showcase)** — `docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json`
+          - Generated HTML: **SYNCHRONIZED** — `docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html`
+          - GitHub renderer: **ACTIVE** — `.github/workflows/render-archify-agent-harness.yml`
+
+          The typed workflow is validated and rendered on GitHub with pinned Archify `v2.16.0`. The generated HTML is presentation output only and must not be hand-edited. Changes to agent routing, gates, file ownership or execution flow must update the canonical Markdown and typed Archify source, then pass this workflow before the visualization is treated as synchronized.
+          """
+
+          if pending in text:
+              text = text.replace(pending, synchronized, 1)
+              path.write_text(text, encoding="utf-8")
+          elif synchronized in text:
+              print("ADLC visualization status is already synchronized.")
+          else:
+              raise SystemExit("Expected ADLC visualization status block was not found; update the workflow replacement contract.")
+          PY
+
+      - name: Commit regenerated artifact and synchronized status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add "$OUTPUT_FILE" "$STATUS_FILE"
           if git diff --cached --quiet; then
-            echo "Generated artifact is already synchronized."
+            echo "Generated artifact and status are already synchronized."
             exit 0
           fi
           git config user.name "github-actions[bot]"
