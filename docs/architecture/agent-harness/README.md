@@ -24,6 +24,17 @@ ADLC does **not** mean every change must pass through every specialist. A clear,
 
 ---
 
+## Artifact status for this ADLC visualization
+
+- Canonical ADLC Markdown: **UPDATED**
+- Archify typed workflow source: **UPDATED**
+- Archify schema/layout/composition validation: **PENDING_LOCAL_ARCHIFY_VALIDATION_AND_RENDER**
+- Generated HTML: **PENDING_LOCAL_ARCHIFY_VALIDATION_AND_RENDER**
+
+The repository change must not be treated as Archify-validated or as a synchronized generated visualization until `scripts/render_archify_agent_harness.ps1` succeeds locally and the generated HTML is committed. Generated HTML must not be hand-edited to bypass this gate.
+
+---
+
 ## 2. ADLC control model
 
 CherryStock's ADLC is built around six controls.
