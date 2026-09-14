@@ -50,8 +50,6 @@ function Wait-DrawioOutputFile {
                     $stableReads = 0
                 }
 
-                # Require two consecutive stable reads so we do not consume a file
-                # while Electron is still flushing it to disk.
                 if ($stableReads -ge 2) {
                     return $item
                 }
@@ -138,11 +136,6 @@ function Invoke-DrawioPngExport {
         Remove-Item -LiteralPath $OutputPath -Force
     }
 
-    # draw.io Desktop is an Electron single-instance application. Its source
-    # calls app.requestSingleInstanceLock() and a second instance exits cleanly
-    # without performing CLI export. A unique Chromium user-data-dir gives this
-    # export process its own singleton namespace and makes CLI export reliable
-    # even while the normal draw.io GUI is already open.
     $profileDir = Join-Path ([System.IO.Path]::GetTempPath()) ("cherrystock-drawio-profile-" + [Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
 
@@ -202,11 +195,66 @@ function Invoke-DrawioPngExport {
         }
     }
     finally {
-        # Remove only the dedicated temporary profile created by this function.
         if (Test-Path -LiteralPath $profileDir) {
             Remove-Item -LiteralPath $profileDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }
 
-Export-ModuleMember -Function Find-DrawioExecutable, Wait-DrawioOutputFile, Test-DrawioPngFile, Invoke-DrawioPngExport
+function Test-DrawioNativeExportCapability {
+    [CmdletBinding()]
+    param(
+        [string]$DrawioExe,
+        [int]$TimeoutSeconds = 30
+    )
+
+    if (-not $DrawioExe) {
+        $DrawioExe = Find-DrawioExecutable
+    }
+    if (-not $DrawioExe) {
+        throw "Draw.io Desktop CLI was not found."
+    }
+
+    $probeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("cherrystock-drawio-probe-" + [Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $probeRoot -Force | Out-Null
+    $probeDrawio = Join-Path $probeRoot "probe.drawio"
+    $probePng = Join-Path $probeRoot "probe.png"
+
+    $probeXml = @'
+<mxfile host="app.diagrams.net">
+  <diagram id="probe" name="Page-1">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="probe-box" value="CherryStock Draw.io CLI Probe" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="260" height="80" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+'@
+
+    try {
+        Set-Content -LiteralPath $probeDrawio -Value $probeXml -Encoding UTF8
+        $result = Invoke-DrawioPngExport -InputPath $probeDrawio -OutputPath $probePng -DrawioExe $DrawioExe -TimeoutSeconds $TimeoutSeconds
+
+        if (-not (Test-DrawioPngFile -Path $probePng)) {
+            throw "Native export probe produced an invalid PNG: $probePng"
+        }
+
+        return [PSCustomObject]@{
+            Status    = "PASS"
+            DrawioExe = $result.DrawioExe
+            Bytes     = $result.Bytes
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $probeRoot) {
+            Remove-Item -LiteralPath $probeRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Export-ModuleMember -Function Find-DrawioExecutable, Wait-DrawioOutputFile, Test-DrawioPngFile, Invoke-DrawioPngExport, Test-DrawioNativeExportCapability
