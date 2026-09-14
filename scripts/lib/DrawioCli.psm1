@@ -28,13 +28,9 @@ function Find-DrawioExecutable {
 
 function Get-DrawioExecutableInfo {
     [CmdletBinding()]
-    param(
-        [string]$DrawioExe
-    )
+    param([string]$DrawioExe)
 
-    if (-not $DrawioExe) {
-        $DrawioExe = Find-DrawioExecutable
-    }
+    if (-not $DrawioExe) { $DrawioExe = Find-DrawioExecutable }
     if (-not $DrawioExe -or -not (Test-Path -LiteralPath $DrawioExe -PathType Leaf)) {
         return $null
     }
@@ -53,7 +49,7 @@ function Wait-DrawioOutputFile {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [int]$TimeoutSeconds = 5,
+        [int]$TimeoutSeconds = 10,
         [int]$PollMilliseconds = 250
     )
 
@@ -73,12 +69,9 @@ function Wait-DrawioOutputFile {
                     $stableReads = 0
                 }
 
-                if ($stableReads -ge 2) {
-                    return $item
-                }
+                if ($stableReads -ge 2) { return $item }
             }
         }
-
         Start-Sleep -Milliseconds $PollMilliseconds
     }
 
@@ -87,18 +80,12 @@ function Wait-DrawioOutputFile {
 
 function Test-DrawioPngFile {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)][string]$Path
-    )
+    param([Parameter(Mandatory = $true)][string]$Path)
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        return $false
-    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
 
     $item = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
-    if (-not $item -or $item.Length -lt 8) {
-        return $false
-    }
+    if (-not $item -or $item.Length -lt 8) { return $false }
 
     $expected = [byte[]](0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
     $buffer = New-Object byte[] 8
@@ -110,16 +97,10 @@ function Test-DrawioPngFile {
         $stream.Dispose()
     }
 
-    if ($read -ne 8) {
-        return $false
-    }
-
+    if ($read -ne 8) { return $false }
     for ($i = 0; $i -lt 8; $i++) {
-        if ($buffer[$i] -ne $expected[$i]) {
-            return $false
-        }
+        if ($buffer[$i] -ne $expected[$i]) { return $false }
     }
-
     return $true
 }
 
@@ -130,56 +111,38 @@ function Quote-DrawioNativeArgument {
         throw "Native argument contains an unsupported quote character: $Value"
     }
 
-    if ($Value -match '\s') {
-        return '"' + $Value + '"'
-    }
-
+    if ($Value -match '\s') { return '"' + $Value + '"' }
     return $Value
 }
 
-function Invoke-DrawioProcessAttempt {
+function Invoke-DrawioNativeProcess {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$DrawioExe,
         [Parameter(Mandatory = $true)][string]$InputPath,
         [Parameter(Mandatory = $true)][string]$OutputPath,
-        [Parameter(Mandatory = $true)][string]$Strategy,
         [int]$TimeoutSeconds = 30,
         [switch]$Transparent,
-        [int]$Width = 0,
-        [switch]$UseIsolatedProfile,
-        [switch]$DisableGpu
+        [int]$Width = 0
     )
 
     if (Test-Path -LiteralPath $OutputPath) {
         Remove-Item -LiteralPath $OutputPath -Force
     }
 
-    $profileDir = $null
-    if ($UseIsolatedProfile) {
-        $profileDir = Join-Path ([System.IO.Path]::GetTempPath()) ("cherrystock-drawio-profile-" + [Guid]::NewGuid().ToString("N"))
-        New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
-    }
-
+    # IMPORTANT: draw.io Desktop 28.x uses commander with allowUnknownOption().
+    # Unknown Electron flags can leak into program.args and become paths[0].
+    # That makes valid input files fail with "input file/directory not found".
+    # Therefore argv must contain ONLY draw.io options registered by 28.x.
+    # Disable auto-update via environment instead of the unsupported CLI flag.
     $tokens = New-Object System.Collections.Generic.List[string]
-
-    if ($UseIsolatedProfile) {
-        [void]$tokens.Add(("--user-data-dir={0}" -f (Quote-DrawioNativeArgument $profileDir)))
-    }
-    if ($DisableGpu) {
-        [void]$tokens.Add("--disable-gpu")
-    }
-
-    [void]$tokens.Add("--disable-update")
     [void]$tokens.Add("--export")
     [void]$tokens.Add("--format")
     [void]$tokens.Add("png")
     [void]$tokens.Add("--output")
     [void]$tokens.Add((Quote-DrawioNativeArgument $OutputPath))
 
-    if ($Transparent) {
-        [void]$tokens.Add("--transparent")
-    }
+    if ($Transparent) { [void]$tokens.Add("--transparent") }
     if ($Width -gt 0) {
         [void]$tokens.Add("--width")
         [void]$tokens.Add([string]$Width)
@@ -188,101 +151,72 @@ function Invoke-DrawioProcessAttempt {
     [void]$tokens.Add((Quote-DrawioNativeArgument $InputPath))
     $argumentLine = $tokens -join ' '
 
-    $process = $null
+    Write-Verbose ("Draw.io strategy: registered-cli-options")
+    Write-Verbose ("Draw.io command: {0} {1}" -f $DrawioExe, $argumentLine)
+
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $DrawioExe
+    $psi.Arguments = $argumentLine
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.EnvironmentVariables["DRAWIO_DISABLE_UPDATE"] = "true"
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
     $startedAt = Get-Date
 
     try {
-        Write-Verbose ("Draw.io strategy: {0}" -f $Strategy)
-        Write-Verbose ("Draw.io command: {0} {1}" -f $DrawioExe, $argumentLine)
+        if (-not $process.Start()) {
+            throw "Draw.io process could not be started."
+        }
 
-        # draw.io.exe is a Windows GUI/Electron executable. The PowerShell call
-        # operator can return before a GUI process finishes. Start-Process plus
-        # WaitForExit binds validation to the actual native process lifecycle.
-        $process = Start-Process -FilePath $DrawioExe -ArgumentList $argumentLine -PassThru
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
 
         $finished = $process.WaitForExit([Math]::Max(1, $TimeoutSeconds) * 1000)
         if (-not $finished) {
-            try {
-                Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-            }
-            catch {
-                # Best-effort cleanup only.
-            }
-
-            return [PSCustomObject]@{
-                Strategy   = $Strategy
-                Success    = $false
-                ExitCode   = $null
-                TimedOut   = $true
-                OutputPath = $OutputPath
-                ProfileDir = $profileDir
-                Error      = "Draw.io process did not exit within ${TimeoutSeconds}s."
-                ElapsedMs  = [int]((Get-Date) - $startedAt).TotalMilliseconds
-            }
+            try { $process.Kill() } catch {}
+            try { $process.WaitForExit() } catch {}
+            throw "Draw.io process did not exit within ${TimeoutSeconds}s."
         }
 
-        $process.Refresh()
+        # Ensure async stdout/stderr readers are fully drained after process exit.
+        $process.WaitForExit()
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
         $exitCode = $process.ExitCode
 
+        if ($stdout) { Write-Verbose ("Draw.io stdout: {0}" -f $stdout.Trim()) }
+        if ($stderr) { Write-Verbose ("Draw.io stderr: {0}" -f $stderr.Trim()) }
+
         if ($exitCode -ne 0) {
-            return [PSCustomObject]@{
-                Strategy   = $Strategy
-                Success    = $false
-                ExitCode   = $exitCode
-                TimedOut   = $false
-                OutputPath = $OutputPath
-                ProfileDir = $profileDir
-                Error      = "Draw.io process exited with code $exitCode."
-                ElapsedMs  = [int]((Get-Date) - $startedAt).TotalMilliseconds
-            }
+            throw ("Draw.io exited with code {0}. stdout='{1}' stderr='{2}'" -f $exitCode, $stdout.Trim(), $stderr.Trim())
         }
 
-        $output = Wait-DrawioOutputFile -Path $OutputPath -TimeoutSeconds 5
+        $output = Wait-DrawioOutputFile -Path $OutputPath -TimeoutSeconds 10
         if (-not $output) {
-            return [PSCustomObject]@{
-                Strategy   = $Strategy
-                Success    = $false
-                ExitCode   = $exitCode
-                TimedOut   = $false
-                OutputPath = $OutputPath
-                ProfileDir = $profileDir
-                Error      = "Draw.io exited 0 but did not create a stable output file."
-                ElapsedMs  = [int]((Get-Date) - $startedAt).TotalMilliseconds
-            }
+            throw ("Draw.io exited 0 but no stable output file was created. stdout='{0}' stderr='{1}'" -f $stdout.Trim(), $stderr.Trim())
         }
 
         if (-not (Test-DrawioPngFile -Path $OutputPath)) {
-            return [PSCustomObject]@{
-                Strategy   = $Strategy
-                Success    = $false
-                ExitCode   = $exitCode
-                TimedOut   = $false
-                OutputPath = $OutputPath
-                ProfileDir = $profileDir
-                Error      = "Draw.io created a file without a valid PNG signature."
-                ElapsedMs  = [int]((Get-Date) - $startedAt).TotalMilliseconds
-            }
+            throw "Draw.io created a file without a valid PNG signature: $OutputPath"
         }
 
         return [PSCustomObject]@{
-            Strategy   = $Strategy
+            Strategy   = "registered-cli-options"
             Success    = $true
             ExitCode   = $exitCode
-            TimedOut   = $false
             OutputPath = $output.FullName
-            ProfileDir = $profileDir
             Bytes      = $output.Length
-            Error      = $null
+            StdOut     = $stdout
+            StdErr     = $stderr
             ElapsedMs  = [int]((Get-Date) - $startedAt).TotalMilliseconds
         }
     }
     finally {
-        if ($process) {
-            $process.Dispose()
-        }
-        if ($profileDir -and (Test-Path -LiteralPath $profileDir)) {
-            Remove-Item -LiteralPath $profileDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
+        $process.Dispose()
     }
 }
 
@@ -298,14 +232,11 @@ function Invoke-DrawioPngExport {
     )
 
     if (-not (Test-Path -LiteralPath $InputPath -PathType Leaf)) {
-        throw "Draw.io input file not found: $InputPath"
+        throw "Draw.io input file not found before launch: $InputPath"
     }
 
     $resolvedInput = (Resolve-Path -LiteralPath $InputPath).Path
-
-    if (-not $DrawioExe) {
-        $DrawioExe = Find-DrawioExecutable
-    }
+    if (-not $DrawioExe) { $DrawioExe = Find-DrawioExecutable }
     if (-not $DrawioExe -or -not (Test-Path -LiteralPath $DrawioExe -PathType Leaf)) {
         throw "Draw.io Desktop CLI was not found."
     }
@@ -317,61 +248,32 @@ function Invoke-DrawioPngExport {
         $OutputPath = Join-Path $outputDirectory $OutputPath
     }
     New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+    $resolvedOutput = [System.IO.Path]::GetFullPath($OutputPath)
 
-    $runningDrawio = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @("draw.io", "drawio") })
-    $attempts = @()
-
-    if ($runningDrawio.Count -eq 0) {
-        $attempts += [PSCustomObject]@{ Name = "documented-cli"; Isolated = $false; DisableGpu = $false }
-    }
-
-    $attempts += [PSCustomObject]@{ Name = "isolated-profile"; Isolated = $true; DisableGpu = $false }
-    $attempts += [PSCustomObject]@{ Name = "isolated-profile-disable-gpu"; Isolated = $true; DisableGpu = $true }
-
-    $diagnostics = New-Object System.Collections.Generic.List[object]
-    $showVerbose = ($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
-
-    foreach ($attempt in $attempts) {
-        $result = Invoke-DrawioProcessAttempt `
-            -DrawioExe $DrawioExe `
-            -InputPath $resolvedInput `
-            -OutputPath $OutputPath `
-            -Strategy $attempt.Name `
-            -TimeoutSeconds $TimeoutSeconds `
-            -Transparent:$Transparent `
-            -Width $Width `
-            -UseIsolatedProfile:$attempt.Isolated `
-            -DisableGpu:$attempt.DisableGpu `
-            -Verbose:$showVerbose
-
-        [void]$diagnostics.Add($result)
-
-        if ($result.Success) {
-            $info = Get-DrawioExecutableInfo -DrawioExe $DrawioExe
-            return [PSCustomObject]@{
-                Path           = $result.OutputPath
-                Bytes          = $result.Bytes
-                ExitCode       = $result.ExitCode
-                DrawioExe      = $DrawioExe
-                FileVersion    = if ($info) { $info.FileVersion } else { $null }
-                ProductVersion = if ($info) { $info.ProductVersion } else { $null }
-                InputPath      = $resolvedInput
-                Strategy       = $result.Strategy
-                ElapsedMs      = $result.ElapsedMs
-                PngValid       = $true
-            }
-        }
-    }
+    $result = Invoke-DrawioNativeProcess `
+        -DrawioExe $DrawioExe `
+        -InputPath $resolvedInput `
+        -OutputPath $resolvedOutput `
+        -TimeoutSeconds $TimeoutSeconds `
+        -Transparent:$Transparent `
+        -Width $Width `
+        -Verbose:($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
 
     $info = Get-DrawioExecutableInfo -DrawioExe $DrawioExe
-    $summary = ($diagnostics | ForEach-Object {
-        "[{0}] exit={1}; timeout={2}; elapsedMs={3}; error={4}" -f $_.Strategy, $_.ExitCode, $_.TimedOut, $_.ElapsedMs, $_.Error
-    }) -join " | "
-
-    $versionText = if ($info) { "fileVersion='$($info.FileVersion)', productVersion='$($info.ProductVersion)'" } else { "version=unknown" }
-    $runningText = if ($runningDrawio.Count -gt 0) { "$($runningDrawio.Count) draw.io process(es) were already running" } else { "no draw.io GUI process was detected before export" }
-
-    throw ("Draw.io native PNG export failed after all deterministic strategies. Executable='{0}', {1}, {2}, input='{3}', output='{4}'. Diagnostics: {5}" -f $DrawioExe, $versionText, $runningText, $resolvedInput, $OutputPath, $summary)
+    return [PSCustomObject]@{
+        Path           = $result.OutputPath
+        Bytes          = $result.Bytes
+        ExitCode       = $result.ExitCode
+        DrawioExe      = $DrawioExe
+        FileVersion    = if ($info) { $info.FileVersion } else { $null }
+        ProductVersion = if ($info) { $info.ProductVersion } else { $null }
+        InputPath      = $resolvedInput
+        Strategy       = $result.Strategy
+        ElapsedMs      = $result.ElapsedMs
+        PngValid       = $true
+        StdOut         = $result.StdOut
+        StdErr         = $result.StdErr
+    }
 }
 
 function Test-DrawioNativeExportCapability {
@@ -381,20 +283,14 @@ function Test-DrawioNativeExportCapability {
         [int]$TimeoutSeconds = 30
     )
 
-    if (-not $DrawioExe) {
-        $DrawioExe = Find-DrawioExecutable
-    }
-    if (-not $DrawioExe) {
-        throw "Draw.io Desktop CLI was not found."
-    }
+    if (-not $DrawioExe) { $DrawioExe = Find-DrawioExecutable }
+    if (-not $DrawioExe) { throw "Draw.io Desktop CLI was not found." }
 
     $probeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("cherrystock-drawio-probe-" + [Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $probeRoot -Force | Out-Null
     $probeDrawio = Join-Path $probeRoot "probe.drawio"
     $probePng = Join-Path $probeRoot "probe.png"
 
-    # shadow=0 is deliberate. draw.io Desktop has a documented Windows CLI bug
-    # where mxGraphModel shadow=1 can exit 0 without producing PNG output.
     $probeXml = @'
 <mxfile host="app.diagrams.net">
   <diagram id="probe" name="Page-1">
@@ -412,9 +308,18 @@ function Test-DrawioNativeExportCapability {
 '@
 
     try {
-        Set-Content -LiteralPath $probeDrawio -Value $probeXml -Encoding UTF8
-        $showVerbose = ($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
-        $result = Invoke-DrawioPngExport -InputPath $probeDrawio -OutputPath $probePng -DrawioExe $DrawioExe -TimeoutSeconds $TimeoutSeconds -Verbose:$showVerbose
+        # Windows PowerShell 5.1 Set-Content -Encoding UTF8 writes a BOM.
+        # Use UTF8 without BOM to keep the probe as close as possible to the
+        # repository .drawio source and avoid parser differences.
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($probeDrawio, $probeXml, $utf8NoBom)
+
+        $result = Invoke-DrawioPngExport `
+            -InputPath $probeDrawio `
+            -OutputPath $probePng `
+            -DrawioExe $DrawioExe `
+            -TimeoutSeconds $TimeoutSeconds `
+            -Verbose:($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
 
         if (-not (Test-DrawioPngFile -Path $probePng)) {
             throw "Native export probe produced an invalid PNG: $probePng"
