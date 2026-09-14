@@ -2,23 +2,38 @@
 
 ## Purpose
 
-This document is the detailed execution companion to `docs/architecture/agent-harness/README.md`.
+Detailed execution companion to `docs/architecture/agent-harness/README.md` and the responsibility hierarchy in `AGENT_SKILL_INSTRUCTION_DOC_TOOL.md`.
 
-The README defines the canonical ADLC control model, ownership and gates. This file explains **how each CherryStock agent actually runs**, which `.md` files it must read, which repository folders it may update, what each material is for, and where the handoff goes next.
+This document explains which Agent owns each outcome, which Instructions constrain it, which Docs provide knowledge, which Skills supply repeatable procedures, which Tools execute work, and where implementation/verification evidence belongs.
 
-The synchronized visualization is:
+## 1. Official stack
 
 ```text
-docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json
-        ↓ Archify validate + deliver
-docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html
+L0 Governance      .github/copilot-instructions.md
+L1 Agent           .github/agents/*.agent.md
+L2 Instruction     .github/instructions/*.instructions.md
+L3 Skill           .github/skills/*/SKILL.md
+L4 Docs            docs/**
+L5 Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / scripts / CLI
+L6 Implementation  src/** + runtime entry points
+L7 Verification    tests/** + reproducible evidence
 ```
 
----
+Responsibility rule:
 
-## 1. Shared bootstrap order
+```text
+Agent        = outcome
+Instruction  = constraints
+Skill        = procedure
+Docs         = knowledge/design
+Tool         = capability
+Implementation = runtime behavior
+Verification = proof
+```
 
-Every routed CherryStock task starts from the same control stack. The intent-specific agent changes, but the governance order does not.
+Operational loading normally reads Docs before executing a Skill so the procedure receives current architecture/requirement context.
+
+## 2. Shared bootstrap
 
 ```text
 User request
@@ -31,191 +46,70 @@ intent-specific .github/agents/*.agent.md
   ↓
 matching .github/instructions/*.instructions.md
   ↓
-docs/00_HOME.md
+docs/00_HOME.md → smallest relevant docs/** set
   ↓
-smallest relevant docs/** set
+matching .github/skills/*/SKILL.md when procedure applies
   ↓
-existing source / SQL / tests / runbooks
+Tool / src implementation / tests according to ownership
 ```
 
-### File purposes
+No task should blindly load every Skill or every document.
 
-| File / folder | Purpose |
-|---|---|
-| `.github/copilot-instructions.md` | Executable ADLC router and repository-level governance. Classifies intent, selects one authoritative owner, defines handoff/gate rules and anti-loop policy. |
-| `.github/agents/CherryMon.agent.md` | Stable architecture constitution. Defines module responsibilities, dependency principles, Source-of-Truth rules and the high-level agent/domain routing map. |
-| `.github/agents/*.agent.md` | Defines **WHO owns an outcome**, what context that agent must inspect, its workflow, boundaries, terminal states and handoff contract. |
-| `.github/instructions/*.instructions.md` | Defines **HOW a domain must execute safely**. These are mandatory execution constraints, not outcome owners. |
-| `.github/skills/**` | Reusable specialized authoring/tool procedure. Example: `chart-authoring/SKILL.md`. |
-| `docs/00_HOME.md` | Durable knowledge router. Agents use it to locate the smallest relevant architecture, ADR, requirement, development and runbook materials. |
-| `docs/**` | Engineering knowledge Source of Truth for how CherryStock works and why durable decisions exist. |
-| `src/**` | Runtime implementation. |
-| `scripts/**` | Focused initialization, migration, backfill, rendering and standalone execution helpers. |
-| `tests/**` | Executable automated validation. |
+## 3. Agent roster
 
----
+### Default Repository Agent / Router
 
-## 2. Agent roster and execution contract
+Control: `.github/copilot-instructions.md`.
 
-### 2.1 Default Repository Agent / ADLC Router
-
-**Control file:** `.github/copilot-instructions.md`
-
-This is the orchestration layer. It does not replace a specialist agent.
-
-Flow:
+Owns routing/context preservation, not specialist outcomes.
 
 ```text
-interpret user intent
-  → identify affected domain
-  → classify primary intent
-  → select authoritative agent
-  → load mandatory shared governance
-  → load the smallest domain context
-  → preserve upstream gate + acceptance criteria
-  → hand off
-  → consolidate terminal result for the user
+interpret intent
+  → choose authoritative owner
+  → attach mandatory Instructions
+  → route knowledge through docs/00_HOME.md
+  → attach task-specific Skill when needed
+  → preserve gate/acceptance criteria
+  → consolidate terminal result
 ```
 
-Primary routing:
+### CherryMon Architecture Constitution
 
-- requirement ambiguity/readiness → `BusinessAnalyst.agent.md`;
-- architecture/design → `SolutionArchitect.agent.md`;
-- concrete indicator lifecycle → `Indicator_Management.agent.md`;
-- chart recommendation / Flint authoring → `Chart.agent.md`;
-- clear implementation → `GeneralCoding.agent.md`;
-- test/validation → `TestEngineer.agent.md`.
+File: `.github/agents/CherryMon.agent.md`.
 
-The router normally writes no duplicate domain document. Its job is coordination and context preservation.
+Shared constitution only. Defines architecture direction, stable SSOT/dependency principles and routing vocabulary. It is not a normal lifecycle stage.
 
----
+### Business Analyst
 
-### 2.2 CherryMon Architecture Constitution
+Owner: requirement readiness.
 
-**File:** `.github/agents/CherryMon.agent.md`
-
-This file participates in every serious route as a **shared constitution**, not as a normal task owner.
-
-It defines:
-
-- module responsibilities such as `src/calcEngine`, `src/Chart`, `src/CrawlStock`, `src/DuckDB`, `src/Orchestrator`, `src/Ults`;
-- dependency direction principles;
-- database naming conventions (`raw_*`, `cal_*`, `dim_*`, `vw_*`, `sys_*`);
-- key CherryMon public/data contracts;
-- agent-harness routing and domain instruction routing;
-- repository knowledge architecture.
-
-If actual repository structure intentionally diverges from this constitution, architecture documentation must be updated rather than silently ignoring the mismatch.
-
----
-
-### 2.3 BusinessAnalyst.agent.md
-
-**Owner:** requirement quality and backlog readiness.
-
-Mandatory reads:
+Primary durable output:
 
 ```text
-.github/copilot-instructions.md
-.github/agents/CherryMon.agent.md
-docs/00_HOME.md
-docs/backlog/requirements/**
-relevant docs/architecture/** and docs/adr/**
-matching .github/instructions/*.instructions.md when domain constraints matter
-existing implementation only as evidence of current behavior
+docs/backlog/requirements/REQ-*.md
 ```
 
-Execution:
+Exits:
+- `READY_FOR_DESIGN` → Solution Architect;
+- `READY_FOR_IMPLEMENTATION` → General Coding/domain owner;
+- `DRAFT`, `NEEDS_CLARIFICATION`, `BLOCKED` → remains unresolved.
+
+BA does not author production code or final test verdicts.
+
+### Solution Architect
+
+Owner: design readiness.
+
+Layers:
 
 ```text
-FRAME
-  objective · problem · target outcome · stakeholders
-    ↓
-DEFINE
-  functional requirements · business rules · scope · constraints · risks
-    ↓
-MAKE TESTABLE
-  deterministic acceptance criteria
-    ↓
-DECOMPOSE / ROUTE
-  stable REQ id · next owner · architecture-needed? · validation owner
+Agent        .github/agents/SolutionArchitect.agent.md
+Instruction  matching domain Instructions + archify.instructions.md
+Docs         requirement + architecture + ADR + current source evidence
+Skill        .github/skills/architecture-design/SKILL.md
+Tool         Archify; optional Draw.io; GitHub/source inspection
+Output       docs/architecture/** + docs/adr/** + typed/generated architecture artifacts
 ```
-
-Durable output:
-
-```text
-docs/backlog/requirements/REQ-<number>-<short-name>.md
-```
-
-Template:
-
-```text
-docs/backlog/requirements/REQUIREMENT_TEMPLATE.md
-```
-
-Folder purpose: `docs/backlog/requirements/**` is the canonical location for durable business/functional requirements. It is not the runtime Source of Truth after implementation.
-
-Exit states:
-
-- `READY_FOR_DESIGN` → `SolutionArchitect.agent.md`;
-- `READY_FOR_IMPLEMENTATION` → `GeneralCoding.agent.md` or authoritative domain agent;
-- `NEEDS_CLARIFICATION` / `DRAFT` → remains with BA;
-- `BLOCKED` → router/user decision.
-
-BA does not create architecture, edit production code or claim a test verdict.
-
----
-
-### 2.4 SolutionArchitect.agent.md
-
-**Owner:** design readiness, architecture contracts and durable architecture decisions.
-
-Mandatory reads:
-
-```text
-.github/copilot-instructions.md
-.github/agents/CherryMon.agent.md
-ready docs/backlog/requirements/REQ-*.md when available
-docs/00_HOME.md
-relevant docs/architecture/**
-relevant docs/adr/**
-matching .github/instructions/*.instructions.md
-existing source / SQL / tests / similar implementation patterns
-```
-
-Execution:
-
-```text
-CONTEXT
-  identify requirement, domains, current Source of Truth
-    ↓
-CURRENT STATE
-  components · data flow · dependencies · persistence · constraints
-    ↓
-PROPOSED DESIGN
-  responsibilities · contracts · data model · failure handling · observability
-    ↓
-DECISION CHECK
-  ownership · duplication · compatibility · migration · ADR need
-    ↓
-ARCHIFY SYNCHRONIZATION
-  typed source + generated HTML + validation
-```
-
-Durable outputs:
-
-```text
-docs/architecture/**
-docs/adr/**                                  # when a durable cross-module decision is required
-docs/architecture/diagrams/**               # Archify typed source
-docs/architecture/generated/**              # generated presentation only
-```
-
-Important distinction:
-
-- `docs/architecture/**` and `docs/adr/**` contain architecture meaning and decisions;
-- `docs/architecture/generated/**` is presentation output and is never edited as the Source of Truth;
-- Archify is the Solution Architect's visualization/validation tool, not an architecture authority.
 
 Exit:
 
@@ -223,399 +117,260 @@ Exit:
 APPROVED_FOR_IMPLEMENTATION
 ```
 
-Only after the design document, ADR when needed, Archify typed source and generated artifact are synchronized and validated.
+Only after required canonical Markdown/ADR and Archify representation are synchronized/validated.
 
-Next owner: `GeneralCoding.agent.md` or the authoritative domain agent.
+### Indicator Management
 
----
-
-### 2.5 Indicator_Management.agent.md
-
-**Owner:** concrete technical-indicator lifecycle.
-
-Mandatory context:
+Owner: concrete technical-indicator lifecycle.
 
 ```text
-docs/architecture/Indicator_Engine.md
-.github/instructions/indicators.instructions.md
-.github/agents/Instructions/Indicator_Engine.md   # remaining legacy detailed reference
-src/calcEngine/indicatorRegistry.py
-src/calcEngine/calcIndicators.py
-current CherryMon indicator metadata/data via cherrymon-duckdb MCP
+Agent        .github/agents/Indicator_Management.agent.md
+Instruction  .github/instructions/indicators.instructions.md
+Docs         docs/architecture/Indicator_Engine.md + ADR-002 + DB metadata
+Skill        .github/skills/indicator-onboarding/SKILL.md
+Tool         CherryMon/DuckDB MCP + targeted refresh_technical_indicators wrapper
+Output       affected metadata/config/fact scope + lifecycle evidence
 ```
 
-Purpose of the main materials:
-
-- `docs/architecture/Indicator_Engine.md` — canonical indicator architecture contract;
-- `indicators.instructions.md` — mandatory indicator execution/safety rules;
-- legacy `Instructions/Indicator_Engine.md` — detailed operational reference not yet fully migrated;
-- `src/calcEngine/**` — actual calculation engine evidence;
-- CherryMon DuckDB metadata/views — current indicator configuration/data evidence.
-
-Execution:
+Procedure:
 
 ```text
-DISCOVER
-  scenario + current definition/components/configs + D/W/M coverage
-    ↓
-PHASE 1 — CONFIG METADATA
-  transactional definition/component/config upsert via MCP
-    ↓
-PHASE 2 — HISTORICAL BACKFILL
-  targeted refresh_technical_indicators() wrapper; MWG smoke first
-    ↓
-PHASE 3 — VALIDATION
-  coverage · dates · nulls · duplicates · zero outputs · sample values
-```
-
-Primary data contracts include:
-
-```text
-dim_indicator
-dim_indicator_component
-dim_indicator_config
-cal_indicator_values
-vw_Indicator_config
-vw_Ticker_indicators
+DISCOVER → METADATA/CONFIG → TARGETED BACKFILL → VALIDATE → HANDOFF
 ```
 
 Exit:
 
 ```text
-IMPLEMENTED_PENDING_VALIDATION
-  → TestEngineer.agent.md
+IMPLEMENTED_PENDING_VALIDATION → TestEngineer
 ```
 
-If supporting engine code outside the lifecycle needs an approved implementation, route that code scope to `GeneralCoding.agent.md`.
+The old `.github/agents/Instructions/Indicator_Engine.md` path is retired. Historical material is only at `docs/reference/Indicator_Engine_Legacy_Reference.md`.
 
----
+### Chart Agent
 
-### 2.6 Chart.agent.md
-
-**Owner:** chart recommendation, visualization decision and Flint chart authoring/rendering.
-
-Mandatory context:
+Owner: visualization recommendation/spec/render outcome.
 
 ```text
-.github/copilot-instructions.md
-.github/agents/CherryMon.agent.md
-.github/instructions/chart.instructions.md
-.github/skills/chart-authoring/SKILL.md
-docs/architecture/Chart_Architecture.md
-relevant requirement/domain docs from docs/00_HOME.md
-actual dataset/query/schema or chart-ready contract
+Agent        .github/agents/Chart.agent.md
+Instruction  .github/instructions/chart.instructions.md
+Docs         docs/architecture/Chart_Architecture.md + actual dataset contract
+Skill        .github/skills/chart-authoring/SKILL.md
+Tool         Flint MCP
 ```
 
-Purpose:
+Production integration after the chart contract is ready routes to General Coding and then Test Engineer. Draw.io is not a replacement for Flint chart authoring.
 
-- `Chart.agent.md` — owns the analytical visualization outcome;
-- `chart.instructions.md` — production/domain chart execution rules;
-- `chart-authoring/SKILL.md` — detailed Flint authoring procedure;
-- `Chart_Architecture.md` — reusable chart/application architecture contract;
-- actual data contract — prevents invented chart semantics.
+### General Coding
 
-Execution:
+Owner: implementation readiness for clear changes not owned end-to-end by a specialist.
 
-```text
-UNDERSTAND analytical question + grain + fields
-  ↓
-RECOMMEND best chart + bounded alternatives
-  ↓
-MAP TO FLINT chart type / backend / channels
-  ↓
-TRANSFORM input when required
-  ↓
-VALIDATE with flint/validate_chart
-  ↓
-RENDER / COMPILE
-  ↓
-SANITY CHECK
-```
-
-Outcomes:
-
-- `CHART_RECOMMENDATION_READY`;
-- `CHART_SPEC_READY`;
-- `CHART_RENDERED`;
-- `NEEDS_DATA_TRANSFORM`;
-- `NEEDS_REQUIREMENT_CLARIFICATION`;
-- `NEEDS_ARCHITECTURE_DECISION`;
-- `UNSUPPORTED_BY_FLINT`;
-- `BLOCKED`.
-
-Advisory/spec/render may be terminal. Production application integration hands the approved chart/data-transform contract to `GeneralCoding.agent.md`, then independent validation can follow.
-
----
-
-### 2.7 GeneralCoding.agent.md
-
-**Owner:** clear implementation not owned end-to-end by a specialist domain agent.
-
-Mandatory reads:
-
-```text
-.github/copilot-instructions.md
-.github/agents/CherryMon.agent.md
-ready requirement when present
-approved architecture / ADR when applicable
-matching .github/instructions/*.instructions.md
-relevant canonical docs routed from docs/00_HOME.md
-existing implementation + nearest similar patterns
-nearest tests and execution entry points
-```
-
-Execution:
-
-```text
-CONFIRM
-  objective · accepted material · AC · affected files
-    ↓
-INSPECT
-  flow · contracts · dependencies · side effects · idempotency
-    ↓
-IMPLEMENT
-  smallest backward-compatible change
-    ↓
-UPDATE MATERIALS
-  canonical docs / runbooks / requirement linkage / ChangeRequest
-    ↓
-DEVELOPER VERIFICATION
-  narrowest meaningful check
-    ↓
-HANDOFF
-  exact changed scope + commands + evidence + risks
-```
+Relevant Skills when applicable:
+- `duckdb-migration`;
+- `data-quality-validation` for developer-side pipeline checks.
 
 Primary outputs:
 
 ```text
 src/**
 scripts/**
-tests/** when implementation-side test change is in scope
-existing canonical docs
-docs/development/implementation-notes/** only when non-obvious detail needs a durable note
-docs/ChangeRequest/** for release/change traceability when applicable
+configuration owned by the repository
+affected canonical docs/change records
+tests/** when implementation-side test changes are part of the delivery
 ```
 
 Exit:
 
 ```text
-IMPLEMENTED_PENDING_VALIDATION
-  → TestEngineer.agent.md
+IMPLEMENTED_PENDING_VALIDATION → TestEngineer
 ```
 
-General Coding cannot self-declare `PASS`.
+General Coding cannot self-declare final PASS.
 
-Escalation:
+### Test Engineer
 
-- unclear expected behavior → BA;
-- new Source of Truth/public contract/cross-module boundary → SA;
-- concrete indicator lifecycle → Indicator Management.
-
----
-
-### 2.8 TestEngineer.agent.md
-
-**Owner:** independent evidence-backed validation verdict.
-
-Mandatory reads:
+Owner: independent evidence-backed verdict.
 
 ```text
-.github/copilot-instructions.md
-.github/agents/CherryMon.agent.md
-.github/instructions/testing.instructions.md
-related requirement + acceptance criteria
-GeneralCoding/domain implementation handoff
-docs/00_HOME.md
-matching domain instructions
-relevant architecture / ADR / specification
-production code under test
-nearest tests / runbooks
+Agent        .github/agents/TestEngineer.agent.md
+Instruction  .github/instructions/testing.instructions.md + matching domain Instructions
+Docs         requirement + architecture/ADR + implementation handoff
+Skill        regression-testing and/or data-quality-validation
+Tool         pytest/Python/DuckDB-MCP/scripts/UI tooling as appropriate
+Evidence     tests/** + reproducible command/output
 ```
 
-Execution state machine:
-
-```text
-DEFINE
-  ↓
-PREPARE
-  ↓
-EXECUTE
-  ↓
-EVALUATE
-  ├── PASS → COMPLETE
-  ├── FAIL → bounded focused repair/retest → COMPLETE
-  └── BLOCKED → REPORT → COMPLETE
-```
-
-Validation depth is selected using `.github/instructions/testing.instructions.md`:
-
-- `BUG FAST VALIDATION`;
-- `INTEGRATION VALIDATION`;
-- `FULL RELEASE / MONTHLY VALIDATION`.
-
-Primary evidence locations:
-
-```text
-tests/**
-docs/runbook/** when a reproducible manual/operational procedure is durable
-execution logs / command evidence referenced by the handoff
-```
-
-Terminal verdict owner:
+Terminal outcomes:
 
 ```text
 PASS | FAIL | BLOCKED | REGRESSION
 ```
 
-Feedback routing:
+Failure routing:
+- requirement gap → BA;
+- design/data-model/contract gap → SA;
+- implementation defect → General Coding/domain owner;
+- dependency/environment blocker → Router/User.
 
-- missing/ambiguous acceptance criteria → BA;
-- architecture decision gap → SA;
-- current implementation defect/regression → GeneralCoding or authoritative domain owner;
-- external dependency/environment block → router/user.
+## 4. Domain Instruction map
 
----
+| Domain | Mandatory Instruction |
+|---|---|
+| DuckDB / SQL / transaction / data quality | `.github/instructions/database.instructions.md` |
+| Technical indicators | `.github/instructions/indicators.instructions.md` |
+| Chart / visualization | `.github/instructions/chart.instructions.md` |
+| Crawler / ingestion | `.github/instructions/crawler.instructions.md` |
+| Python | `.github/instructions/python.instructions.md` |
+| Testing | `.github/instructions/testing.instructions.md` |
+| Archify | `.github/instructions/archify.instructions.md` |
 
-## 3. Domain instruction map
+Instructions constrain whichever Agent owns the current outcome; they do not become the task owner.
 
-| Domain | Mandatory instruction | Purpose |
+## 5. Skill map
+
+| Skill | Purpose | Typical owner |
 |---|---|---|
-| DuckDB / SQL / transaction / data quality | `.github/instructions/database.instructions.md` | Database safety, connection/transaction patterns, data-quality rules and SQL conventions. |
-| Technical indicators | `.github/instructions/indicators.instructions.md` | Indicator metadata/config/backfill/public-view execution contract. |
-| Chart / visualization | `.github/instructions/chart.instructions.md` | Chart/data-contract/integration rules. |
-| Crawler / ingestion | `.github/instructions/crawler.instructions.md` | External-source ingestion constraints and operational rules. |
-| Python | `.github/instructions/python.instructions.md` | Python execution/convention constraints. |
-| Testing | `.github/instructions/testing.instructions.md` | Minimum sufficient evidence, finite validation and retry policy. |
-| Archify | `.github/instructions/archify.instructions.md` | Typed-source, validation, generated-artifact and architecture synchronization rules. |
+| `architecture-design` | current-state → target design → ADR/migration/test → synchronized design handoff | Solution Architect |
+| `indicator-onboarding` | indicator metadata/config → targeted backfill → lifecycle validation | Indicator Management |
+| `regression-testing` | focused deterministic behavioral verification | Test Engineer |
+| `data-quality-validation` | freshness/coverage/duplicate/null/range/idempotency verification | Test Engineer / General Coding |
+| `duckdb-migration` | bounded schema/view/data migration | General Coding / Solution Architect |
+| `chart-authoring` | visualization selection + Flint authoring/render | Chart Agent |
+| `drawio-skill` | editable diagrams.net artifact | Solution Architect or routed owner |
 
-A domain instruction does not own the task. It constrains whichever agent currently owns the outcome.
+Skill catalog: `.github/skills/README.md`.
 
----
-
-## 4. Folder purpose in the ADLC trace
+## 6. Folder ownership
 
 ```text
 .github/
-  copilot-instructions.md       router/governance
-  agents/                       WHO owns outcomes
-  instructions/                 HOW domain execution must behave
-  skills/                       reusable specialist procedure/tool contract
+  copilot-instructions.md       L0 router/governance
+  agents/                       L1 outcome owners
+  instructions/                 L2 mandatory constraints
+  skills/                       L3 reusable procedures
 
 docs/
-  00_HOME.md                    knowledge navigation entry point
-  backlog/requirements/         BA durable requirement contract
-  architecture/                 SA durable system/design Source of Truth
-  architecture/diagrams/        Archify typed sources
-  architecture/generated/       generated presentation only
-  adr/                          durable architecture decisions
-  development/                  development workflow + non-obvious implementation guidance
-  runbook/                      reproducible operational/test procedures
+  00_HOME.md                    L4 knowledge router
+  backlog/requirements/         durable requirement contracts
+  architecture/                 durable system/design Source of Truth
+  architecture/diagrams/        typed/editable diagram sources
+  architecture/generated/       presentation output only
+  adr/                          durable decisions/rationale
+  domain/                       market/business/domain knowledge
+  reference/                    current generated + historical reference
+  runbook/                      reproducible operating procedures
   ChangeRequest/                change/release traceability
-src/                            runtime implementation
-scripts/                        focused execution / migration / backfill / render utilities
-tests/                          executable validation
+src/                            L6 runtime implementation
+scripts/                        L5 focused execution helpers
+.vscode/mcp.json                L5 MCP tool configuration
+tests/                          L7 executable verification
 ```
 
-Canonical evidence chain:
+## 7. Canonical flows
 
-```text
-User intent
-  → REQ-* / accepted explicit request
-  → architecture / ADR / approved contracts when required
-  → implementation diff
-  → test/runbook evidence
-  → PASS | FAIL | BLOCKED | REGRESSION
-```
-
----
-
-## 5. Canonical flows
-
-### Material or initially unclear change
+### Material / unclear capability
 
 ```text
 User
-  → Default Repository Agent
-  → BusinessAnalyst.agent.md
-  → READY_FOR_DESIGN
-  → SolutionArchitect.agent.md
-  → APPROVED_FOR_IMPLEMENTATION
-  → GeneralCoding.agent.md or authoritative domain agent
-  → IMPLEMENTED_PENDING_VALIDATION
-  → TestEngineer.agent.md
-  → PASS | FAIL | BLOCKED | REGRESSION
-  → Router → User / failed-outcome owner
+ → Router
+ → Business Analyst
+ → READY_FOR_DESIGN
+ → Solution Architect + architecture-design Skill
+ → APPROVED_FOR_IMPLEMENTATION
+ → General Coding / domain Agent + applicable Skill
+ → IMPLEMENTED_PENDING_VALIDATION
+ → Test Engineer + validation Skill
+ → PASS | FAIL | BLOCKED | REGRESSION
 ```
 
 ### Clear bounded implementation
 
 ```text
-User → Router → GeneralCoding.agent.md → TestEngineer.agent.md → verdict
+User → General Coding/domain Agent → applicable Skill → Test Engineer → verdict
 ```
 
-### Concrete indicator lifecycle
+### Indicator lifecycle
 
 ```text
 User
-  → Router
-  → Indicator_Engine.md + indicators.instructions.md
-  → Indicator_Management.agent.md
-  → IMPLEMENTED_PENDING_VALIDATION
-  → TestEngineer.agent.md
-  → verdict
+ → Indicator Management
+ → indicators Instructions + Indicator Engine Docs
+ → indicator-onboarding Skill
+ → CherryMon MCP / calcEngine
+ → IMPLEMENTED_PENDING_VALIDATION
+ → Test Engineer
 ```
 
-BA or SA is inserted only when requirement ambiguity or architecture change justifies it.
-
-### Chart advisory
+### Chart / Flint
 
 ```text
 User
-  → Router
-  → Chart_Architecture.md + chart.instructions.md + chart-authoring/SKILL.md
-  → Chart.agent.md
-  → CHART_RECOMMENDATION_READY / CHART_SPEC_READY / CHART_RENDERED
-  → User
+ → Chart Agent
+ → chart Instructions + actual data contract
+ → chart-authoring Skill
+ → Flint
+ → advisory/spec/render result
 ```
 
-### Chart production integration
+Production integration continues:
 
 ```text
-Chart.agent.md
-  → approved chart/data-transform contract
-  → GeneralCoding.agent.md
-  → IMPLEMENTED_PENDING_VALIDATION
-  → TestEngineer.agent.md
-  → verdict
+Chart contract → General Coding → Test Engineer
 ```
 
----
+### Architecture visualization
 
-## 6. Archify generation and maintenance
+```text
+Solution Architect
+ → architecture-design Skill
+ → canonical Markdown / ADR
+ → Archify typed source + validated generated representation
+ → APPROVED_FOR_IMPLEMENTATION
+```
 
-Typed source:
+Optional editable review artifact:
+
+```text
+Solution Architect → drawio-skill → Draw.io source/export
+```
+
+Draw.io does not replace the Archify gate.
+
+## 8. Handoff payload
+
+Every non-trivial handoff should contain:
+
+```text
+Objective / requirement
+Upstream owner and gate
+Canonical paths inspected
+In scope / out of scope
+Acceptance criteria
+Approved contracts/invariants
+Affected modules/files
+Skills/tools used
+Evidence produced
+Known risks/blockers
+Expected next owner/output/gate
+```
+
+## 9. Runtime migration boundary
+
+This Harness reorganization does not perform a big-bang move of legacy source packages. `src/cherrystock/**` remains the target canonical layered runtime package while legacy modules are migrated feature-by-feature under the architecture backlog.
+
+Governance/material ownership can be normalized independently from runtime package migration.
+
+## 10. Synchronized visualization
+
+Canonical typed workflow:
 
 ```text
 docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json
 ```
 
-Generated presentation:
+Generated representation:
 
 ```text
 docs/architecture/generated/CherryStock_ADLC_Agent_Harness.html
 ```
 
-Local render wrapper:
-
-```powershell
-.\scripts\render_archify_agent_harness.ps1
-```
-
-GitHub render workflow:
-
-```text
-.github/workflows/render-archify-agent-harness.yml
-```
-
-Maintenance rule: whenever routing, an agent contract, gate, mandatory context, file ownership or folder purpose changes, update this execution map and the Archify typed source in the same change set, then regenerate the HTML. Do not manually patch generated HTML.
+The GitHub Archify workflow validates/regenerates the presentation artifact when the typed workflow/execution map changes. Generated HTML is not manually edited as architecture meaning.

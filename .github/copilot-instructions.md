@@ -1,295 +1,247 @@
 # CherryStock Agent Harness — Governance and Routing
 
 ## Purpose
-This file is the mandatory repository-level entry point for CherryStock AI-assisted work.
 
-It defines global governance, intent classification, specialist routing, ownership priority, handoff contracts, bounded execution and material ownership.
+This file is the mandatory repository-level entry point for AI-assisted work in CherryStock. It defines routing, ownership, precedence, handoff, bounded execution and the official responsibility hierarchy.
 
-The default repository agent acts as task orchestrator. Specialist agents own their defined outcomes. Canonical Agent Harness architecture is documented at `docs/architecture/agent-harness/README.md`.
+Canonical architecture:
+- `docs/architecture/agent-harness/README.md`
+- `docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md`
+- `docs/adr/ADR-011-agent-harness-responsibility-hierarchy.md`
 
-## Instruction priority
-Trước khi sửa code hoặc thiết kế, đọc instructions theo thứ tự:
+## Official responsibility hierarchy
 
-1. .github/copilot-instructions.md — global engineering governance.
-2. .github/agents/CherryMon.agent.md — architecture constitution.
-3. Intent-specific agent nếu có:
-   - .github/agents/BusinessAnalyst.agent.md cho requirement analysis, clarification, acceptance criteria và backlog.
-   - .github/agents/SolutionArchitect.agent.md cho architecture/design.
-   - .github/agents/Indicator_Management.agent.md cho concrete indicator lifecycle.
-   - .github/agents/Chart.agent.md cho chart recommendation, visualization selection và Flint authoring/rendering.
-   - .github/agents/GeneralCoding.agent.md cho clear general implementation.
-   - .github/agents/TestEngineer.agent.md cho test design, validation runbook, reproduce bug, performance test hoặc execution verification.
-4. Matching .github/instructions/*.instructions.md — domain-specific policy.
-5. docs/00_HOME.md và related architecture/specification/ADR documents under docs/.
-6. Existing implementation và tests.
-7. User requirement, trừ khi user chủ động yêu cầu thay đổi architecture/policy.
-
-Nếu có conflict giữa instructions, phải nêu conflict và ưu tiên rule có level cao hơn hoặc file owner của domain đó. Không duplicate một technical rule sang nhiều instruction files.
-
-## Intent routing
-
-### Routing tối giản
-
-The default repository agent is the task orchestrator. It preserves the user's objective, classifies the primary intent, selects one authoritative owner and controls handoff until a terminal state is reached.
-
-```mermaid
-flowchart TD
-    U["User request"] --> O["Default Orchestrator"]
-    O --> R{"Primary intent"}
-
-    R -->|Requirement unclear| BA["BusinessAnalyst"]
-    R -->|Architecture or design| SA["SolutionArchitect"]
-    R -->|Indicator lifecycle| IM["Indicator Management"]
-    R -->|Chart recommendation / Flint authoring| CH["Chart"]
-    R -->|Clear implementation| GC["GeneralCoding"]
-    R -->|Test or validation| TE["TestEngineer"]
-
-    BA -->|READY_FOR_DESIGN| SA
-    BA -->|READY_FOR_IMPLEMENTATION| GC
-    SA -->|APPROVED_FOR_IMPLEMENTATION| GC
-    SA -->|Indicator domain implementation| IM
-    IM -->|IMPLEMENTED_PENDING_VALIDATION| TE
-    CH -->|Production integration requested| GC
-    CH -->|Recommendation/spec/render ready| DONE
-    GC -->|IMPLEMENTED_PENDING_VALIDATION| TE
-
-    TE -->|PASS| DONE["Complete"]
-    TE -->|FAIL or REGRESSION| FIX["Controlled fix decision"]
-    FIX -->|Approved repair| GC
-    FIX -->|Stop| STOP["Report to user"]
-
-    BA -->|BLOCKED| STOP
-    SA -->|BLOCKED| STOP
-    IM -->|BLOCKED| STOP
-    CH -->|BLOCKED| STOP
-    GC -->|BLOCKED| STOP
-    TE -->|BLOCKED| STOP
+```text
+L0  Governance      .github/copilot-instructions.md
+L1  Agent           .github/agents/*.agent.md
+L2  Instruction     .github/instructions/*.instructions.md
+L3  Skill           .github/skills/*/SKILL.md
+L4  Docs            docs/**
+L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / scripts / CLI
+L6  Implementation  src/** + runtime entry points
+L7  Verification    tests/** + reproducible validation evidence
 ```
 
-Routing principles:
+Core ownership rule:
 
-- Do not require every request to pass through every agent.
-- Select one authoritative owner for the current outcome.
-- A small, explicit and contract-preserving change routes directly to `GeneralCoding`.
-- A concrete indicator lifecycle change routes directly to `Indicator_Management`; broad Indicator Engine redesign routes to `SolutionArchitect`.
-- Chart-type recommendation, analytical visualization mapping and Flint authoring/rendering route directly to `Chart`.
-- Architecture visualization, architecture/workflow/sequence/data-flow/lifecycle diagrams, and architecture-delta visualization route to `SolutionArchitect`; when visualization materially improves the design output, `SolutionArchitect` SHOULD use the installed `Archify` skill as its rendering/validation tool.
-- `Archify` is a tool of `SolutionArchitect`, not an authoritative agent and not a Source of Truth; architecture decisions remain governed by CherryStock docs, ADRs, repository evidence, and `SolutionArchitect.agent.md`.
-- Production chart/UI integration after the chart decision is ready routes to `GeneralCoding`; reusable chart architecture remains `SolutionArchitect`.
-- Implementation outcomes requiring verification hand off to `TestEngineer`.
-- `PASS` completes the task. `BLOCKED` stops execution and is reported to the user.
-- `FAIL` or `REGRESSION` does not automatically loop; repair requires an explicit controlled decision within the retry budget.
+```text
+Agent        owns the OUTCOME.
+Skill        owns the PROCEDURE.
+Instruction  owns mandatory RULES / CONSTRAINTS.
+Docs         own durable KNOWLEDGE / DESIGN.
+Tool         provides EXECUTION CAPABILITY.
+Implementation owns runtime behavior.
+Verification owns evidence that behavior satisfies the contract.
+```
 
-### Mandatory Agent Selection
+This hierarchy defines responsibility and precedence; it is not a requirement to load every layer for every task. Use the smallest sufficient context.
 
-Before executing a task, classify its primary intent and select the authoritative agent below. Do not bypass a mandatory specialist agent when its scope matches.
+## Precedence and task loading
 
-| Primary intent | Authoritative agent |
-| --- | --- |
-| Requirement analysis, clarification, scope, business rules, acceptance criteria, backlog creation/refinement or requirement decomposition | `.github/agents/BusinessAnalyst.agent.md` |
-| Onboard, add, activate, modify, repair, deactivate, or delete a technical indicator, its components, metadata, parameter/config family, or D/W/M configuration | `.github/agents/Indicator_Management.agent.md` |
-| Recommend/compare a chart, map an analytical question to a visualization, author a Flint ChartAssemblyInput, or validate/render/compile a chart with Flint | `.github/agents/Chart.agent.md` |
-| Architecture, system design, solution design, technical design, structural refactor, integration design, data architecture, MCP architecture, AI/agent architecture, or architecture visualization | `.github/agents/SolutionArchitect.agent.md` (use `Archify` when architecture visualization materially improves the output) |
-| Clear implementation, focused bug fix, contract-preserving refactor, code/config/SQL/script/documentation change not owned end-to-end by a domain agent | `.github/agents/GeneralCoding.agent.md` |
-| Test design, test execution, validation, regression, reproduction, cross-check, acceptance, performance, or execution verification | `.github/agents/TestEngineer.agent.md` |
+When material is relevant, use this precedence:
 
-Agent selection defines WHO owns the task. Matching `.github/instructions/*.instructions.md` files still define domain rules, and `docs/**` remains the engineering knowledge Source of Truth.
+1. Repository governance in this file.
+2. Authoritative Agent contract.
+3. Matching mandatory Instructions.
+4. Canonical Docs / ADR / requirement contracts.
+5. Task-specific Skill procedure.
+6. Tool/runtime evidence.
 
-### Business Analysis / Requirement Management
+Normal task loading:
 
-For requirement analysis, clarification, scope definition, business rules, acceptance criteria, backlog creation/refinement, impact discovery or requirement decomposition, MUST follow `.github/agents/BusinessAnalyst.agent.md`.
+```text
+User request
+  → classify intent
+  → authoritative Agent
+  → mandatory Instructions
+  → smallest relevant docs/** set
+  → Skill when a repeatable specialist procedure exists
+  → Tool / implementation
+  → independent verification when required
+```
 
-Durable requirement output belongs under `docs/backlog/requirements/`.
+A Skill MUST NOT override an Instruction, architecture document, ADR or Agent ownership. A Tool MUST NOT become a business or architecture Source of Truth.
 
-Do not require Business Analyst for a small explicit change when behavior, scope and acceptance criteria are already clear. Business Analyst owns requirement readiness; it does not design architecture, implement code or claim test verdicts.
+## Authoritative Agent routing
 
-### Indicator Management
+| Primary intent | Owner |
+|---|---|
+| Requirement analysis, scope, business rules, acceptance criteria, backlog readiness | `.github/agents/BusinessAnalyst.agent.md` |
+| Architecture, system/solution design, structural refactor, integration/data/agent architecture | `.github/agents/SolutionArchitect.agent.md` |
+| Concrete technical-indicator lifecycle | `.github/agents/Indicator_Management.agent.md` |
+| Chart recommendation, visualization mapping, Flint authoring/rendering | `.github/agents/Chart.agent.md` |
+| Clear implementation, focused bug fix, contract-preserving refactor | `.github/agents/GeneralCoding.agent.md` |
+| Independent test/validation/reproduction/regression verdict | `.github/agents/TestEngineer.agent.md` |
 
-For onboarding a new indicator or modifying any existing indicator lifecycle artifact, MUST follow `.github/agents/Indicator_Management.agent.md` before making metadata, calculation, backfill, activation, deactivation, or deletion changes.
+Do not force every request through every Agent. Select one authoritative owner for the current outcome and use explicit handoff only when the next owned outcome is required.
 
-This includes:
-- new indicator or new output component;
-- changes to indicator definition, calculation parameters, warmup, metadata, or library mapping;
-- new or modified parameter/config family;
-- changes to D/W/M configuration coverage;
-- activation, repair, targeted backfill, deactivation, or permanent deletion;
-- validation of `dim_indicator`, `dim_indicator_component`, `dim_indicator_config`, `vw_Indicator_config`, or `vw_Ticker_indicators` as part of an indicator lifecycle change.
+## Skill routing
 
-`Indicator_Management.agent.md` is the authoritative owner for indicator lifecycle operations. Do not implement these changes directly through the general implementation workflow.
+Skills package repeatable procedures. Current canonical catalog is `.github/skills/README.md`.
 
-A broad redesign of the Indicator Engine remains owned by `SolutionArchitect.agent.md`; the Solution Architect MUST consult the Indicator Management contract for indicator-domain constraints. A request to design or onboard one concrete indicator remains owned by `Indicator_Management.agent.md`.
+| Procedure | Skill | Typical owner |
+|---|---|---|
+| Architecture/design procedure and design synchronization | `.github/skills/architecture-design/SKILL.md` | Solution Architect |
+| Technical-indicator lifecycle | `.github/skills/indicator-onboarding/SKILL.md` | Indicator Management |
+| Focused regression/acceptance verification | `.github/skills/regression-testing/SKILL.md` | Test Engineer |
+| Pipeline/dataset data-quality verification | `.github/skills/data-quality-validation/SKILL.md` | Test Engineer / General Coding |
+| DuckDB schema/view/data migration | `.github/skills/duckdb-migration/SKILL.md` | General Coding / Solution Architect |
+| Analytical visualization + Flint authoring | `.github/skills/chart-authoring/SKILL.md` | Chart Agent |
+| Editable diagrams.net/Draw.io artifact | `.github/skills/drawio-skill/SKILL.md` | Solution Architect or routed owner |
 
-### Chart / Visualization
-For chart-type recommendation, visualization comparison, analytical mapping, Flint `ChartAssemblyInput` authoring, or Flint chart validation/rendering/compilation:
+Load a Skill only when its procedure materially applies. Do not copy the procedure back into Agent or Instruction files.
 
-MUST follow `.github/agents/Chart.agent.md`, `.github/skills/chart-authoring/SKILL.md`, and `.github/instructions/chart.instructions.md`.
+## Domain Instruction routing
 
-Chart selection MUST start from the analytical question and data contract. ECharts, Vega-Lite and Chart.js example galleries are reference catalogs; Flint is the generation contract.
+- DuckDB / SQL / transaction / data quality → `.github/instructions/database.instructions.md`
+- Technical indicators → `.github/instructions/indicators.instructions.md`
+- Chart / visualization → `.github/instructions/chart.instructions.md`
+- Crawler / ingestion → `.github/instructions/crawler.instructions.md`
+- Python execution → `.github/instructions/python.instructions.md`
+- Testing / validation → `.github/instructions/testing.instructions.md`
+- Archify synchronization → `.github/instructions/archify.instructions.md`
 
-If the request changes reusable chart architecture or cross-page contracts, route to `SolutionArchitect.agent.md`. If the chart decision/spec is ready and production code integration is requested, hand off to `GeneralCoding.agent.md`.
+Instructions are mandatory constraints, not tutorials and not task owners.
 
-### Design / Architecture
-For architecture, system design, solution design, component design, technical design, data model, workflow design, integration design, architecture refactor, migration design or similar requests:
+## Knowledge routing
 
-MUST follow .github/agents/SolutionArchitect.agent.md before proposing the design.
+Start durable knowledge discovery at `docs/00_HOME.md`. Use only the smallest relevant set of:
 
-For architecture visualization, architecture/workflow/sequence/data-flow/lifecycle diagrams, or architecture-delta visualization, ownership remains with `SolutionArchitect`. Use the installed `Archify` skill when it materially improves communication or validation of the approved architecture. `Archify` MUST NOT replace repository context discovery, architecture reasoning, ADR decisions, or CherryStock Source-of-Truth documents.
+- `docs/backlog/requirements/**` — requirement contracts;
+- `docs/architecture/**` — how the system works / target design;
+- `docs/adr/**` — why durable architecture decisions were made;
+- `docs/domain/**` — market/business/domain knowledge;
+- `docs/reference/**` — generated/reference contracts and historical references;
+- `docs/runbook/**` — reproducible operational procedures;
+- `docs/development/**` — developer workflow/material;
+- `docs/ChangeRequest/**` — release/change traceability.
 
-Design requests MUST use docs/00_HOME.md as the knowledge routing entry point and inspect relevant architecture documents, ADRs, domain references and existing source before finalizing a proposal.
+Backlog items describe planned work and MUST NOT be treated as implemented runtime behavior.
 
-Do not design from the user prompt alone when repository context is available.
+## Canonical ADLC handoff
 
-### Testing / Validation
-For test case design, regression test, test plan/runbook, pytest design, reproduce bug, local cross-check, UI/performance test, acceptance test or execution verification:
+```text
+User
+  → Router
+  → BA when requirement readiness is needed
+  → SA when design readiness is needed
+  → GeneralCoding / authoritative domain owner
+  → TestEngineer
+  → PASS | FAIL | BLOCKED | REGRESSION
+```
 
-MUST follow .github/agents/TestEngineer.agent.md and .github/instructions/testing.instructions.md.
+Primary gates:
 
-Testing tasks MUST be finite and bounded:
-- one objective at a time;
-- one active hypothesis at a time;
-- explicit retry budget;
-- explicit PASS / FAIL / BLOCKED / REGRESSION;
-- explicit KEEP / REVERT / STOP action;
-- no automatic transition to another hypothesis after a terminal verdict.
+- Business Analyst: `READY_FOR_DESIGN` or `READY_FOR_IMPLEMENTATION`.
+- Solution Architect: `APPROVED_FOR_IMPLEMENTATION`.
+- Implementation owner: `IMPLEMENTED_PENDING_VALIDATION`.
+- Test Engineer: `PASS | FAIL | BLOCKED | REGRESSION`.
 
-### Implementation
-For a clear implementation request not owned end-to-end by a specialist domain agent, MUST follow `.github/agents/GeneralCoding.agent.md` and matching domain instructions.
+Implementation owners MUST NOT self-certify final PASS.
 
-If implementation follows an approved architecture design, preserve the approved contracts and update docs/ADR when the implementation changes them.
+Fast paths are allowed:
 
-General Coding normally ends with `IMPLEMENTED_PENDING_VALIDATION` and hands off to Test Engineer. It must not self-declare final PASS.
+- clear bounded implementation → General Coding/domain owner → Test Engineer;
+- concrete indicator lifecycle → Indicator Management → Test Engineer;
+- chart advice/spec/render → Chart Agent → user;
+- test-only request → Test Engineer;
+- architecture-only request → Solution Architect, with implementation handoff only when requested.
 
-## Agent ownership and handoff
+## Architecture / design rule
 
-When multiple agents appear relevant, use this ownership priority:
+Architecture/design requests MUST use `.github/agents/SolutionArchitect.agent.md` and `.github/skills/architecture-design/SKILL.md`.
 
-1. Domain-specific agent for a concrete domain lifecycle or specialized authoring operation, including Indicator Management and Chart.
-2. Business Analyst when requirement quality/readiness is the primary objective.
-3. Solution Architect for broad architecture or cross-module design.
-4. General Coding for clear implementation not owned end-to-end by a domain agent.
-5. Test Engineer for independent validation and test-focused work.
+Approved architecture changes must update canonical `docs/architecture/**`, an ADR when required, and the corresponding Archify typed source/generated artifact according to the Solution Architect and Archify contracts. Archify is a visualization/validation capability, not architecture authority.
 
-Default handoff:
-- Unclear/material new request: `BusinessAnalyst` → `READY_FOR_DESIGN` or `READY_FOR_IMPLEMENTATION`.
-- Requirement needing design: `BusinessAnalyst` → `SolutionArchitect` → `GeneralCoding` or domain owner → `TestEngineer`.
-- Clear implementation: `GeneralCoding` → `IMPLEMENTED_PENDING_VALIDATION` → `TestEngineer`.
-- Indicator lifecycle change: `Indicator_Management` → implementation/backfill → `TestEngineer` validation.
-- Chart advice/render: `Chart` → `CHART_RECOMMENDATION_READY` / `CHART_SPEC_READY` / `CHART_RENDERED`; hand to `GeneralCoding` only when production integration is requested.
-- Test-only request: `TestEngineer` owns the task and returns a finite verdict.
+Draw.io is supplemental and is used when editable diagrams are explicitly requested or useful. It never replaces canonical Markdown/ADR or mandatory Archify synchronization.
 
-Examples:
-- "Phân tích requirement và tạo backlog cho cảnh báo cổ phiếu" → `BusinessAnalyst.agent.md`.
-- "Sửa lỗi nhỏ đã có acceptance criteria" → `GeneralCoding.agent.md`.
-- "Thêm / onboard indicator RSI" → `Indicator_Management.agent.md`.
-- "Thiết kế indicator RSI mới" → `Indicator_Management.agent.md`; consult architecture rules only when needed.
-- "Thiết kế lại Indicator Engine" → `SolutionArchitect.agent.md`; consult Indicator Management for lifecycle constraints.
-- "Chart nào phù hợp để xem dòng tiền luân chuyển giữa ngành?" → `Chart.agent.md`.
-- "Render chart này bằng Flint" → `Chart.agent.md`.
-- "Tích hợp chart đã chốt vào page production" → `GeneralCoding.agent.md` + chart instructions.
-- "Test Indicator Engine sau refactor" → `TestEngineer.agent.md`.
+## Indicator lifecycle rule
 
-## Domain routing
-- Requirement analysis / clarification / backlog / acceptance criteria → .github/agents/BusinessAnalyst.agent.md + docs/backlog/requirements/
-- Clear general implementation / bug fix / contract-preserving refactor → .github/agents/GeneralCoding.agent.md + matching domain instruction(s)
-- Database / DuckDB / SQL / transaction / data quality → .github/instructions/database.instructions.md
-- Technical indicator lifecycle / metadata / components / config families / activation / backfill / deactivation / deletion → .github/agents/Indicator_Management.agent.md + .github/instructions/indicators.instructions.md
-- Broad Indicator Engine architecture or cross-module redesign → .github/agents/SolutionArchitect.agent.md + .github/instructions/indicators.instructions.md
-- Architecture visualization / architecture, workflow, sequence, data-flow, lifecycle, architecture-delta diagrams → .github/agents/SolutionArchitect.agent.md + installed `Archify` skill
-- Chart recommendation / visualization selection / Flint authoring and render → .github/agents/Chart.agent.md + .github/skills/chart-authoring/SKILL.md + .github/instructions/chart.instructions.md
-- Production chart / visualization / UI chart contracts → .github/instructions/chart.instructions.md + owner selected by intent
-- Crawlers / ingestion / external data sources → .github/instructions/crawler.instructions.md
-- Tests / validation / execution verification → .github/instructions/testing.instructions.md + .github/agents/TestEngineer.agent.md
+Concrete onboarding, activation, parameter-family change, repair, backfill, deactivation or deletion MUST use:
 
-Knowledge routing starts at:
-- docs/00_HOME.md
+- `.github/agents/Indicator_Management.agent.md`;
+- `.github/instructions/indicators.instructions.md`;
+- `.github/skills/indicator-onboarding/SKILL.md`.
 
-Related legacy/domain knowledge currently referenced by the knowledge map may still reside under .github/agents/** until migrated to docs/**.
+Broad Indicator Engine redesign remains a Solution Architect task.
 
-## Required workflow
-Before implementation:
-1. Identify affected domain(s).
-2. Read CherryMon.agent.md.
-3. Select the mandatory specialist using the Intent routing and ownership priority above.
-4. If requirement readiness is the objective or material ambiguity exists, route through BusinessAnalyst.agent.md first.
-5. If the request is a concrete indicator lifecycle change, route through Indicator_Management.agent.md first.
-6. If the request is chart recommendation, visualization selection or Flint authoring/rendering, route through Chart.agent.md first.
-7. If the request is broad design/architecture, route through SolutionArchitect.agent.md first.
-8. If the request is a clear implementation, route through GeneralCoding.agent.md.
-9. If the request is test design/execution, route through TestEngineer.agent.md first.
-10. Read matching domain instruction(s).
-11. Read docs/00_HOME.md and related requirement/architecture/specification/ADR documents.
-12. Inspect existing implementation and similar patterns.
-13. Determine input, output, dependencies, side effects, error handling, transaction and idempotency requirements.
-14. Propose the smallest compatible change.
+## Chart rule
 
-During implementation:
-- Reuse existing utilities/services/repositories before creating abstractions.
-- Keep data access, business logic, validation, orchestration and rendering responsibilities clear.
-- Do not introduce silent failures.
-- Do not hard-code credentials, environment-specific paths or configuration that already has a config source.
-- Do not rename/remove public interfaces unless required.
-- Avoid database/API calls in loops when batching is possible.
-- Use explicit SQL columns; avoid SELECT *.
-- Add type hints/docstrings where consistent with the codebase.
-- Do not use broad exception swallowing such as except Exception: pass.
+Chart recommendation, visualization selection and Flint authoring/rendering MUST use:
+
+- `.github/agents/Chart.agent.md`;
+- `.github/instructions/chart.instructions.md`;
+- `.github/skills/chart-authoring/SKILL.md`.
+
+Production integration after the chart contract is ready routes to General Coding. Reusable chart architecture remains a Solution Architect concern.
+
+## Database migration rule
+
+A material DuckDB schema/view/data migration MUST obey `.github/instructions/database.instructions.md` and use `.github/skills/duckdb-migration/SKILL.md` when the repeatable migration procedure applies. The migration must define forward change, idempotency, validation, downstream impact and rollback/repair behavior before production readiness is claimed.
+
+## Testing / validation rule
+
+Test-focused tasks MUST use `.github/agents/TestEngineer.agent.md` and `.github/instructions/testing.instructions.md`.
+
+Use `.github/skills/regression-testing/SKILL.md` for focused behavioral/regression verification and `.github/skills/data-quality-validation/SKILL.md` for dataset/pipeline quality validation.
+
+Testing is finite:
+
+```text
+ONE objective
+→ ONE focused execution path
+→ ONE evidence-backed verdict
+→ STOP or explicit bounded handoff
+```
 
 ## Anti-loop execution governance
-These rules apply to any AI/local-agent execution, not only tests:
 
-1. Define one current objective before making changes.
-2. Do not repeat the same analysis, file read, command or edit unless new evidence justifies it.
-3. Never rerun the same failing command unchanged.
-4. Default maximum two repair attempts for the same defect unless the user explicitly requests deeper investigation.
-5. If two materially equivalent attempts fail, classify BLOCKED/FAIL and stop.
-6. Do not broaden scope opportunistically.
+1. Define one current objective before execution.
+2. Do not repeat the same analysis, file read, command or edit without new evidence.
+3. Never rerun an unchanged failed command.
+4. Default maximum two focused repair attempts for the same defect.
+5. After two materially equivalent failures, return FAIL/BLOCKED and stop.
+6. Do not opportunistically broaden scope.
 7. A terminal verdict ends the current execution path.
-8. A new hypothesis requires a new explicit task or a runbook that explicitly authorizes the next step.
+8. A new hypothesis requires explicit authorization or a runbook that explicitly permits it.
+
+## Implementation principles
+
+- Prefer the smallest backward-compatible change.
+- Reuse existing services/repositories/utilities before introducing abstractions.
+- Keep data access, business logic, orchestration, validation and presentation responsibilities separate.
+- Use declared public/SSOT contracts instead of internal persistence when available.
+- Do not hard-code credentials or environment-specific paths already owned by configuration.
+- Do not silently swallow failures.
+- Use explicit SQL columns; avoid `SELECT *` in production queries.
+- Batch database/API work when practical instead of issuing avoidable calls in loops.
+- Preserve idempotency/rerun behavior for data workflows.
+- Cross-module architecture decisions belong in `docs/adr/**`.
+
+## Material ownership
+
+```text
+.github/copilot-instructions.md       global governance / router
+.github/agents/*.agent.md             WHO owns outcomes and readiness gates
+.github/instructions/*.instructions.md mandatory constraints
+.github/skills/*/SKILL.md             HOW repeatable procedures are performed
+docs/**                               durable engineering/domain knowledge
+.vscode/mcp.json + scripts + CLIs     tool configuration/capability adapters
+src/**                                runtime implementation
+tests/**                              executable verification
+```
+
+Do not create a second knowledge Source of Truth inside Agent, Skill or generated diagram files.
 
 ## Change policy
-- Prefer small, targeted, backward-compatible changes.
-- Preserve existing naming conventions and module responsibilities.
-- New architecture decisions that affect multiple modules should be recorded under docs/adr/.
-- Instructions define how AI/developers must work; architecture docs define how the system works.
-- GitHub repository Markdown is the Single Source of Truth. Obsidian and VS Code must read the same files from the local Git checkout; do not maintain duplicated documentation copies.
-- Architecture/design changes must update the relevant docs/** document or ADR when the approved system contract changes.
 
-## Validation and testing
-Every code change must be validated using .github/instructions/testing.instructions.md.
-For focused test-design or execution work, also use .github/agents/TestEngineer.agent.md.
-At minimum, test relevant happy path, empty/invalid input, boundary/failure behavior and idempotency when applicable.
-Run a relevant test or real execution before claiming success. If execution is impossible, state exactly what remains unverified.
+- Update an existing canonical document instead of duplicating it.
+- Requirement changes update the owning REQ material when one exists.
+- Architecture contract changes update `docs/architecture/**`; durable cross-module choices update `docs/adr/**`.
+- Operational procedures update `docs/runbook/**`.
+- Major release/architecture changes update `docs/ChangeRequest/**`.
+- GitHub repository Markdown remains the engineering Single Source of Truth; VS Code and Obsidian read the same checkout.
 
-## Execution
-For new/changed callable workflows, provide a reproducible command. Prefer an existing entry point; otherwise use a simple python -c command or a focused scripts/run_<name>.py wrapper that imports real source code and does not duplicate business logic.
+## Completion rule
 
-## Final response format
-For implementation work use this concise structure:
-
-### Analysis
-- Existing flow
-- Relevant files
-- Implementation approach
-
-### Changes
-- File / function / change
-
-### Validation
-- Rules validated
-
-### Tests
-- Commands executed
-- Result
-
-### Execute
-- Reproducible command
-
-### Notes
-- Assumptions / remaining risks
-
-For requirement/backlog work, use the output contract defined by .github/agents/BusinessAnalyst.agent.md.
-For design/architecture work, use the output contract defined by .github/agents/SolutionArchitect.agent.md.
-For chart recommendation/Flint authoring work, use the output contract defined by .github/agents/Chart.agent.md.
-For general implementation work, use the output contract defined by .github/agents/GeneralCoding.agent.md.
-For test-design/execution work, use the output contract defined by .github/agents/TestEngineer.agent.md.
-
-Do not only provide sample code when repository write access is available and the user asked for implementation.
+A routed owner may claim only the state it owns. Report changed artifacts, evidence, residual risks and next owner. Never invent runtime or validation evidence.

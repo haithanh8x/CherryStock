@@ -1,7 +1,8 @@
 # Indicator Engine Architecture
 
 ## Purpose
-Architecture-facing entry point for CherryStock technical indicators.
+
+Canonical architecture entry point for CherryStock technical indicators. This document owns **how the Indicator Engine is structured**. Mandatory execution constraints live in `.github/instructions/indicators.instructions.md`; the repeatable lifecycle procedure lives in `.github/skills/indicator-onboarding/SKILL.md`.
 
 ## Core flow
 
@@ -26,78 +27,124 @@ CherryMon / Screener / Score / Chart / API / ML
 ```
 
 ## Responsibilities
+
 - `dim_indicator`: indicator master definition and library/runtime contract.
-- `dim_indicator_component`: output component mapping.
-- `dim_indicator_config`: executable parameter + timeframe configuration.
+- `dim_indicator_component`: output component mapping and semantic metadata.
+- `dim_indicator_config`: executable parameters + timeframe configuration.
 - `vw_Indicator_config`: public configuration Single Source of Truth.
-- `cal_indicator_values`: long-format internal persistence.
+- `cal_indicator_values`: long-format internal calculated persistence.
 - `vw_Ticker_indicators`: downstream/public calculated indicator Single Source of Truth.
 
+Primary logical key of calculated persistence:
+
+```text
+Ticker + Date + ConfigId + ComponentCode
+```
+
 ## Design principles
+
 - New indicators are metadata/config-driven.
 - Default production family contains Daily, Weekly and Monthly configs unless explicitly scoped otherwise.
-- Adding an indicator must not require a new fact table or ALTER of a wide indicator fact schema.
+- Adding an indicator does not require a new fact table or ALTER of a wide indicator fact schema.
 - Downstream consumers should use `vw_Ticker_indicators` instead of internal persistence when possible.
 - Historical initialization/backfill and idempotent incremental refresh are separate lifecycle concerns.
 - `run.py` orchestrates; it should not contain one hard-coded calculation branch per indicator.
+- Library/function resolution belongs in the registry/config model.
+- Config IDs are generated persistence identities; stable behavior should be addressed through indicator/config codes and metadata.
 
-## Current detailed reference
-During this refactor, the existing detailed operational/design document remains available at:
+## Agent Harness ownership
 
-- `.github/agents/Instructions/Indicator_Engine.md`
+```text
+Agent
+  .github/agents/Indicator_Management.agent.md
+  owns lifecycle outcome
 
-The long-form content should be progressively migrated here when it is edited next. New architecture/design content belongs in this file; AI operational policy belongs in `.github/instructions/indicators.instructions.md`.
+Instruction
+  .github/instructions/indicators.instructions.md
+  owns mandatory invariants/safety
+
+Skill
+  .github/skills/indicator-onboarding/SKILL.md
+  owns Discover → Metadata → Backfill → Validate procedure
+
+Docs
+  this file + ADR-002
+  own architecture and rationale
+
+Tools
+  CherryMon/DuckDB MCP + focused Python wrappers
+  provide execution capability
+
+Verification
+  TestEngineer + tests/queries
+  owns independent verdict
+```
+
+The historical long-form pre-hierarchy reference is retained only for migration archaeology at:
+
+```text
+docs/reference/Indicator_Engine_Legacy_Reference.md
+```
+
+Do not add new operational procedure or architecture ownership to that reference.
+
+## Lifecycle architecture
+
+The canonical lifecycle is:
+
+```text
+DISCOVER
+  ↓
+METADATA / CONFIG
+  dim_indicator
+  dim_indicator_component
+  dim_indicator_config
+  ↓
+HISTORICAL INITIALIZATION / BACKFILL
+  refresh_technical_indicators()
+  ↓
+PUBLIC/FACT VALIDATION
+  cal_indicator_values
+  vw_Ticker_indicators
+  ↓
+INCREMENTAL DAILY/WEEKLY/MONTHLY REFRESH
+```
+
+The detailed bounded execution steps are intentionally kept in the `indicator-onboarding` Skill rather than duplicated here.
 
 ## Cumulative full-history indicators
 
-Some library indicators are cumulative lines rather than finite-window transforms.
-Their absolute value depends on the beginning of the input series, so a normal
-checkpoint warmup would reset the baseline and make incremental output diverge
-from a full historical backfill.
+Some indicators are cumulative lines rather than finite-window transforms. Their absolute value depends on the beginning of the input series, so a normal checkpoint warmup can reset the baseline and make incremental output diverge from a full historical backfill.
 
-CherryStock records this execution trait centrally in
-`src/calcEngine/indicatorRegistry.py`. The current full-history functions are:
+CherryStock records this execution trait centrally in `src/calcEngine/indicatorRegistry.py`. Current full-history functions include:
 
 | Indicator | Function | Required inputs | Production configs | Component semantic |
 |---|---|---|---|---|
 | OBV | `obv` | Close, Volume | OBV_D / OBV_W / OBV_M | CUMULATIVE_FLOW / VOLUME |
 | AD Line | `ad` | High, Low, Close, Volume | AD_D / AD_W / AD_M | CUMULATIVE_FLOW / VOLUME |
 
-During incremental refresh, `refresh_technical_indicators()` partitions normal
-windowed configs from full-history cumulative configs. Windowed indicators keep
-their configured warmup behavior; OBV/AD reload source history from inception
-before calculating the requested checkpoint. Only checkpoint rows are replaced,
-so the cumulative absolute level remains reproducible without forcing unrelated
-indicators to calculate from full history.
+During incremental refresh, `refresh_technical_indicators()` partitions ordinary windowed configs from full-history cumulative configs. Windowed indicators keep configured warmup behavior; cumulative indicators reload source history from inception before calculation of the requested checkpoint. Only checkpoint output rows are replaced, preserving reproducible cumulative absolute levels without forcing unrelated indicators through full-history calculation.
 
-Activation metadata:
-`src/DuckDB/sql/indicator_obv_ad_activate.sql`
+Related implementation/material:
 
-Targeted historical initialization:
-`scripts/initload/init_reload_cal_indicator_values_obv_ad.py`
+```text
+src/DuckDB/sql/indicator_obv_ad_activate.sql
+scripts/initload/init_reload_cal_indicator_values_obv_ad.py
+src/DuckDB/sql/indicator_obv_ad_preflight.sql
+```
 
-Validation:
-`src/DuckDB/sql/indicator_obv_ad_preflight.sql`
-
-## Related
-- [[../../.github/instructions/indicators.instructions|Indicator Instructions]]
-- [[../adr/ADR-002-indicator-source-of-truth|ADR-002 Indicator Source of Truth]]
-- [[../00_HOME|Knowledge Home]]
-
----
-
-## Component Value Semantics
+## Component value semantics
 
 Downstream domains may need to know whether an indicator component represents a price, oscillator, ratio or volatility distance without hard-coding indicator names.
 
-`dim_indicator_component` therefore exposes generic semantic metadata:
+`dim_indicator_component` exposes generic semantic metadata:
 
 ```text
 ValueSemantic
 Unit
 ```
 
-Initial values used by R/S V2.0:
+Current examples:
 
 | Indicator | Component | ValueSemantic | Unit |
 |---|---|---|---|
@@ -110,9 +157,7 @@ Initial values used by R/S V2.0:
 | RSI | VALUE | OSCILLATOR | INDEX |
 | ATR | VALUE | VOLATILITY_DISTANCE | PRICE |
 
-These are generic Indicator Engine semantics, not R/S-specific configuration.
-
-The public configuration SSOT `vw_Indicator_config` must expose both fields so downstream consumers do not need to join internal dimension tables directly.
+These are generic Indicator Engine semantics, not R/S-specific configuration. `vw_Indicator_config` should expose them so downstream consumers do not need to join internal dimension tables directly.
 
 Migration for existing CherryMon databases:
 
@@ -120,3 +165,10 @@ Migration for existing CherryMon databases:
 src/DuckDB/sql/rs_v2_0_indicator_semantics.sql
 ```
 
+## Related
+
+- `docs/adr/ADR-002-indicator-source-of-truth.md`
+- `.github/instructions/indicators.instructions.md`
+- `.github/skills/indicator-onboarding/SKILL.md`
+- `.github/agents/Indicator_Management.agent.md`
+- `docs/00_HOME.md`

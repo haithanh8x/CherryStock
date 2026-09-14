@@ -1,110 +1,146 @@
 # CherryMon Architecture Constitution
 
 ## Purpose
-File này định nghĩa các nguyên tắc kiến trúc ổn định của CherryStock/CherryMon. Chi tiết operational rule phải nằm trong domain instructions tương ứng để tránh instruction drift.
 
-Repository instructions luôn được đọc trước khi chỉnh sửa code.
+This file defines stable CherryStock/CherryMon architecture principles. It is a shared constitution used by routed Agents, not a normal task owner.
 
-## Project responsibilities
-- `src/Datafile` / data-loading modules: chuẩn hóa dữ liệu nguồn để nạp vào DuckDB.
-- `src/Amibroker`: Amibroker explore/analysis/backtest/AFL integration.
-- `src/calcEngine`: technical/composite/net-flow calculations.
-- `src/Chart`: chart preparation/rendering.
-- `src/CrawlStock`: external market-data ingestion.
-- `src/DuckDB`: DuckDB SQL/schema/view scripts.
-- `src/Orchestrator`: orchestration/scheduling/invocation.
-- `src/Telegram`: notification/alert integrations.
-- `src/Ults`: shared utilities such as DuckLib, Timing and DataValidation.
-- `run.py`: primary project execution/orchestration entry point.
-- `scripts/`: focused initialization, migration and standalone execution scripts.
-- `tests/`: automated validation.
+Detailed procedures belong in Skills, mandatory domain constraints belong in Instructions, and durable architecture/domain knowledge belongs in `docs/**`.
 
-When the physical repository differs from this high-level map, follow the actual current structure and update architecture documentation if the difference is intentional.
+## Official repository hierarchy
+
+CherryStock follows ADR-011:
+
+```text
+L0  Governance      .github/copilot-instructions.md
+L1  Agent           .github/agents/*.agent.md
+L2  Instruction     .github/instructions/*.instructions.md
+L3  Skill           .github/skills/*/SKILL.md
+L4  Docs            docs/**
+L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / scripts / CLI
+L6  Implementation  src/** + runtime entry points
+L7  Verification    tests/** + validation evidence
+```
+
+Canonical explanation:
+`docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md`.
+
+## Runtime architecture direction
+
+CherryStock is incrementally moving toward `src/cherrystock/**` as the canonical layered runtime package:
+
+```text
+src/cherrystock/
+├── domain/
+├── application/
+├── infrastructure/
+├── interfaces/
+└── config/
+```
+
+Legacy runtime packages still coexist during migration, including areas such as `src/CrawlStock`, `src/calcEngine`, `src/Chart`, `src/DuckDB`, `src/Orchestrator`, `src/Telegram`, `src/Ults` and `src/AiModels`.
+
+Do not perform a big-bang move merely to satisfy the target tree. Migrate feature-by-feature under the architecture backlog while preserving public/runtime behavior.
 
 ## Dependency principles
-1. UI/chart code should consume prepared data contracts rather than embed complex database/business logic.
-2. Orchestration coordinates workflows; it should not duplicate domain calculations.
-3. Shared database access goes through project database utilities/repositories, never ad-hoc connection patterns.
-4. Validation is read-oriented and separate from persistence/orchestration side effects.
-5. Source-of-Truth objects must be explicit; downstream consumers should use the declared public view/contract instead of internal persistence tables when one exists.
-6. New cross-cutting architecture decisions should be captured in `docs/adr/`.
+
+1. Interfaces/UI consume application/domain contracts; they should not own complex persistence or business calculations.
+2. Application orchestration coordinates use cases and should depend on ports/contracts rather than avoidable infrastructure details.
+3. Infrastructure implements persistence, external data/provider and platform adapters.
+4. Domain calculations/business semantics should be reusable and not hidden in presentation or transport code.
+5. Validation is separable from mutation/orchestration side effects.
+6. Source-of-Truth objects must be explicit; downstream consumers use declared public contracts when available.
+7. New durable cross-module decisions belong in `docs/adr/**`.
+8. Migration toward the target package is incremental and backward compatible unless an approved requirement explicitly changes compatibility.
 
 ## Agent Harness routing
 
-The executable router is `../copilot-instructions.md`. The canonical role, outcome, handoff and material map is `docs/architecture/agent-harness/README.md`.
+Executable router: `.github/copilot-instructions.md`.
 
-- Requirement readiness and backlog → `BusinessAnalyst.agent.md`
-- Architecture/design readiness → `SolutionArchitect.agent.md`
-- Concrete indicator lifecycle → `Indicator_Management.agent.md`
-- Chart recommendation and Flint authoring → `Chart.agent.md`
-- Clear general implementation → `GeneralCoding.agent.md`
-- Independent validation verdict → `TestEngineer.agent.md`
+- requirement readiness → `BusinessAnalyst.agent.md`;
+- design readiness → `SolutionArchitect.agent.md`;
+- concrete indicator lifecycle → `Indicator_Management.agent.md`;
+- chart/Flint outcome → `Chart.agent.md`;
+- clear implementation → `GeneralCoding.agent.md`;
+- independent validation → `TestEngineer.agent.md`.
 
-The default repository agent orchestrates each request. Do not require every task to pass through every role.
+The router selects the smallest sufficient route. Not every request passes through every Agent.
 
-## Domain instruction routing
-For detailed rules, use the domain owner file:
+## Domain Instruction routing
 
-- DuckDB / SQL / transactions / data quality → `../instructions/database.instructions.md`
-- Indicator Engine → `../instructions/indicators.instructions.md`
-- Charts → `../instructions/chart.instructions.md`
-- Crawlers → `../instructions/crawler.instructions.md`
-- Testing / execution validation → `../instructions/testing.instructions.md`
+- DuckDB / SQL / transaction / data quality → `.github/instructions/database.instructions.md`
+- technical indicators → `.github/instructions/indicators.instructions.md`
+- chart / visualization → `.github/instructions/chart.instructions.md`
+- crawlers / ingestion → `.github/instructions/crawler.instructions.md`
+- Python execution → `.github/instructions/python.instructions.md`
+- testing / validation → `.github/instructions/testing.instructions.md`
+- Archify synchronization → `.github/instructions/archify.instructions.md`
 
 Do not duplicate those rules here.
 
-## Naming principles
-DuckDB object prefixes:
-- `raw_*`: raw/source datasets.
-- `cal_*`: calculated/internal persistence datasets.
-- `dim_*`: dimensions/configuration/master data.
-- `vw_*`: public/query-oriented views.
-- `sys_*`: operational/audit/monitoring data, not market-data source of truth.
+## Skill routing
 
-Indicator output naming follows:
+Reusable procedures are indexed at `.github/skills/README.md`.
+
+Important examples:
+- architecture design → `architecture-design`;
+- indicator lifecycle → `indicator-onboarding`;
+- regression verification → `regression-testing`;
+- data quality → `data-quality-validation`;
+- DuckDB migration → `duckdb-migration`;
+- visualization authoring → `chart-authoring`;
+- editable diagrams → `drawio-skill`.
+
+Skills do not own readiness gates or architecture/business Sources of Truth.
+
+## Naming principles
+
+DuckDB object prefixes:
+- `raw_*`: source/raw datasets;
+- `cal_*`: calculated/internal persistence;
+- `dim_*`: dimensions/configuration/master data;
+- `vw_*`: public/query-oriented views;
+- `sys_*`: operational/audit/monitoring datasets.
+
+Indicator output convention:
 
 ```text
 <INDICATOR><PERIOD>_<TIMEFRAME>
 ```
 
-where timeframe suffix is:
-- `_D` Daily
-- `_W` Weekly
-- `_M` Monthly
-
-Examples: `MA20_D`, `EMA50_W`, `RSI14_M`.
+Timeframes: `_D`, `_W`, `_M`.
 
 ## Key CherryMon data contracts
-Important objects include:
-- `"CherryMon"."main"."raw_stock_eod"`
-- `"CherryMon"."main"."raw_stock_fa"`
-- `"CherryMon"."main"."raw_stock_index"`
-- `"CherryMon"."main"."dimCalendar"`
-- `"CherryMon"."main"."vw_ACCCNNTD_Price"`
-- `"CherryMon"."main"."sys_data_quality_audit"`
+
+Important data objects include:
+- `raw_stock_eod`;
+- `raw_stock_fa`;
+- `raw_stock_index`;
+- `dimCalendar`;
+- `vw_ACCCNNTD_Price`;
+- `sys_data_quality_audit`.
 
 Indicator Engine contracts:
-- `dim_indicator`
-- `dim_indicator_component`
-- `dim_indicator_config`
-- `vw_Indicator_config` — configuration Single Source of Truth.
-- `cal_indicator_values` — internal long-format persistence.
-- `vw_Ticker_indicators` — public/calculated indicator Single Source of Truth.
+- `dim_indicator`;
+- `dim_indicator_component`;
+- `dim_indicator_config`;
+- `vw_Indicator_config` — configuration SSOT;
+- `cal_indicator_values` — internal long-format persistence;
+- `vw_Ticker_indicators` — public calculated indicator SSOT.
 
-For current database context, read `docs/reference/DB_Metadata.md` first for schema, then load `docs/reference/dim_indicator.parquet`, `docs/reference/dim_indicator_component.parquet` and `docs/reference/dim_indicator_config.parquet` for actual indicator dimension values. Join the snapshots by `IndicatorCode`; use the indicator architecture documents for behavioral rules.
+For current physical database evidence, read `docs/reference/DB_Metadata.md` and current generated metadata snapshots. Behavioral rules come from architecture/ADR/Instructions, not from generated metadata alone.
 
 ## Knowledge architecture
-CherryStock repository Markdown is the engineering knowledge Single Source of Truth.
+
+GitHub repository Markdown is the engineering knowledge Single Source of Truth.
 
 ```text
-GitHub repository
-    ├── .github/               AI governance
-    ├── docs/                  requirements / architecture / ADR / development knowledge
-    ├── src/                   implementation
-    ├── tests/                 validation
-    └── scripts/               execution/migration utilities
+.github/**      executable AI/developer governance
+
+docs/**         durable requirements, architecture, ADR, domain, reference, runbooks and change history
+
+src/**          runtime implementation
+scripts/**      focused operational/migration/backfill/render helpers
+tests/**        executable validation
 ```
 
-VS Code and Obsidian must open the same local repository. Obsidian is a navigation/knowledge-graph interface, not a second documentation store.
-
-Start knowledge navigation from `docs/00_HOME.md`.
+Start knowledge discovery from `docs/00_HOME.md`. VS Code and Obsidian read the same repository checkout; Obsidian is a navigation surface, not a second documentation store.
