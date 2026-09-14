@@ -170,7 +170,6 @@ function Invoke-DrawioProcessAttempt {
         [void]$tokens.Add("--disable-gpu")
     }
 
-    # Avoid update activity interfering with deterministic CLI use.
     [void]$tokens.Add("--disable-update")
     [void]$tokens.Add("--export")
     [void]$tokens.Add("--format")
@@ -196,10 +195,9 @@ function Invoke-DrawioProcessAttempt {
         Write-Verbose ("Draw.io strategy: {0}" -f $Strategy)
         Write-Verbose ("Draw.io command: {0} {1}" -f $DrawioExe, $argumentLine)
 
-        # IMPORTANT: draw.io.exe is a Windows GUI/Electron executable. Invoking it
-        # with PowerShell's call operator can return control before the GUI process
-        # finishes, leaving $LASTEXITCODE stale while export continues asynchronously.
-        # Start-Process + WaitForExit gives us the real process lifecycle.
+        # draw.io.exe is a Windows GUI/Electron executable. The PowerShell call
+        # operator can return before a GUI process finishes. Start-Process plus
+        # WaitForExit binds validation to the actual native process lifecycle.
         $process = Start-Process -FilePath $DrawioExe -ArgumentList $argumentLine -PassThru
 
         $finished = $process.WaitForExit([Math]::Max(1, $TimeoutSeconds) * 1000)
@@ -239,7 +237,6 @@ function Invoke-DrawioProcessAttempt {
             }
         }
 
-        # The process has exited. Poll only for a short filesystem flush window.
         $output = Wait-DrawioOutputFile -Path $OutputPath -TimeoutSeconds 5
         if (-not $output) {
             return [PSCustomObject]@{
@@ -325,16 +322,14 @@ function Invoke-DrawioPngExport {
     $attempts = @()
 
     if ($runningDrawio.Count -eq 0) {
-        # First use the officially documented CLI shape without Chromium-specific flags.
-        # This maximizes compatibility with older desktop builds.
         $attempts += [PSCustomObject]@{ Name = "documented-cli"; Isolated = $false; DisableGpu = $false }
     }
 
-    # If GUI is already open, or documented mode fails, isolate Electron state.
     $attempts += [PSCustomObject]@{ Name = "isolated-profile"; Isolated = $true; DisableGpu = $false }
     $attempts += [PSCustomObject]@{ Name = "isolated-profile-disable-gpu"; Isolated = $true; DisableGpu = $true }
 
     $diagnostics = New-Object System.Collections.Generic.List[object]
+    $showVerbose = ($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
 
     foreach ($attempt in $attempts) {
         $result = Invoke-DrawioProcessAttempt `
@@ -347,7 +342,7 @@ function Invoke-DrawioPngExport {
             -Width $Width `
             -UseIsolatedProfile:$attempt.Isolated `
             -DisableGpu:$attempt.DisableGpu `
-            -Verbose:$VerbosePreference
+            -Verbose:$showVerbose
 
         [void]$diagnostics.Add($result)
 
@@ -398,8 +393,8 @@ function Test-DrawioNativeExportCapability {
     $probeDrawio = Join-Path $probeRoot "probe.drawio"
     $probePng = Join-Path $probeRoot "probe.png"
 
-    # shadow=0 is deliberate. draw.io Desktop has had a documented Windows CLI
-    # bug where mxGraphModel shadow=1 exits 0 without producing PNG output.
+    # shadow=0 is deliberate. draw.io Desktop has a documented Windows CLI bug
+    # where mxGraphModel shadow=1 can exit 0 without producing PNG output.
     $probeXml = @'
 <mxfile host="app.diagrams.net">
   <diagram id="probe" name="Page-1">
@@ -418,7 +413,8 @@ function Test-DrawioNativeExportCapability {
 
     try {
         Set-Content -LiteralPath $probeDrawio -Value $probeXml -Encoding UTF8
-        $result = Invoke-DrawioPngExport -InputPath $probeDrawio -OutputPath $probePng -DrawioExe $DrawioExe -TimeoutSeconds $TimeoutSeconds -Verbose:$VerbosePreference
+        $showVerbose = ($VerbosePreference -ne [System.Management.Automation.ActionPreference]::SilentlyContinue)
+        $result = Invoke-DrawioPngExport -InputPath $probeDrawio -OutputPath $probePng -DrawioExe $DrawioExe -TimeoutSeconds $TimeoutSeconds -Verbose:$showVerbose
 
         if (-not (Test-DrawioPngFile -Path $probePng)) {
             throw "Native export probe produced an invalid PNG: $probePng"
