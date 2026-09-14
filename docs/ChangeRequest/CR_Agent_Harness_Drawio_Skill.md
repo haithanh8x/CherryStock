@@ -15,7 +15,7 @@ License: MIT
 
 ## Reason for Change
 
-CherryStock already distinguishes:
+CherryStock distinguishes:
 
 ```text
 Agent        = owns outcome
@@ -27,55 +27,16 @@ Tool         = provides execution capability
 
 A Draw.io Skill adds an editable-diagram procedure for architecture/workflow/data-flow/UML/ERD artifacts and provides a concrete example of the Skill → Tool relationship in the Harness.
 
-## Before
-
-- Native CherryStock skill: `chart-authoring`.
-- Flint available as MCP tooling for chart authoring.
-- Archify used by Solution Architect for architecture visualization/validation.
-- No Draw.io-specific project skill or local runbook.
-- No editable `.drawio` reference model for the five Harness components.
-
-## After
-
-Added project adapter:
+## Added Artifacts
 
 ```text
 .github/skills/drawio-skill/SKILL.md
-```
-
-Added reproducible local upstream installer:
-
-```text
 scripts/install_drawio_skill.ps1
-```
-
-Added shared Windows/native CLI wrapper:
-
-```text
 scripts/lib/DrawioCli.psm1
-```
-
-Added demo validator/export runner:
-
-```text
 scripts/run_drawio_harness_demo.ps1
-```
-
-Added editable reference artifact:
-
-```text
+tests/test_drawio_cli_helper.ps1
 docs/architecture/diagrams/agent-harness-five-components.drawio
-```
-
-Added durable relationship documentation:
-
-```text
 docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md
-```
-
-Added local runbook:
-
-```text
 docs/runbook/Drawio_Skill.md
 ```
 
@@ -99,8 +60,6 @@ The mandatory Archify synchronization rule in `SolutionArchitect.agent.md` remai
 
 ## Five-Component Demo Semantics
 
-The committed `.drawio` model expresses:
-
 ```text
 Instruction → Agent : governs / constrains
 Docs        → Agent : provides context / knowledge
@@ -115,57 +74,72 @@ Tool        → Agent : returns evidence / result
 
 ### Symptom
 
-The upstream structural validator passed, but Draw.io Desktop native export returned process exit code `0` without creating a PNG.
+The upstream structural validator passed, but Draw.io Desktop native export repeatedly appeared to return success before the expected PNG existed.
 
 Observed pattern:
 
 ```text
 0 error(s), 0 warning(s)
 PASS: structural validation
-Draw.io exit code: 0
-PNG: missing
+native invocation appears complete
+PNG: missing at check time
+Draw.io console output appears later
 ```
 
-### Root cause
+### Root cause refinement
 
-Draw.io Desktop is an Electron single-instance application. Its desktop implementation uses `app.requestSingleInstanceLock()` and exits a second process when that lock is already held.
+The first hypothesis was Draw.io's Electron single-instance lock. That remains a real compatibility concern, but subsequent local evidence showed it was **not sufficient to explain the failure** because a minimal isolated-profile probe still reproduced the problem.
 
-On Windows this means an already-open normal Draw.io GUI can consume/block a CLI launch. The second process may exit successfully without executing the requested export, making `exit code 0` insufficient evidence that a PNG was produced.
+The decisive observation was that Draw.io console output appeared **after** the PowerShell script had already thrown and returned the prompt. `draw.io.exe` is a Windows GUI/Electron executable, so using PowerShell's call operator:
 
-### Fix
+```powershell
+& $drawioExe ...
+```
 
-Native CLI ownership was centralized in:
+did not provide a reliable synchronous process boundary for export. CherryStock was checking the output before the native GUI process had definitively completed.
+
+### Corrected fix
+
+Native CLI ownership is centralized in:
 
 ```text
 scripts/lib/DrawioCli.psm1
 ```
 
-Every automated export now uses a unique temporary Electron/Chromium profile:
+The helper now uses:
 
 ```text
---user-data-dir=<unique-temp-profile>
+Start-Process -PassThru
+        ↓
+Process.WaitForExit(timeout)
+        ↓
+short output-stability check
+        ↓
+PNG signature validation
 ```
 
-This isolates the CLI process from the normal Draw.io GUI single-instance namespace.
+It no longer trusts `$LASTEXITCODE` from a GUI application invocation.
 
-The wrapper additionally:
-
-1. detects the Draw.io executable deterministically;
-2. invokes explicit `--export --format png --output <file>` syntax;
-3. waits/polls until the output file is non-empty and stable;
-4. validates the eight-byte PNG signature;
-5. removes only its dedicated temporary profile;
-6. returns structured export evidence.
-
-The installer now performs a real native export probe when Draw.io Desktop is available. The demo runner now has three gates:
+The helper also handles Draw.io/Electron compatibility through deterministic strategies:
 
 ```text
-[1/3] upstream structural validation
-[2/3] isolated native CLI smoke-test using a minimal generated diagram
-[3/3] real Agent Harness PNG export + PNG signature validation
+1. documented-cli
+2. isolated-profile
+3. isolated-profile-disable-gpu
 ```
 
-This prevents future regressions from being mistaken for successful installation merely because an executable exists or returns exit code `0`.
+If no normal Draw.io GUI process is detected, the official documented CLI form is attempted first for maximum version compatibility. If needed, later attempts use a unique `--user-data-dir`; the last attempt adds `--disable-gpu`.
+
+### Additional guards
+
+- Draw.io executable file/product version is reported in native diagnostics.
+- Minimal probe uses `shadow="0"` because Draw.io Desktop has a known Windows CLI defect where `mxGraphModel shadow="1"` can return exit code `0` without creating PNG output.
+- Final output must pass the PNG eight-byte signature check.
+- A dedicated regression test compiles a delayed fake GUI exporter and verifies the helper waits for process completion:
+
+```text
+tests/test_drawio_cli_helper.ps1
+```
 
 ## Validation
 
@@ -176,23 +150,31 @@ This prevents future regressions from being mistaken for successful installation
 - all vertices have geometry;
 - all edges have relative `mxGeometry`;
 - stable semantic IDs are used;
-- no reserved `0`/`1` IDs are reused for vertices/edges.
+- no reserved `0`/`1` IDs are reused for vertices/edges;
+- demo `mxGraphModel` uses `shadow="0"`.
 
 ### Local validation contract
 
-Run:
+Run in this order:
 
 ```powershell
-.\scripts\install_drawio_skill.ps1
+git pull
+.\tests\test_drawio_cli_helper.ps1
 .\scripts\run_drawio_harness_demo.ps1
 ```
 
-Expected terminal evidence when Draw.io Desktop is installed:
+Optional reinstall verification:
+
+```powershell
+.\scripts\install_drawio_skill.ps1
+```
+
+Expected terminal evidence:
 
 ```text
-PASS: native PNG export probe
+PASS: DrawioCli helper waits for delayed GUI process completion
 PASS: structural validation
-PASS: native CLI probe
+PASS: native CLI probe (... strategy=...)
 PASS: demo native PNG export
 ```
 
@@ -210,17 +192,18 @@ Backward compatible.
 - Existing Archify workflow remains unchanged.
 - Existing Chart/Flint skill remains unchanged.
 - The new skill is additive and task-scoped.
-- Existing open Draw.io Desktop sessions no longer need to be closed for CherryStock CLI export.
+- Native Draw.io execution is now centralized instead of duplicated across scripts.
 
 ## Rollback
 
-Remove the following files if the capability is retired:
+Remove:
 
 ```text
 .github/skills/drawio-skill/
 scripts/install_drawio_skill.ps1
 scripts/lib/DrawioCli.psm1
 scripts/run_drawio_harness_demo.ps1
+tests/test_drawio_cli_helper.ps1
 docs/runbook/Drawio_Skill.md
 docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md
 docs/architecture/diagrams/agent-harness-five-components.drawio
