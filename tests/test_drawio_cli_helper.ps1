@@ -15,6 +15,7 @@ New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 
 try {
     $fakeExe = Join-Path $tempRoot "fake-drawio-exporter.exe"
+    $sourcePath = Join-Path $tempRoot "FakeDrawioExporter.cs"
     $ioRoot = Join-Path $tempRoot "path with spaces"
     New-Item -ItemType Directory -Path $ioRoot -Force | Out-Null
     $inputDrawio = Join-Path $ioRoot "input diagram.drawio"
@@ -41,8 +42,6 @@ public static class FakeDrawioExporter
 
         for (int i = 0; i < args.Length; i++)
         {
-            // Regression guard for draw.io Desktop 28.x: these are not
-            // commander-registered draw.io options and must not be passed in argv.
             if (args[i] == "--disable-update" ||
                 args[i] == "--disable-gpu" ||
                 args[i].StartsWith("--user-data-dir", StringComparison.OrdinalIgnoreCase))
@@ -88,9 +87,23 @@ public static class FakeDrawioExporter
 }
 '@
 
-    Add-Type -TypeDefinition $source -OutputAssembly $fakeExe -OutputType ConsoleApplication
-
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($sourcePath, $source, $utf8NoBom)
+
+    $cscCandidates = @(
+        (Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"),
+        (Join-Path $env:WINDIR "Microsoft.NET\Framework\v4.0.30319\csc.exe")
+    )
+    $csc = $cscCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (-not $csc) {
+        throw "FAIL: .NET Framework csc.exe was not found; cannot build fake native exporter."
+    }
+
+    & $csc /nologo /target:exe "/out:$fakeExe" $sourcePath
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $fakeExe -PathType Leaf)) {
+        throw "FAIL: csc.exe could not compile fake native exporter (exit=$LASTEXITCODE)."
+    }
+
     [System.IO.File]::WriteAllText(
         $inputDrawio,
         '<mxfile><diagram id="test"><mxGraphModel shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>',
@@ -129,6 +142,7 @@ public static class FakeDrawioExporter
     Write-Host "PASS: DrawioCli argv contains only draw.io-registered options"
     Write-Host "PASS: DRAWIO_DISABLE_UPDATE is supplied through environment"
     Write-Host "PASS: native input/output paths with spaces are preserved"
+    Write-Host ("Compiler:  {0}" -f $csc)
     Write-Host ("Strategy:  {0}" -f $result.Strategy)
     Write-Host ("Elapsed:   {0} ms" -f $elapsed)
     Write-Host ("PNG bytes: {0}" -f $result.Bytes)
