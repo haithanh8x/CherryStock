@@ -1,0 +1,54 @@
+<mxfile host="app.diagrams.net" modified="2026-09-14T00:00:00.000Z" agent="CherryStock drawio-skill adapter" version="30.0.0" type="device">
+  <diagram id="agent-harness-five-components" name="Agent Harness — 5 Components">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="CherryStock Agent Harness — 5 Core Components" style="text;html=1;align=center;verticalAlign=middle;fontSize=24;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="390" y="40" width="820" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="agent" value="AGENT&#xa;Owns OUTCOME&#xa;Who is accountable?" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=18;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="600" y="300" width="300" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="instruction" value="INSTRUCTION&#xa;Owns RULES&#xa;Mandatory constraints" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="150" y="170" width="300" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="docs" value="DOCS&#xa;Owns KNOWLEDGE&#xa;Architecture • ADR • Domain" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="150" y="510" width="300" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="skill" value="SKILL&#xa;Owns PROCEDURE&#xa;How to perform the task" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="170" width="300" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="tool" value="TOOL&#xa;Owns CAPABILITY&#xa;MCP • CLI • Script • API" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=16;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="510" width="300" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e-instruction-agent" value="governs / constrains" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="instruction" target="agent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-docs-agent" value="provides context / knowledge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="docs" target="agent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-agent-skill" value="selects / invokes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="agent" target="skill">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-skill-tool" value="executes through" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;fontSize=13;" edge="1" parent="1" source="skill" target="tool">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-tool-agent" value="returns evidence / result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;fontSize=13;dashed=1;" edge="1" parent="1" source="tool" target="agent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-instruction-skill" value="constrains procedure" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;fontSize=12;dashed=1;" edge="1" parent="1" source="instruction" target="skill">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-docs-skill" value="referenced by" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;fontSize=12;dashed=1;" edge="1" parent="1" source="docs" target="skill">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rule" value="Harness rule: Agent owns outcome • Skill owns procedure • Instruction owns constraints • Docs own knowledge • Tool owns execution capability" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=14;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="270" y="720" width="960" height="80" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
