@@ -16,19 +16,17 @@ This is the CherryStock project adapter for `Agents365-ai/drawio-skill`.
 
 Use it to create **editable `.drawio` artifacts** for architecture explanation, Agent Harness maps, workflows, sequence/data-flow diagrams, ERDs and review material.
 
-The full upstream runtime is installed locally by:
+Install the full upstream runtime locally with:
 
 ```powershell
 .\scripts\install_drawio_skill.ps1
 ```
 
-Default local runtime location:
+Default runtime location:
 
 ```text
 %USERPROFILE%\.agents\skills\drawio-skill
 ```
-
-The installer pins the upstream source to the ref recorded in this file so that local execution is reproducible.
 
 ## CherryStock ownership boundary
 
@@ -46,7 +44,7 @@ Draw.io belongs to the **Skill → Tool** part of the harness. It does not own a
 
 - `SolutionArchitect.agent.md` remains the owner of architecture/design readiness.
 - Archify remains the preferred and mandatory synchronized architecture visualization path where the current Solution Architect contract requires it.
-- Draw.io is a supplemental editable-diagram capability and is especially appropriate when the user explicitly requests `.drawio`, diagrams.net editing, or an editable workshop/review artifact.
+- Draw.io is supplemental and is especially appropriate when the user explicitly requests `.drawio`, diagrams.net editing, or an editable workshop/review artifact.
 - A `.drawio` file is not a replacement for `docs/architecture/**`, ADRs, or canonical Archify typed sources.
 - If Draw.io and canonical architecture documentation disagree, the Draw.io artifact is wrong and must be repaired.
 
@@ -65,7 +63,7 @@ Draw.io belongs to the **Skill → Tool** part of the harness. It does not own a
 python "$HOME\.agents\skills\drawio-skill\scripts\validate.py" <diagram.drawio> --score
 ```
 
-9. For CherryStock local native PNG export, **do not call `draw.io.exe` directly from ad-hoc scripts**. Use the repository-owned wrapper in `scripts/lib/DrawioCli.psm1`, which isolates Electron `--user-data-dir`, waits for a stable file and validates the PNG signature. The demo runner already uses this wrapper:
+9. For CherryStock local native PNG export, **do not call `draw.io.exe` directly from ad-hoc scripts**. Use `scripts/lib/DrawioCli.psm1` or the repository runner:
 
 ```powershell
 .\scripts\run_drawio_harness_demo.ps1
@@ -77,7 +75,7 @@ python "$HOME\.agents\skills\drawio-skill\scripts\validate.py" <diagram.drawio> 
 
 ## Native export invariant
 
-Draw.io Desktop is single-instance Electron software. A normal GUI session may already hold the application lock. Therefore CherryStock native automation MUST route through:
+CherryStock native automation MUST route through:
 
 ```text
 scripts/lib/DrawioCli.psm1
@@ -85,43 +83,66 @@ scripts/lib/DrawioCli.psm1
 
 The wrapper owns:
 
-- executable discovery;
-- unique `--user-data-dir` isolation per export;
-- explicit `--export --format png --output <file>` invocation;
-- bounded output polling;
-- PNG signature validation;
-- cleanup of the temporary isolated profile.
+- executable discovery and version reporting;
+- synchronous native process execution with a bounded timeout;
+- **draw.io 28.x-compatible argv construction using only CLI options registered by Draw.io**;
+- update suppression through environment variable `DRAWIO_DISABLE_UPDATE=true`, not the unsupported `--disable-update` argv token;
+- stdout/stderr capture for diagnostics;
+- output stability checks;
+- PNG signature validation.
 
-Do not reimplement this logic in individual Agents, Skills or runbooks.
+Do **not** add arbitrary Electron/Chromium flags such as the following to Draw.io 28.x export argv:
+
+```text
+--disable-update
+--user-data-dir=...
+--disable-gpu
+```
+
+Draw.io Desktop 28.x uses commander with `allowUnknownOption()`. Unknown flags can leak into `program.args`, become the first candidate input path and cause:
+
+```text
+Error: input file/directory not found
+```
+
+even when the real `.drawio` path exists.
+
+Do not reimplement native invocation logic in individual Agents, Skills or runbooks.
 
 ## File placement
 
-For durable CherryStock architecture diagrams:
+Durable CherryStock architecture diagrams:
 
 ```text
 docs/architecture/diagrams/*.drawio
 ```
 
-For locally generated presentation exports:
+Locally generated presentation exports:
 
 ```text
 docs/architecture/generated/*
 ```
 
-Do not place domain knowledge inside this Skill file. Link to the authoritative docs instead.
+Do not place domain knowledge inside this Skill file. Link to authoritative docs instead.
 
 ## Demo
 
-The reference demo for the Agent Harness five-component relationship is:
+Reference demo:
 
 ```text
 docs/architecture/diagrams/agent-harness-five-components.drawio
 ```
 
-Run locally with:
+Run locally:
 
 ```powershell
 .\scripts\run_drawio_harness_demo.ps1
+```
+
+Focused helper regression test:
+
+```powershell
+.\tests\test_drawio_cli_helper.ps1
 ```
 
 See:
