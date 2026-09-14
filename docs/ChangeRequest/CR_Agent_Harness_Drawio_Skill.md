@@ -49,6 +49,12 @@ Added reproducible local upstream installer:
 scripts/install_drawio_skill.ps1
 ```
 
+Added shared Windows/native CLI wrapper:
+
+```text
+scripts/lib/DrawioCli.psm1
+```
+
 Added demo validator/export runner:
 
 ```text
@@ -105,9 +111,65 @@ Skill       → Tool  : executes through capability
 Tool        → Agent : returns evidence / result
 ```
 
+## Native Export Defect Found During Local Validation
+
+### Symptom
+
+The upstream structural validator passed, but Draw.io Desktop native export returned process exit code `0` without creating a PNG.
+
+Observed pattern:
+
+```text
+0 error(s), 0 warning(s)
+PASS: structural validation
+Draw.io exit code: 0
+PNG: missing
+```
+
+### Root cause
+
+Draw.io Desktop is an Electron single-instance application. Its desktop implementation uses `app.requestSingleInstanceLock()` and exits a second process when that lock is already held.
+
+On Windows this means an already-open normal Draw.io GUI can consume/block a CLI launch. The second process may exit successfully without executing the requested export, making `exit code 0` insufficient evidence that a PNG was produced.
+
+### Fix
+
+Native CLI ownership was centralized in:
+
+```text
+scripts/lib/DrawioCli.psm1
+```
+
+Every automated export now uses a unique temporary Electron/Chromium profile:
+
+```text
+--user-data-dir=<unique-temp-profile>
+```
+
+This isolates the CLI process from the normal Draw.io GUI single-instance namespace.
+
+The wrapper additionally:
+
+1. detects the Draw.io executable deterministically;
+2. invokes explicit `--export --format png --output <file>` syntax;
+3. waits/polls until the output file is non-empty and stable;
+4. validates the eight-byte PNG signature;
+5. removes only its dedicated temporary profile;
+6. returns structured export evidence.
+
+The installer now performs a real native export probe when Draw.io Desktop is available. The demo runner now has three gates:
+
+```text
+[1/3] upstream structural validation
+[2/3] isolated native CLI smoke-test using a minimal generated diagram
+[3/3] real Agent Harness PNG export + PNG signature validation
+```
+
+This prevents future regressions from being mistaken for successful installation merely because an executable exists or returns exit code `0`.
+
 ## Validation
 
-Repository-side structural sanity performed for the committed demo:
+### Repository/demo structure
 
 - XML parses successfully.
 - all edge source/target IDs resolve;
@@ -116,14 +178,29 @@ Repository-side structural sanity performed for the committed demo:
 - stable semantic IDs are used;
 - no reserved `0`/`1` IDs are reused for vertices/edges.
 
-Full upstream validation is intentionally reproducible on local CherryStock through:
+### Local validation contract
+
+Run:
 
 ```powershell
 .\scripts\install_drawio_skill.ps1
 .\scripts\run_drawio_harness_demo.ps1
 ```
 
-The runner uses the upstream `validate.py --score` and exports a PNG when Draw.io Desktop CLI is available.
+Expected terminal evidence when Draw.io Desktop is installed:
+
+```text
+PASS: native PNG export probe
+PASS: structural validation
+PASS: native CLI probe
+PASS: demo native PNG export
+```
+
+The demo output is:
+
+```text
+docs/architecture/generated/Agent_Harness_Five_Components.png
+```
 
 ## Compatibility
 
@@ -133,6 +210,7 @@ Backward compatible.
 - Existing Archify workflow remains unchanged.
 - Existing Chart/Flint skill remains unchanged.
 - The new skill is additive and task-scoped.
+- Existing open Draw.io Desktop sessions no longer need to be closed for CherryStock CLI export.
 
 ## Rollback
 
@@ -141,6 +219,7 @@ Remove the following files if the capability is retired:
 ```text
 .github/skills/drawio-skill/
 scripts/install_drawio_skill.ps1
+scripts/lib/DrawioCli.psm1
 scripts/run_drawio_harness_demo.ps1
 docs/runbook/Drawio_Skill.md
 docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md
