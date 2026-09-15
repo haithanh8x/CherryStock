@@ -267,7 +267,7 @@
     {"from": "indicator_public", "to": "rs_runtime", "label": "price-level metadata + values", "variant": "emphasis", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [825, 565]},
     {"from": "analytics_inputs", "to": "rs_runtime", "label": "price / market structure", "fromSide": "bottom", "toSide": "left", "via": [[130, 650]], "labelAt": [400, 665]},
     {"from": "rs_runtime", "to": "consumers", "label": "LevelLadderResult", "variant": "emphasis", "route": "straight", "labelAt": [1010, 704]},
-    {"from": "movement_public", "to": "consumers", "label": "swings / scores / character", "route": "straight", "fromSide": "bottom", "toSide": "left", "via": [[1015, 650]], "labelAt": [1090, 640]},
+    {"from": "movement_public", "to": "consumers", "label": "swings / scores / character", "route": "straight", "fromSide": "bottom", "toSide": "left", "via": [[1015, 650]], "labelAt": [1090, 606]},
     {"from": "smart_public", "to": "consumers", "label": "score / state / confidence", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1320, 565]},
     {"from": "monthly_orchestrator", "to": "rs_evaluation", "label": "monthly research run", "variant": "emphasis", "route": "straight", "labelAt": [650, 755]},
     {"from": "rs_runtime", "to": "rs_evaluation", "label": "baseline + ablation behavior", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [825, 735]},
