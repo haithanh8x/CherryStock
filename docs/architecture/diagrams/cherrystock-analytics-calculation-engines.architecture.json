@@ -8,9 +8,9 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "632c9363f2fd0bef02bd2dbbfe12b781fed502fa"
+      "revision": "c0efff297dc1a73b71b1fb0ece02446a90cfcd94"
     },
-    "viewBox": [1550, 920]
+    "viewBox": [1420, 920]
   },
   "components": [
     {
@@ -68,7 +68,6 @@
       "pos": [910, 80],
       "size": [210, 72],
       "sources": [
-        {"path": "docs/backlog/requirements/REQ-0027-price-movement-characterization.md", "label": "Requirement"},
         {"path": "docs/architecture/Price_Movement_Character.md", "label": "Target design"},
         {"path": "docs/adr/ADR-012-price-movement-character-as-separate-analytics-domain.md", "label": "Domain boundary decision"},
         {"path": "docs/architecture/Indicator_Engine.md", "label": "Public ATR dependency"}
