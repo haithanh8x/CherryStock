@@ -118,6 +118,7 @@ def main() -> int:
                AND s.ConfirmedAtDate > d.Date
                AND s.PivotEndDate <= d.Date
             WHERE d.Ticker = ?
+              AND d.SwingStatus = 'CONFIRMED'
             """,
             [ticker],
         ).fetchone()[0]
