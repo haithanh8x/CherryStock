@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 import pandas as pd
@@ -13,6 +14,7 @@ from .engine import (
     score_against_history,
 )
 from .models import MovementConfig, SeedState, SwingEvent
+from .source_quality import sanitize_price_movement_frame
 
 
 def _bar_slice(frame: pd.DataFrame, start_index: int, end_index: int) -> pd.DataFrame:
@@ -30,14 +32,19 @@ def calculate_ticker_movement_fast(
 ) -> tuple[list[SwingEvent], list[dict[str, object]]]:
     """Point-in-time swing state machine optimized for historical/runtime refresh.
 
-    Semantics match ``engine.calculate_ticker_movement``. The difference is
-    implementation only: leg paths are sliced by bar position so each daily
-    feature calculation does not filter the entire ticker history.
+    Semantics match ``engine.calculate_ticker_movement`` for valid source bars.
+    High/Low/Close rows that are non-finite or non-positive are excluded before
+    calculation. Any invalid OHLC evidence marks produced rows/events PARTIAL so
+    degradation is explicit instead of crashing the full-universe pipeline.
     """
     if frame.empty:
         return [], []
 
-    data = frame.sort_values("Date").reset_index(drop=True).copy()
+    data, source_quality = sanitize_price_movement_frame(frame)
+    if data.empty:
+        return [], []
+
+    source_degraded = source_quality.degraded
     data["Date"] = pd.to_datetime(data["Date"])
     bar_dates = [timestamp.date() for timestamp in data["Date"]]
     date_to_index = {bar_date: index for index, bar_date in enumerate(bar_dates)}
@@ -71,7 +78,7 @@ def calculate_ticker_movement_fast(
         candidate_index = date_to_index.get(candidate_date)
         if start_index is None or candidate_index is None:
             raise RuntimeError(
-                f"Cannot resume {ticker}: persisted provisional dates are outside loaded source "
+                f"Cannot resume {ticker}: persisted provisional dates are outside loaded usable source "
                 f"(start={start_date}, candidate={candidate_date}). Run a targeted full rebuild."
             )
         start_price = float(seed_state.start_price)
@@ -160,6 +167,8 @@ def calculate_ticker_movement_fast(
                     threshold_source=threshold_source,
                     features=features,
                 )
+                if source_degraded and event.quality_status != "PARTIAL":
+                    event = replace(event, quality_status="PARTIAL")
                 emitted.append(event)
                 history.append(event)
                 next_seq += 1
@@ -212,6 +221,8 @@ def calculate_ticker_movement_fast(
                     threshold_source=threshold_source,
                     features=features,
                 )
+                if source_degraded and event.quality_status != "PARTIAL":
+                    event = replace(event, quality_status="PARTIAL")
                 emitted.append(event)
                 history.append(event)
                 next_seq += 1
@@ -295,11 +306,11 @@ def calculate_ticker_movement_fast(
             config=config,
         )
         quality = "OK"
-        if threshold_source != "ATR_PLUS_FLOOR" or score["ScoreBasis"] in {
-            "RAW_ONLY",
-            "INSUFFICIENT_HISTORY",
-            "NONE",
-        }:
+        if (
+            source_degraded
+            or threshold_source != "ATR_PLUS_FLOOR"
+            or score["ScoreBasis"] in {"RAW_ONLY", "INSUFFICIENT_HISTORY", "NONE"}
+        ):
             quality = "PARTIAL"
 
         daily.append(
