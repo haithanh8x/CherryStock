@@ -11,17 +11,17 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 4 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN |
+| Requirements | 6 canonical requirements | 2 DONE · 3 READY_FOR_DESIGN · 1 IMPLEMENTED_PENDING_VALIDATION |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **28** | **6 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 17 TODO** |
+| **Total** | **30** | **6 DONE · 3 IN_PROGRESS · 3 READY_FOR_DESIGN · 1 IMPLEMENTED_PENDING_VALIDATION · 17 TODO** |
 
 ### Priority Summary
 
 | Priority | Count | Notes |
 |---|---:|---|
 | P0 | 4 | REQ-0022, REQ-0023, REQ-0024, CS-ARCH-010 |
-| P1 | 14 | REQ-0025 + 6 Architecture + 7 Harness |
+| P1 | 16 | REQ-0025, REQ-0026, REQ-0027 + 6 Architecture + 7 Harness |
 | P2 | 7 | 2 Architecture + 5 Harness |
 | P3 | 3 | 1 Architecture + 2 Harness |
 
@@ -68,6 +68,8 @@ Canonical index:
 | REQ-0023 | R/S V2.5 Historical Reliability & Confident Strength Shadow Evaluation | P0 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0023-rs-v2-5-historical-reliability-confident-strength|REQ-0023]] |
 | REQ-0024 | R/S V2.6 Production Confident Strength Integration | P0 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0024-rs-v2-6-production-confident-strength|REQ-0024]] |
 | REQ-0025 | Ticker-level SmartMoneyScore | P1 | **DONE** | None | [[requirements/REQ-0025-smart-money-score|REQ-0025]] |
+| REQ-0026 | Smart Money BUY / HOLD / SELL Strategy Action | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0026-smart-money-strategy|REQ-0026]] |
+| REQ-0027 | Price Movement Characterization and Swing Profile | P1 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0027-price-movement-characterization|REQ-0027]] |
 
 ## Requirement Delivery Flow
 
@@ -88,12 +90,27 @@ Smart Money is an independent workstream:
 REQ-0025 SmartMoneyScore
 DONE
 (TestEngineer PASS / KEEP on 2026-09-06)
+        ↓
+REQ-0026 Smart Money Strategy
+IMPLEMENTED_PENDING_VALIDATION
+```
+
+Price Movement Character is an independent analytical workstream that may become a future upstream dependency for SmartMoney or strategy only through a separate approved requirement:
+
+```text
+REQ-0027 Price Movement Characterization
+READY_FOR_DESIGN
 ```
 
 Related approved Smart Money design:
 
 - [[../architecture/SmartMoneyScore|SmartMoneyScore Architecture]]
 - [[../adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
+
+Related Price Movement design:
+
+- [[../architecture/Price_Movement_Character|Price Movement Character Architecture]]
+- [[../adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Analytics Boundary]]
 
 ## Requirement Data-Hygiene Warning
 
@@ -244,6 +261,8 @@ CS-HARNESS-014
 | CS-HARNESS-010 Agent Observability | CS-ARCH-008 |
 | CS-HARNESS-014 Harness Evaluation | CS-ARCH-009 |
 | REQ-0025 SmartMoneyScore | Data Architecture, Indicator Engine public SSOT, ADR-009 |
+| REQ-0026 SmartMoneyStrategy | REQ-0025 public SmartMoney contract + independent local validation |
+| REQ-0027 Price Movement Character | Adjusted OHLC, Indicator public ATR contract, Data Architecture, ADR-012 |
 | REQ-0024 R/S V2.6 | Requires V2.5 evidence/promotion gate before production confidence integration |
 
 ---
@@ -257,9 +276,11 @@ Based on current status and priority, the next actionable queue is:
 | 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
 | 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
 | 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
-| 4 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
-| 5 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
-| 6 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
+| 4 | **REQ-0027** | P1 requirement is ready for SolutionArchitect; design must complete Archify synchronization before implementation. |
+| 5 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
+| 6 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
+| 7 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
+| 8 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
 
