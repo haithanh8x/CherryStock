@@ -68,7 +68,46 @@ def main() -> int:
             """,
             [ticker],
         ).df()
-        future_leak = connection.execute(
+
+        # Point-in-time invariant: a daily row dated D may only count same-direction
+        # swings whose ConfirmedAtDate is strictly earlier than D. Future-confirmed
+        # swings can legitimately have PivotEndDate <= D while the active leg was
+        # still PROVISIONAL; their mere geometric overlap is not knowledge leakage.
+        knowledge_mismatch = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM (
+                SELECT
+                    d.ConfigId,
+                    d.Ticker,
+                    d.Date,
+                    d.Direction,
+                    d.HistoricalSameDirSwingCount AS StoredCount,
+                    LEAST(c.ProfileMaxSwings, COUNT(s.PivotStartDate)) AS ExpectedCount
+                FROM "CherryMon"."main"."cal_price_movement_daily" AS d
+                INNER JOIN "CherryMon"."main"."dim_price_movement_config" AS c
+                    ON c.ConfigId = d.ConfigId
+                LEFT JOIN "CherryMon"."main"."cal_price_movement_swing" AS s
+                    ON s.ConfigId = d.ConfigId
+                   AND s.Ticker = d.Ticker
+                   AND s.Direction = d.Direction
+                   AND s.ConfirmedAtDate < d.Date
+                WHERE d.Ticker = ?
+                  AND d.Direction IN ('UP', 'DOWN')
+                GROUP BY
+                    d.ConfigId,
+                    d.Ticker,
+                    d.Date,
+                    d.Direction,
+                    d.HistoricalSameDirSwingCount,
+                    c.ProfileMaxSwings
+            ) AS point_in_time
+            WHERE StoredCount <> ExpectedCount
+            """,
+            [ticker],
+        ).fetchone()[0]
+
+        future_confirmed_overlap = connection.execute(
             """
             SELECT COUNT(*)
             FROM "CherryMon"."main"."cal_price_movement_daily" AS d
@@ -89,7 +128,15 @@ def main() -> int:
     print(swings.to_string(index=False))
     print(f"\n=== {ticker} movement profile ===")
     print(profile.to_string(index=False))
-    print(f"\nNo-look-ahead diagnostic rows (must be 0): {int(future_leak or 0)}")
+    print(
+        "\nPoint-in-time historical-count mismatches (must be 0): "
+        f"{int(knowledge_mismatch or 0)}"
+    )
+    print(
+        "Future-confirmed swing overlaps with earlier PROVISIONAL rows "
+        "(informational; may be > 0): "
+        f"{int(future_confirmed_overlap or 0)}"
+    )
     return 0
 
 
