@@ -93,8 +93,10 @@ Architecture/system/solution/data/integration/refactor work:
 ### Core architecture
 
 - [[architecture/CherryStock_High_Level|CherryStock High-Level Architecture]]
+- [[architecture/Analytics_Calculation_Engines|Analytics & Calculation Engines]]
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[architecture/Indicator_Engine|Indicator Engine]]
+- [[architecture/Price_Movement_Character|Price Movement Character Engine]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/Second_Brain|Second Brain Architecture]]
@@ -110,6 +112,12 @@ Architecture/system/solution/data/integration/refactor work:
 - [[runbook/SmartMoneyStrategy_V1|SmartMoneyStrategy V1 Runbook]]
 - [[runbook/SmartMoneyTradeActionConfidence_V1|TradeActionConfidence V1 Runbook]]
 - [[runbook/SmartMoney_NiceGUI_Tab|SmartMoney NiceGUI Runbook]]
+
+### Price Movement Character
+
+- [[backlog/requirements/REQ-0027-price-movement-characterization|REQ-0027 Price Movement Characterization and Swing Profile]]
+- [[architecture/Price_Movement_Character|Price Movement Character Engine]]
+- [[adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Analytics Boundary]]
 
 ### R/S / chart-related architecture
 
@@ -195,6 +203,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 - [[adr/ADR-009-smart-money-score-state-aware-scoring|ADR-009 SmartMoneyScore State-Aware Scoring]]
 - [[adr/ADR-010-separate-adjusted-as-traded-market-limit|ADR-010 Adjusted vs As-Traded Market Limits]]
 - [[adr/ADR-011-agent-harness-responsibility-hierarchy|ADR-011 Agent Harness Responsibility Hierarchy]]
+- [[adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Character Analytics Boundary]]
 
 ## Runbooks
 
