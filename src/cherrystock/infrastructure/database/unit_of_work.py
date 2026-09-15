@@ -4,6 +4,7 @@ from cherrystock.infrastructure.database.connection import DuckDBConnectionFacto
 from cherrystock.infrastructure.database.repositories import (
     IndexRepository,
     IndicatorRepository,
+    PriceMovementRepository,
     RSEvaluationRepository,
     SmartMoneyRepository,
     TickerRepository,
@@ -19,6 +20,7 @@ class DuckDBUnitOfWork:
         self.connection = None
         self.indexes: IndexRepository | None = None
         self.indicators: IndicatorRepository | None = None
+        self.price_movement: PriceMovementRepository | None = None
         self.rs_evaluations: RSEvaluationRepository | None = None
         self.smart_money: SmartMoneyRepository | None = None
         self.tickers: TickerRepository | None = None
@@ -29,6 +31,7 @@ class DuckDBUnitOfWork:
         self.connection.execute("BEGIN")
         self.indexes = IndexRepository(self.connection)
         self.indicators = IndicatorRepository(self.connection)
+        self.price_movement = PriceMovementRepository(self.connection)
         self.rs_evaluations = RSEvaluationRepository(self.connection)
         self.smart_money = SmartMoneyRepository(self.connection)
         self.tickers = TickerRepository(self.connection)
@@ -46,6 +49,7 @@ class DuckDBUnitOfWork:
             self.connection = None
             self.indexes = None
             self.indicators = None
+            self.price_movement = None
             self.rs_evaluations = None
             self.smart_money = None
             self.tickers = None
