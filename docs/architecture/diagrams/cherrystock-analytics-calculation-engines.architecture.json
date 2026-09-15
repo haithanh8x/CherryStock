@@ -10,7 +10,7 @@
       "link_mode": "web",
       "revision": "c0efff297dc1a73b71b1fb0ece02446a90cfcd94"
     },
-    "viewBox": [1420, 920]
+    "viewBox": [1390, 920]
   },
   "components": [
     {
@@ -78,7 +78,7 @@
       "type": "backend",
       "label": "SmartMoneyScore Engine",
       "sublabel": "feature · state · score",
-      "pos": [1170, 80],
+      "pos": [1150, 80],
       "size": [220, 72],
       "sources": [
         {"path": "src/calcEngine/smartMoneyScore.py", "label": "SmartMoney runtime"},
@@ -148,7 +148,7 @@
       "type": "database",
       "label": "SmartMoney Persistence",
       "sublabel": "factors · ticker score",
-      "pos": [1170, 260],
+      "pos": [1150, 260],
       "size": [220, 80],
       "sources": [
         {"path": "src/calcEngine/smartMoneyScore.py", "label": "Factor / score persistence"},
@@ -182,7 +182,7 @@
       "type": "database",
       "label": "SmartMoney Public Contract",
       "sublabel": "ticker score · public view",
-      "pos": [1170, 440],
+      "pos": [1150, 440],
       "size": [220, 80],
       "sources": [
         {"path": "docs/architecture/SmartMoneyScore.md", "label": "Public score contract"}
@@ -205,7 +205,7 @@
       "type": "frontend",
       "label": "Analytical Consumers",
       "sublabel": "Web · Chart · Screener · API",
-      "pos": [1170, 610],
+      "pos": [1150, 610],
       "size": [220, 80],
       "sources": [
         {"path": "src/webapp/NiceGUI_chart.py", "label": "Chart/UI consumer"},
@@ -255,23 +255,23 @@
     {"from": "composite_index", "to": "trend_ma", "label": "2 · trend", "route": "straight", "labelAt": [445, 55]},
     {"from": "trend_ma", "to": "indicator_engine", "label": "3 · indicators", "route": "straight", "labelAt": [650, 55]},
     {"from": "indicator_engine", "to": "price_movement", "label": "4 · movement · ATR public", "variant": "emphasis", "route": "straight", "labelAt": [885, 55]},
-    {"from": "price_movement", "to": "smart_money", "label": "5 · then SmartMoney", "route": "straight", "labelAt": [1145, 55]},
+    {"from": "price_movement", "to": "smart_money", "label": "5 · then SmartMoney", "route": "straight", "labelAt": [1135, 55]},
     {"from": "composite_index", "to": "index_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [400, 205]},
     {"from": "trend_ma", "to": "trend_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [600, 205]},
     {"from": "indicator_engine", "to": "indicator_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [820, 205]},
     {"from": "price_movement", "to": "movement_store", "label": "events + daily + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1070, 205]},
-    {"from": "smart_money", "to": "smart_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1340, 205]},
+    {"from": "smart_money", "to": "smart_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1320, 205]},
     {"from": "indicator_store", "to": "indicator_public", "label": "stable read SSOT", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [825, 390]},
     {"from": "movement_store", "to": "movement_public", "label": "stable read views", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1065, 390]},
-    {"from": "smart_store", "to": "smart_public", "label": "stable read view", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1340, 390]},
+    {"from": "smart_store", "to": "smart_public", "label": "stable read view", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1320, 390]},
     {"from": "indicator_public", "to": "rs_runtime", "label": "price-level metadata + values", "variant": "emphasis", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [825, 565]},
     {"from": "analytics_inputs", "to": "rs_runtime", "label": "price / market structure", "fromSide": "bottom", "toSide": "left", "via": [[130, 650]], "labelAt": [400, 665]},
-    {"from": "rs_runtime", "to": "consumers", "label": "LevelLadderResult", "variant": "emphasis", "route": "straight", "labelAt": [1020, 704]},
-    {"from": "movement_public", "to": "consumers", "label": "swings / scores / character", "route": "straight", "fromSide": "bottom", "toSide": "left", "via": [[1015, 650]], "labelAt": [1100, 640]},
-    {"from": "smart_public", "to": "consumers", "label": "score / state / confidence", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1340, 565]},
+    {"from": "rs_runtime", "to": "consumers", "label": "LevelLadderResult", "variant": "emphasis", "route": "straight", "labelAt": [1010, 704]},
+    {"from": "movement_public", "to": "consumers", "label": "swings / scores / character", "route": "straight", "fromSide": "bottom", "toSide": "left", "via": [[1015, 650]], "labelAt": [1090, 640]},
+    {"from": "smart_public", "to": "consumers", "label": "score / state / confidence", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1320, 565]},
     {"from": "monthly_orchestrator", "to": "rs_evaluation", "label": "monthly research run", "variant": "emphasis", "route": "straight", "labelAt": [650, 755]},
     {"from": "rs_runtime", "to": "rs_evaluation", "label": "baseline + ablation behavior", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [825, 735]},
     {"from": "rs_evaluation", "to": "rs_research_store", "label": "effectiveness + audit", "variant": "security", "route": "straight", "labelAt": [885, 755]},
-    {"from": "rs_research_store", "to": "consumers", "label": "research / governance read", "fromSide": "top", "toSide": "bottom", "via": [[1015, 735], [1280, 735]], "labelAt": [1145, 720]}
+    {"from": "rs_research_store", "to": "consumers", "label": "research / governance read", "fromSide": "top", "toSide": "bottom", "via": [[1015, 735], [1260, 735]], "labelAt": [1135, 720]}
   ]
 }
