@@ -18,6 +18,9 @@ from cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork  #
 
 
 SCHEMA_SQL = PROJECT_ROOT / "src" / "DuckDB" / "sql" / "price_movement_character_v1_schema.sql"
+PROFILE_VIEW_SQL = (
+    PROJECT_ROOT / "src" / "DuckDB" / "sql" / "price_movement_character_v1_profile_view.sql"
+)
 
 
 def _parse_date(raw: str | None) -> date | None:
@@ -55,6 +58,11 @@ def main() -> int:
             con=uow.connection,
             sql_file_path=str(SCHEMA_SQL),
             sql_description="Ensure Price Movement Character V1 schema",
+        )
+        executeDuckSQL(
+            con=uow.connection,
+            sql_file_path=str(PROFILE_VIEW_SQL),
+            sql_description="Ensure Price Movement Character V1 bounded profile view",
         )
         summary = refresh_price_movement_character(
             from_last_day=None if args.mode == "full" else 1,
