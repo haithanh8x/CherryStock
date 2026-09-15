@@ -15,7 +15,7 @@ This document drills down the **Analytics & Calculation Engines** component from
 2. the read/on-demand **R/S Runtime Ladder** path;
 3. the independent **monthly R/S historical research/effectiveness** path.
 
-The diagram documents current repository evidence; it does not introduce a new calculation algorithm or runtime dependency.
+The daily target architecture now includes the approved-by-design **Price Movement Character Engine** from REQ-0027 / ADR-012. That stage remains implementation-pending until Archify synchronization/rendering and implementation handoff are complete.
 
 ## Navigation Contract
 
@@ -66,7 +66,15 @@ SyncWritePipelineService / shared DuckDBUnitOfWork
         │           └─> vw_Ticker_indicators + vw_Indicator_config
         │               └─> blocking stage DQ
         │
-        └─ 4. SmartMoneyScore Engine
+        ├─ 4. Price Movement Character Engine
+        │       └─> cal_price_movement_swing
+        │       └─> cal_price_movement_daily
+        │           └─> vw_Ticker_Movement_Swings
+        │           └─> vw_Ticker_Movement_D
+        │           └─> vw_Ticker_Movement_Profile
+        │               └─> blocking stage DQ
+        │
+        └─ 5. SmartMoneyScore Engine
                 └─> cal_smart_money_factor_values
                     + cal_smart_money_ticker_score
                     └─> vw_Ticker_SmartMoney
@@ -103,16 +111,17 @@ vw_RS_Source_Effectiveness
 
 ## 1. Daily Analytics Order
 
-The authoritative daily order is owned by `SyncWritePipelineService.run()`:
+The authoritative implemented daily order is currently owned by `SyncWritePipelineService.run()`. The target order after REQ-0027 implementation is:
 
 ```text
 Composite Index
 → Trend / Moving Average
 → Technical Indicators
+→ Price Movement Character
 → SmartMoneyScore
 ```
 
-The ordering is orchestration order, not an assertion that each engine consumes the prior engine's persistence output. Each engine resolves its own required input contracts from the shared DuckDB transaction context.
+The ordering is orchestration order, not an assertion that each engine consumes every prior engine's persistence output. Each engine resolves its own required input contracts from the shared DuckDB transaction context.
 
 All daily calculation writes participate in the same `DuckDBUnitOfWork` opened by `run.py`. Blocking Data Quality failure before commit rolls back the daily write set.
 
@@ -208,6 +217,48 @@ vw_Ticker_indicators
 
 Normal finite-window indicators use configured warmup/checkpoint behavior. Cumulative full-history indicators such as OBV and AD reload history from inception so incremental calculation preserves the same cumulative baseline as historical backfill.
 
+### Price Movement Character Engine
+
+**Status:** target design; implementation pending.
+
+**Architecture contract:** `docs/architecture/Price_Movement_Character.md`.
+
+**Requirement / decision:** `REQ-0027` / `ADR-012`.
+
+Core target stages:
+
+```text
+Adjusted OHLC + public ATR indicator evidence
+        ↓
+Sequential Swing Segmentation
+        ↓
+Confirmed Swing Features + Provisional Current Leg
+        ↓
+Same-Direction Historical Profile
+        ↓
+Magnitude / Velocity / Persistence Scoring
+        ↓
+Movement Character Classification
+        ↓
+cal_price_movement_swing
+cal_price_movement_daily
+        ↓
+vw_Ticker_Movement_Swings
+vw_Ticker_Movement_D
+vw_Ticker_Movement_Profile
+```
+
+The domain is deliberately separate from the Indicator Engine because it owns confirmed swing events, a provisional state machine and point-in-time pivot-confirmation semantics. It consumes ATR through `vw_Ticker_indicators` / `vw_Indicator_config` rather than reading internal indicator persistence.
+
+The historical no-look-ahead invariant is:
+
+```text
+PivotEndDate = date the extreme occurred
+ConfirmedAtDate = later date the reversal made the extreme knowable
+```
+
+No as-of row may use an event whose `ConfirmedAtDate` is in the future relative to that row.
+
 ### SmartMoneyScore Engine
 
 **Implementation:** `src/calcEngine/smartMoneyScore.py`
@@ -237,6 +288,8 @@ vw_Ticker_SmartMoney
 ```
 
 SmartMoney is a separate analytical domain, not an Indicator Engine subtype. When indicator evidence is required it consumes public Indicator Engine contracts rather than directly coupling to `cal_indicator_values`.
+
+REQ-0027 V1 does not change SmartMoneyScore inputs or weights. Any future consumption of Price Movement public contracts by SmartMoney requires its own approved requirement/design change.
 
 ## 2. R/S Runtime Ladder — Read / On-Demand Path
 
@@ -318,6 +371,7 @@ V2.4 is research/governance. It does **not** automatically mutate runtime provid
 | Composite Index | daily | `calculate_VNINDEX_NOT_VIN()` | `cal_Indexes` | shared daily UoW |
 | Trend / MA | daily | `cal_Moving_Average()` | `cal_Trends` | shared daily UoW |
 | Indicator Engine | daily | `refresh_technical_indicators()` | `cal_indicator_values` → `vw_Ticker_indicators` | shared daily UoW |
+| Price Movement Character | daily, target | sequential swing state + profile + scoring | `cal_price_movement_swing`, `cal_price_movement_daily` → three public views | shared daily UoW after implementation |
 | SmartMoneyScore | daily | `refresh_smart_money_score()` | factor + score tables → `vw_Ticker_SmartMoney` | shared daily UoW |
 | R/S Runtime Ladder | on demand / consumer | `build_level_ladder()` family | `LevelLadderResult` | read/calculation path, separate from daily writer |
 | R/S V2.4 Evaluation | monthly/manual | baseline + ablation + effectiveness | `cal_rs_source_effectiveness*`, audit + public view | separate monthly research run |
@@ -358,6 +412,7 @@ Until the command above succeeds and the generated HTML is committed, this drill
 - `docs/architecture/CherryStock_High_Level.md`
 - `docs/architecture/Data_Architecture.md`
 - `docs/architecture/Indicator_Engine.md`
+- `docs/architecture/Price_Movement_Character.md`
 - `docs/architecture/SmartMoneyScore.md`
 - `docs/architecture/RS_Ladder.md`
 - `docs/architecture/RS_Source_Effectiveness.md`
@@ -365,4 +420,5 @@ Until the command above succeeds and the generated HTML is committed, this drill
 
 ## ADR
 
-**Not required.** This drill-down documents current runtime architecture and does not create a new cross-module design decision.
+- `ADR-012` is required for the new Price Movement Character domain boundary and persistence strategy.
+- No new ADR is required for the pre-existing calculation-engine drill-down itself.
