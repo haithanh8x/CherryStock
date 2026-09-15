@@ -30,7 +30,7 @@
       "type": "backend",
       "label": "Composite Index Engine",
       "sublabel": "VNINDEX_NOT_VIN · divisor",
-      "pos": [250, 80],
+      "pos": [260, 80],
       "size": [170, 72],
       "sources": [
         {"path": "src/calcEngine/calcIndexes.py", "label": "Composite index calculation"}
@@ -103,7 +103,7 @@
       "type": "database",
       "label": "Index Persistence",
       "sublabel": "cal_Indexes · index/date",
-      "pos": [250, 260],
+      "pos": [260, 260],
       "size": [170, 80],
       "sources": [
         {"path": "src/calcEngine/calcIndexes.py", "label": "cal_Indexes writer"}
@@ -251,12 +251,12 @@
   ],
   "connections": [
     {"from": "analytics_inputs", "to": "daily_orchestrator", "label": "validated inputs", "variant": "emphasis", "route": "straight", "fromSide": "top", "toSide": "bottom", "labelAt": [130, 205]},
-    {"from": "daily_orchestrator", "to": "composite_index", "label": "1 · index", "variant": "emphasis", "route": "straight", "labelAt": [230, 55]},
-    {"from": "composite_index", "to": "trend_ma", "label": "2 · trend", "route": "straight", "labelAt": [440, 55]},
+    {"from": "daily_orchestrator", "to": "composite_index", "label": "1 · index", "variant": "emphasis", "route": "straight", "labelAt": [245, 55]},
+    {"from": "composite_index", "to": "trend_ma", "label": "2 · trend", "route": "straight", "labelAt": [445, 55]},
     {"from": "trend_ma", "to": "indicator_engine", "label": "3 · indicators", "route": "straight", "labelAt": [650, 55]},
     {"from": "indicator_engine", "to": "price_movement", "label": "4 · movement · ATR public", "variant": "emphasis", "route": "straight", "labelAt": [885, 55]},
     {"from": "price_movement", "to": "smart_money", "label": "5 · then SmartMoney", "route": "straight", "labelAt": [1145, 55]},
-    {"from": "composite_index", "to": "index_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [390, 205]},
+    {"from": "composite_index", "to": "index_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [400, 205]},
     {"from": "trend_ma", "to": "trend_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [600, 205]},
     {"from": "indicator_engine", "to": "indicator_store", "label": "persist + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [820, 205]},
     {"from": "price_movement", "to": "movement_store", "label": "events + daily + DQ", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [1070, 205]},
