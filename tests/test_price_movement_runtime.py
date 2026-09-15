@@ -5,6 +5,9 @@ import pandas as pd
 from cherrystock.domain.analytics.price_movement.engine import calculate_ticker_movement
 from cherrystock.domain.analytics.price_movement.models import MovementConfig
 from cherrystock.domain.analytics.price_movement.runtime import calculate_ticker_movement_fast
+from cherrystock.domain.analytics.price_movement.source_quality import (
+    inspect_price_source_quality,
+)
 
 
 def _config() -> MovementConfig:
@@ -69,3 +72,45 @@ def test_fast_runtime_matches_reference_state_machine() -> None:
         event.to_record() for event in reference_events
     ]
     assert fast_daily == reference_daily
+
+
+def test_runtime_drops_nonpositive_calculation_bar_without_crashing() -> None:
+    frame = _frame()
+    bad_date = pd.Timestamp(frame.loc[2, "Date"]).date()
+    frame.loc[2, "Low"] = 0.0
+
+    diagnostics = inspect_price_source_quality(frame)
+    events, daily = calculate_ticker_movement_fast(
+        frame,
+        ticker="MWG",
+        config=_config(),
+    )
+
+    assert diagnostics.invalid_ohlc_rows == 1
+    assert diagnostics.invalid_calculation_rows == 1
+    assert diagnostics.open_only_invalid_rows == 0
+    assert diagnostics.usable_rows == len(frame) - 1
+    assert all(row["Date"] != bad_date for row in daily)
+    assert all(row["QualityStatus"] == "PARTIAL" for row in daily)
+    assert all(event.quality_status == "PARTIAL" for event in events)
+    assert all(event.start_price > 0 and event.end_price > 0 for event in events)
+
+
+def test_runtime_retains_open_only_zero_but_marks_source_partial() -> None:
+    frame = _frame()
+    frame.loc[2, "Open"] = 0.0
+
+    diagnostics = inspect_price_source_quality(frame)
+    events, daily = calculate_ticker_movement_fast(
+        frame,
+        ticker="MWG",
+        config=_config(),
+    )
+
+    assert diagnostics.invalid_ohlc_rows == 1
+    assert diagnostics.invalid_calculation_rows == 0
+    assert diagnostics.open_only_invalid_rows == 1
+    assert diagnostics.usable_rows == len(frame)
+    assert len(daily) == len(frame)
+    assert all(row["QualityStatus"] == "PARTIAL" for row in daily)
+    assert all(event.quality_status == "PARTIAL" for event in events)
