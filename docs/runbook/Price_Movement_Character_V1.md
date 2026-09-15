@@ -2,7 +2,7 @@
 
 ## 1. Mục tiêu
 
-Runbook này dùng để kiểm tra local implementation của `REQ-0027` theo thứ tự an toàn:
+Runbook này dùng để kiểm tra local implementation của `REQ-0027` theo thứ tự an toàn và **có thể resume từ checkpoint đã PASS** thay vì bắt buộc chạy lại từ đầu.
 
 ```text
 Focused tests
@@ -12,7 +12,7 @@ Focused tests
 → idempotency
 → full historical initload
 → representative ticker checks
-→ ATR/fallback checks
+→ ATR/source-quality checks
 → incremental checkpoint
 → canonical run.py
 → Data Quality audit
@@ -27,18 +27,88 @@ IMPLEMENTED_PENDING_VALIDATION
 
 Không coi developer/local run thành final PASS.
 
-> **Runtime note:** Runbook này chạy bằng Python scripts kết nối trực tiếp DuckDB qua `DuckDBConnectionFactory` / `DuckDBUnitOfWork`. Không cần bật MCP DuckDB. Nên tắt MCP/process khác đang giữ writer connection nếu gặp DB lock.
+> **Runtime note:** Runbook chạy bằng Python scripts kết nối trực tiếp DuckDB qua `DuckDBConnectionFactory` / `DuckDBUnitOfWork`. Không cần bật MCP DuckDB. Nếu gặp DB lock, tắt MCP/process khác đang giữ writer connection.
 
 ---
 
-## 2. Files chính
+## 2. Resume policy
+
+### 2.1 Nguyên tắc
+
+Không cần chạy lại các phase đã PASS nếu:
+
+- evidence/output của phase đó còn giữ;
+- code thay đổi sau checkpoint **không ảnh hưởng contract của phase đã PASS**;
+- phase fail trước đó đã rollback transaction hoàn toàn;
+- trước khi resume đã chạy regression tests trực tiếp liên quan tới fix mới.
+
+Nếu một fix thay đổi segmentation/scoring/PIT semantics, phải quay lại tối thiểu Phase 1–5.
+
+Nếu fix chỉ thay đổi source-quality guard để tránh crash do OHLC invalid, có thể resume từ Phase 6 sau khi chạy **Resume Gate R1–R3** bên dưới.
+
+### 2.2 Checkpoint hiện tại sau lỗi Phase 6
+
+Evidence local đã có:
+
+```text
+Phase 1 — focused tests                  PASS
+Phase 2 — targeted MWG full rebuild      PASS
+Phase 3 — PIT inspect                    PASS sau khi sửa false-positive diagnostic
+Phase 4 — persisted contract validator   PASS
+Phase 5 — MWG idempotency                PASS
+Phase 6 — full historical initload       FAIL trước fix source-quality
+```
+
+Failure Phase 6 trước đó:
+
+```text
+ZeroDivisionError: float division by zero
+```
+
+UoW đã rollback nên không có partial full-universe state cần cleanup thủ công.
+
+Sau failure này, Price Movement runtime đã có source-quality guard:
+
+```text
+High/Low/Close <= 0 hoặc non-finite
+    → bar không hợp lệ cho calculation
+    → drop khỏi segmentation/features
+    → ticker/source được đánh dấu degraded
+    → output còn lại QualityStatus = PARTIAL
+    → không crash toàn universe
+
+Open <= 0 nhưng High/Low/Close hợp lệ
+    → giữ bar vì V1 không dùng Open để segmentation
+    → source vẫn được đánh dấu degraded/PARTIAL
+```
+
+**Không coi `Open = 0` đơn lẻ là nguyên nhân trực tiếp của divide-by-zero.** V1 dùng High/Low/Close cho price ratios và logarithms.
+
+### 2.3 Resume shortcut
+
+Nếu đang resume đúng checkpoint trên, **không cần chạy lại Phase 1–5 đầy đủ**. Chạy:
+
+```text
+Resume Gate R0
+→ Resume Gate R1
+→ Resume Gate R2
+→ Resume Gate R3
+→ Phase 6
+→ Phase 7 ... Phase 12
+```
+
+---
+
+## 3. Files chính
 
 ```text
 docs/architecture/Price_Movement_Character.md
 src/DuckDB/sql/price_movement_character_v1_schema.sql
 src/DuckDB/sql/price_movement_character_v1_profile_view.sql
 src/calcEngine/priceMovementCharacter.py
-src/cherrystock/domain/analytics/price_movement/
+src/cherrystock/domain/analytics/price_movement/engine.py
+src/cherrystock/domain/analytics/price_movement/runtime.py
+src/cherrystock/domain/analytics/price_movement/source_quality.py
 src/cherrystock/infrastructure/database/repositories/price_movement_repository.py
 src/cherrystock/infrastructure/database/price_movement_validation.py
 scripts/run_price_movement.py
@@ -61,7 +131,7 @@ vw_Ticker_Movement_Profile
 
 ---
 
-## 3. Point-in-time contract cần hiểu trước khi chạy
+## 4. Point-in-time contract
 
 Price Movement V1 tách hai loại fact:
 
@@ -78,42 +148,36 @@ SwingStatus = PROVISIONAL | TRANSITION
 
 Không có daily row `CONFIRMED`.
 
-Một swing có thể có:
-
-```text
-PivotEndDate = 2026-08-27
-ConfirmedAtDate = 2026-09-07
-```
-
-Các daily rows từ `2026-08-27` đến trước `2026-09-07` vẫn là trạng thái `PROVISIONAL`. Sau này event được confirmed, việc query hiện tại có thể thấy event đó có `PivotEndDate <= daily.Date` nhưng `ConfirmedAtDate > daily.Date`. Đây chỉ là **geometric overlap**, không tự động có nghĩa daily calculation đã dùng future knowledge.
-
-No-look-ahead invariant đúng là:
+No-look-ahead invariant đúng:
 
 ```text
 Daily row tại ngày D chỉ được dùng historical swings có ConfirmedAtDate < D.
 ```
 
-V1 lưu evidence trực tiếp bằng:
+Evidence persisted:
 
 ```text
-HistoricalSameDirSwingCount
+HistoricalSameDirSwingCount(D)
+=
+min(
+    ProfileMaxSwings,
+    count(same ConfigId + Ticker + Direction + ConfirmedAtDate < D)
+)
 ```
 
-và validator đối chiếu field này với đúng tập event `ConfirmedAtDate < D`, capped bởi `ProfileMaxSwings`.
-
-Do đó **không dùng** query kiểu sau làm no-look-ahead failure:
+Query kiểu:
 
 ```text
 PivotEndDate <= D AND ConfirmedAtDate > D
 ```
 
-vì query đó sẽ đếm các overlap hợp lệ của active provisional leg.
+chỉ thể hiện future-confirmed swing overlap với provisional history và **không tự động là knowledge leak**.
 
 ---
 
-## 4. Phase 0 — Đồng bộ code và kiểm tra môi trường
+# RESUME GATES
 
-Từ repository root:
+## R0 — Đồng bộ Git trước khi resume
 
 ```powershell
 cd C:\Github\CherryStock
@@ -121,35 +185,166 @@ git status
 git pull
 ```
 
-Nếu working tree có thay đổi local cần giữ lại, commit/stash trước khi pull.
-
-Kiểm tra Python:
+Nếu có rebase đang dở:
 
 ```powershell
-python --version
+git status
 ```
 
-Expected: Python `3.13.x`.
+Nếu Git báo:
 
-Kiểm tra dependency:
+```text
+all conflicts fixed: run "git rebase --continue"
+```
+
+thì hoàn tất:
 
 ```powershell
+git -c core.editor=true rebase --continue
+```
+
+Không chạy nested rebase / `git_auto_sync.ps1` khi rebase hiện tại chưa kết thúc.
+
+Expected trước khi test:
+
+```text
+working tree không có unresolved conflict
+không có rebase/merge/cherry-pick đang in progress
+```
+
+---
+
+## R1 — Regression test cho source-quality fix
+
+Bắt buộc chạy sau fix zero/non-positive price:
+
+```powershell
+python -m pytest tests\test_price_movement_runtime.py -v
+```
+
+Test phải cover ít nhất:
+
+```text
+valid runtime == reference semantics
+Low/High/Close <= 0 → invalid calculation bar được drop, không crash
+Open = 0 only → bar vẫn được giữ, source đánh dấu PARTIAL
+```
+
+Expected: tất cả test trong file PASS.
+
+Nếu FAIL: dừng, không rerun Phase 6.
+
+---
+
+## R2 — Recheck MWG contract sau code change
+
+Không cần full Phase 1–5, nhưng chạy lightweight regression:
+
+```powershell
+python scripts\run_price_movement.py --mode full --ticker MWG
+python scripts\inspect_price_movement.py MWG --limit 10
+python scripts\validate_price_movement_character.py
+```
+
+Bắt buộc:
+
+```text
+Point-in-time historical-count mismatches (must be 0): 0
+historical_count_mismatch = 0
+profile_bound_violations = 0
+max_profile_overflow = 0
+```
+
+`Future-confirmed swing overlaps ...` có thể > 0 và chỉ là informational.
+
+---
+
+## R3 — Kiểm tra ticker/source xấu trước full initload
+
+Nếu đã biết ticker có historical bad OHLC, chạy targeted smoke trên 1–3 ticker đại diện, ví dụ:
+
+```powershell
+python scripts\run_price_movement.py --mode full --ticker VNX
+python scripts\run_price_movement.py --mode full --ticker PTG
+```
+
+Expected:
+
+```text
+status = OK
+không ZeroDivisionError
+source_quality_status có thể = PARTIAL
+invalid_ohlc_rows có thể > 0
+invalid_calculation_rows_dropped có thể > 0
+open_only_invalid_rows_retained có thể > 0
+```
+
+Các counter source-quality trong refresh summary:
+
+```text
+source_quality_status
+source_rows
+invalid_ohlc_rows
+invalid_calculation_rows_dropped
+open_only_invalid_rows_retained
+degraded_tickers
+tickers_without_usable_price_rows
+```
+
+Ý nghĩa:
+
+```text
+invalid_ohlc_rows
+    = bất kỳ Open/High/Low/Close invalid/non-positive
+
+invalid_calculation_rows_dropped
+    = High/Low/Close invalid nên không thể tham gia calculation
+
+open_only_invalid_rows_retained
+    = chỉ Open invalid nhưng High/Low/Close dùng được; bar được giữ
+
+degraded_tickers
+    = số ticker có source-quality degradation
+
+tickers_without_usable_price_rows
+    = ticker không còn bất kỳ High/Low/Close bar hợp lệ nào
+```
+
+`degraded_tickers > 0` không tự động FAIL.
+
+`tickers_without_usable_price_rows > 0` cần lưu evidence và TestEngineer review; không được silently coi đó là ticker có calculation đầy đủ.
+
+Sau targeted bad-source smoke:
+
+```powershell
+python scripts\validate_price_movement_character.py
+```
+
+Nếu PASS, chuyển sang Phase 6.
+
+---
+
+# FULL RUNBOOK
+
+## Phase 0 — Environment
+
+Nếu chạy từ đầu:
+
+```powershell
+cd C:\Github\CherryStock
+git status
+git pull
+python --version
 python -c "import duckdb, pandas, numpy; print('duckdb=', duckdb.__version__, 'pandas=', pandas.__version__, 'numpy=', numpy.__version__)"
 ```
 
-Nếu thiếu dependency:
-
-```powershell
-python -m pip install -e ".[dev]"
-```
+Expected Python `3.13.x`.
 
 Không hard-code DB path. Runtime dùng CherryStock settings / `LOCAL_DB_PATH`.
 
 ---
 
-## 5. Phase 1 — Focused tests trước khi ghi DuckDB
-
-Chạy focused tests:
+## Phase 1 — Focused tests
 
 ```powershell
 python -m pytest `
@@ -162,27 +357,17 @@ python -m pytest `
 
 Expected: tất cả PASS.
 
-Các invariant chính:
-- pivot confirmation/no-look-ahead semantics;
-- smooth path vs noisy path persistence;
-- same-direction historical scoring;
-- thiếu history → `INSUFFICIENT_HISTORY`, không ép score về 0;
-- runtime optimized engine giữ semantics;
-- order `Indicators → Price Movement → SmartMoney`;
-- bounded profile view dùng `ProfileMaxSwings`;
-- canonical write service backward-compatible.
-
-Nếu fail, dừng. Không chạy mutation trên DB thật.
+Nếu fail, dừng trước khi mutate DB thật.
 
 ---
 
-## 6. Phase 2 — Smoke targeted MWG
+## Phase 2 — Smoke targeted MWG
 
 ```powershell
 python scripts\run_price_movement.py --mode full --ticker MWG
 ```
 
-Expected summary:
+Expected:
 
 ```text
 status = OK
@@ -193,7 +378,7 @@ daily_rows_upserted > 0
 swing_rows_upserted > 0
 ```
 
-Runner đảm bảo:
+Runner:
 
 ```text
 schema + seed
@@ -202,24 +387,12 @@ schema + seed
 → commit qua DuckDBUnitOfWork
 ```
 
-Nếu exception xảy ra trước commit, UoW rollback transaction hiện tại.
-
 ---
 
-## 7. Phase 3 — Inspect MWG + point-in-time semantics
+## Phase 3 — Inspect MWG + PIT semantics
 
 ```powershell
 python scripts\inspect_price_movement.py MWG --limit 10
-```
-
-Output gồm:
-
-```text
-latest daily movement
-latest confirmed swings
-movement profile
-Point-in-time historical-count mismatches (must be 0)
-Future-confirmed swing overlaps with earlier PROVISIONAL rows (informational; may be > 0)
 ```
 
 Bắt buộc:
@@ -228,80 +401,57 @@ Bắt buộc:
 Point-in-time historical-count mismatches (must be 0): 0
 ```
 
-Dòng overlap **có thể lớn hơn 0**:
+Informational, có thể > 0:
 
 ```text
-Future-confirmed swing overlaps with earlier PROVISIONAL rows (informational; may be > 0): N
+Future-confirmed swing overlaps with earlier PROVISIONAL rows: N
 ```
 
-`N > 0` không phải defect nếu point-in-time count mismatch vẫn bằng 0.
-
-Đối với confirmed swing:
+Confirmed event:
 
 ```text
 PivotStartDate <= PivotEndDate <= ConfirmedAtDate
 ```
 
-Current leg hợp lệ:
+Current leg:
 
 ```text
 SwingStatus = PROVISIONAL
 ```
 
-Khi chưa đủ history:
+Thiếu history hợp lệ:
 
 ```text
 MovementCharacter = INSUFFICIENT_HISTORY
 MagnitudeScore = NULL
 ```
 
-Không đổi NULL thành 0.
-
 ---
 
-## 8. Phase 4 — Read-only persisted-contract validation
+## Phase 4 — Persisted-contract validator
 
 ```powershell
 python scripts\validate_price_movement_character.py
 ```
 
-Validator mở reader/read-only connection và không mutate dữ liệu.
-
-Các metric lỗi bắt buộc bằng 0:
+Bắt buộc bằng 0:
 
 ```text
-duplicate_daily_keys = 0
-duplicate_swing_keys = 0
-invalid_swing_rows = 0
-invalid_daily_rows = 0
-same_direction_repeats = 0
-historical_count_mismatch = 0
-profile_bound_violations = 0
-max_profile_overflow = 0
+duplicate_daily_keys
+ duplicate_swing_keys
+invalid_swing_rows
+invalid_daily_rows
+same_direction_repeats
+historical_count_mismatch
+profile_bound_violations
+max_profile_overflow
 ```
 
-Ngoài ra:
-- public daily row count khớp persisted enabled rows;
-- public swing row count khớp persisted enabled rows;
-- public profile rows tồn tại khi có confirmed swings;
-- phải có daily rows và confirmed swing rows.
-
-`historical_count_mismatch = 0` là persisted evidence chính cho point-in-time historical eligibility:
-
-```text
-ExpectedCount(D) = min(
-    ProfileMaxSwings,
-    count(same ticker + same config + same direction + ConfirmedAtDate < D)
-)
-```
-
-Nếu validator FAIL, dừng. Không chạy full universe.
+Validator là read-only.
 
 ---
 
-## 9. Phase 5 — Idempotency targeted MWG
-
-Chạy lại:
+## Phase 5 — Idempotency targeted MWG
 
 ```powershell
 python scripts\run_price_movement.py --mode full --ticker MWG
@@ -310,77 +460,109 @@ python scripts\inspect_price_movement.py MWG --limit 10
 ```
 
 Expected:
-- không duplicate key;
-- swing sequence/order ổn định;
-- latest date không lùi;
-- same source + same config → logic tương đương;
-- point-in-time mismatch vẫn 0;
-- profile không vượt `ProfileMaxSwings`.
 
-Full targeted rebuild là repair path chuẩn khi source history của ticker bị correction.
+- không duplicate;
+- swing order ổn định;
+- latest date không lùi;
+- PIT mismatch = 0;
+- profile không vượt `ProfileMaxSwings`.
 
 ---
 
-## 10. Phase 6 — Full historical initload active universe
+## Phase 6 — Full historical initload active universe
 
-Chỉ chạy sau Phase 1–5 PASS:
+### 6.1 Khi chạy từ đầu
+
+Chỉ chạy sau Phase 1–5 PASS.
+
+### 6.2 Khi resume sau zero-price failure
+
+Nếu Phase 1–5 đã PASS trước đó và Phase 6 fail do `ZeroDivisionError`, không cần rerun toàn Phase 1–5; phải PASS **R0–R3** rồi chạy tiếp tại đây.
+
+### 6.3 Command
 
 ```powershell
 python scripts\initload\init_reload_price_movement_character.py
 ```
 
-Flow trong một caller-owned UoW:
+Flow:
 
 ```text
 ensure schema + seed
 → ensure bounded profile view
 → full rebuild active tickers
+→ source-quality degradation handled explicitly
 → historical contract validation
 → COMMIT
 → exportDuckDB_metadata()
 ```
 
-Nếu calculation/validation fail trước khi ra khỏi UoW:
+Nếu calculation hoặc validation fail trước khi UoW đóng:
 
 ```text
 ROLLBACK
 ```
 
-Expected cuối command:
+Do đó sau failed attempt **không DELETE thủ công Price Movement tables** trước khi rerun.
+
+### 6.4 Expected success
 
 ```text
 Price Movement Character V1 full initload committed;
 historical contract validated; DB metadata exported.
 ```
 
-Sau đó chạy lại validator độc lập:
+Refresh summary có thể cho thấy:
+
+```text
+source_quality_status = PARTIAL
+invalid_ohlc_rows > 0
+invalid_calculation_rows_dropped > 0
+open_only_invalid_rows_retained > 0
+degraded_tickers > 0
+```
+
+Các giá trị > 0 này phản ánh historical source degradation, không phải automatic pipeline failure.
+
+Tuy nhiên:
+
+```text
+tickers_without_usable_price_rows > 0
+```
+
+phải được ghi lại làm evidence và review riêng.
+
+Sau initload:
 
 ```powershell
 python scripts\validate_price_movement_character.py
 ```
 
+Nếu validator FAIL: dừng tại Phase 6.
+
 ---
 
-## 11. Phase 7 — Inspect ticker đại diện
+## Phase 7 — Inspect representative tickers
 
 ```powershell
 python scripts\inspect_price_movement.py MWG --limit 15
 python scripts\inspect_price_movement.py FPT --limit 15
+python scripts\inspect_price_movement.py VNX --limit 15
+python scripts\inspect_price_movement.py PTG --limit 15
 ```
 
-Nên kiểm tra thêm:
-- ticker trend mượt;
-- ticker biến động mạnh;
-- ticker có chuỗi trần/volume thấp;
-- ticker ít history.
+Mục tiêu:
 
-Price Movement chỉ mô tả price path. Không suy diễn label thành accumulation/distribution/Smart Money intent.
+- MWG/FPT: normal source cases;
+- VNX/PTG: known degraded historical-source examples;
+- xác nhận bad source không làm pipeline crash;
+- degraded output được explicit bằng `QualityStatus = PARTIAL` khi applicable.
+
+Price Movement chỉ mô tả price path; không suy diễn thành Smart Money intent.
 
 ---
 
-## 12. Phase 8 — ATR public contract / fallback
-
-Price Movement không đọc trực tiếp `cal_indicator_values`.
+## Phase 8 — ATR + source-quality contract
 
 ATR resolve qua:
 
@@ -389,17 +571,27 @@ vw_Indicator_config
 + vw_Ticker_indicators
 ```
 
-Ưu tiên `ConfigCode = ATR14_D` khi config đó tồn tại/enabled; không hard-code numeric `ConfigId`.
+Không đọc trực tiếp `cal_indicator_values`.
 
-Nếu ATR thiếu:
+ATR missing/invalid:
 
 ```text
 ThresholdSource = PCT_FALLBACK
-QualityStatus   = PARTIAL
+QualityStatus = PARTIAL
 ATRNormMagnitude = NULL
 ```
 
-Đây là degraded-but-explicit behavior.
+Price invalid contract:
+
+```text
+High/Low/Close invalid hoặc <= 0
+→ drop calculation bar
+→ PARTIAL source quality
+
+Open invalid hoặc <= 0 only
+→ retain bar
+→ PARTIAL source quality
+```
 
 Inspect fallback:
 
@@ -413,13 +605,24 @@ GROUP BY ThresholdSource, QualityStatus
 ORDER BY ThresholdSource, QualityStatus;
 ```
 
-Nếu fallback bất thường cao, kiểm tra ATR metadata/data trước khi đổi threshold.
+Optional inspect bad raw OHLC:
+
+```sql
+SELECT
+    Ticker,
+    COUNT(*) AS BadCalculationRows
+FROM "CherryMon"."main"."vw_Ticker_OHLC_D"
+WHERE High IS NULL OR Low IS NULL OR Close IS NULL
+   OR High <= 0 OR Low <= 0 OR Close <= 0
+GROUP BY Ticker
+ORDER BY BadCalculationRows DESC, Ticker;
+```
 
 ---
 
-## 13. Phase 9 — Incremental checkpoint
+## Phase 9 — Incremental checkpoint
 
-Sau full initload:
+Sau full initload PASS:
 
 ```powershell
 python scripts\run_price_movement.py --mode incremental --ticker MWG
@@ -427,23 +630,17 @@ python scripts\validate_price_movement_character.py
 python scripts\inspect_price_movement.py MWG --limit 10
 ```
 
-Nếu không có source date mới, rerun phải an toàn và không tạo duplicate.
-
 Incremental semantics:
-- resume từ latest persisted `PROVISIONAL` checkpoint;
-- giữ prior confirmed swing history;
-- chỉ event có `ConfirmedAtDate < current Date` được dùng làm historical knowledge;
-- ticker thiếu usable checkpoint → full rebuild thay vì đoán mid-swing state.
 
-Nếu historical OHLC/Indicator data trước checkpoint bị correction:
-
-```powershell
-python scripts\run_price_movement.py --mode full --ticker MWG
-```
+- resume latest persisted `PROVISIONAL` checkpoint;
+- giữ prior confirmed history;
+- chỉ `ConfirmedAtDate < current Date` được dùng làm historical knowledge;
+- thiếu usable checkpoint → targeted full rebuild;
+- historical source correction trước checkpoint → targeted full rebuild.
 
 ---
 
-## 14. Phase 10 — Canonical daily pipeline
+## Phase 10 — Canonical daily pipeline
 
 ```powershell
 python run.py
@@ -463,30 +660,17 @@ AmiBroker/Yahoo/FA/Ticker sync
 → export DB metadata
 ```
 
-Console header:
-
-```text
-Sync + DQ + Indicators + Price Movement + SmartMoney
-```
-
-Price Movement DQ:
-
-```text
-cal_price_movement_daily
-key = ConfigId + Ticker + Date
-```
-
-Nếu Price Movement DQ FAIL, exception phải propagate và UoW rollback write set.
-
-Sau `run.py`:
+Sau run:
 
 ```powershell
 python scripts\validate_price_movement_character.py
 ```
 
+Nếu Price Movement DQ/calculation fail, exception phải propagate và UoW rollback write set.
+
 ---
 
-## 15. Phase 11 — Data Quality audit evidence
+## Phase 11 — Data Quality audit
 
 ```sql
 SELECT
@@ -501,13 +685,11 @@ ORDER BY created_at DESC
 LIMIT 20;
 ```
 
-Expected latest daily pipeline audit là `PASS` hoặc status phù hợp DataValidation contract hiện hành.
-
-Nếu FAIL, đọc failure detail trước khi rerun unchanged command.
+Expected latest audit là `PASS` hoặc status phù hợp DataValidation contract hiện hành.
 
 ---
 
-## 16. Phase 12 — Public-contract checks
+## Phase 12 — Public-contract checks
 
 ### 12.1 Latest checkpoint
 
@@ -523,27 +705,7 @@ SELECT MAX(Date) AS OHLCMaxDate
 FROM "CherryMon"."main"."vw_Ticker_OHLC_D";
 ```
 
-Sau successful daily run, latest dates nên cùng trading checkpoint cho active universe hợp lệ.
-
-### 12.2 Profile sample
-
-```sql
-SELECT
-    Ticker,
-    Direction,
-    SwingCount,
-    MagnitudeMedian,
-    MagnitudeP75,
-    MagnitudeP90,
-    DurationBarsMedian,
-    VelocityMedian,
-    PersistenceMedian
-FROM "CherryMon"."main"."vw_Ticker_Movement_Profile"
-WHERE Ticker IN ('MWG', 'FPT')
-ORDER BY Ticker, Direction;
-```
-
-Profile invariant:
+### 12.2 Profile bound
 
 ```sql
 SELECT COUNT(*) AS ProfileBoundViolations
@@ -559,9 +721,7 @@ Expected:
 ProfileBoundViolations = 0
 ```
 
-### 12.3 No-look-ahead / point-in-time historical eligibility
-
-Đây là invariant đúng. Không dùng geometric overlap query `PivotEndDate <= D AND ConfirmedAtDate > D` làm failure.
+### 12.3 PIT historical eligibility
 
 ```sql
 SELECT COUNT(*) AS InvalidKnowledgeRows
@@ -589,7 +749,7 @@ FROM (
         d.Direction,
         d.HistoricalSameDirSwingCount,
         c.ProfileMaxSwings
-) AS point_in_time
+) AS pit
 WHERE StoredCount <> ExpectedCount;
 ```
 
@@ -599,24 +759,9 @@ Expected:
 InvalidKnowledgeRows = 0
 ```
 
-Optional informational query — **không phải failure condition**:
-
-```sql
-SELECT COUNT(*) AS FutureConfirmedOverlapRows
-FROM "CherryMon"."main"."cal_price_movement_daily" AS d
-INNER JOIN "CherryMon"."main"."cal_price_movement_swing" AS s
-    ON s.ConfigId = d.ConfigId
-   AND s.Ticker = d.Ticker
-   AND s.Direction = d.Direction
-   AND s.ConfirmedAtDate > d.Date
-   AND s.PivotEndDate <= d.Date;
-```
-
-`FutureConfirmedOverlapRows > 0` là bình thường khi một provisional leg về sau được xác nhận thành confirmed swing. Nó không chứng minh future event đã được dùng để chấm daily row tại thời điểm D.
-
 ---
 
-## 17. Repair / rollback
+## 13. Repair / rollback
 
 Một ticker:
 
@@ -638,31 +783,38 @@ python scripts\initload\init_reload_price_movement_character.py
 
 Không DELETE thủ công production tables nếu targeted/full runner có thể repair idempotently.
 
-Schema migration additive. Nếu DDL/seed lỗi, sửa forward migration/script; không hand-edit generated `DB_Metadata.md` để giả physical state.
-
 ---
 
-## 18. Evidence gửi TestEngineer
+## 14. Evidence gửi TestEngineer
 
-Tối thiểu lưu output:
+### Khi chạy từ đầu
 
-```powershell
-python -m pytest `
-  tests\test_price_movement_character.py `
-  tests\test_price_movement_runtime.py `
-  tests\test_price_movement_pipeline_order.py `
-  tests\test_price_movement_profile_contract.py `
-  tests\test_sync_write_pipeline_service.py -v
-```
+Lưu output Phase 1–12.
+
+### Khi resume sau Phase 6 zero-price failure
+
+Tối thiểu lưu:
 
 ```powershell
+# Resume regression
+python -m pytest tests\test_price_movement_runtime.py -v
+
+# Lightweight contract recheck
 python scripts\run_price_movement.py --mode full --ticker MWG
 python scripts\inspect_price_movement.py MWG --limit 10
 python scripts\validate_price_movement_character.py
+
+# Known degraded-source smoke
+python scripts\run_price_movement.py --mode full --ticker VNX
+python scripts\run_price_movement.py --mode full --ticker PTG
+python scripts\validate_price_movement_character.py
+
+# Resume Phase 6
 python scripts\initload\init_reload_price_movement_character.py
 python scripts\validate_price_movement_character.py
+
+# Continue
 python scripts\run_price_movement.py --mode incremental --ticker MWG
-python scripts\inspect_price_movement.py MWG --limit 10
 python run.py
 python scripts\validate_price_movement_character.py
 ```
