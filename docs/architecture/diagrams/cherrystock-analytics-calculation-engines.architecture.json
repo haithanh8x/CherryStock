@@ -16,10 +16,10 @@
     {
       "id": "daily_orchestrator",
       "type": "backend",
-      "label": "Daily Analytics",
+      "label": "Daily Analytics Orchestration",
       "sublabel": "daily pipeline · shared UoW",
       "pos": [30, 80],
-      "size": [180, 72],
+      "size": [200, 72],
       "sources": [
         {"path": "run.py", "label": "Daily transaction entry"},
         {"path": "src/cherrystock/application/services/sync_write_pipeline.py", "label": "Canonical daily ordering"}
@@ -250,7 +250,7 @@
     }
   ],
   "connections": [
-    {"from": "analytics_inputs", "to": "daily_orchestrator", "label": "validated inputs", "variant": "emphasis", "labelAt": [120, 205]},
+    {"from": "analytics_inputs", "to": "daily_orchestrator", "label": "validated inputs", "variant": "emphasis", "route": "straight", "fromSide": "top", "toSide": "bottom", "labelAt": [130, 205]},
     {"from": "daily_orchestrator", "to": "composite_index", "label": "1 · index", "variant": "emphasis", "route": "straight", "labelAt": [230, 55]},
     {"from": "composite_index", "to": "trend_ma", "label": "2 · trend", "route": "straight", "labelAt": [440, 55]},
     {"from": "trend_ma", "to": "indicator_engine", "label": "3 · indicators", "route": "straight", "labelAt": [650, 55]},
@@ -272,6 +272,6 @@
     {"from": "monthly_orchestrator", "to": "rs_evaluation", "label": "monthly research run", "variant": "emphasis", "route": "straight", "labelAt": [650, 755]},
     {"from": "rs_runtime", "to": "rs_evaluation", "label": "baseline + ablation behavior", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [825, 735]},
     {"from": "rs_evaluation", "to": "rs_research_store", "label": "effectiveness + audit", "variant": "security", "route": "straight", "labelAt": [885, 755]},
-    {"from": "rs_research_store", "to": "consumers", "label": "research / governance read", "labelAt": [1100, 735]}
+    {"from": "rs_research_store", "to": "consumers", "label": "research / governance read", "fromSide": "top", "toSide": "bottom", "via": [[1015, 735], [1280, 735]], "labelAt": [1145, 720]}
   ]
 }
