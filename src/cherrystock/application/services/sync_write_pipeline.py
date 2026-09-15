@@ -103,10 +103,7 @@ class SyncWritePipelineService:
             raise_on_fail=True,
         )
 
-        self._sync_amibroker_intraday(
-            from_last_day=days_diff,
-            connection=connection,
-        )
+        self._sync_amibroker_intraday(from_last_day=days_diff, connection=connection)
         for table_name, pipeline_name in (
             ('"CherryMon"."main"."raw_futures_intraday"', "AmiBroker Intraday Futures"),
             ('"CherryMon"."main"."raw_index_intraday"', "AmiBroker Intraday Index"),
@@ -120,15 +117,7 @@ class SyncWritePipelineService:
                 date_col="Date",
                 symbol_col="Ticker",
                 key_cols=["Ticker", "Date", "RawTime", "TickSeq"],
-                required_cols=[
-                    "Ticker",
-                    "Date",
-                    "DateTime",
-                    "RawTime",
-                    "TickSeq",
-                    "Close",
-                    "Volume",
-                ],
+                required_cols=["Ticker", "Date", "DateTime", "RawTime", "TickSeq", "Close", "Volume"],
                 max_row_change_pct=1.0,
                 max_symbol_change_pct=0.25,
                 raise_on_fail=True,
@@ -184,11 +173,7 @@ class SyncWritePipelineService:
             raise_on_fail=True,
         )
 
-        self._calc_trend(
-            from_last_day=days_diff,
-            connection=connection,
-            repository=trend_repository,
-        )
+        self._calc_trend(from_last_day=days_diff, connection=connection, repository=trend_repository)
         self._validate_dated(
             connection=connection,
             table_name='"CherryMon"."main"."cal_Trends"',
@@ -197,16 +182,7 @@ class SyncWritePipelineService:
             symbol_col="Ticker",
             key_cols=["Ticker", "Date"],
             required_cols=["Ticker", "Date", "Close"],
-            optional_null_rate_cols=[
-                "MA20",
-                "MA50",
-                "MA100",
-                "MA200",
-                "MA20_W",
-                "MA50_W",
-                "MA20_M",
-                "MA50_M",
-            ],
+            optional_null_rate_cols=["MA20", "MA50", "MA100", "MA200", "MA20_W", "MA50_W", "MA20_M", "MA50_M"],
             raise_on_fail=True,
         )
 
@@ -240,6 +216,11 @@ class SyncWritePipelineService:
                 sql_file_path=str(self._sql_dir / "price_movement_character_v1_schema.sql"),
                 sql_description="Ensure Price Movement Character V1 schema",
             )
+            self._execute_sql(
+                con=connection,
+                sql_file_path=str(self._sql_dir / "price_movement_character_v1_profile_view.sql"),
+                sql_description="Ensure Price Movement Character V1 bounded profile view",
+            )
             movement_summary = self._calc_price_movement(
                 from_last_day=days_diff,
                 connection=connection,
@@ -254,13 +235,8 @@ class SyncWritePipelineService:
                     symbol_col="Ticker",
                     key_cols=["ConfigId", "Ticker", "Date"],
                     required_cols=[
-                        "ConfigId",
-                        "Ticker",
-                        "Date",
-                        "SwingStatus",
-                        "MovementCharacter",
-                        "HistoricalSameDirSwingCount",
-                        "QualityStatus",
+                        "ConfigId", "Ticker", "Date", "SwingStatus",
+                        "MovementCharacter", "HistoricalSameDirSwingCount", "QualityStatus",
                     ],
                     check_count_anomalies=False,
                     raise_on_fail=True,
@@ -285,14 +261,8 @@ class SyncWritePipelineService:
                 symbol_col="Ticker",
                 key_cols=["ModelId", "Ticker", "Date"],
                 required_cols=[
-                    "ModelId",
-                    "Ticker",
-                    "Date",
-                    "SmartMoneyScore",
-                    "ConfidenceScore",
-                    "MarketState",
-                    "FactorCoverage",
-                    "DataQualityStatus",
+                    "ModelId", "Ticker", "Date", "SmartMoneyScore", "ConfidenceScore",
+                    "MarketState", "FactorCoverage", "DataQualityStatus",
                 ],
                 raise_on_fail=True,
             )
