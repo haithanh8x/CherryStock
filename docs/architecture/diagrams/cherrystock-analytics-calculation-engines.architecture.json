@@ -29,7 +29,7 @@
       "id": "composite_index",
       "type": "backend",
       "label": "Composite Index Engine",
-      "sublabel": "VNINDEX_NOT_VIN · divisor",
+      "sublabel": "index · divisor",
       "pos": [260, 80],
       "size": [170, 72],
       "sources": [
@@ -51,7 +51,7 @@
       "id": "indicator_engine",
       "type": "backend",
       "label": "Technical Indicator Engine",
-      "sublabel": "metadata-driven · D/W/M",
+      "sublabel": "metadata · D/W/M",
       "pos": [670, 80],
       "size": [190, 72],
       "sources": [
@@ -89,7 +89,7 @@
       "id": "analytics_inputs",
       "type": "database",
       "label": "Analytics Input Contracts",
-      "sublabel": "raw_* · FA · OHLC · config",
+      "sublabel": "raw · FA · OHLC · config",
       "pos": [25, 260],
       "size": [210, 92],
       "sources": [
@@ -102,7 +102,7 @@
       "id": "index_store",
       "type": "database",
       "label": "Index Persistence",
-      "sublabel": "cal_Indexes · index/date",
+      "sublabel": "index · date",
       "pos": [260, 260],
       "size": [170, 80],
       "sources": [
@@ -113,7 +113,7 @@
       "id": "trend_store",
       "type": "database",
       "label": "Trend Persistence",
-      "sublabel": "cal_Trends · ticker/date",
+      "sublabel": "ticker · date",
       "pos": [460, 260],
       "size": [170, 80],
       "sources": [
@@ -124,7 +124,7 @@
       "id": "indicator_store",
       "type": "database",
       "label": "Indicator Persistence",
-      "sublabel": "cal_indicator_values · long",
+      "sublabel": "long-format values",
       "pos": [670, 260],
       "size": [190, 80],
       "sources": [
@@ -136,7 +136,7 @@
       "id": "movement_store",
       "type": "database",
       "label": "Movement Persistence",
-      "sublabel": "confirmed swings · daily as-of",
+      "sublabel": "confirmed · daily as-of",
       "pos": [910, 260],
       "size": [210, 80],
       "sources": [
@@ -170,7 +170,7 @@
       "id": "movement_public",
       "type": "database",
       "label": "Movement Public Contracts",
-      "sublabel": "swings · daily state · profile",
+      "sublabel": "swings · daily · profile",
       "pos": [910, 440],
       "size": [210, 80],
       "sources": [
@@ -216,7 +216,7 @@
       "id": "monthly_orchestrator",
       "type": "backend",
       "label": "Monthly R/S Orchestration",
-      "sublabel": "runMonthly.py · full evaluation",
+      "sublabel": "monthly · full eval",
       "pos": [460, 780],
       "size": [170, 72],
       "sources": [
@@ -228,7 +228,7 @@
       "id": "rs_evaluation",
       "type": "backend",
       "label": "R/S Historical Evaluation",
-      "sublabel": "baseline/ablation · effect",
+      "sublabel": "baseline · ablation · effect",
       "pos": [670, 780],
       "size": [190, 72],
       "sources": [
@@ -241,7 +241,7 @@
       "id": "rs_research_store",
       "type": "database",
       "label": "R/S Research Persistence",
-      "sublabel": "effectiveness · promotion audit",
+      "sublabel": "effectiveness · audit",
       "pos": [910, 776],
       "size": [210, 80],
       "sources": [
