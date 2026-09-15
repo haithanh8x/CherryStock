@@ -9,6 +9,9 @@ from cherrystock.config.settings import settings
 from cherrystock.domain.analytics.price_movement.runtime import (
     calculate_ticker_movement_fast,
 )
+from cherrystock.domain.analytics.price_movement.source_quality import (
+    inspect_price_source_quality,
+)
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from cherrystock.infrastructure.database.repositories.price_movement_repository import (
     PriceMovementRepository,
@@ -215,10 +218,27 @@ def _refresh_with_connection(
     rebuild_daily_records: list[dict[str, object]] = []
     processed = 0
 
+    source_rows = 0
+    invalid_ohlc_rows = 0
+    invalid_calculation_rows = 0
+    open_only_invalid_rows = 0
+    degraded_tickers = 0
+    tickers_without_usable_price_rows = 0
+
     for ticker in active_tickers:
         ticker_frame = source.loc[source["Ticker"] == ticker].copy()
         if ticker_frame.empty:
             continue
+
+        source_quality = inspect_price_source_quality(ticker_frame)
+        source_rows += source_quality.source_rows
+        invalid_ohlc_rows += source_quality.invalid_ohlc_rows
+        invalid_calculation_rows += source_quality.invalid_calculation_rows
+        open_only_invalid_rows += source_quality.open_only_invalid_rows
+        if source_quality.degraded:
+            degraded_tickers += 1
+        if source_quality.usable_rows == 0:
+            tickers_without_usable_price_rows += 1
 
         if ticker in rebuild_tickers:
             events, daily = calculate_ticker_movement_fast(
@@ -282,6 +302,13 @@ def _refresh_with_connection(
         "tickers_incremental": len(incremental_tickers),
         "swing_rows_upserted": int(swing_count),
         "daily_rows_upserted": int(daily_count),
+        "source_quality_status": "PARTIAL" if degraded_tickers else "OK",
+        "source_rows": int(source_rows),
+        "invalid_ohlc_rows": int(invalid_ohlc_rows),
+        "invalid_calculation_rows_dropped": int(invalid_calculation_rows),
+        "open_only_invalid_rows_retained": int(open_only_invalid_rows),
+        "degraded_tickers": int(degraded_tickers),
+        "tickers_without_usable_price_rows": int(tickers_without_usable_price_rows),
     }
 
 
