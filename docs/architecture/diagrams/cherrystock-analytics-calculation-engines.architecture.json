@@ -16,7 +16,7 @@
     {
       "id": "daily_orchestrator",
       "type": "backend",
-      "label": "Daily Analytics Orchestration",
+      "label": "Daily Analytics",
       "sublabel": "daily pipeline · shared UoW",
       "pos": [30, 80],
       "size": [180, 72],
@@ -101,7 +101,7 @@
     {
       "id": "index_store",
       "type": "database",
-      "label": "Composite Index Persistence",
+      "label": "Index Persistence",
       "sublabel": "cal_Indexes · index/date",
       "pos": [250, 260],
       "size": [170, 80],
@@ -250,7 +250,7 @@
     }
   ],
   "connections": [
-    {"from": "analytics_inputs", "to": "daily_orchestrator", "label": "validated inputs", "variant": "emphasis", "route": "straight", "fromSide": "top", "toSide": "bottom", "labelAt": [120, 205]},
+    {"from": "analytics_inputs", "to": "daily_orchestrator", "label": "validated inputs", "variant": "emphasis", "labelAt": [120, 205]},
     {"from": "daily_orchestrator", "to": "composite_index", "label": "1 · index", "variant": "emphasis", "route": "straight", "labelAt": [230, 55]},
     {"from": "composite_index", "to": "trend_ma", "label": "2 · trend", "route": "straight", "labelAt": [440, 55]},
     {"from": "trend_ma", "to": "indicator_engine", "label": "3 · indicators", "route": "straight", "labelAt": [650, 55]},
@@ -272,11 +272,6 @@
     {"from": "monthly_orchestrator", "to": "rs_evaluation", "label": "monthly research run", "variant": "emphasis", "route": "straight", "labelAt": [650, 755]},
     {"from": "rs_runtime", "to": "rs_evaluation", "label": "baseline + ablation behavior", "route": "straight", "fromSide": "bottom", "toSide": "top", "labelAt": [825, 735]},
     {"from": "rs_evaluation", "to": "rs_research_store", "label": "effectiveness + audit", "variant": "security", "route": "straight", "labelAt": [885, 755]},
-    {"from": "rs_research_store", "to": "consumers", "label": "research / governance read", "fromSide": "top", "toSide": "bottom", "via": [[1100, 735], [1280, 735]], "labelAt": [1190, 755]}
-  ],
-  "cards": [
-    {"dot": "emerald", "title": "Daily analytics transaction", "items": ["Target order: Composite Index → Trend/MA → Indicator Engine → Price Movement Character → SmartMoneyScore", "Price Movement consumes adjusted OHLC plus public ATR evidence and preserves confirmed vs provisional swing semantics", "Each calculated write is followed by blocking Data Quality in the shared DuckDBUnitOfWork; failure before commit rolls back the write set"]},
-    {"dot": "cyan", "title": "Calculation contracts", "items": ["Composite Index writes cal_Indexes; Trend/MA writes cal_Trends", "Indicator Engine persists long-format cal_indicator_values and exposes vw_Ticker_indicators / vw_Indicator_config", "Price Movement persists confirmed swing events + daily as-of state and exposes swing/daily/profile views", "SmartMoney persists factor + ticker score tables and exposes vw_Ticker_SmartMoney"]},
-    {"dot": "violet", "title": "Independent analytical paths", "items": ["Price Movement Character is additive and does not change SmartMoneyScore V1; future consumption requires a separate approved requirement", "Runtime R/S Level Ladder is read/on-demand analytical calculation using market data plus Indicator public contracts", "Monthly R/S V2.4 is a separate research path: baseline/ablation → Source Effectiveness → Promotion Gate and does not auto-change runtime weights"]}
+    {"from": "rs_research_store", "to": "consumers", "label": "research / governance read", "labelAt": [1100, 735]}
   ]
 }
