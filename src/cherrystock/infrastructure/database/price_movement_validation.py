@@ -110,10 +110,20 @@ def validate_price_movement_historical_contract(connection) -> dict[str, object]
             ) AS counts
             WHERE StoredCount <> ExpectedCount
         ),
+        profile_bounds AS (
+            SELECT
+                COUNT(*) AS ProfileBoundViolations,
+                COALESCE(MAX(p.SwingCount - c.ProfileMaxSwings), 0) AS MaxProfileOverflow
+            FROM "CherryMon"."main"."vw_Ticker_Movement_Profile" AS p
+            INNER JOIN "CherryMon"."main"."dim_price_movement_config" AS c
+                ON c.ConfigId = p.ConfigId
+            WHERE p.SwingCount > c.ProfileMaxSwings
+        ),
         public_stats AS (
             SELECT
                 (SELECT COUNT(*) FROM "CherryMon"."main"."vw_Ticker_Movement_D") AS PublicDailyRows,
-                (SELECT COUNT(*) FROM "CherryMon"."main"."vw_Ticker_Movement_Swings") AS PublicSwingRows
+                (SELECT COUNT(*) FROM "CherryMon"."main"."vw_Ticker_Movement_Swings") AS PublicSwingRows,
+                (SELECT COUNT(*) FROM "CherryMon"."main"."vw_Ticker_Movement_Profile") AS PublicProfileRows
         )
         SELECT
             d.DailyRows,
@@ -130,8 +140,11 @@ def validate_price_movement_historical_contract(connection) -> dict[str, object]
             id.InvalidDailyRows,
             a.SameDirectionRepeats,
             h.HistoricalCountMismatch,
+            pb.ProfileBoundViolations,
+            pb.MaxProfileOverflow,
             p.PublicDailyRows,
-            p.PublicSwingRows
+            p.PublicSwingRows,
+            p.PublicProfileRows
         FROM daily_stats AS d
         CROSS JOIN swing_stats AS s
         CROSS JOIN duplicate_daily AS dd
@@ -140,6 +153,7 @@ def validate_price_movement_historical_contract(connection) -> dict[str, object]
         CROSS JOIN invalid_daily AS id
         CROSS JOIN alternation AS a
         CROSS JOIN historical_counts AS h
+        CROSS JOIN profile_bounds AS pb
         CROSS JOIN public_stats AS p
         """
     ).fetchone()
@@ -162,8 +176,11 @@ def validate_price_movement_historical_contract(connection) -> dict[str, object]
         "invalid_daily_rows": int(row[11] or 0),
         "same_direction_repeats": int(row[12] or 0),
         "historical_count_mismatch": int(row[13] or 0),
-        "public_daily_rows": int(row[14] or 0),
-        "public_swing_rows": int(row[15] or 0),
+        "profile_bound_violations": int(row[14] or 0),
+        "max_profile_overflow": int(row[15] or 0),
+        "public_daily_rows": int(row[16] or 0),
+        "public_swing_rows": int(row[17] or 0),
+        "public_profile_rows": int(row[18] or 0),
     }
 
     failures: list[str] = []
@@ -178,6 +195,7 @@ def validate_price_movement_historical_contract(connection) -> dict[str, object]
         "invalid_daily_rows",
         "same_direction_repeats",
         "historical_count_mismatch",
+        "profile_bound_violations",
     ):
         if result[key] != 0:
             failures.append(f"{key}={result[key]}")
@@ -185,6 +203,8 @@ def validate_price_movement_historical_contract(connection) -> dict[str, object]
         failures.append("public daily view row count differs from persisted daily rows")
     if result["public_swing_rows"] != result["swing_rows"]:
         failures.append("public swing view row count differs from persisted swing rows")
+    if result["public_profile_rows"] <= 0:
+        failures.append("public profile view contains no rows")
 
     if failures:
         raise RuntimeError(
