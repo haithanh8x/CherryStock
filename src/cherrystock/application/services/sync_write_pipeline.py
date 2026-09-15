@@ -15,6 +15,7 @@ from Ults.lstPara import DUCKDB_SQL_PATH
 from calcEngine import calc_fv_Trend
 from calcEngine.calcIndexes import calculate_VNINDEX_NOT_VIN
 from calcEngine.calcIndicators import refresh_technical_indicators
+from calcEngine.priceMovementCharacter import refresh_price_movement_character
 from calcEngine.smartMoneyScore import refresh_smart_money_score
 
 
@@ -32,6 +33,7 @@ class SyncWritePipelineService:
         calc_index: Callable[..., None] = calculate_VNINDEX_NOT_VIN,
         calc_trend: Callable[..., None] = calc_fv_Trend.cal_Moving_Average,
         calc_indicators: Callable[..., dict] = refresh_technical_indicators,
+        calc_price_movement: Callable[..., dict] = refresh_price_movement_character,
         calc_smart_money: Callable[..., dict] = refresh_smart_money_score,
         execute_sql: Callable[..., None] = executeDuckSQL,
         validate_dated: Callable[..., dict] = validate_and_persist_data_quality,
@@ -47,6 +49,7 @@ class SyncWritePipelineService:
         self._calc_index = calc_index
         self._calc_trend = calc_trend
         self._calc_indicators = calc_indicators
+        self._calc_price_movement = calc_price_movement
         self._calc_smart_money = calc_smart_money
         self._execute_sql = execute_sql
         self._validate_dated = validate_dated
@@ -80,6 +83,7 @@ class SyncWritePipelineService:
         index_repository=None,
         trend_repository=None,
         indicator_repository=None,
+        price_movement_repository=None,
         smart_money_repository=None,
     ) -> dict[str, object]:
         self._sync_amibroker_eod(from_last_day=days_diff, connection=connection)
@@ -193,7 +197,16 @@ class SyncWritePipelineService:
             symbol_col="Ticker",
             key_cols=["Ticker", "Date"],
             required_cols=["Ticker", "Date", "Close"],
-            optional_null_rate_cols=["MA20", "MA50", "MA100", "MA200", "MA20_W", "MA50_W", "MA20_M", "MA50_M"],
+            optional_null_rate_cols=[
+                "MA20",
+                "MA50",
+                "MA100",
+                "MA200",
+                "MA20_W",
+                "MA50_W",
+                "MA20_M",
+                "MA50_M",
+            ],
             raise_on_fail=True,
         )
 
@@ -211,11 +224,47 @@ class SyncWritePipelineService:
                 symbol_col="Ticker",
                 key_cols=["Ticker", "Date", "ConfigId", "ComponentCode"],
                 required_cols=["Ticker", "Date", "ConfigId", "ComponentCode", "Value"],
-                # cal_indicator_values mixes many configs/timeframes/components.
-                # Daily row/symbol counts are therefore not a stable quality contract.
                 check_count_anomalies=False,
                 raise_on_fail=True,
             )
+
+        movement_summary: dict[str, object] = {
+            "status": "SKIPPED",
+            "reason": "price_movement_repository_not_supplied",
+            "swing_rows_upserted": 0,
+            "daily_rows_upserted": 0,
+        }
+        if price_movement_repository is not None:
+            self._execute_sql(
+                con=connection,
+                sql_file_path=str(self._sql_dir / "price_movement_character_v1_schema.sql"),
+                sql_description="Ensure Price Movement Character V1 schema",
+            )
+            movement_summary = self._calc_price_movement(
+                from_last_day=days_diff,
+                connection=connection,
+                repository=price_movement_repository,
+            )
+            if int(movement_summary.get("daily_rows_upserted", 0)) > 0:
+                self._validate_dated(
+                    connection=connection,
+                    table_name='"CherryMon"."main"."cal_price_movement_daily"',
+                    pipeline_name="Price Movement Character",
+                    date_col="Date",
+                    symbol_col="Ticker",
+                    key_cols=["ConfigId", "Ticker", "Date"],
+                    required_cols=[
+                        "ConfigId",
+                        "Ticker",
+                        "Date",
+                        "SwingStatus",
+                        "MovementCharacter",
+                        "HistoricalSameDirSwingCount",
+                        "QualityStatus",
+                    ],
+                    check_count_anomalies=False,
+                    raise_on_fail=True,
+                )
 
         self._execute_sql(
             con=connection,
@@ -250,5 +299,6 @@ class SyncWritePipelineService:
 
         return {
             "indicator": indicator_summary,
+            "price_movement": movement_summary,
             "smart_money": smart_money_summary,
         }
