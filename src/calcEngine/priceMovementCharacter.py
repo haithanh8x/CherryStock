@@ -6,7 +6,9 @@ from typing import Iterable
 import pandas as pd
 
 from cherrystock.config.settings import settings
-from cherrystock.domain.analytics.price_movement.engine import calculate_ticker_movement
+from cherrystock.domain.analytics.price_movement.runtime import (
+    calculate_ticker_movement_fast,
+)
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from cherrystock.infrastructure.database.repositories.price_movement_repository import (
     PriceMovementRepository,
@@ -219,7 +221,7 @@ def _refresh_with_connection(
             continue
 
         if ticker in rebuild_tickers:
-            events, daily = calculate_ticker_movement(
+            events, daily = calculate_ticker_movement_fast(
                 ticker_frame,
                 ticker=ticker,
                 config=config,
@@ -230,7 +232,7 @@ def _refresh_with_connection(
             rebuild_daily_records.extend(daily)
         else:
             seed = seed_map[ticker]
-            events, daily = calculate_ticker_movement(
+            events, daily = calculate_ticker_movement_fast(
                 ticker_frame,
                 ticker=ticker,
                 config=config,
