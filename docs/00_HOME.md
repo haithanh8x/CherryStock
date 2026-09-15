@@ -159,6 +159,7 @@ Chart recommendation/Flint authoring is owned by Chart Agent. Reusable chart arc
 
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[../.github/instructions/crawler.instructions|Crawler Instructions]]
+- [[runbook/AmiBroker_Intraday_Stale_Diagnostic|AmiBroker Intraday Stale Diagnostic]]
 
 ## Testing / Validation
 
@@ -198,6 +199,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 ## Runbooks
 
 - [[runbook/Daily_Data_Pipeline|Daily Data Pipeline]]
+- [[runbook/AmiBroker_Intraday_Stale_Diagnostic|AmiBroker Intraday Stale Diagnostic]]
 - [[runbook/MCP_DuckDB|CherryStock DuckDB MCP]]
 - [[runbook/Indicator_OBV_AD|OBV + AD Activation / Initload]]
 - [[runbook/SmartMoneyScore_V1|SmartMoneyScore V1]]
