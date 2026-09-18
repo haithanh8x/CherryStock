@@ -1,0 +1,1 @@
+    & scripts\git_auto_sync.ps1
