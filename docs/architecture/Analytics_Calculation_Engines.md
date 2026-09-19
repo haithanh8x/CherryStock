@@ -233,7 +233,11 @@ The ZigZag engine uses High/Low for candidate extrema and Close for 5% reversal 
 It has no ATR dependency and stores PivotDate separately from ConfirmedAtDate.
 
 The previous Price Movement daily persistence/ATR segmentation implementation was rolled back.
-Higher-level magnitude/velocity/persistence work is deferred until the MWG ZigZag gate is accepted.
+
+REQ-0031 now resumes the downstream characterization layer without changing segmentation:
+confirmed ZigZag swings are enriched with magnitude, TradingBars, velocity, ATR-normalized
+magnitude, path efficiency and directional persistence, then summarized into a recent-swing
+movement profile. This Price Movement V2 path is manual/MWG-first and remains outside run.py.
 
 ### SmartMoneyScore Engine
 
@@ -348,6 +352,7 @@ V2.4 is research/governance. It does **not** automatically mutate runtime provid
 | Trend / MA | daily | `cal_Moving_Average()` | `cal_Trends` | shared daily UoW |
 | Indicator Engine | daily | `refresh_technical_indicators()` | `cal_indicator_values` → `vw_Ticker_indicators` | shared daily UoW |
 | ZigZag Swing Engine | manual MWG MVP | O(n) 5% reversal pivot segmentation | `cal_zigzag_pivot`, `cal_zigzag_current_leg` → three public views | separate manual UoW; not in run.py |
+| Price Movement V2 | manual MWG-first | confirmed swing characterization + recent profile | `cal_price_movement_swing`, `cal_price_movement_profile` → two public views | separate manual UoW; not in run.py |
 | SmartMoneyScore | daily | `refresh_smart_money_score()` | factor + score tables → `vw_Ticker_SmartMoney` | shared daily UoW |
 | R/S Runtime Ladder | on demand / consumer | `build_level_ladder()` family | `LevelLadderResult` | read/calculation path, separate from daily writer |
 | R/S V2.4 Evaluation | monthly/manual | baseline + ablation + effectiveness | `cal_rs_source_effectiveness*`, audit + public view | separate monthly research run |
@@ -389,7 +394,8 @@ Until the command above succeeds and the generated HTML is committed, this drill
 - `docs/architecture/Data_Architecture.md`
 - `docs/architecture/Indicator_Engine.md`
 - `docs/architecture/ZigZag_Engine.md`
-- `docs/architecture/Price_Movement_Character.md`
+- `docs/architecture/Price_Movement_Character_V2.md`
+- `docs/architecture/Price_Movement_Character.md` (historical deferred design)
 - `docs/architecture/SmartMoneyScore.md`
 - `docs/architecture/RS_Ladder.md`
 - `docs/architecture/RS_Source_Effectiveness.md`
@@ -397,7 +403,7 @@ Until the command above succeeds and the generated HTML is committed, this drill
 
 ## ADR
 
-- `ADR-012` owns the stateful analytics domain boundary; `ADR-013` owns the ZigZag segmentation decision and MWG-first rollout.
+- `ADR-012` owns the stateful analytics domain boundary; `ADR-013` owns ZigZag segmentation; `ADR-016` owns the downstream Price Movement characterization boundary.
 - No new ADR is required for the pre-existing calculation-engine drill-down itself.
 
 
@@ -429,3 +435,32 @@ Canonical designs:
 - ADR-014 and ADR-015
 
 None of these research workflows are invoked by run.py.
+
+
+## Price Movement V2 downstream lane
+
+REQ-0031 consumes stable confirmed ZigZag public swings and adjusted daily OHLC:
+
+    vw_Ticker_ZigZag_Swings
+            +
+    vw_Ticker_OHLC_D
+            ↓
+    Price Movement V2
+            ↓
+    cal_price_movement_swing
+    cal_price_movement_profile
+            ↓
+    vw_Ticker_Price_Movement_Swings
+    vw_Ticker_Movement_Profile
+
+Price Movement does not read an unpromoted BaseDeviationPct and does not detect pivots.
+The Price Movement config pins the upstream ZigZagConfigCode used for lineage.
+
+Operational entry points:
+
+    scripts/initload/init_reload_price_movement_mwg.py
+    scripts/validate_price_movement_mwg.py
+    scripts/export_price_movement_reconciliation.py
+
+The path remains outside the canonical daily pipeline until a separate production-promotion
+decision is approved.
