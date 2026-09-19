@@ -79,3 +79,18 @@ REQ
 ```
 
 Backlog is not the Source of Truth for current runtime behavior.
+
+## ZigZag deviation roadmap
+
+- [[REQ-0028-zigzag-deviation-calibration-v1-1|REQ-0028 — ZigZag Deviation Calibration V1.1]] — **IMPLEMENTED_PENDING_VALIDATION**
+- [[REQ-0029-zigzag-multi-ticker-pilot-v1-2|REQ-0029 — ZigZag Multi-Ticker Pilot V1.2]] — **IMPLEMENTED_PENDING_VALIDATION**; prerequisite V1.1 PASS
+- [[REQ-0030-zigzag-regime-aware-v2|REQ-0030 — ZigZag Regime-Aware Swing-Locked Deviation V2]] — **IMPLEMENTED_PENDING_VALIDATION**; manual research only
+
+Execution order:
+
+    REQ-0028 / V1.1
+      -> TestEngineer PASS
+      -> REQ-0029 / V1.2
+      -> TestEngineer PASS / pilot decision
+      -> REQ-0030 / V2
+      -> TestEngineer PASS / research decision
