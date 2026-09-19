@@ -256,8 +256,18 @@ def calibrate_static_deviation(
         selected = min(eligible)
         method = "SMALLEST_ELIGIBLE"
     else:
+        structurally_valid = [
+            deviation
+            for deviation in candidates
+            if metrics_by_key[("TRAIN", deviation)].structural_valid
+            and metrics_by_key[("VALIDATION", deviation)].structural_valid
+        ]
+        if not structurally_valid:
+            raise RuntimeError(
+                f"No structurally valid ZigZag deviation candidate for {ticker}."
+            )
         selected = max(
-            candidates,
+            structurally_valid,
             key=lambda deviation: (
                 (
                     metrics_by_key[("TRAIN", deviation)].calibration_score
