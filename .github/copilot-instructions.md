@@ -179,6 +179,30 @@ Production integration after the chart contract is ready routes to General Codin
 
 A material DuckDB schema/view/data migration MUST obey `.github/instructions/database.instructions.md` and use `.github/skills/duckdb-migration/SKILL.md` when the repeatable migration procedure applies. The migration must define forward change, idempotency, validation, downstream impact and rollback/repair behavior before production readiness is claimed.
 
+## ChatGPT-readable data export rule
+
+Any CherryStock workflow that produces data, reconciliation evidence, diagnostic extracts,
+query results, snapshots or other machine-readable files intended for ChatGPT review MUST
+export them under:
+
+```text
+docs/reference/data/
+```
+
+Rules:
+
+- Do not use ad-hoc locations such as repository-root `export/`, `tmp/`, `data/` or local-only folders for ChatGPT handoff artifacts.
+- Prefer domain-scoped subfolders, for example `docs/reference/data/zigzag/mwg/`.
+- CSV is the default tabular interchange format unless another format is materially better.
+- Use deterministic, descriptive filenames containing the subject and purpose; include a date/range when relevant.
+- Export only the smallest sufficient evidence needed for review; do not dump the entire database by default.
+- Files under `docs/reference/data/**` are reference/evidence artifacts, not runtime Source of Truth.
+- When a runbook asks the user to provide data back to ChatGPT, its export command MUST target `docs/reference/data/**`.
+- Generated evidence that should be reusable across ChatGPT/GitHub sessions SHOULD be committed to Git when safe and reasonably sized.
+- Never export credentials, tokens, secrets, personal data or other sensitive values into this path.
+
+This rule applies across Agents, Skills, scripts, SQL export statements and runbooks.
+
 ## Testing / validation rule
 
 Test-focused tasks MUST use `.github/agents/TestEngineer.agent.md` and `.github/instructions/testing.instructions.md`.
