@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 MAX_COMPONENT_SOURCES = 3
+MIN_DIRECT_CONNECTION_CLEARANCE = 24.0
 
 
 def fail(errors: list[str]) -> int:
@@ -38,6 +39,64 @@ def load_json(path: Path, label: str, errors: list[str]) -> dict | None:
     return value
 
 
+
+def _component_rect(component: dict) -> tuple[float, float, float, float] | None:
+    pos = component.get("pos")
+    size = component.get("size")
+    if (
+        not isinstance(pos, list)
+        or len(pos) != 2
+        or not isinstance(size, list)
+        or len(size) != 2
+    ):
+        return None
+    try:
+        x, y = float(pos[0]), float(pos[1])
+        width, height = float(size[0]), float(size[1])
+    except (TypeError, ValueError):
+        return None
+    return x, y, width, height
+
+
+def _direct_connection_clearance(
+    connection: dict,
+    components_by_id: dict[str, dict],
+) -> float | None:
+    """Return endpoint-to-endpoint gap for an explicit straight cardinal connection.
+
+    Archify showcase currently requires at least 24 px for a short direct connection.
+    Only evaluate relationships whose geometry is unambiguous locally; automatic or
+    routed/via relationships remain Archify's responsibility.
+    """
+
+    if connection.get("route") != "straight" or connection.get("via"):
+        return None
+
+    source = components_by_id.get(connection.get("from"))
+    target = components_by_id.get(connection.get("to"))
+    if source is None or target is None:
+        return None
+
+    source_rect = _component_rect(source)
+    target_rect = _component_rect(target)
+    if source_rect is None or target_rect is None:
+        return None
+
+    sx, sy, sw, sh = source_rect
+    tx, ty, tw, th = target_rect
+    from_side = connection.get("fromSide")
+    to_side = connection.get("toSide")
+
+    if from_side == "right" and to_side == "left":
+        return tx - (sx + sw)
+    if from_side == "left" and to_side == "right":
+        return sx - (tx + tw)
+    if from_side == "bottom" and to_side == "top":
+        return ty - (sy + sh)
+    if from_side == "top" and to_side == "bottom":
+        return sy - (ty + th)
+    return None
+
 def validate(
     input_path: Path,
     repo_root: Path,
@@ -60,6 +119,7 @@ def validate(
         components = []
 
     component_ids: list[str] = []
+    components_by_id: dict[str, dict] = {}
     for index, component in enumerate(components):
         if not isinstance(component, dict):
             errors.append(f"components[{index}] must be an object")
@@ -69,6 +129,7 @@ def validate(
             errors.append(f"components[{index}].id must be a non-empty string")
             continue
         component_ids.append(component_id)
+        components_by_id[component_id] = component
 
         sources = component.get("sources", [])
         if sources is None:
@@ -128,6 +189,24 @@ def validate(
                     f"connections[{index}].{endpoint} references unknown component id: {value!r}"
                 )
 
+        if (
+            connection.get("from") in component_id_set
+            and connection.get("to") in component_id_set
+        ):
+            clearance = _direct_connection_clearance(connection, components_by_id)
+            if (
+                clearance is not None
+                and clearance < MIN_DIRECT_CONNECTION_CLEARANCE
+            ):
+                label = connection.get("label") or (
+                    f"{connection.get('from')} -> {connection.get('to')}"
+                )
+                errors.append(
+                    f"connection {label!r} has only {clearance:g}px direct clearance; "
+                    f"minimum is {MIN_DIRECT_CONNECTION_CLEARANCE:g}px. "
+                    "Move the components farther apart before Archify showcase validation."
+                )
+
     if navigation_config is not None:
         navigation = load_json(navigation_config, "Navigation config", errors)
         if navigation is not None:
@@ -184,6 +263,7 @@ def validate(
     print(f"  components: {len(component_ids)}")
     print(f"  connections: {len(connections)}")
     print(f"  max component sources: {MAX_COMPONENT_SOURCES}")
+    print(f"  min explicit direct connection clearance: {MIN_DIRECT_CONNECTION_CLEARANCE:g}px")
     if output_path is not None:
         print(f"  output: {output_path}")
     return 0
