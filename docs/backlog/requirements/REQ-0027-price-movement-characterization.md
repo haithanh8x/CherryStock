@@ -1,257 +1,271 @@
 ---
 id: REQ-0027
-title: Price Movement Characterization and Swing Profile
-status: READY_FOR_DESIGN
+title: ZigZag-based Price Movement Foundation
+status: IMPLEMENTED_PENDING_VALIDATION
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: SolutionArchitect
+primary_next_owner: TestEngineer
 related:
-  architecture: docs/architecture/Price_Movement_Character.md
-  adr: docs/adr/ADR-012-price-movement-character-as-separate-analytics-domain.md
+  architecture:
+    - docs/architecture/ZigZag_Engine.md
+    - docs/architecture/Price_Movement_Character.md
+  adr:
+    - docs/adr/ADR-012-price-movement-character-as-separate-analytics-domain.md
+    - docs/adr/ADR-013-zigzag-as-price-movement-segmentation-foundation.md
   implementation:
+    - src/cherrystock/domain/analytics/zigzag/
+    - src/calcEngine/zigzag.py
+    - src/DuckDB/sql/zigzag_mvp_schema.sql
+    - scripts/initload/init_reload_zigzag_mwg.py
   test:
-  change_request:
+    - tests/test_zigzag_engine.py
+    - scripts/validate_zigzag_mwg.py
 ---
 
-# REQ-0027 — Price Movement Characterization and Swing Profile
+# REQ-0027 — ZigZag-based Price Movement Foundation
 
 ## Business Objective
 
-CherryStock must be able to characterize **how a ticker moves**, not only whether price is currently up or down.
+CherryStock must identify price swing legs from real price extremes before it derives
+movement magnitude, velocity, persistence or any downstream movement classification.
 
-The required outcome is to distinguish at least these business dimensions:
-
-1. **Magnitude** — how large the current/typical move is;
-2. **Velocity** — how quickly the move occurs;
-3. **Persistence** — how steadily price travels in one direction versus oscillating/noising;
-4. **Swing profile** — how large and how long the ticker's historical up/down swings normally are;
-5. **Current-relative-to-history context** — whether the current move is ordinary or exceptional for that same ticker.
-
-This capability is intended to support chart interpretation, screening, later Smart Money/strategy features and research without conflating a fast volatile spike with a durable trend.
+The immediate goal is correctness of swing segmentation. A confirmed UP swing must start
+at a real trough and end at a real peak; a confirmed DOWN swing must start at a real peak
+and end at a real trough. A point in the middle of an already-declining/rising leg must not
+be selected as the start merely because a volatility threshold changed state there.
 
 ## Background / Problem
 
-A simple return such as `+30%` does not describe the path taken to achieve the move. Two tickers can have the same return while exhibiting materially different behavior:
+The first Price Movement implementation used an ATR-adaptive reversal threshold and
+persisted daily movement state. Local validation exposed two material problems:
 
-- one can rise steadily over many sessions with shallow pullbacks;
-- another can jump rapidly with large reversals and high path noise.
+1. pivot placement could be analytically wrong for visual swing interpretation; MWG
+   produced an UP start around 2026-07-23 / 66 even though that point was inside a
+   declining leg rather than the trough that should anchor the next UP swing;
+2. full-universe calculation recalculated path features per bar and required roughly
+   3.5 hours for about 5.0M rows, making that implementation unsuitable for the daily pipeline.
 
-Likewise, a fixed market-wide threshold such as `10%` does not mean the same thing for a low-volatility ticker and a naturally volatile ticker.
-
-The requirement therefore needs both **swing/event history** and **trend-quality/path metrics**, with comparison primarily against the ticker's own historical behavior.
+That implementation was rolled back. The replacement must first solve segmentation,
+then build higher-level movement analytics on top of confirmed ZigZag pivots.
 
 ## Stakeholders / Consumers
 
-- CherryStock user / analyst;
-- Screener and ranking features;
-- Chart/UI consumers;
-- future SmartMoneyScore / SmartMoneyStrategy research;
-- future portfolio/risk analytics;
-- TestEngineer for deterministic historical and incremental validation.
+- CherryStock analyst;
+- chart and visual validation;
+- future Price Movement Character engine;
+- future Screener / SmartMoney / pattern research;
+- TestEngineer.
 
-## Functional Requirements
+## Delivery Strategy
 
-1. The system shall identify directional price swings and distinguish **confirmed historical swings** from the **currently developing/provisional swing**.
-2. For each confirmed swing, the system shall expose direction, start/end points, percentage magnitude and duration in trading bars; calendar duration may also be exposed for interpretation.
-3. The system shall calculate a swing velocity measure so that equal-sized moves occurring over different durations can be distinguished.
-4. The system shall provide volatility-relative context so that price movement magnitude can be compared with the ticker's normal price variability.
-5. The system shall maintain a historical up-swing and down-swing profile per ticker, including at minimum median and upper-percentile magnitude and duration statistics when sufficient history exists.
-6. The system shall compare the current/provisional move with prior **same-direction** confirmed swings of the same ticker and expose its historical percentile/rank where statistically meaningful.
-7. The system shall quantify trend persistence/smoothness using path-based evidence so that a steady trend is distinguishable from a noisy move with the same endpoint return.
-8. Persistence evidence shall include at minimum directional efficiency, regression/trend fit quality and adverse pullback/excursion; directional-day consistency may be included as supporting evidence.
-9. The system shall expose separate `Magnitude`, `Velocity` and `Persistence` measures/scores rather than collapsing them into one opaque score.
-10. The system shall derive an explainable movement-character label from direction plus the separate dimensions, including neutral/insufficient-data behavior.
-11. The system shall make historical swing details and current movement characterization available through stable consumer read contracts.
-12. The system shall support historical backfill and daily incremental refresh with deterministic results for confirmed history.
-13. Historical evaluation shall be point-in-time safe: no future-confirmed pivot information may leak into an earlier as-of date.
-14. The system shall preserve enough provenance/config identity to reproduce how a swing or movement classification was produced.
+REQ-0027 is staged deliberately.
+
+### Phase 1 — MWG ZigZag MVP
+
+Only ticker MWG is in scope.
+
+The MVP shall:
+
+- consume adjusted daily OHLC from vw_Ticker_OHLC_D;
+- use a percentage-reversal ZigZag state machine;
+- use High for candidate HIGH pivots and Low for candidate LOW pivots;
+- use Close for reversal confirmation;
+- use configured DeviationPct = 5% for the first evaluation config;
+- keep PivotDate separate from ConfirmedAtDate;
+- persist confirmed pivots only;
+- persist one current provisional-leg row;
+- derive swings from adjacent confirmed pivots;
+- run only through a manual MWG initload script;
+- remain outside run.py, SmartMoney and all-universe processing.
+
+### Phase 2 — after MWG approval
+
+Only after MWG pivot quality is accepted may the solution add:
+
+- more tickers / active-universe initload;
+- incremental daily checkpointing;
+- alternative deviation configs such as 3% / 8%;
+- swing magnitude / duration / velocity;
+- persistence/path-quality features;
+- ticker-relative swing profiles;
+- Price Movement Character labels;
+- downstream SmartMoney or screener consumption.
+
+## Functional Requirements — MVP
+
+1. The engine shall process MWG daily OHLC in ascending trading-date order.
+2. The engine shall identify alternating confirmed LOW and HIGH pivots.
+3. A LOW pivot shall be the tracked lowest Low before a later Close rises by at least
+   DeviationPct from that candidate low.
+4. A HIGH pivot shall be the tracked highest High before a later Close falls by at least
+   DeviationPct from that candidate high.
+5. PivotDate shall record the date the extreme occurred.
+6. ConfirmedAtDate shall record the first later date on which the configured reversal
+   makes that pivot knowable.
+7. A confirmed pivot shall never be visible historically before its ConfirmedAtDate.
+8. The latest unfinished leg shall remain PROVISIONAL.
+9. Confirmed pivots shall be deterministic and idempotent for unchanged OHLC + config.
+10. MVP persistence shall be event-first; it shall not recreate a full daily historical
+    movement-state table.
+11. The engine shall expose stable public read views for pivots, derived swings and current leg.
+12. The implementation shall be O(n) over ordered bars for one ticker and shall not rescan
+    the entire active leg on every bar.
+13. The MWG initload shall not mutate the canonical daily run.py workflow.
 
 ## Business Rules
 
-1. **Magnitude is not persistence.** A large move is not automatically a durable trend.
-2. **Velocity is not persistence.** A very fast move may be highly volatile/noisy.
-3. Historical comparison is primarily ticker-relative and direction-relative; an up swing is compared with prior up swings and a down swing with prior down swings.
-4. Confirmed historical swings are immutable for a given algorithm/config version once their reversal confirmation is known; the current swing remains provisional and may move/repaint until confirmed.
-5. Provisional swing values must be explicitly marked and must not be represented as confirmed historical facts.
-6. Historical profiles and percentiles must use only information that was available as of the relevant date for research/backtest outputs.
-7. When history is insufficient, percentile/character outputs must return an explicit insufficient-data state rather than fabricated zero/default meaning.
-8. Volatility normalization shall not replace raw percentage magnitude; both absolute and normalized interpretations must remain available.
-9. Price-path characterization alone must not assert Smart Money intent, accumulation, distribution or capitulation. Those interpretations belong to downstream models that combine additional evidence.
-10. V1 targets adjusted analytical daily price history. Intraday and weekly/monthly swing models are not required for initial delivery.
+- ZigZag confirmation lag is expected and must be explicit.
+- Pivot location is based on the actual tracked High/Low extreme, not the confirmation bar.
+- Confirmation uses Close so a wick alone does not confirm a reversal.
+- Pivots must alternate LOW → HIGH → LOW or HIGH → LOW → HIGH.
+- A derived UP swing is LOW → HIGH; a derived DOWN swing is HIGH → LOW.
+- A provisional candidate may repaint until reversal confirmation.
+- Confirmed pivot facts are immutable for unchanged source data + config version.
+- ATR is not an input to Phase-1 ZigZag segmentation.
+- Price-only ZigZag output must not be described as Smart Money intent or a trade signal.
 
-## Scope
+## MVP Configuration
 
-### In Scope
+    ConfigCode         = ZZ_D_5_MVP
+    Timeframe          = D
+    DeviationPct       = 0.05
+    PivotPriceSource   = HIGH_LOW
+    ConfirmationSource = CLOSE
+    MinimumSwingBars   = 1
+    Scope              = MWG only
 
-- Daily ticker price movement characterization;
-- ZigZag/swing-like directional segmentation with confirmed vs provisional semantics;
-- raw swing magnitude and trading-bar duration;
-- swing velocity;
-- volatility-normalized movement magnitude;
-- ticker-specific historical swing distributions/percentiles;
-- path efficiency / trend quality / persistence metrics;
-- adverse pullback/excursion within a move;
-- separate Magnitude, Velocity and Persistence scores;
-- explainable movement-character classification;
-- historical backfill + daily incremental refresh;
-- public read contracts for swing history and current/latest movement profile;
-- deterministic, point-in-time-safe validation.
-
-### Out of Scope
-
-- Trade entry/exit recommendations;
-- BUY/HOLD/SELL actions;
-- direct Smart Money intent inference;
-- order-flow/volume-based accumulation-distribution logic;
-- portfolio sizing/risk limits;
-- intraday swing detection;
-- automatic tuning/ML optimization of thresholds in V1;
-- changing existing SmartMoneyScore scoring in the same delivery.
+The value 5% is an evaluation configuration, not a universal market rule. Expansion to
+additional configs requires separate validation evidence.
 
 ## Acceptance Criteria
 
-### AC-01 — Confirmed swing observability
+### AC-01 — LOW pivot anchored at an extreme
 
-Given sufficient daily price history,
-when a directional reversal satisfies the configured confirmation rule,
-then a confirmed swing is available with ticker, direction, start/end dates, start/end prices, magnitude percent and trading-bar duration.
+Given MWG is declining and later rebounds by the configured deviation,
+when the LOW pivot becomes confirmed,
+then PivotDate/PivotPrice refer to the tracked lowest Low before confirmation, not the
+confirmation bar and not an intermediate point in the decline.
 
-### AC-02 — Provisional current swing
+### AC-02 — HIGH pivot anchored at an extreme
 
-Given the latest price has not yet produced a confirmed reversal,
-when the current movement is queried,
-then the active swing is marked `PROVISIONAL` and is not indistinguishable from confirmed swing history.
+Given MWG is rising and later reverses downward by the configured deviation,
+when the HIGH pivot becomes confirmed,
+then PivotDate/PivotPrice refer to the tracked highest High before confirmation.
 
-### AC-03 — Typical up/down profile
+### AC-03 — Alternating pivot sequence
 
-Given a ticker has sufficient confirmed swings,
-when its movement profile is queried,
-then separate up/down statistics expose at least swing count, median magnitude, P75/P90 magnitude and median/P75 duration.
+For all confirmed MWG pivots under one config, adjacent pivots alternate HIGH/LOW and
+PivotSeq is strictly increasing.
 
-### AC-04 — Velocity discrimination
+### AC-04 — Point-in-time safety
 
-Given two swings with similar percentage magnitude but materially different durations,
-when velocity is calculated,
-then the shorter-duration swing has a greater absolute movement velocity.
+For every confirmed pivot:
 
-### AC-05 — Volatility-relative context
+    PivotDate <= ConfirmedAtDate
 
-Given two tickers with the same raw percentage move but different normal volatility,
-when normalized movement magnitude is evaluated,
-then the result can distinguish which move is larger relative to its ticker's normal price variability while preserving the raw percentage move.
+and no consumer may treat the pivot as confirmed before ConfirmedAtDate.
 
-### AC-06 — Persistence discrimination
+### AC-05 — Swing direction
 
-Given two paths with the same start/end return but one moves smoothly and the other oscillates materially,
-when persistence is evaluated,
-then the smoother path receives materially stronger persistence evidence/score.
+Adjacent LOW → HIGH pivots yield an UP swing and adjacent HIGH → LOW pivots yield
+a DOWN swing.
 
-### AC-07 — Pullback evidence
+### AC-06 — Local-extreme validation
 
-Given an upward move with a deep intermediate drawdown and another with a shallow drawdown,
-when adverse excursion is measured,
-then the deep-pullback move records worse persistence evidence even if final return is equal.
+For every interior confirmed pivot, its price equals the corresponding local minimum
+(LOW) or maximum (HIGH) across the interval bounded by adjacent confirmed pivots,
+subject only to equal-price ties.
 
-### AC-08 — Ticker-relative percentile
+### AC-07 — Provisional current leg
 
-Given sufficient same-direction confirmed history,
-when the current move is compared with history,
-then the system exposes its magnitude/velocity percentile relative to prior same-direction swings of that ticker.
+After the final confirmed pivot, exactly one MWG current-leg record exists with
+Status = PROVISIONAL and a candidate opposite pivot.
 
-### AC-09 — No look-ahead leakage
+### AC-08 — Idempotent MWG initload
 
-Given a historical as-of date before a future reversal confirmation,
-when the feature set is reconstructed for that date,
-then future pivot confirmation and future swing endpoints do not appear in the as-of result.
+Running the MWG initload twice with unchanged source/config produces the same confirmed
+pivot sequence and does not create duplicates.
 
-### AC-10 — Explainable character label
+### AC-09 — Event-first persistence
 
-Given valid Magnitude, Velocity and Persistence dimensions,
-when a movement-character label is produced,
-then the label can be traced to direction plus those component dimensions and is not based on an undocumented opaque score.
+The MVP persists confirmed pivots plus one current-state row; it does not persist one
+movement-state row per historical trading date.
 
-### AC-11 — Insufficient history
+### AC-10 — Daily pipeline isolation
 
-Given a ticker does not have the configured minimum historical sample,
-when historical percentile/profile output is requested,
-then the result explicitly reports insufficient history and does not silently substitute zero-percentile semantics.
+python run.py remains unchanged by the MVP and does not invoke ZigZag.
 
-### AC-12 — Historical vs incremental equivalence
+### AC-11 — Performance shape
 
-Given the same configuration and source data,
-when a date range is produced once by full historical calculation and once by valid incremental refresh,
-then confirmed swing history and finalized daily movement outputs are equivalent for the overlapping finalized period.
+The ZigZag calculation performs one forward scan over MWG bars. No per-bar DataFrame
+slice/copy, regression, percentile rebuild or full-leg rescan is allowed in the state-machine loop.
 
-### AC-13 — Reproducibility
+### AC-12 — MWG rollout gate
 
-Given a movement result,
-when its provenance is inspected,
-then the algorithm/config version and relevant threshold/window identity required to reproduce the result are available.
+No other ticker is enabled until MWG validation shows:
 
-### AC-14 — Stable consumer access
-
-Given successful calculation and validation,
-when Chart/Screener/analytics consumers request movement data,
-then they can use documented public read contracts without coupling to internal calculation persistence.
+- zero structural pivot validation errors;
+- zero duplicate pivots;
+- pivot sequence visually agrees with the intended major/intermediate legs for the
+  Jul–Sep 2026 review window;
+- user accepts the 5% configuration as a valid starting behavior or explicitly selects a
+  replacement config.
 
 ## Non-functional Requirements
 
-- **Performance:** Daily incremental calculation must operate on bounded warmup/checkpoint history where algorithmically valid; full history is reserved for initload/backfill/rebuild paths.
-- **Reliability:** Confirmed swing history must be deterministic and idempotent for unchanged source data + config version.
-- **Security:** No new credential, external-service or privileged-write requirement is introduced by this analytical component.
-- **Observability:** Refresh must expose processed ticker/date range, row/event counts, insufficient-history counts and validation outcome.
-- **Compatibility:** Existing Indicator, SmartMoney, chart and R/S public contracts must remain backward compatible in V1.
+- Correctness first: scaling is blocked until MWG is accepted.
+- Performance: O(n) state-machine calculation for one ticker.
+- Reliability: full MWG rebuild is deterministic/idempotent.
+- Observability: initload prints source rows, confirmed pivot count, current direction
+  and elapsed calculation time.
+- Compatibility: no changes to run.py, Indicator, SmartMoney or R/S contracts in MVP.
+- Reproducibility: every row contains ConfigId/config identity through public views.
 
 ## Dependencies
 
-- Adjusted daily ticker OHLC history;
-- trading calendar / ordered trading sessions;
-- volatility evidence such as ATR through an approved public analytical contract or equivalent approved design;
-- CherryStock DuckDB calculated-data conventions;
-- daily orchestration and Data Quality conventions;
-- architecture/design review by SolutionArchitect.
+- vw_Ticker_OHLC_D;
+- ordered daily adjusted OHLC for MWG;
+- CherryStock DuckDB connection/UoW conventions;
+- approved ZigZag architecture / ADR.
 
-## Constraints
-
-- Must comply with CherryStock database naming, transaction, public-view and validation rules.
-- Must not use future information to finalize historical pivots/features before confirmation time.
-- Must not treat provisional ZigZag endpoints as immutable facts.
-- Must avoid a fixed market-wide percentage threshold as the sole definition of a strong move.
-
-## Assumptions
-
-- Adjusted EOD OHLC is appropriate for analytical price-path comparison across corporate actions.
-- Daily timeframe is the first production scope.
-- Sufficient ticker history exists for most actively tracked tickers, but insufficient-history handling is mandatory.
-
-## Open Questions
-
-No blocking business questions. Thresholds, exact scoring weights, persistence windows, physical data model and orchestration placement are Solution Architect responsibilities subject to deterministic validation and versioned configuration.
+ATR and Indicator Engine values are explicitly not dependencies for Phase 1.
 
 ## Risks
 
-- ZigZag confirmation naturally introduces lag; consumers may misread provisional endpoints unless status is explicit.
-- Small historical swing samples can produce unstable percentiles.
-- Corporate-action-adjusted historical OHLC can change after upstream restatement, requiring deterministic rebuild behavior.
-- Overly aggressive composite scoring can hide useful differences between magnitude, velocity and persistence.
-- A movement-character label may be over-interpreted as a trading signal if naming/documentation is not disciplined.
+- A 5% deviation can still be too sensitive or too coarse for some regimes; that is why
+  only MWG is enabled initially.
+- ZigZag pivots repaint while provisional; consumers must use confirmation time correctly.
+- Daily OHLC cannot reveal intraday order when both extremes occur in the same bar; the
+  bootstrap tie-break must therefore remain deterministic and documented.
+- Visual agreement alone is not sufficient; structural/extreme validation is mandatory.
 
-## Suggested Routing
+## Expansion Gate
 
-- Architecture required: Yes
-- Primary next owner: `SolutionArchitect.agent.md`
-- Domain instructions: `.github/instructions/database.instructions.md`, `.github/instructions/indicators.instructions.md` when consuming ATR via Indicator public contracts, `.github/instructions/testing.instructions.md`
-- Validation owner: `TestEngineer.agent.md`
+The rollout state is:
 
-## Handoff
+    MWG_MVP
+      → structural validation
+      → Jul–Sep 2026 visual review
+      → user acceptance
+      → multi-ticker pilot
+      → only then consider daily integration / Movement Character features
 
-```text
-REQUIREMENT HANDOFF
-Requirement ID: REQ-0027
-Outcome: Price Movement Characterization and Swing Profile
-Status: READY_FOR_DESIGN
-Primary next owner: SolutionArchitect.agent.md
-Material: docs/backlog/requirements/REQ-0027-price-movement-characterization.md
-Open questions: None blocking; algorithm/config/data-model choices delegated to SA
-Acceptance criteria count: 14
-```
+## BA Handoff
+
+    REQUIREMENT HANDOFF
+    Requirement ID: REQ-0027
+    Outcome: ZigZag-based swing segmentation foundation
+    Status at BA gate: READY_FOR_DESIGN
+    Primary next owner: SolutionArchitect.agent.md
+    Material: docs/backlog/requirements/REQ-0027-price-movement-characterization.md
+    Open questions: None blocking for MWG MVP
+    Acceptance criteria count: 12
+
+## Current Delivery State
+
+Architecture and MVP implementation have been produced from this requirement. The current
+overall state is:
+
+    IMPLEMENTED_PENDING_VALIDATION
+
+Final functional verdict belongs to TestEngineer.agent.md and the explicit MWG visual gate.
