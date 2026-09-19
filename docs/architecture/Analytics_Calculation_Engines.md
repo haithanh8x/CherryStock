@@ -399,3 +399,33 @@ Until the command above succeeds and the generated HTML is committed, this drill
 
 - `ADR-012` owns the stateful analytics domain boundary; `ADR-013` owns the ZigZag segmentation decision and MWG-first rollout.
 - No new ADR is required for the pre-existing calculation-engine drill-down itself.
+
+
+## ZigZag V1.1 / V1.2 / V2 research lane
+
+The validated MWG ZigZag foundation now has three manual research layers that remain outside
+the canonical daily pipeline:
+
+    V1.1 Deviation Calibration
+      -> ticker-specific static recommendation
+      -> cal_zigzag_deviation_evaluation
+      -> dim_zigzag_ticker_config
+
+    V1.2 Multi-Ticker Pilot
+      -> fixed 5% vs calibrated-static on TEST holdout
+      -> cal_zigzag_pilot_evaluation
+
+    V2 Regime-Aware
+      -> point-in-time ATRPct regime
+      -> deviation selected after pivot confirmation
+      -> threshold locked for the next leg
+      -> cal_zigzag_regime_evaluation
+
+Canonical designs:
+
+- docs/architecture/ZigZag_Deviation_Calibration.md
+- docs/architecture/ZigZag_Multi_Ticker_Pilot.md
+- docs/architecture/ZigZag_Regime_Aware.md
+- ADR-014 and ADR-015
+
+None of these research workflows are invoked by run.py.
