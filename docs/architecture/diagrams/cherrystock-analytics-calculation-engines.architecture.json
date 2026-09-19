@@ -693,25 +693,25 @@
       "to": "consumers",
       "label": "LevelLadderResult",
       "variant": "emphasis",
-      "fromSide": "bottom",
-      "toSide": "left",
+      "fromSide": "right",
+      "toSide": "bottom",
       "via": [
         [
-          765,
-          720
-        ],
-        [
-          1135,
-          720
-        ],
-        [
-          1135,
+          880,
           650
+        ],
+        [
+          880,
+          740
+        ],
+        [
+          1260,
+          740
         ]
       ],
       "labelAt": [
-        945,
-        735
+        1060,
+        755
       ]
     },
     {
@@ -777,8 +777,8 @@
         ]
       ],
       "labelAt": [
-        1415,
-        790
+        1315,
+        820
       ]
     },
     {
@@ -810,21 +810,12 @@
       "to": "consumers",
       "label": "movement profile",
       "variant": "emphasis",
-      "fromSide": "bottom",
-      "toSide": "bottom",
-      "via": [
-        [
-          1015,
-          770
-        ],
-        [
-          1260,
-          770
-        ]
-      ],
+      "route": "straight",
+      "fromSide": "right",
+      "toSide": "left",
       "labelAt": [
         1135,
-        785
+        705
       ]
     }
   ]
