@@ -68,3 +68,32 @@ The Archify typed source has been updated. Generated HTML must be regenerated lo
     .\scripts\render_archify_analytics.ps1 -NoOpen
 
 Do not hand-edit the generated HTML.
+
+
+## 2026-09-19 — Whipsaw / same-day pivot repair
+
+TestEngineer evidence after the initial stall fix found three remaining structural failures:
+one alternation error and two local-extreme mismatches caused by same-day High/Low ambiguity
+plus post-hoc pivot deduplication.
+
+Solution Architect refinement:
+
+- daily OHLC uses one confirmed pivot per trading date;
+- consecutive PivotDates must be strictly increasing;
+- a next-leg candidate may only come from a bar strictly after the previous PivotDate;
+- a candidate updated on the current bar cannot be confirmed on that same bar;
+- post-hoc pivot deduplication is removed;
+- interior local-extreme validation excludes neighboring pivot bars;
+- confirmed pivots require PivotDate < ConfirmedAtDate.
+
+Implementation changes:
+
+- src/cherrystock/domain/analytics/zigzag/engine.py
+- tests/test_zigzag_engine.py
+- scripts/validate_zigzag_mwg.py
+- src/DuckDB/sql/zigzag_mvp_schema.sql
+- docs/architecture/ZigZag_Engine.md
+- docs/adr/ADR-013-zigzag-as-price-movement-segmentation-foundation.md
+- docs/runbook/ZigZag_MWG_MVP.md
+
+Validation state remains IMPLEMENTED_PENDING_VALIDATION. Local CherryMon must rerun Phase 1-5.
