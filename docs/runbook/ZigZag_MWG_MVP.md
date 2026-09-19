@@ -330,3 +330,34 @@ safe and therefore cannot use bars after the pivot's ConfirmedAtDate. The valida
 bounded by confirmation knowledge rather than a future pivot.
 
 Do not expand to other tickers until visual acceptance is explicitly recorded.
+
+
+## 18. Export evidence cho ChatGPT
+
+Theo global repository rule, mọi file dùng để ChatGPT cross-check phải export dưới:
+
+```text
+docs/reference/data/
+```
+
+Package chuẩn cho MWG ZigZag:
+
+```text
+docs/reference/data/zigzag/mwg/
+├── MWG_OHLC_202605_202609.csv
+├── MWG_ZigZag_Pivots_202605_202609.csv
+├── MWG_ZigZag_Swings_202605_202609.csv
+└── MWG_ZigZag_Reconciliation.csv
+```
+
+Không export package handoff cho ChatGPT vào `export/`, `tmp/`, repository root hoặc thư mục local-only khác.
+
+Sau khi export:
+
+```powershell
+git add docs/reference/data/zigzag/mwg/
+git commit -m "test: add MWG ZigZag reconciliation evidence"
+git push origin main
+```
+
+Các CSV này là evidence/reference snapshots. DuckDB/public views vẫn là runtime Source of Truth.
