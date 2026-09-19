@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS "CherryMon"."main"."cal_price_movement_swing" (
     TradingBars INTEGER NOT NULL,
     CalendarDays INTEGER NOT NULL,
     VelocityPctPerBar DOUBLE NOT NULL,
-    AvgATR20Pct DOUBLE,
+    AvgATRPct DOUBLE,
     ATRNormalizedMove DOUBLE,
     PathEfficiency DOUBLE NOT NULL,
     DirectionalPersistenceRate DOUBLE NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS "CherryMon"."main"."cal_price_movement_swing" (
         DirectionalPersistenceRate >= 0
         AND DirectionalPersistenceRate <= 1
     ),
-    CHECK (AvgATR20Pct IS NULL OR AvgATR20Pct > 0),
+    CHECK (AvgATRPct IS NULL OR AvgATRPct > 0),
     CHECK (ATRNormalizedMove IS NULL OR ATRNormalizedMove >= 0)
 );
 
@@ -196,7 +196,7 @@ SELECT
     s.TradingBars,
     s.CalendarDays,
     s.VelocityPctPerBar,
-    s.AvgATR20Pct,
+    s.AvgATRPct,
     s.ATRNormalizedMove,
     s.PathEfficiency,
     s.DirectionalPersistenceRate,
