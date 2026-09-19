@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS "CherryMon"."main"."dim_price_movement_config" (
     CHECK (MinimumProfileSwings <= ProfileLookbackSwings),
     CHECK (TrendBiasThreshold >= 0 AND TrendBiasThreshold <= 1),
     CHECK (RangeBiasThreshold >= 0 AND RangeBiasThreshold <= 1),
+    CHECK (RangeBiasThreshold <= TrendBiasThreshold),
     CHECK (EfficiencyThreshold >= 0 AND EfficiencyThreshold <= 1),
     CHECK (ATRPeriod >= 2)
 );
