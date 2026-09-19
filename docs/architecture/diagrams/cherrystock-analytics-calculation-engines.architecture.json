@@ -8,11 +8,11 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "61d45a2f8b4ec2ad68e412a83bb13269683539c0"
+      "revision": "1138700c9b2ca74f14394f244a109831f032e605"
     },
     "viewBox": [
-      1390,
-      920
+      1450,
+      1060
     ]
   },
   "components": [
@@ -112,7 +112,7 @@
       "id": "price_movement",
       "type": "backend",
       "label": "ZigZag Swing Engine",
-      "sublabel": "confirmed pivots · swing SSOT",
+      "sublabel": "adjusted OHLC · confirmed pivots",
       "pos": [
         910,
         80
@@ -131,8 +131,8 @@
           "label": "ZigZag domain engine"
         },
         {
-          "path": "docs/adr/ADR-013-zigzag-as-price-movement-segmentation-foundation.md",
-          "label": "Segmentation decision"
+          "path": "src/DuckDB/sql/vw_Ticker_OHLC_D.sql",
+          "label": "Adjusted OHLC input contract"
         }
       ]
     },
@@ -423,7 +423,7 @@
       "sublabel": "monthly · full eval",
       "pos": [
         460,
-        780
+        900
       ],
       "size": [
         170,
@@ -447,7 +447,7 @@
       "sublabel": "baseline · ablation · effect",
       "pos": [
         670,
-        780
+        900
       ],
       "size": [
         190,
@@ -475,7 +475,7 @@
       "sublabel": "effectiveness · audit",
       "pos": [
         910,
-        776
+        896
       ],
       "size": [
         210,
@@ -492,7 +492,7 @@
       "id": "movement_character",
       "type": "backend",
       "label": "Price Movement Character",
-      "sublabel": "magnitude · pace · persistence",
+      "sublabel": "confirmed swings · OHLC path",
       "pos": [
         910,
         610
@@ -511,8 +511,8 @@
           "label": "Movement feature engine"
         },
         {
-          "path": "docs/adr/ADR-016-zigzag-price-movement-characterization-v2.md",
-          "label": "Domain boundary decision"
+          "path": "src/DuckDB/sql/vw_Ticker_OHLC_D.sql",
+          "label": "Adjusted OHLC path"
         }
       ]
     }
@@ -601,7 +601,7 @@
     {
       "from": "price_movement",
       "to": "movement_store",
-      "label": "persist pivots + current",
+      "label": "persist ZigZag facts",
       "route": "straight",
       "fromSide": "bottom",
       "toSide": "top",
@@ -637,7 +637,7 @@
     {
       "from": "movement_store",
       "to": "movement_public",
-      "label": "stable ZigZag views",
+      "label": "stable movement views",
       "route": "straight",
       "fromSide": "bottom",
       "toSide": "top",
@@ -693,28 +693,25 @@
       "to": "consumers",
       "label": "LevelLadderResult",
       "variant": "emphasis",
-      "route": "straight",
-      "labelAt": [
-        1010,
-        704
-      ]
-    },
-    {
-      "from": "movement_public",
-      "to": "consumers",
-      "label": "pivots / swings / current",
-      "route": "straight",
       "fromSide": "bottom",
       "toSide": "left",
       "via": [
         [
-          1015,
+          765,
+          720
+        ],
+        [
+          1135,
+          720
+        ],
+        [
+          1135,
           650
         ]
       ],
       "labelAt": [
-        1090,
-        606
+        945,
+        735
       ]
     },
     {
@@ -737,7 +734,7 @@
       "route": "straight",
       "labelAt": [
         650,
-        755
+        875
       ]
     },
     {
@@ -749,7 +746,7 @@
       "toSide": "top",
       "labelAt": [
         825,
-        735
+        805
       ]
     },
     {
@@ -760,28 +757,28 @@
       "route": "straight",
       "labelAt": [
         885,
-        755
+        875
       ]
     },
     {
       "from": "rs_research_store",
       "to": "consumers",
       "label": "research / governance read",
-      "fromSide": "top",
-      "toSide": "bottom",
+      "fromSide": "right",
+      "toSide": "right",
       "via": [
         [
-          1015,
-          735
+          1400,
+          936
         ],
         [
-          1260,
-          735
+          1400,
+          650
         ]
       ],
       "labelAt": [
-        1135,
-        720
+        1415,
+        790
       ]
     },
     {
@@ -793,28 +790,6 @@
       "labelAt": [
         1005,
         55
-      ]
-    },
-    {
-      "from": "analytics_inputs",
-      "to": "price_movement",
-      "label": "MWG OHLC · manual MVP",
-      "variant": "emphasis",
-      "fromSide": "right",
-      "toSide": "bottom",
-      "via": [
-        [
-          500,
-          390
-        ],
-        [
-          1015,
-          390
-        ]
-      ],
-      "labelAt": [
-        755,
-        375
       ]
     },
     {
@@ -831,35 +806,25 @@
       ]
     },
     {
-      "from": "analytics_inputs",
-      "to": "movement_character",
-      "label": "OHLC path",
-      "fromSide": "bottom",
-      "toSide": "left",
-      "via": [
-        [
-          130,
-          700
-        ],
-        [
-          890,
-          700
-        ]
-      ],
-      "labelAt": [
-        520,
-        686
-      ]
-    },
-    {
       "from": "movement_character",
       "to": "consumers",
       "label": "movement profile",
       "variant": "emphasis",
-      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          1015,
+          770
+        ],
+        [
+          1260,
+          770
+        ]
+      ],
       "labelAt": [
         1135,
-        650
+        785
       ]
     }
   ]
