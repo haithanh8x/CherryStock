@@ -15,7 +15,7 @@ This document drills down the **Analytics & Calculation Engines** component from
 2. the read/on-demand **R/S Runtime Ladder** path;
 3. the independent **monthly R/S historical research/effectiveness** path.
 
-The daily target architecture now includes the approved-by-design **Price Movement Character Engine** from REQ-0027 / ADR-012. That stage remains implementation-pending until Archify synchronization/rendering and implementation handoff are complete.
+REQ-0027 now uses an isolated **ZigZag Swing Engine MWG MVP** as the segmentation foundation. The MVP is manual and intentionally remains outside the canonical daily pipeline until MWG pivot validation is accepted.
 
 ## Navigation Contract
 
@@ -66,15 +66,7 @@ SyncWritePipelineService / shared DuckDBUnitOfWork
         │           └─> vw_Ticker_indicators + vw_Indicator_config
         │               └─> blocking stage DQ
         │
-        ├─ 4. Price Movement Character Engine
-        │       └─> cal_price_movement_swing
-        │       └─> cal_price_movement_daily
-        │           └─> vw_Ticker_Movement_Swings
-        │           └─> vw_Ticker_Movement_D
-        │           └─> vw_Ticker_Movement_Profile
-        │               └─> blocking stage DQ
-        │
-        └─ 5. SmartMoneyScore Engine
+        └─ 4. SmartMoneyScore Engine
                 └─> cal_smart_money_factor_values
                     + cal_smart_money_ticker_score
                     └─> vw_Ticker_SmartMoney
@@ -111,13 +103,12 @@ vw_RS_Source_Effectiveness
 
 ## 1. Daily Analytics Order
 
-The authoritative implemented daily order is currently owned by `SyncWritePipelineService.run()`. The target order after REQ-0027 implementation is:
+The authoritative implemented daily order is owned by `SyncWritePipelineService.run()`. ZigZag is not part of this order during the MWG MVP:
 
 ```text
 Composite Index
 → Trend / Moving Average
 → Technical Indicators
-→ Price Movement Character
 → SmartMoneyScore
 ```
 
@@ -217,47 +208,32 @@ vw_Ticker_indicators
 
 Normal finite-window indicators use configured warmup/checkpoint behavior. Cumulative full-history indicators such as OBV and AD reload history from inception so incremental calculation preserves the same cumulative baseline as historical backfill.
 
-### Price Movement Character Engine
+### ZigZag Swing Engine — MWG MVP
 
-**Status:** target design; implementation pending.
+**Status:** implemented for manual MWG validation; not part of run.py.
 
-**Architecture contract:** `docs/architecture/Price_Movement_Character.md`.
+**Architecture contract:** docs/architecture/ZigZag_Engine.md.
 
-**Requirement / decision:** `REQ-0027` / `ADR-012`.
+**Requirement / decisions:** REQ-0027 / ADR-012 / ADR-013.
 
-Core target stages:
+MVP path:
 
-```text
-Adjusted OHLC + public ATR indicator evidence
-        ↓
-Sequential Swing Segmentation
-        ↓
-Confirmed Swing Features + Provisional Current Leg
-        ↓
-Same-Direction Historical Profile
-        ↓
-Magnitude / Velocity / Persistence Scoring
-        ↓
-Movement Character Classification
-        ↓
-cal_price_movement_swing
-cal_price_movement_daily
-        ↓
-vw_Ticker_Movement_Swings
-vw_Ticker_Movement_D
-vw_Ticker_Movement_Profile
-```
+    vw_Ticker_OHLC_D (MWG only)
+            ↓
+    O(n) percentage-reversal ZigZag
+            ↓
+    cal_zigzag_pivot
+    cal_zigzag_current_leg
+            ↓
+    vw_Ticker_ZigZag_Pivots
+    vw_Ticker_ZigZag_Swings
+    vw_Ticker_ZigZag_Current
 
-The domain is deliberately separate from the Indicator Engine because it owns confirmed swing events, a provisional state machine and point-in-time pivot-confirmation semantics. It consumes ATR through `vw_Ticker_indicators` / `vw_Indicator_config` rather than reading internal indicator persistence.
+The ZigZag engine uses High/Low for candidate extrema and Close for 5% reversal confirmation.
+It has no ATR dependency and stores PivotDate separately from ConfirmedAtDate.
 
-The historical no-look-ahead invariant is:
-
-```text
-PivotEndDate = date the extreme occurred
-ConfirmedAtDate = later date the reversal made the extreme knowable
-```
-
-No as-of row may use an event whose `ConfirmedAtDate` is in the future relative to that row.
+The previous Price Movement daily persistence/ATR segmentation implementation was rolled back.
+Higher-level magnitude/velocity/persistence work is deferred until the MWG ZigZag gate is accepted.
 
 ### SmartMoneyScore Engine
 
@@ -371,7 +347,7 @@ V2.4 is research/governance. It does **not** automatically mutate runtime provid
 | Composite Index | daily | `calculate_VNINDEX_NOT_VIN()` | `cal_Indexes` | shared daily UoW |
 | Trend / MA | daily | `cal_Moving_Average()` | `cal_Trends` | shared daily UoW |
 | Indicator Engine | daily | `refresh_technical_indicators()` | `cal_indicator_values` → `vw_Ticker_indicators` | shared daily UoW |
-| Price Movement Character | daily, target | sequential swing state + profile + scoring | `cal_price_movement_swing`, `cal_price_movement_daily` → three public views | shared daily UoW after implementation |
+| ZigZag Swing Engine | manual MWG MVP | O(n) 5% reversal pivot segmentation | `cal_zigzag_pivot`, `cal_zigzag_current_leg` → three public views | separate manual UoW; not in run.py |
 | SmartMoneyScore | daily | `refresh_smart_money_score()` | factor + score tables → `vw_Ticker_SmartMoney` | shared daily UoW |
 | R/S Runtime Ladder | on demand / consumer | `build_level_ladder()` family | `LevelLadderResult` | read/calculation path, separate from daily writer |
 | R/S V2.4 Evaluation | monthly/manual | baseline + ablation + effectiveness | `cal_rs_source_effectiveness*`, audit + public view | separate monthly research run |
@@ -420,5 +396,5 @@ Until the command above succeeds and the generated HTML is committed, this drill
 
 ## ADR
 
-- `ADR-012` is required for the new Price Movement Character domain boundary and persistence strategy.
+- `ADR-012` owns the stateful analytics domain boundary; `ADR-013` owns the ZigZag segmentation decision and MWG-first rollout.
 - No new ADR is required for the pre-existing calculation-engine drill-down itself.
