@@ -332,3 +332,27 @@ Local validation still required:
     python scripts\export_price_movement_reconciliation.py --ticker MWG
 
 Final PASS/FAIL belongs to TestEngineer. No run.py integration is authorized.
+
+
+## Delivery Gate History
+
+    BA
+    Requirement quality: COMPLETE
+    Gate: READY_FOR_DESIGN
+    Material: this REQ-0031 document
+
+    SA
+    Architecture semantics: APPROVED_FOR_IMPLEMENTATION
+    Design: docs/architecture/Price_Movement_Character_V2.md
+    ADR: docs/adr/ADR-016-zigzag-price-movement-characterization-v2.md
+    Archify generated artifact: pending local render/validation only
+
+    DEV
+    Implementation: COMPLETE
+    State: IMPLEMENTED_PENDING_VALIDATION
+    Validation owner: TestEngineer
+
+The implementation currently consumes active ZigZag config ZZ_D_5_MVP. This is intentional:
+V1.1 calibration recommendations remain research evidence because V1.2 concluded
+KEEP_5_BASELINE for the pilot. REQ-0031 must never silently substitute an unpromoted
+BaseDeviationPct.
