@@ -11,17 +11,17 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 9 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
+| Requirements | 10 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **33** | **6 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
+| **Total** | **34** | **6 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
 
 ### Priority Summary
 
 | Priority | Count | Notes |
 |---|---:|---|
 | P0 | 4 | REQ-0022, REQ-0023, REQ-0024, CS-ARCH-010 |
-| P1 | 19 | REQ-0025 through REQ-0030 + 6 Architecture + 7 Harness |
+| P1 | 20 | REQ-0025 through REQ-0031 + 6 Architecture + 7 Harness |
 | P2 | 7 | 2 Architecture + 5 Harness |
 | P3 | 3 | 1 Architecture + 2 Harness |
 
@@ -73,6 +73,7 @@ Canonical index:
 | REQ-0028 | ZigZag Deviation Calibration V1.1 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0028-zigzag-deviation-calibration-v1-1|REQ-0028]] |
 | REQ-0029 | ZigZag Multi-Ticker Pilot V1.2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0029-zigzag-multi-ticker-pilot-v1-2|REQ-0029]] |
 | REQ-0030 | ZigZag Regime-Aware Swing-Locked Deviation V2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0030-zigzag-regime-aware-v2|REQ-0030]] |
+| REQ-0031 | ZigZag-based Price Movement Characterization V2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0031-zigzag-price-movement-character-v2|REQ-0031]] |
 
 ## Requirement Delivery Flow
 
@@ -112,6 +113,9 @@ IMPLEMENTED_PENDING_VALIDATION
         ↓
 REQ-0030 V2 Regime-Aware
 IMPLEMENTED_PENDING_VALIDATION
+        ↓
+REQ-0031 Price Movement Character V2
+IMPLEMENTED_PENDING_VALIDATION
 ```
 
 Related approved Smart Money design:
@@ -121,7 +125,8 @@ Related approved Smart Money design:
 
 Related Price Movement design:
 
-- [[../architecture/Price_Movement_Character|Price Movement Character Architecture]]
+- [[../architecture/Price_Movement_Character_V2|Price Movement Character V2 Architecture]]
+- [[../adr/ADR-016-zigzag-price-movement-characterization-v2|ADR-016 ZigZag-based Price Movement Characterization]]
 - [[../adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Analytics Boundary]]
 
 ## Requirement Data-Hygiene Warning
@@ -278,6 +283,7 @@ CS-HARNESS-014
 | REQ-0028 ZigZag V1.1 | REQ-0027 canonical ZigZag engine + adjusted OHLC |
 | REQ-0029 ZigZag V1.2 | REQ-0028 calibrated ticker config |
 | REQ-0030 ZigZag V2 | REQ-0028 calibrated base + ADR-015 swing-lock rule |
+| REQ-0031 Price Movement V2 | Active ZigZag public swings + adjusted OHLC + ADR-016 |
 | REQ-0024 R/S V2.6 | Requires V2.5 evidence/promotion gate before production confidence integration |
 
 ---
@@ -291,7 +297,7 @@ Based on current status and priority, the next actionable queue is:
 | 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
 | 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
 | 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
-| 4 | **REQ-0027** | P1 requirement is ready for SolutionArchitect; design must complete Archify synchronization before implementation. |
+| 4 | **REQ-0031** | Implementation is on main; local Archify render, MWG initload, structural validation and reconciliation evidence are the next gate. |
 | 5 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
 | 6 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
 | 7 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
