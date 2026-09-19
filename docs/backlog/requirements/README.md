@@ -94,3 +94,13 @@ Execution order:
       -> TestEngineer PASS / pilot decision
       -> REQ-0030 / V2
       -> TestEngineer PASS / research decision
+
+
+## Price Movement characterization
+
+- [[REQ-0031-zigzag-price-movement-character-v2|REQ-0031 — ZigZag-based Price Movement Characterization V2]] — **IMPLEMENTED_PENDING_VALIDATION**; consumes active ZigZag public swings, enriches confirmed movement features, persists ticker profile, and includes post-golive ChatGPT reconciliation export.
+
+Validation:
+
+    docs/runbook/ZigZag_Price_Movement_Character_V2.md
+    docs/runbook/ZigZag_Price_Movement_Reconciliation.md
