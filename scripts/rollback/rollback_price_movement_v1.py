@@ -12,7 +12,6 @@ BASELINE_COMMIT = "0d7ff1b27862c7415affc8ca1fa9c65d304ba92e"
 # Files that existed before Price Movement implementation and must be restored
 # exactly to the pre-implementation baseline.
 RESTORE_FROM_BASELINE = [
-    "docs/backlog/requirements/REQ-0027-price-movement-characterization.md",
     "run.py",
     "src/cherrystock/application/services/sync_write_pipeline.py",
     "src/cherrystock/infrastructure/database/repositories/__init__.py",
@@ -34,8 +33,6 @@ REMOVE_TRACKED_FILES = [
     "src/DuckDB/sql/price_movement_character_v1_profile_view.sql",
     "src/DuckDB/sql/price_movement_character_v1_schema.sql",
     "src/calcEngine/priceMovementCharacter.py",
-    "src/cherrystock/domain/__init__.py",
-    "src/cherrystock/domain/analytics/__init__.py",
     "src/cherrystock/domain/analytics/price_movement/__init__.py",
     "src/cherrystock/domain/analytics/price_movement/engine.py",
     "src/cherrystock/domain/analytics/price_movement/models.py",
@@ -256,7 +253,7 @@ def rollback_source(repo_root: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Rollback Price Movement Character V1 to the repository state immediately "
+            "Rollback retired Price Movement Character V1 implementation to the repository state immediately "
             "before implementation. Dry-run by default."
         )
     )
@@ -308,7 +305,7 @@ def main() -> int:
     print("Recommended verification:")
     print("  python run.py")
     print()
-    print("The requirement/architecture material that already existed at the baseline is preserved.")
+    print("REQ-0027 and the new ZigZag implementation are preserved; only retired Price Movement V1 artifacts are targeted.")
     return 0
 
 
