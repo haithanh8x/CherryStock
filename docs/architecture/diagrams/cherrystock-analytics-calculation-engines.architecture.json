@@ -11,7 +11,7 @@
       "revision": "1138700c9b2ca74f14394f244a109831f032e605"
     },
     "viewBox": [
-      1450,
+      1390,
       1060
     ]
   },
@@ -114,7 +114,7 @@
       "label": "ZigZag Swing Engine",
       "sublabel": "adjusted OHLC · confirmed pivots",
       "pos": [
-        910,
+        1150,
         80
       ],
       "size": [
@@ -142,7 +142,7 @@
       "label": "SmartMoneyScore Engine",
       "sublabel": "feature · state · score",
       "pos": [
-        1150,
+        910,
         80
       ],
       "size": [
@@ -258,7 +258,7 @@
       "label": "Movement Persistence",
       "sublabel": "ZigZag facts · movement features",
       "pos": [
-        910,
+        1150,
         260
       ],
       "size": [
@@ -286,7 +286,7 @@
       "label": "SmartMoney Persistence",
       "sublabel": "factors · ticker score",
       "pos": [
-        1150,
+        910,
         260
       ],
       "size": [
@@ -330,7 +330,7 @@
       "label": "Movement Public Contracts",
       "sublabel": "pivots · swings · profile",
       "pos": [
-        910,
+        1150,
         440
       ],
       "size": [
@@ -354,7 +354,7 @@
       "label": "SmartMoney Public Contract",
       "sublabel": "ticker score · public view",
       "pos": [
-        1150,
+        910,
         440
       ],
       "size": [
@@ -398,7 +398,7 @@
       "label": "Analytical Consumers",
       "sublabel": "Web · Chart · Screener · API",
       "pos": [
-        1150,
+        910,
         610
       ],
       "size": [
@@ -474,7 +474,7 @@
       "label": "R/S Research Persistence",
       "sublabel": "effectiveness · audit",
       "pos": [
-        910,
+        915,
         896
       ],
       "size": [
@@ -494,7 +494,7 @@
       "label": "Price Movement Character",
       "sublabel": "confirmed swings · OHLC path",
       "pos": [
-        910,
+        1150,
         610
       ],
       "size": [
@@ -606,7 +606,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "labelAt": [
-        1070,
+        1310,
         205
       ]
     },
@@ -618,7 +618,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "labelAt": [
-        1320,
+        1075,
         205
       ]
     },
@@ -642,7 +642,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "labelAt": [
-        1065,
+        1300,
         390
       ]
     },
@@ -654,7 +654,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "labelAt": [
-        1320,
+        1075,
         390
       ]
     },
@@ -693,25 +693,12 @@
       "to": "consumers",
       "label": "LevelLadderResult",
       "variant": "emphasis",
+      "route": "straight",
       "fromSide": "right",
-      "toSide": "bottom",
-      "via": [
-        [
-          880,
-          650
-        ],
-        [
-          880,
-          740
-        ],
-        [
-          1260,
-          740
-        ]
-      ],
+      "toSide": "left",
       "labelAt": [
-        1060,
-        755
+        885,
+        705
       ]
     },
     {
@@ -722,7 +709,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "labelAt": [
-        1320,
+        1075,
         565
       ]
     },
@@ -732,6 +719,8 @@
       "label": "monthly research run",
       "variant": "emphasis",
       "route": "straight",
+      "fromSide": "right",
+      "toSide": "left",
       "labelAt": [
         650,
         875
@@ -755,8 +744,10 @@
       "label": "effectiveness + audit",
       "variant": "security",
       "route": "straight",
+      "fromSide": "right",
+      "toSide": "left",
       "labelAt": [
-        885,
+        890,
         875
       ]
     },
@@ -764,21 +755,12 @@
       "from": "rs_research_store",
       "to": "consumers",
       "label": "research / governance read",
-      "fromSide": "right",
-      "toSide": "right",
-      "via": [
-        [
-          1400,
-          936
-        ],
-        [
-          1400,
-          650
-        ]
-      ],
+      "route": "straight",
+      "fromSide": "top",
+      "toSide": "bottom",
       "labelAt": [
-        1315,
-        820
+        1090,
+        805
       ]
     },
     {
@@ -787,8 +769,10 @@
       "label": "4 · SmartMoney",
       "variant": "emphasis",
       "route": "straight",
+      "fromSide": "right",
+      "toSide": "left",
       "labelAt": [
-        1005,
+        885,
         55
       ]
     },
@@ -801,7 +785,7 @@
       "fromSide": "bottom",
       "toSide": "top",
       "labelAt": [
-        1015,
+        1310,
         565
       ]
     },
@@ -811,10 +795,10 @@
       "label": "movement profile",
       "variant": "emphasis",
       "route": "straight",
-      "fromSide": "right",
-      "toSide": "left",
+      "fromSide": "left",
+      "toSide": "right",
       "labelAt": [
-        1135,
+        1140,
         705
       ]
     }
