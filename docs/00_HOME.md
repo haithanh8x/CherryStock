@@ -97,7 +97,8 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[architecture/Indicator_Engine|Indicator Engine]]
 - [[architecture/ZigZag_Engine|ZigZag Swing Engine — MWG MVP]]
-- [[architecture/Price_Movement_Character|Price Movement Character Engine — deferred downstream layer]]
+- [[architecture/Price_Movement_Character_V2|Price Movement Character V2 — ZigZag-based characterization]]
+- [[architecture/Price_Movement_Character|Price Movement Character — historical deferred design]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/Second_Brain|Second Brain Architecture]]
@@ -121,6 +122,9 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/Price_Movement_Character|Price Movement Character — deferred downstream layer]]
 - [[adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Analytics Boundary]]
 - [[adr/ADR-013-zigzag-as-price-movement-segmentation-foundation|ADR-013 ZigZag Segmentation Foundation]]
+- [[adr/ADR-014-zigzag-static-calibration-and-promotion|ADR-014 ZigZag Static Calibration and Promotion]]
+- [[adr/ADR-015-zigzag-regime-aware-swing-locked-deviation|ADR-015 ZigZag Regime-Aware Swing-Locked Deviation]]
+- [[adr/ADR-016-zigzag-price-movement-characterization-v2|ADR-016 ZigZag-based Price Movement Characterization]]
 - [[runbook/ZigZag_MWG_MVP|ZigZag MWG MVP Runbook]]
 - [[backlog/requirements/REQ-0028-zigzag-deviation-calibration-v1-1|REQ-0028 ZigZag Deviation Calibration V1.1]]
 - [[architecture/ZigZag_Deviation_Calibration|ZigZag Deviation Calibration V1.1]]
@@ -132,6 +136,11 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/ZigZag_Regime_Aware|ZigZag Regime-Aware V2]]
 - [[runbook/ZigZag_Regime_Aware_V2|ZigZag Regime-Aware V2 Runbook]]
 - [[runbook/ZigZag_Deviation_Roadmap|ZigZag Deviation Roadmap Runbook]]
+- [[backlog/requirements/REQ-0031-zigzag-price-movement-character-v2|REQ-0031 ZigZag-based Price Movement Characterization V2]]
+- [[architecture/Price_Movement_Character_V2|Price Movement Character V2]]
+- [[adr/ADR-016-zigzag-price-movement-characterization-v2|ADR-016 Price Movement Characterization]]
+- [[runbook/ZigZag_Price_Movement_Character_V2|Price Movement V2 Validation Runbook]]
+- [[runbook/ZigZag_Price_Movement_Reconciliation|Price Movement Post-Golive Reconciliation]]
 
 ### R/S / chart-related architecture
 
