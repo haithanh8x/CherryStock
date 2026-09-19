@@ -693,6 +693,7 @@
       "to": "consumers",
       "label": "LevelLadderResult",
       "variant": "emphasis",
+      "route": "straight",
       "labelAt": [
         1010,
         704
@@ -702,6 +703,15 @@
       "from": "movement_public",
       "to": "consumers",
       "label": "pivots / swings / current",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          1015,
+          650
+        ]
+      ],
       "labelAt": [
         1090,
         606
@@ -779,6 +789,7 @@
       "to": "smart_money",
       "label": "4 · SmartMoney",
       "variant": "emphasis",
+      "route": "straight",
       "labelAt": [
         1005,
         55
@@ -789,25 +800,21 @@
       "to": "price_movement",
       "label": "MWG OHLC · manual MVP",
       "variant": "emphasis",
-      "fromSide": "bottom",
-      "toSide": "left",
+      "fromSide": "right",
+      "toSide": "bottom",
       "via": [
         [
-          130,
-          712
+          500,
+          390
         ],
         [
-          880,
-          712
-        ],
-        [
-          880,
-          116
+          1015,
+          390
         ]
       ],
       "labelAt": [
-        560,
-        726
+        755,
+        375
       ]
     },
     {
@@ -832,20 +839,16 @@
       "via": [
         [
           130,
-          890
+          700
         ],
         [
-          880,
-          890
-        ],
-        [
-          880,
-          650
+          890,
+          700
         ]
       ],
       "labelAt": [
         520,
-        904
+        686
       ]
     },
     {
@@ -853,11 +856,10 @@
       "to": "consumers",
       "label": "movement profile",
       "variant": "emphasis",
-      "fromSide": "right",
-      "toSide": "left",
+      "route": "straight",
       "labelAt": [
-        1240,
-        600
+        1135,
+        650
       ]
     }
   ]
