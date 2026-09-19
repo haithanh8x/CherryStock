@@ -105,3 +105,36 @@ def test_invalid_price_row_is_dropped_explicitly() -> None:
     assert diagnostics.source_rows == 3
     assert diagnostics.usable_rows == 2
     assert diagnostics.invalid_rows_dropped == 1
+
+
+def test_reversal_confirmed_after_pivot_bar_candidate_at_last_pivot() -> None:
+    """Regression: a long trend confirmed against a candidate that sits exactly on
+    the last pivot bar must not stall. Reproduces the MWG 2014 freeze where the
+    DOWN leg never confirmed any LOW pivot because enough_bars used
+    candidate.index (equal to the pivot bar) instead of the current bar index."""
+
+    # Bootstrap HIGH at first bar area, then a long monotonic rally: the DOWN leg
+    # candidate LOW stays at the pivot bar while Close rises far above it.
+    rows = [
+        ("2026-01-01", 10.0, 9.0, 9.5),   # bootstrap high 10.0, low 9.0
+        ("2026-01-02", 9.2, 8.4, 8.6),    # drop >5% from high -> bootstrap HIGH confirmed
+        ("2026-01-03", 9.5, 8.9, 9.3),    # close 9.3 vs candidate low 8.4 = +10.7% -> LOW pivot
+        ("2026-01-04", 10.5, 9.8, 10.2),  # rally continues
+        ("2026-01-05", 12.0, 11.2, 11.5),
+        ("2026-01-06", 14.0, 13.1, 13.5),
+    ]
+    frame = _frame(rows)
+
+    pivots, current, _ = calculate_zigzag(frame, ticker="MWG", config=_config())
+
+    types = [pivot.pivot_type for pivot in pivots]
+    assert types == ["HIGH", "LOW"], f"expected stalled leg resolved, got {types}"
+
+    low_pivot = pivots[1]
+    assert str(low_pivot.pivot_date) == "2026-01-02"
+    assert low_pivot.pivot_price == 8.4
+    assert str(low_pivot.confirmed_at_date) == "2026-01-03"
+
+    assert current is not None
+    assert current.direction == "UP"
+    assert current.status == "PROVISIONAL"

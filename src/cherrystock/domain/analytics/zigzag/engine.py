@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 import numpy as np
@@ -235,7 +235,7 @@ def calculate_zigzag(
                 opposite = _Extreme(low, bar_date, i)
 
             reversal = (candidate.price - close) / candidate.price
-            enough_bars = candidate.index - last_pivot_index >= config.minimum_swing_bars
+            enough_bars = i - last_pivot_index >= config.minimum_swing_bars
             if reversal >= config.deviation_pct and enough_bars:
                 pivots.append(
                     _pivot(
@@ -265,7 +265,7 @@ def calculate_zigzag(
             opposite = _Extreme(high, bar_date, i)
 
         reversal = close / candidate.price - 1.0
-        enough_bars = candidate.index - last_pivot_index >= config.minimum_swing_bars
+        enough_bars = i - last_pivot_index >= config.minimum_swing_bars
         if reversal >= config.deviation_pct and enough_bars:
             pivots.append(
                 _pivot(
@@ -286,6 +286,24 @@ def calculate_zigzag(
     last_row = rows[-1]
     last_date = last_row.Date.date()
     last_close = float(last_row.Close)
+
+    # Whipsaw dedupe: a reversal confirmed against a candidate seeded from the
+    # just-confirmed pivot bar can re-emit the same extreme. Keep the first
+    # confirmation per (PivotDate, PivotType) and resequence so PivotSeq stays
+    # contiguous and pivot keys stay unique.
+    deduped: list[ZigZagPivot] = []
+    seen_keys: set[tuple[date, str]] = set()
+    for pivot in pivots:
+        key = (pivot.pivot_date, pivot.pivot_type)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        deduped.append(
+            pivot
+            if pivot.pivot_seq == len(deduped) + 1
+            else replace(pivot, pivot_seq=len(deduped) + 1)
+        )
+    pivots = deduped
 
     if state is None or not pivots or candidate is None:
         current = ZigZagCurrentLeg(
