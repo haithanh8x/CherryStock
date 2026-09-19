@@ -205,3 +205,233 @@ Whenever a component is inserted, removed, resized or moved, inspect every relat
 Real CherryStock example: Indicator Engine → SmartMoney Engine became invalid after a ZigZag component was inserted between them. Endpoints remained valid, but the straight relationship passed through the new node.
 
 The durable fix was semantic re-laning, not adding random bends.
+
+
+## 9. Required CherryStock preflight
+
+Run through the wrapper, or explicitly as one command:
+
+~~~powershell
+python scripts\validate_archify_source.py docs\architecture\diagrams\<diagram>.architecture.json --repo-root . --output docs\architecture\generated\<artifact>.html --navigation-config docs\architecture\diagrams\cherrystock-archify-navigation.json
+~~~
+
+Current preflight protects at least:
+
+~~~text
+diagram type
+component ids
+max component sources
+source path existence
+navigation misuse in sources
+connection endpoint existence
+navigation node validity
+minimum explicit direct connection clearance
+showcase desktop readability budget
+~~~
+
+Preflight PASS is necessary but not sufficient. Archify remains authoritative for complete geometry and showcase composition.
+
+## 10. Error triage by Archify stage
+
+### stage: arguments
+
+This is usually wrapper/CLI behavior. Check input path, argument ordering, PowerShell variable collision, Archify installation/version, and repo-root.
+
+Do not touch diagram geometry until invocation is correct.
+
+### stage: render
+
+This is usually schema or a hard initial layout constraint. Common examples:
+
+~~~text
+label too wide
+invalid field
+too many sources
+connection too short
+hard geometry constraint
+~~~
+
+Fix the direct cause, then rerun from preflight.
+
+### stage: check
+
+The SVG was produced, but final showcase composition failed. Common examples:
+
+~~~text
+desktop-readability
+proper crossings
+ambiguous corridors
+label-route clearance
+container border runs
+route rhythm
+stretch/bend quality
+~~~
+
+Treat these as whole-diagram composition problems, not automatically as isolated edge problems.
+
+## 11. Mandatory checker review
+
+When Archify returns checker metrics, inspect all of them even if only one issue is fatal.
+
+Desired steady state:
+
+~~~text
+single_svg                  PASS
+finite_svg                  PASS
+orthogonal_arrows           PASS
+label_route_clearance       PASS
+relationship_crossings      PASS
+relationship_corridors      PASS
+container_border_runs       PASS
+route_rhythm                PASS
+legend_clearance            PASS
+
+properCrossings             0
+ambiguousCorridors          0
+labelRouteClearanceIssues   0
+desktopReadabilityIssues    0
+routesOverSuggestedBends    0
+routesOverSuggestedStretch  0
+microSegmentCount           0
+~~~
+
+A passing diagram sitting exactly on a threshold is fragile. Prefer margin where possible.
+
+## 12. Generated artifact rules
+
+Typed source:
+
+~~~text
+docs/architecture/diagrams/**
+~~~
+
+Generated presentation:
+
+~~~text
+docs/architecture/generated/**
+~~~
+
+Rules:
+
+~~~text
+- canonical Markdown / ADR owns architecture meaning
+- typed source owns diagram structure
+- generated HTML is derived presentation output
+- never hand-edit generated HTML for durable meaning
+- rerender after typed-source changes
+- typography/navigation changes must come from deterministic scripts
+- commit typed source + generated artifact together after successful validation when practical
+~~~
+
+## 13. CI and version consistency
+
+Where a GitHub workflow exists, use:
+
+~~~text
+pinned Archify version
+→ CherryStock preflight
+→ showcase validation
+→ deliver HTML
+→ deterministic post-processing
+→ synchronize artifact only after PASS
+~~~
+
+Current workflows:
+
+~~~text
+.github/workflows/render-archify-analytics.yml
+.github/workflows/render-archify-agent-harness.yml
+~~~
+
+Do not assume local and CI Archify versions behave identically.
+
+## 14. Safe editing procedure
+
+Before changing any Archify typed source:
+
+~~~text
+A. Read this guide.
+B. Read canonical architecture Markdown / ADR.
+C. Inspect all node positions/sizes and all connections.
+D. Identify semantic lanes and affected corridors.
+E. Check component bounds against viewBox.
+F. Check readability budget before widening viewBox.
+G. Keep direct connection gaps >= 24px, preferably >= 30px.
+H. Make the smallest coherent layout change.
+I. Run CherryStock preflight.
+J. Run Archify showcase validation.
+K. Classify any failure by stage and fix root cause.
+L. Deliver/post-process only after validate PASS.
+M. Visually inspect final HTML.
+N. Commit typed source + generated artifact.
+~~~
+
+## 15. Anti-patterns
+
+~~~text
+DO NOT:
+- patch generated HTML to hide validation defects
+- widen viewBox horizontally without checking font scale
+- insert a node into an existing corridor without checking unrelated edges
+- add many via points to compensate for bad placement
+- assume automatic routing repairs congested topology
+- assume explicit routing remains valid after neighboring nodes move
+- put every dependency on the overview page
+- add more than 3 evidence sources to one component
+- put drill-down navigation in component.sources
+- rename stable component ids for cosmetics
+- claim PASS because preflight passed
+- claim PASS from an earlier revision
+~~~
+
+## 16. Completion checklist
+
+Before declaring an Archify-backed architecture synchronized:
+
+~~~text
+[ ] This guide was read
+[ ] Canonical architecture / ADR is correct
+[ ] Diagram scope fits high-level vs drill-down
+[ ] Semantic lanes are explicit
+[ ] Component ids are stable and unique
+[ ] <= 3 evidence sources per component
+[ ] Every source path exists
+[ ] All connection endpoints resolve
+[ ] Existing corridors were rechecked after node moves/inserts
+[ ] Explicit direct connections have >= 24px clearance
+[ ] viewBox satisfies readability budget
+[ ] Labels and sublabels are concise
+[ ] CherryStock preflight PASS
+[ ] Archify showcase returns "ok": true
+[ ] Checker reports zero composition errors
+[ ] Deliver succeeds
+[ ] Typography/navigation post-processing succeeds
+[ ] Generated HTML visually reviewed
+[ ] Typed source and generated HTML synchronized in Git
+~~~
+
+## 17. Maintenance rule
+
+Whenever a new recurring Archify failure is discovered:
+
+~~~text
+1. record symptom + root cause + durable fix in this guide
+2. add a generic deterministic preflight check when safe
+3. update Archify Instructions if mandatory behavior changes
+4. do not encode one diagram's node ids into shared validation logic
+~~~
+
+## 18. Core principle
+
+Archify failures should improve the repository guardrails.
+
+~~~text
+new failure
+→ identify root cause
+→ repair architecture presentation correctly
+→ document the pattern here
+→ add preflight guardrail when deterministic
+→ prevent recurrence across every diagram
+~~~
+
+This file is the durable CherryStock knowledge base for avoiding Archify generation regressions.
