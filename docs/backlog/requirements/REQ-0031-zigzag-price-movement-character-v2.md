@@ -324,7 +324,6 @@ and runbooks are present on main.
 
 Local validation still required:
 
-    .\scripts\render_archify_analytics.ps1 -NoOpen
     python -m pytest tests\test_zigzag_engine.py tests\test_price_movement_zigzag.py -v
     python -m pytest tests\test_sync_write_pipeline_service.py -v
     python scripts\initload\init_reload_price_movement_mwg.py
@@ -345,7 +344,7 @@ Final PASS/FAIL belongs to TestEngineer. No run.py integration is authorized.
     Architecture semantics: APPROVED_FOR_IMPLEMENTATION
     Design: docs/architecture/Price_Movement_Character_V2.md
     ADR: docs/adr/ADR-016-zigzag-price-movement-characterization-v2.md
-    Archify generated artifact: pending local render/validation only
+    Archify generated artifact: DEFERRED_NON_BLOCKING (layout/showcase only)
 
     DEV
     Implementation: COMPLETE
@@ -356,3 +355,14 @@ The implementation currently consumes active ZigZag config ZZ_D_5_MVP. This is i
 V1.1 calibration recommendations remain research evidence because V1.2 concluded
 KEEP_5_BASELINE for the pilot. REQ-0031 must never silently substitute an unpromoted
 BaseDeviationPct.
+
+
+## Archify Deferral
+
+Archify layout/showcase validation is not part of AC-01..AC-18 and is explicitly non-blocking
+for REQ-0031 technical validation. The current showcase failure is caused by visualization
+connection/label routing crossing other nodes; it does not change runtime architecture
+semantics or Price Movement business calculations.
+
+Do not regenerate or commit the Archify generated HTML as part of the REQ-0031 validation
+run. Resolve the visualization layout later as a separate documentation-maintenance task.
