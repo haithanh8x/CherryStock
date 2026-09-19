@@ -18,3 +18,8 @@ Recommended sections:
 - Known risks
 
 Do not use implementation notes as a second Source of Truth for architecture or requirements.
+
+
+## Current feature notes
+
+- [[IMP-REQ-0031-price-movement-character-v2|REQ-0031 Price Movement Character V2]]
