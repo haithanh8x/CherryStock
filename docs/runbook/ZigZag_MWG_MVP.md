@@ -124,10 +124,11 @@ Validator kiểm tra:
 - duplicate pivot keys;
 - contiguous PivotSeq;
 - alternating HIGH/LOW;
-- PivotDate <= ConfirmedAtDate;
+- PivotDate < ConfirmedAtDate;
+- one confirmed pivot per trading date;
 - ConfirmedAtDate không đi lùi;
 - PivotPrice đúng với High/Low tại PivotDate;
-- interior pivot là local extreme giữa hai pivot lân cận;
+- interior pivot là local extreme trên các bar strictly between hai PivotDate lân cận;
 - đúng một current-leg row;
 - current direction phù hợp last confirmed pivot.
 
