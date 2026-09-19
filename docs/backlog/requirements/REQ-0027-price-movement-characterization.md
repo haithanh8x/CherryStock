@@ -1,3 +1,32 @@
+Optimized tool selection## Trạng thái hiện tại của runbook `Price_Movement_Character_V1.md`
+
+| Phase | Nội dung | Kết quả |
+|---|---|---|
+| 1 | Focused unit tests (3 files) | ✅ PASS (8 passed) |
+| 2 | Smoke full rebuild MWG | ✅ PASS (145 swings / 3038 daily) |
+| 3 | Inspect MWG + no-look-ahead | ⚠️→✅ Ban đầu fail 574 rows → sửa diagnostic query (chỉ check daily `CONFIRMED`) → PASS = 0 |
+| 4 | Read-only validator | ✅ PASS toàn bộ metric |
+| 5 | Idempotency rerun MWG | ✅ PASS |
+| **6** | **Full initload toàn universe** | ❌ **BLOCKED — đang điều tra** |
+| 7–12 | Chưa chạy | ⏸️ |
+
+## Chi tiết Blocker tại Phase 6
+
+1. **Lỗi 1 (đã fix bởi bạn):** `ZeroDivisionError` do tickers có `Open/High/Low/Close = 0` trong source → fix bằng `source_quality.py` (sanitize + mark PARTIAL).
+2. **Lỗi 2 (đang điều tra):** Rerun initload → `ConstraintException: CHECK constraint failed on cal_price_movement_daily: PersistencePercentile` phải NULL hoặc trong [0, 100]. Nghi vấn là giá trị **NaN** lọt qua (DuckDB NaN vượt check `<= 100`).
+
+Bước cuối tôi đã chạy là diag script `diag_price_movement_nan.py` — quét toàn universe tìm NaN/percentile > 100 trong output của `calculate_ticker_movement_fast`. Script đã chạy nền (terminal ID `44de4e83...`) nhưng do phiên trước đã kết thúc nên **kết quả chưa xác nhận**.
+
+## Bước tiếp theo
+
+Chạy lại diag để lấy kết quả:
+
+```powershell
+python scripts\diag_price_movement_nan.py
+```
+
+Bạn muốn tôi chạy lại diag ngay bây giờ không? (Nó quét toàn universe nên mất vài phút.)
+
 ---
 id: REQ-0027
 title: Price Movement Characterization and Swing Profile
