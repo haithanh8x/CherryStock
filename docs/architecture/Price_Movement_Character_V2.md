@@ -92,7 +92,7 @@ Responsibilities:
 - calculate TradingBars
 - calculate SwingPct and VelocityPctPerBar
 - build TrueRange / ATR20Pct path context
-- calculate AvgATR20Pct and ATRNormalizedMove
+- calculate AvgATRPct and ATRNormalizedMove
 - calculate PathEfficiency
 - calculate DirectionalPersistenceRate
 - enforce numeric and structural invariants
@@ -214,7 +214,7 @@ Calculated fields:
     TradingBars
     CalendarDays
     VelocityPctPerBar
-    AvgATR20Pct
+    AvgATRPct
     ATRNormalizedMove
     PathEfficiency
     DirectionalPersistenceRate
