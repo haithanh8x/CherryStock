@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -110,6 +111,10 @@ class RegimeDeviationResolver:
     ) -> None:
         self.policy = policy or RegimePolicyConfig()
         self.context = context.reset_index(drop=True).copy()
+        self._date_to_index = {
+            pd.Timestamp(value).date(): index
+            for index, value in enumerate(self.context["Date"].tolist())
+        } if "Date" in self.context.columns else {}
 
     def regime_at(self, index: int) -> str:
         if index < 0 or index >= len(self.context):
@@ -118,6 +123,10 @@ class RegimeDeviationResolver:
         if value not in {"LOW_VOL", "NORMAL", "HIGH_VOL"}:
             return "NORMAL"
         return value
+
+    def regime_on_date(self, value: date) -> str:
+        index = self._date_to_index.get(value)
+        return self.regime_at(index) if index is not None else "NORMAL"
 
     def multiplier_at(self, index: int) -> float:
         regime = self.regime_at(index)
@@ -138,11 +147,12 @@ class RegimeDeviationResolver:
 
     def __call__(
         self,
-        confirmed_at_date,
+        confirmed_at_date: date,
         confirmed_at_index: int,
         base_deviation_pct: float,
     ) -> float:
-        return self.deviation_at(confirmed_at_index, base_deviation_pct)
+        index = self._date_to_index.get(confirmed_at_date, confirmed_at_index)
+        return self.deviation_at(index, base_deviation_pct)
 
 
 def regime_counts(context: pd.DataFrame) -> dict[str, int]:
