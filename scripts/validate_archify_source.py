@@ -15,6 +15,9 @@ from pathlib import Path
 
 MAX_COMPONENT_SOURCES = 3
 MIN_DIRECT_CONNECTION_CLEARANCE = 24.0
+SHOWCASE_DESKTOP_AVAILABLE_WIDTH = 930.0
+SHOWCASE_MIN_PROJECTED_CONTEXT_PX = 6.0
+SHOWCASE_CONTEXT_SOURCE_FONT_PX = 9.0
 
 
 def fail(errors: list[str]) -> int:
@@ -97,6 +100,37 @@ def _direct_connection_clearance(
         return sy - (ty + th)
     return None
 
+
+def _validate_showcase_readability_budget(source: dict, errors: list[str]) -> None:
+    meta = source.get("meta", {})
+    view_box = meta.get("viewBox") if isinstance(meta, dict) else None
+    if not isinstance(view_box, list) or len(view_box) != 2:
+        return
+    try:
+        view_box_width = float(view_box[0])
+    except (TypeError, ValueError):
+        return
+    if view_box_width <= 0:
+        return
+
+    projected_context_px = (
+        SHOWCASE_CONTEXT_SOURCE_FONT_PX
+        * SHOWCASE_DESKTOP_AVAILABLE_WIDTH
+        / view_box_width
+    )
+    if projected_context_px < SHOWCASE_MIN_PROJECTED_CONTEXT_PX:
+        max_safe_width = (
+            SHOWCASE_CONTEXT_SOURCE_FONT_PX
+            * SHOWCASE_DESKTOP_AVAILABLE_WIDTH
+            / SHOWCASE_MIN_PROJECTED_CONTEXT_PX
+        )
+        errors.append(
+            "showcase desktop readability budget is too small: "
+            f"viewBox width {view_box_width:g}px projects 9px context text to "
+            f"{projected_context_px:.3f}px (< {SHOWCASE_MIN_PROJECTED_CONTEXT_PX:g}px). "
+            f"Keep viewBox width <= {max_safe_width:g}px or split/compact the diagram."
+        )
+
 def validate(
     input_path: Path,
     repo_root: Path,
@@ -112,6 +146,8 @@ def validate(
         errors.append(
             f"diagram_type must be 'architecture', got {source.get('diagram_type')!r}"
         )
+
+    _validate_showcase_readability_budget(source, errors)
 
     components = source.get("components")
     if not isinstance(components, list) or not components:
@@ -264,6 +300,7 @@ def validate(
     print(f"  connections: {len(connections)}")
     print(f"  max component sources: {MAX_COMPONENT_SOURCES}")
     print(f"  min explicit direct connection clearance: {MIN_DIRECT_CONNECTION_CLEARANCE:g}px")
+    print(f"  showcase context readability budget: >= {SHOWCASE_MIN_PROJECTED_CONTEXT_PX:g}px projected")
     if output_path is not None:
         print(f"  output: {output_path}")
     return 0
