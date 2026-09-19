@@ -252,14 +252,20 @@ Không cần chạy toàn daily pipeline chỉ để validate ZigZag.
 
 ## 14. Expansion gate
 
-Không tạo all-ticker initload trước khi đủ toàn bộ:
+Technical runbook rerun on 2026-09-19:
 
-    [ ] unit tests PASS
-    [ ] structural validator PASS
-    [ ] initload rerun idempotent
-    [ ] Jul-Sep 2026 pivot list đã review
-    [ ] UP/DOWN legs nhìn đúng với MWG chart
-    [ ] user chấp nhận ZZ_D_5_MVP hoặc yêu cầu config khác
+    [x] unit tests PASS — 7 passed
+    [x] full MWG initload PASS — 3,041 rows / 279 pivots
+    [x] structural validator PASS — 0 errors
+    [x] initload rerun idempotent — 279 pivots
+    [x] Jul-Sep 2026 pivot list generated for review
+    [x] current leg PROVISIONAL
+    [x] performance sanity PASS — ~0.02–0.06s
+    [x] daily pipeline regression PASS — 3 passed
+    [ ] UP/DOWN legs visually accepted against MWG chart/reference
+    [ ] user accepts ZZ_D_5_MVP or selects a replacement config
+
+Không tạo all-ticker initload trước khi hai visual/user acceptance items cuối cùng được đóng.
 
 Sau khi user approve mới chuyển requirement sang:
 
@@ -298,3 +304,29 @@ Final technical verdict:
     PASS | FAIL | BLOCKED | REGRESSION
 
 User visual acceptance của MWG là gate riêng trước khi mở rộng scope.
+
+
+## 17. Technical validation result — 2026-09-19
+
+Final TestEngineer technical verdict:
+
+    PASS — PENDING USER VISUAL ACCEPTANCE
+
+Evidence summary:
+
+    pytest tests\test_zigzag_engine.py        7 passed
+    source rows                               3,041
+    confirmed pivots                          279
+    structural_errors                         0
+    idempotent rerun                          279 pivots
+    current leg                               PROVISIONAL / UP
+    current start pivot                       LOW 2026-09-14 @ 68.60
+    Jul-Sep 2026 reviewed trough              LOW 2026-07-28 @ 61.54
+    calculation_seconds                       ~0.02–0.06
+    pytest tests\test_sync_write_pipeline_service.py   3 passed
+
+A validator defect was fixed during this run: local-extreme validation must be point-in-time
+safe and therefore cannot use bars after the pivot's ConfirmedAtDate. The validation window is
+bounded by confirmation knowledge rather than a future pivot.
+
+Do not expand to other tickers until visual acceptance is explicitly recorded.
