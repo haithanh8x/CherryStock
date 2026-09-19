@@ -8,7 +8,7 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "REQ-0031_PENDING_LOCAL_ARCHIFY_RENDER"
+      "revision": "61d45a2f8b4ec2ad68e412a83bb13269683539c0"
     },
     "viewBox": [
       1390,
@@ -693,7 +693,6 @@
       "to": "consumers",
       "label": "LevelLadderResult",
       "variant": "emphasis",
-      "route": "straight",
       "labelAt": [
         1010,
         704
@@ -703,15 +702,6 @@
       "from": "movement_public",
       "to": "consumers",
       "label": "pivots / swings / current",
-      "route": "straight",
-      "fromSide": "bottom",
-      "toSide": "left",
-      "via": [
-        [
-          1015,
-          650
-        ]
-      ],
       "labelAt": [
         1090,
         606
@@ -789,7 +779,6 @@
       "to": "smart_money",
       "label": "4 · SmartMoney",
       "variant": "emphasis",
-      "route": "straight",
       "labelAt": [
         1005,
         55
@@ -800,21 +789,25 @@
       "to": "price_movement",
       "label": "MWG OHLC · manual MVP",
       "variant": "emphasis",
-      "fromSide": "right",
-      "toSide": "bottom",
+      "fromSide": "bottom",
+      "toSide": "left",
       "via": [
         [
-          500,
-          390
+          130,
+          712
         ],
         [
-          1015,
-          390
+          880,
+          712
+        ],
+        [
+          880,
+          116
         ]
       ],
       "labelAt": [
-        755,
-        375
+        560,
+        726
       ]
     },
     {
@@ -839,16 +832,20 @@
       "via": [
         [
           130,
-          700
+          890
         ],
         [
-          890,
-          700
+          880,
+          890
+        ],
+        [
+          880,
+          650
         ]
       ],
       "labelAt": [
         520,
-        686
+        904
       ]
     },
     {
@@ -856,10 +853,11 @@
       "to": "consumers",
       "label": "movement profile",
       "variant": "emphasis",
-      "route": "straight",
+      "fromSide": "right",
+      "toSide": "left",
       "labelAt": [
-        1135,
-        650
+        1240,
+        600
       ]
     }
   ]
