@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -64,6 +65,24 @@ def _prepare_source(frame: pd.DataFrame) -> tuple[pd.DataFrame, ZigZagDiagnostic
     )
 
 
+DeviationResolver = Callable[[date, int, float], float]
+
+
+def _resolve_deviation(
+    resolver: DeviationResolver | None,
+    *,
+    confirmed_at_date: date,
+    confirmed_at_index: int,
+    base_deviation_pct: float,
+) -> float:
+    if resolver is None:
+        return base_deviation_pct
+    value = float(resolver(confirmed_at_date, confirmed_at_index, base_deviation_pct))
+    if not 0 < value < 1:
+        raise ValueError("resolved deviation_pct must be between 0 and 1.")
+    return value
+
+
 def _pivot(
     *,
     config: ZigZagConfig,
@@ -73,6 +92,7 @@ def _pivot(
     extreme: _Extreme,
     confirmed_at_date: date,
     confirmation_price: float,
+    deviation_pct: float | None = None,
 ) -> ZigZagPivot:
     return ZigZagPivot(
         config_id=config.config_id,
@@ -83,7 +103,9 @@ def _pivot(
         pivot_price=float(extreme.price),
         confirmed_at_date=confirmed_at_date,
         confirmation_price=float(confirmation_price),
-        deviation_pct=config.deviation_pct,
+        deviation_pct=(
+            config.deviation_pct if deviation_pct is None else float(deviation_pct)
+        ),
     )
 
 
@@ -143,6 +165,7 @@ def calculate_zigzag(
     *,
     ticker: str,
     config: ZigZagConfig,
+    deviation_resolver: DeviationResolver | None = None,
 ) -> tuple[list[ZigZagPivot], ZigZagCurrentLeg | None, ZigZagDiagnostics]:
     """Calculate a confirmed percentage-reversal ZigZag in one forward scan.
 
@@ -152,6 +175,10 @@ def calculate_zigzag(
 
     Candidate extrema use High/Low. Reversal confirmation uses Close.
     PivotDate and ConfirmedAtDate remain separate for point-in-time safety.
+
+    When deviation_resolver is omitted, behavior is the canonical static ZigZag.
+    When supplied, the resolver is called only after a pivot is confirmed; the
+    resolved deviation is then locked for the next active leg.
     """
 
     if not 0 < config.deviation_pct < 1:
@@ -177,6 +204,7 @@ def calculate_zigzag(
     opposite: _Extreme | None = None
     last_pivot_index: int | None = None
     pivots: list[ZigZagPivot] = []
+    active_deviation = config.deviation_pct
 
     for i, row in enumerate(rows):
         bar_date = row.Date.date()
@@ -205,11 +233,11 @@ def calculate_zigzag(
             down_excursion = 1.0 - close / bootstrap_high.price
 
             up_ready = (
-                up_excursion >= config.deviation_pct
+                up_excursion >= active_deviation
                 and i - bootstrap_low.index >= config.minimum_swing_bars
             )
             down_ready = (
-                down_excursion >= config.deviation_pct
+                down_excursion >= active_deviation
                 and i - bootstrap_high.index >= config.minimum_swing_bars
             )
             if not up_ready and not down_ready:
@@ -221,7 +249,7 @@ def calculate_zigzag(
                     down_excursion=down_excursion,
                     low_extreme=bootstrap_low,
                     high_extreme=bootstrap_high,
-                    deviation_pct=config.deviation_pct,
+                    deviation_pct=active_deviation,
                 )
             elif up_ready:
                 first_type = "LOW"
@@ -238,6 +266,7 @@ def calculate_zigzag(
                         extreme=bootstrap_low,
                         confirmed_at_date=bar_date,
                         confirmation_price=close,
+                        deviation_pct=active_deviation,
                     )
                 )
                 state = "UP"
@@ -258,6 +287,7 @@ def calculate_zigzag(
                         extreme=bootstrap_high,
                         confirmed_at_date=bar_date,
                         confirmation_price=close,
+                        deviation_pct=active_deviation,
                     )
                 )
                 state = "DOWN"
@@ -278,6 +308,12 @@ def calculate_zigzag(
                 )
                 if candidate is not None
                 else None
+            )
+            active_deviation = _resolve_deviation(
+                deviation_resolver,
+                confirmed_at_date=bar_date,
+                confirmed_at_index=i,
+                base_deviation_pct=config.deviation_pct,
             )
             continue
 
@@ -304,7 +340,7 @@ def calculate_zigzag(
             )
             if (
                 i > candidate.index
-                and reversal >= config.deviation_pct
+                and reversal >= active_deviation
                 and enough_bars
             ):
                 confirmed = candidate
@@ -317,6 +353,7 @@ def calculate_zigzag(
                         extreme=confirmed,
                         confirmed_at_date=bar_date,
                         confirmation_price=close,
+                        deviation_pct=active_deviation,
                     )
                 )
                 last_pivot_index = confirmed.index
@@ -330,6 +367,12 @@ def calculate_zigzag(
                 )
                 # Do not pre-build another leg from bars before this confirmation.
                 opposite = None
+                active_deviation = _resolve_deviation(
+                    deviation_resolver,
+                    confirmed_at_date=bar_date,
+                    confirmed_at_index=i,
+                    base_deviation_pct=config.deviation_pct,
+                )
             continue
 
         assert state == "DOWN"
@@ -352,7 +395,7 @@ def calculate_zigzag(
         enough_bars = candidate.index - last_pivot_index >= config.minimum_swing_bars
         if (
             i > candidate.index
-            and reversal >= config.deviation_pct
+            and reversal >= active_deviation
             and enough_bars
         ):
             confirmed = candidate
@@ -365,6 +408,7 @@ def calculate_zigzag(
                     extreme=confirmed,
                     confirmed_at_date=bar_date,
                     confirmation_price=close,
+                    deviation_pct=active_deviation,
                 )
             )
             last_pivot_index = confirmed.index
@@ -376,6 +420,12 @@ def calculate_zigzag(
                 else None
             )
             opposite = None
+            active_deviation = _resolve_deviation(
+                deviation_resolver,
+                confirmed_at_date=bar_date,
+                confirmed_at_index=i,
+                base_deviation_pct=config.deviation_pct,
+            )
 
     last_row = rows[-1]
     last_date = last_row.Date.date()
