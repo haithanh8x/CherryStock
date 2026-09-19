@@ -388,6 +388,7 @@ Until the command above succeeds and the generated HTML is committed, this drill
 - `docs/architecture/CherryStock_High_Level.md`
 - `docs/architecture/Data_Architecture.md`
 - `docs/architecture/Indicator_Engine.md`
+- `docs/architecture/ZigZag_Engine.md`
 - `docs/architecture/Price_Movement_Character.md`
 - `docs/architecture/SmartMoneyScore.md`
 - `docs/architecture/RS_Ladder.md`
