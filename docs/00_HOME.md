@@ -122,6 +122,15 @@ Architecture/system/solution/data/integration/refactor work:
 - [[adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Analytics Boundary]]
 - [[adr/ADR-013-zigzag-as-price-movement-segmentation-foundation|ADR-013 ZigZag Segmentation Foundation]]
 - [[runbook/ZigZag_MWG_MVP|ZigZag MWG MVP Runbook]]
+- [[backlog/requirements/REQ-0028-zigzag-deviation-calibration-v1-1|REQ-0028 ZigZag Deviation Calibration V1.1]]
+- [[architecture/ZigZag_Deviation_Calibration|ZigZag Deviation Calibration V1.1]]
+- [[runbook/ZigZag_Deviation_Calibration_V1_1|ZigZag Deviation Calibration V1.1 Runbook]]
+- [[backlog/requirements/REQ-0029-zigzag-multi-ticker-pilot-v1-2|REQ-0029 ZigZag Multi-Ticker Pilot V1.2]]
+- [[architecture/ZigZag_Multi_Ticker_Pilot|ZigZag Multi-Ticker Pilot V1.2]]
+- [[runbook/ZigZag_Multi_Ticker_Pilot_V1_2|ZigZag Multi-Ticker Pilot V1.2 Runbook]]
+- [[backlog/requirements/REQ-0030-zigzag-regime-aware-v2|REQ-0030 ZigZag Regime-Aware V2]]
+- [[architecture/ZigZag_Regime_Aware|ZigZag Regime-Aware V2]]
+- [[runbook/ZigZag_Regime_Aware_V2|ZigZag Regime-Aware V2 Runbook]]
 
 ### R/S / chart-related architecture
 
