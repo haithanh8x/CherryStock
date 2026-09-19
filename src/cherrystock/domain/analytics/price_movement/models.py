@@ -38,7 +38,7 @@ class PriceMovementSwing:
     trading_bars: int
     calendar_days: int
     velocity_pct_per_bar: float
-    avg_atr20_pct: float | None
+    avg_atr_pct: float | None
     atr_normalized_move: float | None
     path_efficiency: float
     directional_persistence_rate: float
@@ -62,7 +62,7 @@ class PriceMovementSwing:
             self.trading_bars,
             self.calendar_days,
             self.velocity_pct_per_bar,
-            self.avg_atr20_pct,
+            self.avg_atr_pct,
             self.atr_normalized_move,
             self.path_efficiency,
             self.directional_persistence_rate,
