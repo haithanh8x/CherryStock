@@ -4,6 +4,12 @@ applyTo: "docs/architecture/diagrams/**/*.json,docs/architecture/generated/**/*.
 
 # Archify Instructions
 
+Mandatory operating guide:
+
+`docs/runbook/Archify_Generation_Guide.md`
+
+Every Archify authoring, update, validation, render or generated-artifact synchronization task MUST read that guide before changing the typed source. The guide is the durable failure-pattern/runbook knowledge base; this Instruction remains the mandatory constraint layer.
+
 This file defines mandatory CherryStock rules for authoring, validating, delivering and navigating durable Archify architecture artifacts.
 
 Canonical ownership and knowledge:
@@ -17,7 +23,7 @@ Archify is a visualization/validation tool of `SolutionArchitect`; it is not an 
 
 ## 1. Mandatory authoring workflow
 
-For every durable CherryStock Archify architecture artifact:
+For every durable CherryStock Archify architecture artifact, first read `docs/runbook/Archify_Generation_Guide.md`, then follow:
 
 ```text
 Repository evidence + architecture docs / ADR
@@ -278,6 +284,9 @@ The preflight MUST fail fast for repository-owned invariants including:
 Archify remains authoritative for its complete schema, rendering, geometry and showcase composition checks. Do not attempt to duplicate the whole Archify validator in CherryStock preflight.
 
 ## 9. Error triage
+
+Use the full symptom → root cause → prevention matrix in `docs/runbook/Archify_Generation_Guide.md`. When a new recurring failure is discovered, update that guide and add a generic preflight guardrail when deterministic.
+
 
 Classify failures by stage before changing the diagram.
 
