@@ -1,10 +1,10 @@
 ---
 id: REQ-0031
 title: ZigZag-based Price Movement Characterization V2
-status: IMPLEMENTED_PENDING_VALIDATION
+status: DONE
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: TestEngineer
+primary_next_owner: None
 related:
   prerequisite:
     - docs/backlog/requirements/REQ-0027-price-movement-characterization.md
@@ -348,8 +348,8 @@ Final PASS/FAIL belongs to TestEngineer. No run.py integration is authorized.
 
     DEV
     Implementation: COMPLETE
-    State: IMPLEMENTED_PENDING_VALIDATION
-    Validation owner: TestEngineer
+    State: DONE
+    Validation owner: TestEngineer — PASS
 
 The implementation currently consumes active ZigZag config ZZ_D_5_MVP. This is intentional:
 V1.1 calibration recommendations remain research evidence because V1.2 concluded
@@ -366,3 +366,67 @@ semantics or Price Movement business calculations.
 
 Do not regenerate or commit the Archify generated HTML as part of the REQ-0031 validation
 run. Resolve the visualization layout later as a separate documentation-maintenance task.
+
+
+## TestEngineer Closure — 2026-09-19
+
+Verdict:
+
+    PASS
+    Action: KEEP
+    Requirement status: DONE
+
+Local CherryMon validation:
+
+    Focused tests: 19 passed
+      - ZigZag: 7
+      - Price Movement: 9
+      - daily pipeline regression: 3
+
+    MWG initload:
+      source/confirmed movement swings: 278 / 278
+      profile rows: 1
+
+    Structural validation:
+      PASS
+      structural_errors: 0
+
+    Idempotency:
+      PASS
+      swing rows: 278
+      profile rows: 1
+
+    Reconciliation export:
+      PASS
+      TotalCoreErrors: 0
+      ReconciliationStatus: PASS
+
+Committed evidence:
+
+    docs/reference/data/price_movement/mwg/
+    evidence commit: e545b9152d07b6417372fb166c4d26b69abb70cb
+
+Independent reconciliation on the committed recent evidence window:
+
+    ZigZag swing rows: 21
+    Price Movement swing rows: 21
+    Identity / lineage: PASS
+    SwingPct formula: PASS
+    TradingBars vs OHLC: PASS
+    Velocity formula: PASS
+    Point-in-time EndDate < ConfirmedAtDate: PASS
+    PathEfficiency / DirectionalPersistence bounds: PASS
+
+Current profile evidence:
+
+    Ticker: MWG
+    PriceMovementConfigCode: PM_ZZ_D_V2
+    ZigZagConfigCode: ZZ_D_5_MVP
+    AsOfConfirmedAtDate: 2026-09-17
+    ConfirmedSwingCount: 20
+    LastSwingSeq: 278
+    LastSwingDirection: DOWN
+    MovementCharacter: MIXED
+
+Archify layout/showcase remains DEFERRED_NON_BLOCKING and is not part of REQ-0031
+functional acceptance.
