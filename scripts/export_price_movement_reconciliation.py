@@ -297,7 +297,7 @@ def export_reconciliation_package(
                 TradingBars,
                 CalendarDays,
                 VelocityPctPerBar,
-                AvgATR20Pct,
+                AvgATRPct,
                 ATRNormalizedMove,
                 PathEfficiency,
                 DirectionalPersistenceRate
