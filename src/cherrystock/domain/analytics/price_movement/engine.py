@@ -120,6 +120,13 @@ def _prepare_zigzag_swings(frame: pd.DataFrame) -> pd.DataFrame:
     if data.duplicated(subset=["ConfigId", "Ticker", "SwingSeq"]).any():
         raise ValueError("Price Movement ZigZag input contains duplicate swing identity.")
 
+    identities = data[["ConfigId", "ConfigCode", "Ticker"]].drop_duplicates()
+    if len(identities) != 1:
+        raise ValueError(
+            "Price Movement ZigZag input must belong to exactly one "
+            "ConfigId/ConfigCode/Ticker identity."
+        )
+
     return data
 
 
@@ -133,6 +140,14 @@ def build_price_movement_swings(
         return []
 
     swings = _prepare_zigzag_swings(zigzag_swings)
+
+    actual_config_code = str(swings.iloc[0]["ConfigCode"])
+    if actual_config_code != config.zigzag_config_code:
+        raise ValueError(
+            "Price Movement ZigZag config mismatch: "
+            f"expected={config.zigzag_config_code} actual={actual_config_code}"
+        )
+
     path_data = _prepare_ohlc(ohlc, atr_period=config.atr_period)
 
     output: list[PriceMovementSwing] = []
