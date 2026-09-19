@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date
 
 import numpy as np
@@ -108,6 +108,36 @@ def _choose_bootstrap(
     return "LOW"
 
 
+def _seed_opposite_after_candidate(
+    rows: list[object],
+    *,
+    candidate: _Extreme,
+    state: str,
+    end_index: int,
+) -> _Extreme | None:
+    """Seed the opposite extreme strictly after candidate.PivotDate.
+
+    This helper is used only once during bootstrap. Normal runtime maintains the
+    same information incrementally, so total engine complexity stays O(n).
+    """
+
+    opposite: _Extreme | None = None
+    for index in range(candidate.index + 1, end_index + 1):
+        row = rows[index]
+        bar_date = row.Date.date()
+
+        if state == "UP":
+            price = float(row.Low)
+            if opposite is None or price < opposite.price:
+                opposite = _Extreme(price, bar_date, index)
+        else:
+            price = float(row.High)
+            if opposite is None or price > opposite.price:
+                opposite = _Extreme(price, bar_date, index)
+
+    return opposite
+
+
 def calculate_zigzag(
     frame: pd.DataFrame,
     *,
@@ -116,8 +146,12 @@ def calculate_zigzag(
 ) -> tuple[list[ZigZagPivot], ZigZagCurrentLeg | None, ZigZagDiagnostics]:
     """Calculate a confirmed percentage-reversal ZigZag in one forward scan.
 
+    Daily OHLC cannot reveal the intraday order of High and Low. The MVP
+    therefore enforces one pivot per trading date: once a pivot is located on a
+    bar, the next pivot candidate must come from a strictly later bar.
+
     Candidate extrema use High/Low. Reversal confirmation uses Close.
-    Confirmed pivots expose the extreme date separately from the confirmation date.
+    PivotDate and ConfirmedAtDate remain separate for point-in-time safety.
     """
 
     if not 0 < config.deviation_pct < 1:
@@ -135,8 +169,8 @@ def calculate_zigzag(
 
     bootstrap_low = _Extreme(float(first.Low), first_date, 0)
     bootstrap_high = _Extreme(float(first.High), first_date, 0)
-    high_after_low = _Extreme(float(first.High), first_date, 0)
-    low_after_high = _Extreme(float(first.Low), first_date, 0)
+    high_after_low: _Extreme | None = None
+    low_after_high: _Extreme | None = None
 
     state: str | None = None
     candidate: _Extreme | None = None
@@ -153,14 +187,18 @@ def calculate_zigzag(
         if state is None:
             if low < bootstrap_low.price:
                 bootstrap_low = _Extreme(low, bar_date, i)
-                high_after_low = _Extreme(high, bar_date, i)
-            elif high > high_after_low.price:
+                high_after_low = None
+            elif i > bootstrap_low.index and (
+                high_after_low is None or high > high_after_low.price
+            ):
                 high_after_low = _Extreme(high, bar_date, i)
 
             if high > bootstrap_high.price:
                 bootstrap_high = _Extreme(high, bar_date, i)
-                low_after_high = _Extreme(low, bar_date, i)
-            elif low < low_after_high.price:
+                low_after_high = None
+            elif i > bootstrap_high.index and (
+                low_after_high is None or low < low_after_high.price
+            ):
                 low_after_high = _Extreme(low, bar_date, i)
 
             up_excursion = close / bootstrap_low.price - 1.0
@@ -204,8 +242,12 @@ def calculate_zigzag(
                 )
                 state = "UP"
                 last_pivot_index = bootstrap_low.index
-                candidate = high_after_low
-                opposite = _Extreme(low, bar_date, i)
+                candidate = (
+                    high_after_low
+                    if high_after_low is not None
+                    and high_after_low.index > bootstrap_low.index
+                    else None
+                )
             else:
                 pivots.append(
                     _pivot(
@@ -220,92 +262,126 @@ def calculate_zigzag(
                 )
                 state = "DOWN"
                 last_pivot_index = bootstrap_high.index
-                candidate = low_after_high
-                opposite = _Extreme(high, bar_date, i)
+                candidate = (
+                    low_after_high
+                    if low_after_high is not None
+                    and low_after_high.index > bootstrap_high.index
+                    else None
+                )
+
+            opposite = (
+                _seed_opposite_after_candidate(
+                    rows,
+                    candidate=candidate,
+                    state=state,
+                    end_index=i,
+                )
+                if candidate is not None
+                else None
+            )
             continue
 
+        assert last_pivot_index is not None
+
         if state == "UP":
-            assert candidate is not None
-            assert last_pivot_index is not None
+            if candidate is None:
+                candidate = _Extreme(high, bar_date, i)
+                opposite = None
+                continue
 
             if high > candidate.price:
                 candidate = _Extreme(high, bar_date, i)
-                opposite = _Extreme(low, bar_date, i)
-            elif opposite is None or low < opposite.price:
+                # Same-day Low cannot be ordered after the new High.
+                opposite = None
+                continue
+
+            if i > candidate.index and (opposite is None or low < opposite.price):
                 opposite = _Extreme(low, bar_date, i)
 
             reversal = (candidate.price - close) / candidate.price
-            enough_bars = i - last_pivot_index >= config.minimum_swing_bars
-            if reversal >= config.deviation_pct and enough_bars:
+            enough_bars = (
+                candidate.index - last_pivot_index >= config.minimum_swing_bars
+            )
+            if (
+                i > candidate.index
+                and reversal >= config.deviation_pct
+                and enough_bars
+            ):
+                confirmed = candidate
                 pivots.append(
                     _pivot(
                         config=config,
                         ticker=ticker,
                         seq=len(pivots) + 1,
                         pivot_type="HIGH",
-                        extreme=candidate,
+                        extreme=confirmed,
                         confirmed_at_date=bar_date,
                         confirmation_price=close,
                     )
                 )
-                last_pivot_index = candidate.index
+                last_pivot_index = confirmed.index
                 state = "DOWN"
-                candidate = opposite or _Extreme(low, bar_date, i)
-                opposite = _Extreme(high, bar_date, i)
+
+                # Carry only an opposite extreme from a strictly later bar.
+                candidate = (
+                    opposite
+                    if opposite is not None and opposite.index > confirmed.index
+                    else None
+                )
+                # Do not pre-build another leg from bars before this confirmation.
+                opposite = None
             continue
 
         assert state == "DOWN"
-        assert candidate is not None
-        assert last_pivot_index is not None
+
+        if candidate is None:
+            candidate = _Extreme(low, bar_date, i)
+            opposite = None
+            continue
 
         if low < candidate.price:
             candidate = _Extreme(low, bar_date, i)
-            opposite = _Extreme(high, bar_date, i)
-        elif opposite is None or high > opposite.price:
+            # Same-day High cannot be ordered after the new Low.
+            opposite = None
+            continue
+
+        if i > candidate.index and (opposite is None or high > opposite.price):
             opposite = _Extreme(high, bar_date, i)
 
         reversal = close / candidate.price - 1.0
-        enough_bars = i - last_pivot_index >= config.minimum_swing_bars
-        if reversal >= config.deviation_pct and enough_bars:
+        enough_bars = candidate.index - last_pivot_index >= config.minimum_swing_bars
+        if (
+            i > candidate.index
+            and reversal >= config.deviation_pct
+            and enough_bars
+        ):
+            confirmed = candidate
             pivots.append(
                 _pivot(
                     config=config,
                     ticker=ticker,
                     seq=len(pivots) + 1,
                     pivot_type="LOW",
-                    extreme=candidate,
+                    extreme=confirmed,
                     confirmed_at_date=bar_date,
                     confirmation_price=close,
                 )
             )
-            last_pivot_index = candidate.index
+            last_pivot_index = confirmed.index
             state = "UP"
-            candidate = opposite or _Extreme(high, bar_date, i)
-            opposite = _Extreme(low, bar_date, i)
+
+            candidate = (
+                opposite
+                if opposite is not None and opposite.index > confirmed.index
+                else None
+            )
+            opposite = None
 
     last_row = rows[-1]
     last_date = last_row.Date.date()
     last_close = float(last_row.Close)
 
-    # Whipsaw dedupe: a reversal confirmed against a candidate seeded from the
-    # just-confirmed pivot bar can re-emit the same extreme. Keep the first
-    # confirmation per (PivotDate, PivotType) and resequence so PivotSeq stays
-    # contiguous and pivot keys stay unique.
-    deduped: list[ZigZagPivot] = []
-    seen_keys: set[tuple[date, str]] = set()
-    for pivot in pivots:
-        key = (pivot.pivot_date, pivot.pivot_type)
-        if key in seen_keys:
-            continue
-        seen_keys.add(key)
-        deduped.append(
-            pivot
-            if pivot.pivot_seq == len(deduped) + 1
-            else replace(pivot, pivot_seq=len(deduped) + 1)
-        )
-    pivots = deduped
-
-    if state is None or not pivots or candidate is None:
+    if state is None or not pivots:
         current = ZigZagCurrentLeg(
             config_id=config.config_id,
             ticker=ticker,
@@ -325,6 +401,25 @@ def calculate_zigzag(
         return pivots, current, diagnostics
 
     start = pivots[-1]
+    if candidate is None:
+        current = ZigZagCurrentLeg(
+            config_id=config.config_id,
+            ticker=ticker,
+            as_of_date=last_date,
+            direction=state,
+            start_pivot_seq=start.pivot_seq,
+            start_pivot_date=start.pivot_date,
+            start_pivot_price=start.pivot_price,
+            candidate_pivot_type="HIGH" if state == "UP" else "LOW",
+            candidate_pivot_date=None,
+            candidate_pivot_price=None,
+            last_close=last_close,
+            current_move_pct=None,
+            reversal_from_candidate_pct=None,
+            status="PROVISIONAL",
+        )
+        return pivots, current, diagnostics
+
     if state == "UP":
         current_move = candidate.price / start.pivot_price - 1.0
         reversal = (candidate.price - last_close) / candidate.price
