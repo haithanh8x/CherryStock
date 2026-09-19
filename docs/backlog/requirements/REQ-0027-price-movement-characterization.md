@@ -115,6 +115,9 @@ Only after MWG pivot quality is accepted may the solution add:
 ## Business Rules
 
 - ZigZag confirmation lag is expected and must be explicit.
+- Daily OHLC permits at most one confirmed pivot per trading date because intraday High/Low
+  ordering is unknowable from daily bars.
+- Consecutive confirmed PivotDates must be strictly increasing.
 - Pivot location is based on the actual tracked High/Low extreme, not the confirmation bar.
 - Confirmation uses Close so a wick alone does not confirm a reversal.
 - Pivots must alternate LOW → HIGH → LOW or HIGH → LOW → HIGH.
@@ -161,7 +164,7 @@ PivotSeq is strictly increasing.
 
 For every confirmed pivot:
 
-    PivotDate <= ConfirmedAtDate
+    PivotDate < ConfirmedAtDate
 
 and no consumer may treat the pivot as confirmed before ConfirmedAtDate.
 
@@ -173,8 +176,9 @@ a DOWN swing.
 ### AC-06 — Local-extreme validation
 
 For every interior confirmed pivot, its price equals the corresponding local minimum
-(LOW) or maximum (HIGH) across the interval bounded by adjacent confirmed pivots,
-subject only to equal-price ties.
+(LOW) or maximum (HIGH) on bars strictly between the two adjacent confirmed PivotDates,
+subject only to equal-price ties. Neighbor pivot bars are excluded because daily OHLC
+cannot establish intraday High/Low ordering on those endpoint bars.
 
 ### AC-07 — Provisional current leg
 
