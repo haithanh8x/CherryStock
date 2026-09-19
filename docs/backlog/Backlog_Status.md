@@ -11,10 +11,10 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 10 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
+| Requirements | 10 canonical requirements | 3 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **34** | **6 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
+| **Total** | **34** | **7 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
 
 ### Priority Summary
 
@@ -73,7 +73,7 @@ Canonical index:
 | REQ-0028 | ZigZag Deviation Calibration V1.1 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0028-zigzag-deviation-calibration-v1-1|REQ-0028]] |
 | REQ-0029 | ZigZag Multi-Ticker Pilot V1.2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0029-zigzag-multi-ticker-pilot-v1-2|REQ-0029]] |
 | REQ-0030 | ZigZag Regime-Aware Swing-Locked Deviation V2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0030-zigzag-regime-aware-v2|REQ-0030]] |
-| REQ-0031 | ZigZag-based Price Movement Characterization V2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0031-zigzag-price-movement-character-v2|REQ-0031]] |
+| REQ-0031 | ZigZag-based Price Movement Characterization V2 | P1 | **DONE** | None | [[requirements/REQ-0031-zigzag-price-movement-character-v2|REQ-0031]] |
 
 ## Requirement Delivery Flow
 
@@ -115,7 +115,8 @@ REQ-0030 V2 Regime-Aware
 IMPLEMENTED_PENDING_VALIDATION
         ↓
 REQ-0031 Price Movement Character V2
-IMPLEMENTED_PENDING_VALIDATION
+DONE
+(TestEngineer PASS / reconciliation PASS on 2026-09-19)
 ```
 
 Related approved Smart Money design:
@@ -297,11 +298,10 @@ Based on current status and priority, the next actionable queue is:
 | 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
 | 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
 | 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
-| 4 | **REQ-0031** | Implementation is on main; local Archify render, MWG initload, structural validation and reconciliation evidence are the next gate. |
-| 5 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
-| 6 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
-| 7 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
-| 8 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
+| 4 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
+| 5 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
+| 6 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
+| 7 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
 
