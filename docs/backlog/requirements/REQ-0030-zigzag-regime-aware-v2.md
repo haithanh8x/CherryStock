@@ -1,10 +1,10 @@
 ---
 id: REQ-0030
 title: ZigZag Regime-Aware Swing-Locked Deviation V2
-status: READY_FOR_DESIGN
+status: IMPLEMENTED_PENDING_VALIDATION
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: SolutionArchitect
+primary_next_owner: TestEngineer
 related:
   prerequisite:
     - docs/backlog/requirements/REQ-0029-zigzag-multi-ticker-pilot-v1-2.md
@@ -79,3 +79,13 @@ Material: docs/backlog/requirements/REQ-0030-zigzag-regime-aware-v2.md
 Open questions: none blocking
 Acceptance criteria count: 8
 ```
+
+
+## Current Delivery State
+
+Implementation and runbook are present on main.
+
+    IMPLEMENTED_PENDING_VALIDATION
+
+Final PASS/FAIL belongs to TestEngineer after executing the version-specific runbook on local
+CherryMon. No production run.py promotion is implied by this state.
