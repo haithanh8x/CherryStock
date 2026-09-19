@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS "CherryMon"."main"."cal_zigzag_pivot" (
     PRIMARY KEY (ConfigId, Ticker, PivotSeq),
     UNIQUE (ConfigId, Ticker, PivotDate, PivotType),
     CHECK (PivotType IN ('HIGH', 'LOW')),
-    CHECK (PivotDate <= ConfirmedAtDate),
+    CHECK (PivotDate < ConfirmedAtDate),
     CHECK (PivotPrice > 0),
     CHECK (ConfirmationPrice > 0),
     CHECK (DeviationPct > 0 AND DeviationPct < 1)
