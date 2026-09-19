@@ -1,7 +1,7 @@
 # Price Movement Character V2 — ZigZag-based Characterization
 
 - Requirement: docs/backlog/requirements/REQ-0031-zigzag-price-movement-character-v2.md
-- Status: DESIGN_COMPLETE_PENDING_LOCAL_ARCHIFY_VALIDATION
+- Status: IMPLEMENTED_PENDING_VALIDATION
 - Owner: .github/agents/SolutionArchitect.agent.md
 - Foundation: docs/architecture/ZigZag_Engine.md
 - ADR: docs/adr/ADR-016-zigzag-price-movement-characterization-v2.md
@@ -483,10 +483,13 @@ architecture visualization status remains:
 
     DESIGN HANDOFF
     Requirement: REQ-0031
-    Outcome: ZigZag-based Price Movement Characterization V2
+    Outcome: APPROVED_FOR_IMPLEMENTATION
+    Objective: ZigZag-based Price Movement Characterization V2
     Canonical design: docs/architecture/Price_Movement_Character_V2.md
     ADR: ADR-016
     Architecture semantics: DESIGN COMPLETE
     Archify artifact: PENDING_LOCAL_ARCHIFY_VALIDATION/RENDER
     Implementation boundary: MWG-first manual/initload, run.py unchanged
-    Next owner: GeneralCoding
+    Implementation owner: GeneralCoding — COMPLETE
+    Current next owner: TestEngineer
+    Delivery state: IMPLEMENTED_PENDING_VALIDATION
