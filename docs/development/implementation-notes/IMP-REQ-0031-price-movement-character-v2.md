@@ -70,9 +70,7 @@ No ZigZag or SmartMoney object is altered.
 
 ## Execution
 
-Architecture artifact gate:
-
-    .\scripts\render_archify_analytics.ps1 -NoOpen
+Archify layout/showcase update is deferred and is not a REQ-0031 validation gate.
 
 Focused tests:
 
@@ -99,7 +97,7 @@ verify formulas, ZigZag lineage, profile semantics and point-in-time constraints
 
 ## Known gates
 
-- Archify generated HTML still requires local render/validation.
+- Archify generated HTML/render is DEFERRED_NON_BLOCKING due to layout showcase crossings.
 - GitHub connector cannot execute local CherryMon pytest/initload.
 - No multi-ticker scheduling is authorized before MWG TestEngineer PASS.
 - No run.py integration is authorized by REQ-0031.
@@ -137,7 +135,8 @@ Required implementation artifacts present:
     tests/test_price_movement_zigzag.py
 
 BA/SA/Dev delivery is complete on GitHub. The remaining gate is local TestEngineer execution
-against CherryMon plus Archify rendering and committed reconciliation evidence.
+against CherryMon plus committed reconciliation evidence. Archify rendering is explicitly
+deferred and non-blocking.
 
 ## Local Agent Deployment Handoff
 
@@ -148,7 +147,6 @@ Pull:
 
 Execute in this order:
 
-    .\scripts\render_archify_analytics.ps1 -NoOpen
     python -m pytest tests\test_zigzag_engine.py tests\test_price_movement_zigzag.py -v
     python -m pytest tests\test_sync_write_pipeline_service.py -v
     python scripts\initload\init_reload_price_movement_mwg.py
@@ -164,6 +162,5 @@ Required terminal state before closing REQ-0031:
 Then commit:
 
     git add docs/reference/data/price_movement/mwg/
-    git add docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html
     git commit -m "test: add MWG Price Movement V2 validation evidence"
     git push origin main
