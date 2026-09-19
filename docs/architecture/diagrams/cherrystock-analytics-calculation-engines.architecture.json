@@ -8,7 +8,7 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "IMPLEMENTED_PENDING_LOCAL_ARCHIFY_RENDER"
+      "revision": "REQ-0031_PENDING_LOCAL_ARCHIFY_RENDER"
     },
     "viewBox": [
       1390,
@@ -112,7 +112,7 @@
       "id": "price_movement",
       "type": "backend",
       "label": "ZigZag Swing Engine",
-      "sublabel": "MWG MVP · calibration · pilot · regime research",
+      "sublabel": "confirmed pivots · swing SSOT",
       "pos": [
         910,
         80
@@ -124,23 +124,15 @@
       "sources": [
         {
           "path": "docs/architecture/ZigZag_Engine.md",
-          "label": "ZigZag MVP design"
+          "label": "ZigZag architecture"
+        },
+        {
+          "path": "src/cherrystock/domain/analytics/zigzag/engine.py",
+          "label": "ZigZag domain engine"
         },
         {
           "path": "docs/adr/ADR-013-zigzag-as-price-movement-segmentation-foundation.md",
           "label": "Segmentation decision"
-        },
-        {
-          "path": "docs/architecture/ZigZag_Deviation_Calibration.md",
-          "label": "V1.1 calibration design"
-        },
-        {
-          "path": "docs/architecture/ZigZag_Multi_Ticker_Pilot.md",
-          "label": "V1.2 pilot design"
-        },
-        {
-          "path": "docs/architecture/ZigZag_Regime_Aware.md",
-          "label": "V2 regime-aware design"
         }
       ]
     },
@@ -263,8 +255,8 @@
     {
       "id": "movement_store",
       "type": "database",
-      "label": "ZigZag Persistence",
-      "sublabel": "pivots · current · calibration/pilot/regime evidence",
+      "label": "Movement Persistence",
+      "sublabel": "ZigZag facts · movement features",
       "pos": [
         910,
         260
@@ -275,12 +267,16 @@
       ],
       "sources": [
         {
-          "path": "docs/architecture/ZigZag_Engine.md",
-          "label": "Pivot persistence contract"
+          "path": "src/DuckDB/sql/zigzag_mvp_schema.sql",
+          "label": "ZigZag persistence"
         },
         {
           "path": "src/DuckDB/sql/zigzag_research_schema.sql",
-          "label": "Research persistence contracts"
+          "label": "ZigZag research persistence"
+        },
+        {
+          "path": "src/DuckDB/sql/price_movement_v2_schema.sql",
+          "label": "Price Movement persistence"
         }
       ]
     },
@@ -331,8 +327,8 @@
     {
       "id": "movement_public",
       "type": "database",
-      "label": "ZigZag Public Contracts",
-      "sublabel": "pivots · swings · current",
+      "label": "Movement Public Contracts",
+      "sublabel": "pivots · swings · profile",
       "pos": [
         910,
         440
@@ -344,7 +340,11 @@
       "sources": [
         {
           "path": "docs/architecture/ZigZag_Engine.md",
-          "label": "Public read contracts"
+          "label": "ZigZag public contracts"
+        },
+        {
+          "path": "docs/architecture/Price_Movement_Character_V2.md",
+          "label": "Price Movement public contracts"
         }
       ]
     },
@@ -485,6 +485,34 @@
         {
           "path": "docs/architecture/RS_Source_Effectiveness.md",
           "label": "cal_rs_* / sys_rs_* / vw_RS_*"
+        }
+      ]
+    },
+    {
+      "id": "movement_character",
+      "type": "backend",
+      "label": "Price Movement Character",
+      "sublabel": "magnitude · pace · persistence",
+      "pos": [
+        910,
+        610
+      ],
+      "size": [
+        210,
+        80
+      ],
+      "sources": [
+        {
+          "path": "docs/architecture/Price_Movement_Character_V2.md",
+          "label": "Price Movement V2 design"
+        },
+        {
+          "path": "src/cherrystock/domain/analytics/price_movement/engine.py",
+          "label": "Movement feature engine"
+        },
+        {
+          "path": "docs/adr/ADR-016-zigzag-price-movement-characterization-v2.md",
+          "label": "Domain boundary decision"
         }
       ]
     }
@@ -787,6 +815,51 @@
       "labelAt": [
         755,
         375
+      ]
+    },
+    {
+      "from": "movement_public",
+      "to": "movement_character",
+      "label": "confirmed swings",
+      "variant": "emphasis",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        1015,
+        565
+      ]
+    },
+    {
+      "from": "analytics_inputs",
+      "to": "movement_character",
+      "label": "OHLC path",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          130,
+          700
+        ],
+        [
+          890,
+          700
+        ]
+      ],
+      "labelAt": [
+        520,
+        686
+      ]
+    },
+    {
+      "from": "movement_character",
+      "to": "consumers",
+      "label": "movement profile",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelAt": [
+        1135,
+        650
       ]
     }
   ]
