@@ -393,3 +393,18 @@ After MWG approval, a separate design increment may add:
     Validation focus: MWG local extremes + Jul-Sep 2026 visual gate
     Known risks: 5% calibration, daily-bar intraday ambiguity
     Next owner: GeneralCoding
+
+
+## 15. Implemented research extensions
+
+The core static engine remains the segmentation foundation. Manual research extensions are:
+
+- V1.1: docs/architecture/ZigZag_Deviation_Calibration.md
+- V1.2: docs/architecture/ZigZag_Multi_Ticker_Pilot.md
+- V2: docs/architecture/ZigZag_Regime_Aware.md
+
+V2 reuses calculate_zigzag through an optional deviation resolver. Omitting the resolver keeps
+canonical static behavior. The resolver is invoked only after a pivot is confirmed and its
+returned threshold is locked for the next leg.
+
+These extensions are IMPLEMENTED_PENDING_VALIDATION and remain outside run.py.
