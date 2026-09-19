@@ -167,6 +167,34 @@ def test_ohlc_after_end_date_does_not_change_confirmed_swing_features() -> None:
     assert first == second
 
 
+
+def test_zigzag_config_mismatch_is_rejected() -> None:
+    source = _zigzag_one_up()
+    source.loc[0, "ConfigCode"] = "ZZ_OTHER"
+
+    with pytest.raises(ValueError, match="ZigZag config mismatch"):
+        build_price_movement_swings(
+            source,
+            _ohlc(),
+            config=_config(),
+        )
+
+
+def test_mixed_zigzag_identity_is_rejected() -> None:
+    source = pd.concat(
+        [_zigzag_one_up(), _zigzag_one_up()],
+        ignore_index=True,
+    )
+    source.loc[1, "SwingSeq"] = 2
+    source.loc[1, "Ticker"] = "FPT"
+
+    with pytest.raises(ValueError, match="exactly one"):
+        build_price_movement_swings(
+            source,
+            _ohlc(),
+            config=_config(),
+        )
+
 def test_direction_sign_mismatch_is_rejected() -> None:
     source = _zigzag_one_up()
     source.loc[0, "Direction"] = "DOWN"
