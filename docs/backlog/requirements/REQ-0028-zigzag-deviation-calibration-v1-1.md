@@ -1,10 +1,10 @@
 ---
 id: REQ-0028
 title: ZigZag Deviation Calibration V1.1
-status: READY_FOR_DESIGN
+status: IMPLEMENTED_PENDING_VALIDATION
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: SolutionArchitect
+primary_next_owner: TestEngineer
 related:
   prerequisite:
     - docs/backlog/requirements/REQ-0027-price-movement-characterization.md
@@ -99,3 +99,13 @@ Material: docs/backlog/requirements/REQ-0028-zigzag-deviation-calibration-v1-1.m
 Open questions: none blocking
 Acceptance criteria count: 10
 ```
+
+
+## Current Delivery State
+
+Implementation and runbook are present on main.
+
+    IMPLEMENTED_PENDING_VALIDATION
+
+Final PASS/FAIL belongs to TestEngineer after executing the version-specific runbook on local
+CherryMon. No production run.py promotion is implied by this state.
