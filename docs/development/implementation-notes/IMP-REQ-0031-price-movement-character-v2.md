@@ -8,9 +8,9 @@
 
 ## Delivery state
 
-    IMPLEMENTED_PENDING_VALIDATION
+    DONE
 
-Implementation is present on main. Final TestEngineer PASS is not claimed.
+Implementation is present on main and TestEngineer validation has PASSed.
 
 ## Changed modules
 
@@ -107,7 +107,8 @@ verify formulas, ZigZag lineage, profile semantics and point-in-time constraints
     Objective: REQ-0031 MWG technical validation
     Runbook: docs/runbook/ZigZag_Price_Movement_Character_V2.md
     Reconciliation: docs/runbook/ZigZag_Price_Movement_Reconciliation.md
-    Expected outcome: PASS | FAIL | BLOCKED | REGRESSION
+    Verdict: PASS
+    Action: KEEP
 
 
 ## GitHub Dev Review
@@ -164,3 +165,28 @@ Then commit:
     git add docs/reference/data/price_movement/mwg/
     git commit -m "test: add MWG Price Movement V2 validation evidence"
     git push origin main
+
+
+## TestEngineer PASS Evidence — 2026-09-19
+
+    focused tests: 19 passed
+    MWG initload: 278 ZigZag swings -> 278 Price Movement swings
+    profile rows: 1
+    structural validation: PASS / 0 errors
+    idempotency: PASS
+    reconciliation: PASS / TotalCoreErrors = 0
+
+Committed evidence:
+
+    docs/reference/data/price_movement/mwg/
+    commit e545b9152d07b6417372fb166c4d26b69abb70cb
+
+Evidence summary confirms all core mismatch counters are zero. The committed recent window
+contains 21 ZigZag swings and 21 Price Movement swings, with formula, TradingBars, velocity,
+point-in-time, lineage and bounds checks PASS.
+
+Final delivery state:
+
+    DONE
+
+Archify visualization cleanup remains deferred/non-blocking and does not reopen REQ-0031.
