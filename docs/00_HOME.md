@@ -149,6 +149,19 @@ References:
 
 The historical reference is not current procedure ownership.
 
+## ChatGPT-readable reference data
+
+All generated data/evidence that must be readable by ChatGPT across GitHub sessions is stored under:
+
+```text
+docs/reference/data/
+```
+
+Use domain-scoped subfolders such as `docs/reference/data/zigzag/mwg/`. This area is for
+bounded review/reconciliation evidence, not for runtime Source of Truth or full database dumps.
+
+See [[reference/data/README|ChatGPT Data Export Contract]].
+
 ## Data / DuckDB
 
 - [[architecture/Data_Architecture|Data Architecture]]
