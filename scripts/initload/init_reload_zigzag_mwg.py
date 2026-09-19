@@ -9,7 +9,6 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from Ults import DuckLib  # noqa: E402
-from Ults.DuckLib import executeDuckSQL  # noqa: E402
 from calcEngine.zigzag import refresh_zigzag_mwg  # noqa: E402
 from cherrystock.config.settings import settings  # noqa: E402
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory  # noqa: E402
@@ -26,11 +25,7 @@ def main() -> int:
         if uow.connection is None:
             raise RuntimeError("UnitOfWork did not initialize a writer connection.")
 
-        executeDuckSQL(
-            con=uow.connection,
-            sql_file_path=str(SCHEMA_SQL),
-            sql_description="Ensure ZigZag MWG MVP schema",
-        )
+        uow.connection.execute(SCHEMA_SQL.read_text(encoding="utf-8"))
         summary = refresh_zigzag_mwg(connection=uow.connection)
 
         print("=== ZigZag MWG MVP initload ===")
