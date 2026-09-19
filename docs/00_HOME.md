@@ -131,6 +131,7 @@ Architecture/system/solution/data/integration/refactor work:
 - [[backlog/requirements/REQ-0030-zigzag-regime-aware-v2|REQ-0030 ZigZag Regime-Aware V2]]
 - [[architecture/ZigZag_Regime_Aware|ZigZag Regime-Aware V2]]
 - [[runbook/ZigZag_Regime_Aware_V2|ZigZag Regime-Aware V2 Runbook]]
+- [[runbook/ZigZag_Deviation_Roadmap|ZigZag Deviation Roadmap Runbook]]
 
 ### R/S / chart-related architecture
 
