@@ -1,10 +1,10 @@
 ---
 id: REQ-0027
 title: ZigZag-based Price Movement Foundation
-status: IMPLEMENTED_PENDING_VALIDATION
+status: IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: TestEngineer
+primary_next_owner: User
 related:
   architecture:
     - docs/architecture/ZigZag_Engine.md
@@ -267,9 +267,23 @@ The rollout state is:
 
 ## Current Delivery State
 
-Architecture and MVP implementation have been produced from this requirement. The current
-overall state is:
+Architecture and MVP implementation have been produced and the MWG technical validation
+runbook passed on 2026-09-19.
 
-    IMPLEMENTED_PENDING_VALIDATION
+Technical evidence:
 
-Final functional verdict belongs to TestEngineer.agent.md and the explicit MWG visual gate.
+    focused unit tests:          PASS — 7 passed
+    MWG source rows:             3,041
+    confirmed pivots:           279
+    structural validation:      PASS — 0 errors
+    idempotent rebuild:         PASS — 279 pivots on rerun
+    current leg:                PASS — PROVISIONAL
+    calculation time:           ~0.02–0.06s
+    daily pipeline regression:  PASS — 3 passed
+
+The technical MVP state is:
+
+    IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE
+
+Expansion to additional tickers remains blocked until the MWG Jul–Sep 2026 swing path is
+visually accepted against the intended chart/reference and the user accepts ZZ_D_5_MVP.
