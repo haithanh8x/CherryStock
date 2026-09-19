@@ -38,10 +38,6 @@ def _tickers(value: str) -> list[str]:
 
 
 def _pivot_evidence(source, pivots, resolver):
-    positions = {
-        value: index
-        for index, value in enumerate(pd.to_datetime(source["Date"]).dt.date.tolist())
-    }
     rows = []
     previous = None
     for pivot in pivots:
@@ -50,12 +46,7 @@ def _pivot_evidence(source, pivots, resolver):
             regime_used = "BOOTSTRAP"
         else:
             selected_at = previous.confirmed_at_date
-            selected_index = positions.get(previous.confirmed_at_date)
-            regime_used = (
-                resolver.regime_at(selected_index)
-                if selected_index is not None
-                else "NORMAL"
-            )
+            regime_used = resolver.regime_on_date(previous.confirmed_at_date)
         rows.append(
             {
                 "Ticker": pivot.ticker,
