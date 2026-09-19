@@ -1,0 +1,116 @@
+name: Render Archify Analytics
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/architecture/diagrams/cherrystock-analytics-calculation-engines.architecture.json"
+      - "docs/architecture/Analytics_Calculation_Engines.md"
+      - "docs/architecture/Price_Movement_Character_V2.md"
+      - "scripts/validate_archify_source.py"
+      - "scripts/customize_archify_typography.py"
+      - "scripts/customize_archify_navigation.py"
+      - ".github/workflows/render-archify-analytics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-archify-analytics-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ARCHIFY_VERSION: v2.16.0
+  ARCHIFY_UPDATE_CHECK_DISABLED: "1"
+  SOURCE_FILE: docs/architecture/diagrams/cherrystock-analytics-calculation-engines.architecture.json
+  OUTPUT_FILE: docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html
+  NAVIGATION_FILE: docs/architecture/diagrams/cherrystock-archify-navigation.json
+
+jobs:
+  render:
+    name: Validate and render analytics architecture
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout CherryStock
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download pinned Archify release
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .archify-tool
+          mkdir -p .archify-tool
+          curl -fsSL "https://github.com/tt-a1i/archify/releases/download/${ARCHIFY_VERSION}/archify.zip" -o /tmp/archify.zip
+          unzip -q /tmp/archify.zip -d .archify-tool
+          ARCHIFY_CLI="$(find .archify-tool -type f -path '*/bin/archify.mjs' -print -quit)"
+          if [[ -z "${ARCHIFY_CLI}" ]]; then
+            echo "Archify CLI was not found in release ${ARCHIFY_VERSION}."
+            exit 1
+          fi
+          echo "ARCHIFY_CLI=${ARCHIFY_CLI}" >> "$GITHUB_ENV"
+          node "${ARCHIFY_CLI}" doctor || true
+
+      - name: CherryStock Archify preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/validate_archify_source.py "$SOURCE_FILE" \
+            --repo-root . \
+            --output "$OUTPUT_FILE" \
+            --navigation-config "$NAVIGATION_FILE"
+
+      - name: Validate analytics architecture showcase
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$ARCHIFY_CLI" validate architecture "$SOURCE_FILE" \
+            --repo-root . \
+            --quality showcase \
+            --json
+
+      - name: Deliver analytics architecture HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$OUTPUT_FILE")"
+          node "$ARCHIFY_CLI" deliver architecture "$SOURCE_FILE" "$OUTPUT_FILE" \
+            --repo-root . \
+            --quality showcase \
+            --json
+
+      - name: Apply CherryStock presentation post-processing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/customize_archify_typography.py "$OUTPUT_FILE" --sans-font Inter
+          python scripts/customize_archify_navigation.py "$OUTPUT_FILE" --config "$NAVIGATION_FILE"
+          test -s "$OUTPUT_FILE"
+
+      - name: Commit regenerated analytics artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add "$OUTPUT_FILE"
+          if git diff --cached --quiet; then
+            echo "Generated analytics artifact is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs(archify): regenerate analytics architecture"
+          git push
