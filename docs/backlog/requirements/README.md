@@ -64,7 +64,7 @@ Key governance boundary:
 
 - [[REQ-0025-smart-money-score|REQ-0025 — Ticker-level SmartMoneyScore]] — **DONE**; state-aware, explainable Smart Money behavioral scoring with independent confidence; TestEngineer PASS / KEEP on 2026-09-06. OOS calibration remains a separate production-activation gate.
 - [[REQ-0026-smart-money-strategy|REQ-0026 — Smart Money BUY / HOLD / SELL Strategy Action]] — **IMPLEMENTED_PENDING_VALIDATION**; additive `TradeAction` + `TradeActionConfidenceScore` overlay on `vw_Ticker_SmartMoney`, derived from existing quality/state/factor evidence without changing REQ-0025 persistence. GitHub focused CI is green; local CherryMon validation remains required before functional re-closure.
-- [[REQ-0027-price-movement-characterization|REQ-0027 — Price Movement Characterization and Swing Profile]] — **READY_FOR_DESIGN**; separates Magnitude, Velocity and Persistence, models confirmed/provisional ZigZag swings, ticker-relative historical swing profiles and point-in-time-safe movement classification.
+- [[REQ-0027-price-movement-characterization|REQ-0027 — ZigZag-based Price Movement Foundation]] — **IMPLEMENTED_PENDING_VALIDATION**; MWG-only 5% percentage-reversal ZigZag MVP with event-first pivots/current leg; no run.py integration until structural + visual acceptance.
 
 ## Traceability
 
