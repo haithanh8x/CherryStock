@@ -40,6 +40,7 @@ ATR không được dùng trong ZigZag MVP.
     src/DuckDB/sql/zigzag_mvp_schema.sql
     scripts/initload/init_reload_zigzag_mwg.py
     scripts/validate_zigzag_mwg.py
+    scripts/export_zigzag_tradingview_reconciliation.py
     tests/test_zigzag_engine.py
 
 ## 4. Public contracts
@@ -340,14 +341,35 @@ Theo global repository rule, mọi file dùng để ChatGPT cross-check phải e
 docs/reference/data/
 ```
 
-Package chuẩn cho MWG ZigZag:
+Package chuẩn cho MWG ZigZag được tạo bằng:
+
+```powershell
+python scripts\export_zigzag_tradingview_reconciliation.py
+```
+
+Default window:
+
+```text
+2026-05-01 -> 2026-09-30
+ConfigCode = ZZ_D_5_MVP
+Ticker = MWG
+```
+
+Output:
 
 ```text
 docs/reference/data/zigzag/mwg/
-├── MWG_OHLC_202605_202609.csv
-├── MWG_ZigZag_Pivots_202605_202609.csv
-├── MWG_ZigZag_Swings_202605_202609.csv
-└── MWG_ZigZag_Reconciliation.csv
+├── MWG_OHLC_20260501_20260930.csv
+├── MWG_ZigZag_Pivots_20260501_20260930.csv
+├── MWG_ZigZag_Swings_20260501_20260930.csv
+├── MWG_ZigZag_Reconciliation_20260501_20260930.csv
+└── MWG_ZigZag_Current.csv
+```
+
+Có thể đổi window mà không sửa code:
+
+```powershell
+python scripts\export_zigzag_tradingview_reconciliation.py --start-date 2026-07-01 --end-date 2026-09-30
 ```
 
 Không export package handoff cho ChatGPT vào `export/`, `tmp/`, repository root hoặc thư mục local-only khác.
