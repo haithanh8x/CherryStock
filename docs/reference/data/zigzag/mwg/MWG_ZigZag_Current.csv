@@ -1,0 +1,2 @@
+ConfigId,ConfigCode,ModelVersion,Timeframe,DeviationPct,Ticker,AsOfDate,Direction,StartPivotSeq,StartPivotDate,StartPivotPrice,CandidatePivotType,CandidatePivotDate,CandidatePivotPrice,LastClose,CurrentMovePct,ReversalFromCandidatePct,Status
+1,ZZ_D_5_MVP,MVP1,D,0.05,MWG,2026-09-18,UP,279,2026-09-14,68.6,HIGH,2026-09-17,73.5,72.5,0.07142857142857162,0.013605442176870748,PROVISIONAL
