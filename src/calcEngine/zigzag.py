@@ -12,7 +12,11 @@ MVP_TICKER = "MWG"
 OHLC_VIEW = '"CherryMon"."main"."vw_Ticker_OHLC_D"'
 
 
-def load_mwg_source(connection) -> pd.DataFrame:
+def load_ticker_source(connection, ticker: str) -> pd.DataFrame:
+    resolved_ticker = ticker.strip().upper()
+    if not resolved_ticker:
+        raise ValueError("ticker must not be empty.")
+
     frame = connection.execute(
         f"""
         SELECT
@@ -25,11 +29,15 @@ def load_mwg_source(connection) -> pd.DataFrame:
         WHERE Ticker = ?
         ORDER BY Date
         """,
-        [MVP_TICKER],
+        [resolved_ticker],
     ).df()
     if not frame.empty:
         frame["Date"] = pd.to_datetime(frame["Date"])
     return frame
+
+
+def load_mwg_source(connection) -> pd.DataFrame:
+    return load_ticker_source(connection, MVP_TICKER)
 
 
 def refresh_zigzag_mwg(
