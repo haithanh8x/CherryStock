@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-09-15
+- **Last reviewed:** 2026-09-19
 - **Purpose:** Central status dashboard for planned CherryStock engineering work.
 - **Scope:** Requirement backlog, Architecture backlog, and Agent Harness backlog.
 - **Status authority:** This file is a summary/index only. The detailed backlog/requirement file remains the authoritative material for each item.
@@ -11,17 +11,17 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 6 canonical requirements | 2 DONE · 3 READY_FOR_DESIGN · 1 IMPLEMENTED_PENDING_VALIDATION |
+| Requirements | 9 canonical requirements | 2 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **30** | **6 DONE · 3 IN_PROGRESS · 3 READY_FOR_DESIGN · 1 IMPLEMENTED_PENDING_VALIDATION · 17 TODO** |
+| **Total** | **33** | **6 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
 
 ### Priority Summary
 
 | Priority | Count | Notes |
 |---|---:|---|
 | P0 | 4 | REQ-0022, REQ-0023, REQ-0024, CS-ARCH-010 |
-| P1 | 16 | REQ-0025, REQ-0026, REQ-0027 + 6 Architecture + 7 Harness |
+| P1 | 19 | REQ-0025 through REQ-0030 + 6 Architecture + 7 Harness |
 | P2 | 7 | 2 Architecture + 5 Harness |
 | P3 | 3 | 1 Architecture + 2 Harness |
 
@@ -69,7 +69,10 @@ Canonical index:
 | REQ-0024 | R/S V2.6 Production Confident Strength Integration | P0 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0024-rs-v2-6-production-confident-strength|REQ-0024]] |
 | REQ-0025 | Ticker-level SmartMoneyScore | P1 | **DONE** | None | [[requirements/REQ-0025-smart-money-score|REQ-0025]] |
 | REQ-0026 | Smart Money BUY / HOLD / SELL Strategy Action | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0026-smart-money-strategy|REQ-0026]] |
-| REQ-0027 | Price Movement Characterization and Swing Profile | P1 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0027-price-movement-characterization|REQ-0027]] |
+| REQ-0027 | ZigZag-based Price Movement Foundation | P1 | **IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE** | User | [[requirements/REQ-0027-price-movement-characterization|REQ-0027]] |
+| REQ-0028 | ZigZag Deviation Calibration V1.1 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0028-zigzag-deviation-calibration-v1-1|REQ-0028]] |
+| REQ-0029 | ZigZag Multi-Ticker Pilot V1.2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0029-zigzag-multi-ticker-pilot-v1-2|REQ-0029]] |
+| REQ-0030 | ZigZag Regime-Aware Swing-Locked Deviation V2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0030-zigzag-regime-aware-v2|REQ-0030]] |
 
 ## Requirement Delivery Flow
 
@@ -98,8 +101,17 @@ IMPLEMENTED_PENDING_VALIDATION
 Price Movement Character is an independent analytical workstream that may become a future upstream dependency for SmartMoney or strategy only through a separate approved requirement:
 
 ```text
-REQ-0027 Price Movement Characterization
-READY_FOR_DESIGN
+REQ-0027 ZigZag Foundation
+IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE
+        ↓
+REQ-0028 V1.1 Calibration
+IMPLEMENTED_PENDING_VALIDATION
+        ↓
+REQ-0029 V1.2 Multi-Ticker Pilot
+IMPLEMENTED_PENDING_VALIDATION
+        ↓
+REQ-0030 V2 Regime-Aware
+IMPLEMENTED_PENDING_VALIDATION
 ```
 
 Related approved Smart Money design:
@@ -262,7 +274,10 @@ CS-HARNESS-014
 | CS-HARNESS-014 Harness Evaluation | CS-ARCH-009 |
 | REQ-0025 SmartMoneyScore | Data Architecture, Indicator Engine public SSOT, ADR-009 |
 | REQ-0026 SmartMoneyStrategy | REQ-0025 public SmartMoney contract + independent local validation |
-| REQ-0027 Price Movement Character | Adjusted OHLC, Indicator public ATR contract, Data Architecture, ADR-012 |
+| REQ-0027 ZigZag Foundation | Adjusted OHLC, Data Architecture, ADR-012/013 |
+| REQ-0028 ZigZag V1.1 | REQ-0027 canonical ZigZag engine + adjusted OHLC |
+| REQ-0029 ZigZag V1.2 | REQ-0028 calibrated ticker config |
+| REQ-0030 ZigZag V2 | REQ-0028 calibrated base + ADR-015 swing-lock rule |
 | REQ-0024 R/S V2.6 | Requires V2.5 evidence/promotion gate before production confidence integration |
 
 ---
