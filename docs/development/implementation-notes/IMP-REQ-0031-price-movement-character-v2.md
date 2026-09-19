@@ -110,3 +110,60 @@ verify formulas, ZigZag lineage, profile semantics and point-in-time constraints
     Runbook: docs/runbook/ZigZag_Price_Movement_Character_V2.md
     Reconciliation: docs/runbook/ZigZag_Price_Movement_Reconciliation.md
     Expected outcome: PASS | FAIL | BLOCKED | REGRESSION
+
+
+## GitHub Dev Review
+
+Reviewed on main after local repository sync.
+
+Static contract checks:
+
+    Price Movement reads active ZigZag public contracts: PASS
+    Price Movement runtime references dim_zigzag_ticker_config: NO
+    run.py contains Price Movement orchestration: NO
+    run.py blob SHA: 8bf590b6b9a4929b68dc714e74b491b029d1abea
+
+Required implementation artifacts present:
+
+    src/cherrystock/domain/analytics/price_movement/models.py
+    src/cherrystock/domain/analytics/price_movement/classifier.py
+    src/cherrystock/domain/analytics/price_movement/engine.py
+    src/cherrystock/infrastructure/database/repositories/price_movement_repository.py
+    src/calcEngine/priceMovement.py
+    src/DuckDB/sql/price_movement_v2_schema.sql
+    scripts/initload/init_reload_price_movement_mwg.py
+    scripts/validate_price_movement_mwg.py
+    scripts/export_price_movement_reconciliation.py
+    tests/test_price_movement_zigzag.py
+
+BA/SA/Dev delivery is complete on GitHub. The remaining gate is local TestEngineer execution
+against CherryMon plus Archify rendering and committed reconciliation evidence.
+
+## Local Agent Deployment Handoff
+
+Pull:
+
+    cd C:\Github\CherryStock
+    git pull origin main
+
+Execute in this order:
+
+    .\scripts\render_archify_analytics.ps1 -NoOpen
+    python -m pytest tests\test_zigzag_engine.py tests\test_price_movement_zigzag.py -v
+    python -m pytest tests\test_sync_write_pipeline_service.py -v
+    python scripts\initload\init_reload_price_movement_mwg.py
+    python scripts\validate_price_movement_mwg.py
+    python scripts\export_price_movement_reconciliation.py --ticker MWG
+
+Required terminal state before closing REQ-0031:
+
+    STRUCTURAL VALIDATION: PASS
+    reconciliation_status: PASS
+    total_core_errors: 0
+
+Then commit:
+
+    git add docs/reference/data/price_movement/mwg/
+    git add docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html
+    git commit -m "test: add MWG Price Movement V2 validation evidence"
+    git push origin main
