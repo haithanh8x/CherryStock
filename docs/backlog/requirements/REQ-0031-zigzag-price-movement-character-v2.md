@@ -144,8 +144,8 @@ For descriptive normalization:
 
 For each swing:
 
-    AvgATR20Pct = mean(ATR20Pct from StartDate through EndDate)
-    ATRNormalizedMove = abs(SwingPct) / AvgATR20Pct
+    AvgATRPct = mean(ATR20Pct from StartDate through EndDate)
+    ATRNormalizedMove = abs(SwingPct) / AvgATRPct
 
 when sufficient ATR history exists.
 
