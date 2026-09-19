@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-15T14:24:20.163018+00:00
+- Generated at: 2026-09-19T05:03:47.250308+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 54
+- Table/view count: 61
 
 ## Schemas
 
@@ -28,6 +28,8 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`cal_Indexes` (BASE TABLE)
 - `main`.`cal_Trends` (BASE TABLE)
 - `main`.`cal_indicator_values` (BASE TABLE)
+- `main`.`cal_price_movement_daily` (BASE TABLE)
+- `main`.`cal_price_movement_swing` (BASE TABLE)
 - `main`.`cal_rs_evaluation_event` (BASE TABLE)
 - `main`.`cal_rs_evaluation_metric` (BASE TABLE)
 - `main`.`cal_rs_evaluation_run` (BASE TABLE)
@@ -39,6 +41,8 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`dim_indicator` (BASE TABLE)
 - `main`.`dim_indicator_component` (BASE TABLE)
 - `main`.`dim_indicator_config` (BASE TABLE)
+- `main`.`dim_price_movement_config` (BASE TABLE)
+- `main`.`dim_price_movement_model` (BASE TABLE)
 - `main`.`dim_rs_model_version` (BASE TABLE)
 - `main`.`dim_smart_money_config` (BASE TABLE)
 - `main`.`dim_smart_money_factor` (BASE TABLE)
@@ -75,6 +79,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`vw_Indicator_config` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
+- `main`.`vw_Ticker_Movement_D` (VIEW)
+- `main`.`vw_Ticker_Movement_Profile` (VIEW)
+- `main`.`vw_Ticker_Movement_Swings` (VIEW)
 - `main`.`vw_Ticker_OHLC_D` (VIEW)
 - `main`.`vw_Ticker_SmartMoney` (VIEW)
 - `main`.`vw_Ticker_indicators` (VIEW)
@@ -115,6 +122,75 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ConfigId` | `BIGINT` | `NO` | `` |
 | `ComponentCode` | `VARCHAR` | `NO` | `` |
 | `Value` | `DOUBLE` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_price_movement_daily (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Date` | `DATE` | `NO` | `` |
+| `Direction` | `VARCHAR` | `YES` | `` |
+| `SwingStatus` | `VARCHAR` | `NO` | `` |
+| `CurrentSwingStartDate` | `DATE` | `YES` | `` |
+| `CandidateEndDate` | `DATE` | `YES` | `` |
+| `StartPrice` | `DOUBLE` | `YES` | `` |
+| `CandidateEndPrice` | `DOUBLE` | `YES` | `` |
+| `CurrentSwingPct` | `DOUBLE` | `YES` | `` |
+| `DurationBars` | `INTEGER` | `YES` | `` |
+| `VelocityLogPerBar` | `DOUBLE` | `YES` | `` |
+| `VelocityPctPerBar` | `DOUBLE` | `YES` | `` |
+| `ATRNormMagnitude` | `DOUBLE` | `YES` | `` |
+| `EfficiencyRatio` | `DOUBLE` | `YES` | `` |
+| `RegressionSlopePerBar` | `DOUBLE` | `YES` | `` |
+| `RegressionR2` | `DOUBLE` | `YES` | `` |
+| `MaxAdverseExcursionPct` | `DOUBLE` | `YES` | `` |
+| `DirectionalDayRatio` | `DOUBLE` | `YES` | `` |
+| `HistoricalSameDirSwingCount` | `INTEGER` | `NO` | `0` |
+| `MagnitudePercentile` | `DOUBLE` | `YES` | `` |
+| `ATRNormMagnitudePercentile` | `DOUBLE` | `YES` | `` |
+| `VelocityPercentile` | `DOUBLE` | `YES` | `` |
+| `PersistencePercentile` | `DOUBLE` | `YES` | `` |
+| `MagnitudeScore` | `DOUBLE` | `YES` | `` |
+| `VelocityScore` | `DOUBLE` | `YES` | `` |
+| `PersistenceScore` | `DOUBLE` | `YES` | `` |
+| `MovementCharacter` | `VARCHAR` | `NO` | `` |
+| `ScoreBasis` | `VARCHAR` | `NO` | `` |
+| `ThresholdPct` | `DOUBLE` | `YES` | `` |
+| `ThresholdSource` | `VARCHAR` | `YES` | `` |
+| `QualityStatus` | `VARCHAR` | `NO` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_price_movement_swing (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Direction` | `VARCHAR` | `NO` | `` |
+| `SwingSeq` | `BIGINT` | `NO` | `` |
+| `PivotStartDate` | `DATE` | `NO` | `` |
+| `PivotEndDate` | `DATE` | `NO` | `` |
+| `ConfirmedAtDate` | `DATE` | `NO` | `` |
+| `StartPrice` | `DOUBLE` | `NO` | `` |
+| `EndPrice` | `DOUBLE` | `NO` | `` |
+| `SwingPct` | `DOUBLE` | `NO` | `` |
+| `DurationBars` | `INTEGER` | `NO` | `` |
+| `DurationCalendarDays` | `INTEGER` | `NO` | `` |
+| `VelocityLogPerBar` | `DOUBLE` | `NO` | `` |
+| `VelocityPctPerBar` | `DOUBLE` | `NO` | `` |
+| `MeanATR` | `DOUBLE` | `YES` | `` |
+| `ATRNormMagnitude` | `DOUBLE` | `YES` | `` |
+| `EfficiencyRatio` | `DOUBLE` | `NO` | `` |
+| `RegressionSlopePerBar` | `DOUBLE` | `YES` | `` |
+| `RegressionR2` | `DOUBLE` | `YES` | `` |
+| `MaxAdverseExcursionPct` | `DOUBLE` | `NO` | `` |
+| `DirectionalDayRatio` | `DOUBLE` | `NO` | `` |
+| `PersistenceScore` | `DOUBLE` | `NO` | `` |
+| `ThresholdPct` | `DOUBLE` | `NO` | `` |
+| `ThresholdSource` | `VARCHAR` | `NO` | `` |
+| `QualityStatus` | `VARCHAR` | `NO` | `` |
 | `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.cal_rs_evaluation_event (BASE TABLE)
@@ -323,6 +399,54 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Description` | `VARCHAR` | `YES` | `` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 | `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.dim_price_movement_config (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `NO` | `` |
+| `ModelId` | `BIGINT` | `NO` | `` |
+| `Timeframe` | `VARCHAR` | `NO` | `` |
+| `PivotPriceSource` | `VARCHAR` | `NO` | `` |
+| `ConfirmationPriceSource` | `VARCHAR` | `NO` | `` |
+| `ATRIndicatorCode` | `VARCHAR` | `NO` | `` |
+| `ATRLength` | `INTEGER` | `NO` | `` |
+| `ATRMultiplier` | `DOUBLE` | `NO` | `` |
+| `MinReversalPct` | `DOUBLE` | `NO` | `` |
+| `MaxReversalPct` | `DOUBLE` | `YES` | `` |
+| `MinimumSwingBars` | `INTEGER` | `NO` | `` |
+| `MinHistoricalSameDir` | `INTEGER` | `NO` | `` |
+| `ProfileMaxSwings` | `INTEGER` | `NO` | `` |
+| `MagnitudeRawWeight` | `DOUBLE` | `NO` | `` |
+| `MagnitudeATRWeight` | `DOUBLE` | `NO` | `` |
+| `PersistenceERWeight` | `DOUBLE` | `NO` | `` |
+| `PersistenceR2Weight` | `DOUBLE` | `NO` | `` |
+| `PersistenceSmoothnessWeight` | `DOUBLE` | `NO` | `` |
+| `PersistenceDirectionalDayWeight` | `DOUBLE` | `NO` | `` |
+| `HighMagnitudeThreshold` | `DOUBLE` | `NO` | `` |
+| `HighVelocityThreshold` | `DOUBLE` | `NO` | `` |
+| `HighPersistenceThreshold` | `DOUBLE` | `NO` | `` |
+| `LowPersistenceThreshold` | `DOUBLE` | `NO` | `` |
+| `MidMagnitudeThreshold` | `DOUBLE` | `NO` | `` |
+| `EffectiveFrom` | `DATE` | `NO` | `CAST('2000-01-01' AS DATE)` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.dim_price_movement_model (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ModelId` | `BIGINT` | `NO` | `` |
+| `ModelCode` | `VARCHAR` | `NO` | `` |
+| `ModelVersion` | `VARCHAR` | `NO` | `` |
+| `Description` | `VARCHAR` | `YES` | `` |
+| `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `EffectiveFrom` | `DATE` | `NO` | `CAST('2000-01-01' AS DATE)` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.dim_rs_model_version (BASE TABLE)
 
@@ -995,6 +1119,100 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Book Value` | `DOUBLE` | `YES` | `` |
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
+
+### main.vw_Ticker_Movement_D (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `YES` | `` |
+| `ModelCode` | `VARCHAR` | `YES` | `` |
+| `ModelVersion` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Date` | `DATE` | `YES` | `` |
+| `Direction` | `VARCHAR` | `YES` | `` |
+| `SwingStatus` | `VARCHAR` | `YES` | `` |
+| `CurrentSwingStartDate` | `DATE` | `YES` | `` |
+| `CandidateEndDate` | `DATE` | `YES` | `` |
+| `StartPrice` | `DOUBLE` | `YES` | `` |
+| `CandidateEndPrice` | `DOUBLE` | `YES` | `` |
+| `CurrentSwingPct` | `DOUBLE` | `YES` | `` |
+| `DurationBars` | `INTEGER` | `YES` | `` |
+| `VelocityLogPerBar` | `DOUBLE` | `YES` | `` |
+| `VelocityPctPerBar` | `DOUBLE` | `YES` | `` |
+| `ATRNormMagnitude` | `DOUBLE` | `YES` | `` |
+| `EfficiencyRatio` | `DOUBLE` | `YES` | `` |
+| `RegressionSlopePerBar` | `DOUBLE` | `YES` | `` |
+| `RegressionR2` | `DOUBLE` | `YES` | `` |
+| `MaxAdverseExcursionPct` | `DOUBLE` | `YES` | `` |
+| `DirectionalDayRatio` | `DOUBLE` | `YES` | `` |
+| `HistoricalSameDirSwingCount` | `INTEGER` | `YES` | `` |
+| `MagnitudePercentile` | `DOUBLE` | `YES` | `` |
+| `ATRNormMagnitudePercentile` | `DOUBLE` | `YES` | `` |
+| `VelocityPercentile` | `DOUBLE` | `YES` | `` |
+| `PersistencePercentile` | `DOUBLE` | `YES` | `` |
+| `MagnitudeScore` | `DOUBLE` | `YES` | `` |
+| `VelocityScore` | `DOUBLE` | `YES` | `` |
+| `PersistenceScore` | `DOUBLE` | `YES` | `` |
+| `MovementCharacter` | `VARCHAR` | `YES` | `` |
+| `ScoreBasis` | `VARCHAR` | `YES` | `` |
+| `ThresholdPct` | `DOUBLE` | `YES` | `` |
+| `ThresholdSource` | `VARCHAR` | `YES` | `` |
+| `QualityStatus` | `VARCHAR` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.vw_Ticker_Movement_Profile (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `YES` | `` |
+| `ModelCode` | `VARCHAR` | `YES` | `` |
+| `ModelVersion` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Direction` | `VARCHAR` | `YES` | `` |
+| `SwingCount` | `BIGINT` | `YES` | `` |
+| `MagnitudeMedian` | `DOUBLE` | `YES` | `` |
+| `MagnitudeP75` | `DOUBLE` | `YES` | `` |
+| `MagnitudeP90` | `DOUBLE` | `YES` | `` |
+| `DurationBarsMedian` | `DOUBLE` | `YES` | `` |
+| `DurationBarsP75` | `DOUBLE` | `YES` | `` |
+| `VelocityMedian` | `DOUBLE` | `YES` | `` |
+| `VelocityP75` | `DOUBLE` | `YES` | `` |
+| `ATRNormMagnitudeMedian` | `DOUBLE` | `YES` | `` |
+| `PersistenceMedian` | `DOUBLE` | `YES` | `` |
+| `LatestConfirmedAtDate` | `DATE` | `YES` | `` |
+
+### main.vw_Ticker_Movement_Swings (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `YES` | `` |
+| `ModelCode` | `VARCHAR` | `YES` | `` |
+| `ModelVersion` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Direction` | `VARCHAR` | `YES` | `` |
+| `SwingSeq` | `BIGINT` | `YES` | `` |
+| `PivotStartDate` | `DATE` | `YES` | `` |
+| `PivotEndDate` | `DATE` | `YES` | `` |
+| `ConfirmedAtDate` | `DATE` | `YES` | `` |
+| `StartPrice` | `DOUBLE` | `YES` | `` |
+| `EndPrice` | `DOUBLE` | `YES` | `` |
+| `SwingPct` | `DOUBLE` | `YES` | `` |
+| `DurationBars` | `INTEGER` | `YES` | `` |
+| `DurationCalendarDays` | `INTEGER` | `YES` | `` |
+| `VelocityLogPerBar` | `DOUBLE` | `YES` | `` |
+| `VelocityPctPerBar` | `DOUBLE` | `YES` | `` |
+| `MeanATR` | `DOUBLE` | `YES` | `` |
+| `ATRNormMagnitude` | `DOUBLE` | `YES` | `` |
+| `EfficiencyRatio` | `DOUBLE` | `YES` | `` |
+| `RegressionSlopePerBar` | `DOUBLE` | `YES` | `` |
+| `RegressionR2` | `DOUBLE` | `YES` | `` |
+| `MaxAdverseExcursionPct` | `DOUBLE` | `YES` | `` |
+| `DirectionalDayRatio` | `DOUBLE` | `YES` | `` |
+| `PersistenceScore` | `DOUBLE` | `YES` | `` |
+| `ThresholdPct` | `DOUBLE` | `YES` | `` |
+| `ThresholdSource` | `VARCHAR` | `YES` | `` |
+| `QualityStatus` | `VARCHAR` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.vw_Ticker_OHLC_D (VIEW)
 
