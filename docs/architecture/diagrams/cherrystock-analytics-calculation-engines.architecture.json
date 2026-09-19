@@ -8,7 +8,7 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "c0efff297dc1a73b71b1fb0ece02446a90cfcd94"
+      "revision": "IMPLEMENTED_PENDING_LOCAL_ARCHIFY_RENDER"
     },
     "viewBox": [
       1390,
@@ -112,7 +112,7 @@
       "id": "price_movement",
       "type": "backend",
       "label": "ZigZag Swing Engine",
-      "sublabel": "MWG MVP · 5% reversal",
+      "sublabel": "MWG MVP · calibration · pilot · regime research",
       "pos": [
         910,
         80
@@ -129,6 +129,18 @@
         {
           "path": "docs/adr/ADR-013-zigzag-as-price-movement-segmentation-foundation.md",
           "label": "Segmentation decision"
+        },
+        {
+          "path": "docs/architecture/ZigZag_Deviation_Calibration.md",
+          "label": "V1.1 calibration design"
+        },
+        {
+          "path": "docs/architecture/ZigZag_Multi_Ticker_Pilot.md",
+          "label": "V1.2 pilot design"
+        },
+        {
+          "path": "docs/architecture/ZigZag_Regime_Aware.md",
+          "label": "V2 regime-aware design"
         }
       ]
     },
@@ -252,7 +264,7 @@
       "id": "movement_store",
       "type": "database",
       "label": "ZigZag Persistence",
-      "sublabel": "confirmed pivots · current leg",
+      "sublabel": "pivots · current · calibration/pilot/regime evidence",
       "pos": [
         910,
         260
@@ -265,6 +277,10 @@
         {
           "path": "docs/architecture/ZigZag_Engine.md",
           "label": "Pivot persistence contract"
+        },
+        {
+          "path": "src/DuckDB/sql/zigzag_research_schema.sql",
+          "label": "Research persistence contracts"
         }
       ]
     },
