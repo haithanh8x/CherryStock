@@ -1,11 +1,26 @@
 # Price Movement Character Engine
 
-- **Status:** DEFERRED_AFTER_ZIGZAG_MWG_VALIDATION
+- **Status:** SUPERSEDED_BY_PRICE_MOVEMENT_CHARACTER_V2
 - **Owner:** .github/agents/SolutionArchitect.agent.md
 - **Requirement:** docs/backlog/requirements/REQ-0027-price-movement-characterization.md
 - **Foundation:** docs/architecture/ZigZag_Engine.md
 - **ADR:** docs/adr/ADR-012-price-movement-character-as-separate-analytics-domain.md
 - **Segmentation ADR:** docs/adr/ADR-013-zigzag-as-price-movement-segmentation-foundation.md
+
+## Supersession
+
+The deferred design in this document has now resumed as REQ-0031.
+
+Canonical active design:
+
+    docs/architecture/Price_Movement_Character_V2.md
+
+Canonical decision:
+
+    docs/adr/ADR-016-zigzag-price-movement-characterization-v2.md
+
+This file is retained only as the historical deferred design bridge after rollback of Price
+Movement V1. Do not implement new behavior from this document.
 
 ## Purpose
 
