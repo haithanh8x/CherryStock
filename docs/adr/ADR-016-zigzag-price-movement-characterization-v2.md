@@ -1,6 +1,6 @@
 # ADR-016 — ZigZag-based Price Movement Characterization V2
 
-- Status: Accepted design semantics; Archify render pending
+- Status: Accepted
 - Date: 2026-09-19
 - Requirement: REQ-0031
 - Related: ADR-012, ADR-013, ADR-014, ADR-015
@@ -118,3 +118,11 @@ Canonical Markdown and typed Archify source are updated in Git.
 
 Generated Archify HTML must be regenerated locally. Until showcase validation returns ok=true,
 do not claim Archify artifact synchronization complete.
+
+
+## Architecture visualization synchronization
+
+The ADR decision is accepted. The Archify typed source is already synchronized with the
+canonical design. Local generation/validation of
+`docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html` remains an
+operational validation step and does not change the accepted ADR semantics.
