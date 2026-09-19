@@ -1,0 +1,2 @@
+ConfigId,ConfigCode,ModelVersion,Timeframe,ZigZagConfigCode,ProfileLookbackSwings,MinimumProfileSwings,TrendBiasThreshold,RangeBiasThreshold,EfficiencyThreshold,ATRPeriod,IsEnabled
+1,PM_ZZ_D_V2,V2.0,D,ZZ_D_5_MVP,20,6,0.2,0.15,0.3,20,True

@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-19T11:09:11.950024+00:00
+- Generated at: 2026-09-19T16:56:51.054320+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 60
+- Table/view count: 73
 
 ## Schemas
 
@@ -28,6 +28,8 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`cal_Indexes` (BASE TABLE)
 - `main`.`cal_Trends` (BASE TABLE)
 - `main`.`cal_indicator_values` (BASE TABLE)
+- `main`.`cal_price_movement_profile` (BASE TABLE)
+- `main`.`cal_price_movement_swing` (BASE TABLE)
 - `main`.`cal_rs_evaluation_event` (BASE TABLE)
 - `main`.`cal_rs_evaluation_metric` (BASE TABLE)
 - `main`.`cal_rs_evaluation_run` (BASE TABLE)
@@ -36,17 +38,22 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`cal_smart_money_factor_values` (BASE TABLE)
 - `main`.`cal_smart_money_ticker_score` (BASE TABLE)
 - `main`.`cal_zigzag_current_leg` (BASE TABLE)
+- `main`.`cal_zigzag_deviation_evaluation` (BASE TABLE)
+- `main`.`cal_zigzag_pilot_evaluation` (BASE TABLE)
 - `main`.`cal_zigzag_pivot` (BASE TABLE)
+- `main`.`cal_zigzag_regime_evaluation` (BASE TABLE)
 - `main`.`dimCalendar` (BASE TABLE)
 - `main`.`dim_indicator` (BASE TABLE)
 - `main`.`dim_indicator_component` (BASE TABLE)
 - `main`.`dim_indicator_config` (BASE TABLE)
+- `main`.`dim_price_movement_config` (BASE TABLE)
 - `main`.`dim_rs_model_version` (BASE TABLE)
 - `main`.`dim_smart_money_config` (BASE TABLE)
 - `main`.`dim_smart_money_factor` (BASE TABLE)
 - `main`.`dim_smart_money_model` (BASE TABLE)
 - `main`.`dim_smart_money_state_weight` (BASE TABLE)
 - `main`.`dim_zigzag_config` (BASE TABLE)
+- `main`.`dim_zigzag_ticker_config` (BASE TABLE)
 - `main`.`raw_active_eod` (BASE TABLE)
 - `main`.`raw_bctc_cdkt` (BASE TABLE)
 - `main`.`raw_bctc_cstc` (BASE TABLE)
@@ -78,12 +85,18 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`vw_Indicator_config` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
+- `main`.`vw_Ticker_Movement_Profile` (VIEW)
 - `main`.`vw_Ticker_OHLC_D` (VIEW)
+- `main`.`vw_Ticker_Price_Movement_Swings` (VIEW)
 - `main`.`vw_Ticker_SmartMoney` (VIEW)
 - `main`.`vw_Ticker_ZigZag_Current` (VIEW)
 - `main`.`vw_Ticker_ZigZag_Pivots` (VIEW)
 - `main`.`vw_Ticker_ZigZag_Swings` (VIEW)
 - `main`.`vw_Ticker_indicators` (VIEW)
+- `main`.`vw_ZigZag_Calibration` (VIEW)
+- `main`.`vw_ZigZag_Pilot` (VIEW)
+- `main`.`vw_ZigZag_Regime_Evaluation` (VIEW)
+- `main`.`vw_ZigZag_Ticker_Config` (VIEW)
 - `main`.`vw_raw_stock_eod` (VIEW)
 
 ## Objects
@@ -121,6 +134,59 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ConfigId` | `BIGINT` | `NO` | `` |
 | `ComponentCode` | `VARCHAR` | `NO` | `` |
 | `Value` | `DOUBLE` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_price_movement_profile (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `PriceMovementConfigId` | `BIGINT` | `NO` | `` |
+| `ZigZagConfigId` | `BIGINT` | `NO` | `` |
+| `ZigZagConfigCode` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `AsOfConfirmedAtDate` | `DATE` | `NO` | `` |
+| `ProfileLookbackSwings` | `INTEGER` | `NO` | `` |
+| `ConfirmedSwingCount` | `INTEGER` | `NO` | `` |
+| `LastSwingSeq` | `BIGINT` | `NO` | `` |
+| `LastSwingDirection` | `VARCHAR` | `NO` | `` |
+| `LastSwingPct` | `DOUBLE` | `NO` | `` |
+| `MedianUpSwingPct` | `DOUBLE` | `YES` | `` |
+| `MedianDownSwingAbsPct` | `DOUBLE` | `YES` | `` |
+| `MedianAbsSwingPct` | `DOUBLE` | `NO` | `` |
+| `MedianTradingBars` | `DOUBLE` | `NO` | `` |
+| `MedianAbsVelocityPctPerBar` | `DOUBLE` | `NO` | `` |
+| `MedianATRNormalizedMove` | `DOUBLE` | `YES` | `` |
+| `MedianPathEfficiency` | `DOUBLE` | `NO` | `` |
+| `MedianDirectionalPersistenceRate` | `DOUBLE` | `NO` | `` |
+| `DirectionalBias` | `DOUBLE` | `NO` | `` |
+| `MovementCharacter` | `VARCHAR` | `NO` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_price_movement_swing (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `PriceMovementConfigId` | `BIGINT` | `NO` | `` |
+| `ZigZagConfigId` | `BIGINT` | `NO` | `` |
+| `ZigZagConfigCode` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `SwingSeq` | `BIGINT` | `NO` | `` |
+| `Direction` | `VARCHAR` | `NO` | `` |
+| `StartPivotSeq` | `BIGINT` | `NO` | `` |
+| `StartDate` | `DATE` | `NO` | `` |
+| `StartPrice` | `DOUBLE` | `NO` | `` |
+| `EndPivotSeq` | `BIGINT` | `NO` | `` |
+| `EndDate` | `DATE` | `NO` | `` |
+| `EndPrice` | `DOUBLE` | `NO` | `` |
+| `ConfirmedAtDate` | `DATE` | `NO` | `` |
+| `SwingPct` | `DOUBLE` | `NO` | `` |
+| `TradingBars` | `INTEGER` | `NO` | `` |
+| `CalendarDays` | `INTEGER` | `NO` | `` |
+| `VelocityPctPerBar` | `DOUBLE` | `NO` | `` |
+| `AvgATRPct` | `DOUBLE` | `YES` | `` |
+| `ATRNormalizedMove` | `DOUBLE` | `YES` | `` |
+| `PathEfficiency` | `DOUBLE` | `NO` | `` |
+| `DirectionalPersistenceRate` | `DOUBLE` | `NO` | `` |
 | `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.cal_rs_evaluation_event (BASE TABLE)
@@ -286,6 +352,52 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Status` | `VARCHAR` | `NO` | `` |
 | `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
+### main.cal_zigzag_deviation_evaluation (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `CalibrationVersion` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `SplitName` | `VARCHAR` | `NO` | `` |
+| `DeviationPct` | `DOUBLE` | `NO` | `` |
+| `SourceBars` | `BIGINT` | `NO` | `` |
+| `PivotCount` | `BIGINT` | `NO` | `` |
+| `SwingCount` | `BIGINT` | `NO` | `` |
+| `PivotDensityPer100Bars` | `DOUBLE` | `NO` | `` |
+| `MedianSwingBars` | `DOUBLE` | `NO` | `` |
+| `MedianAbsSwingPct` | `DOUBLE` | `NO` | `` |
+| `ShortSwingRate` | `DOUBLE` | `NO` | `` |
+| `StructuralValid` | `BOOLEAN` | `NO` | `` |
+| `IsEligible` | `BOOLEAN` | `NO` | `` |
+| `CalibrationScore` | `DOUBLE` | `NO` | `` |
+| `EvaluatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_zigzag_pilot_evaluation (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `PilotVersion` | `VARCHAR` | `NO` | `` |
+| `CalibrationVersion` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `BaselineDeviationPct` | `DOUBLE` | `NO` | `` |
+| `CalibratedDeviationPct` | `DOUBLE` | `NO` | `` |
+| `BaselineSwingCount` | `BIGINT` | `NO` | `` |
+| `CalibratedSwingCount` | `BIGINT` | `NO` | `` |
+| `BaselinePivotDensity` | `DOUBLE` | `NO` | `` |
+| `CalibratedPivotDensity` | `DOUBLE` | `NO` | `` |
+| `BaselineMedianSwingBars` | `DOUBLE` | `NO` | `` |
+| `CalibratedMedianSwingBars` | `DOUBLE` | `NO` | `` |
+| `BaselineMedianAbsSwingPct` | `DOUBLE` | `NO` | `` |
+| `CalibratedMedianAbsSwingPct` | `DOUBLE` | `NO` | `` |
+| `BaselineShortSwingRate` | `DOUBLE` | `NO` | `` |
+| `CalibratedShortSwingRate` | `DOUBLE` | `NO` | `` |
+| `BaselineStructuralValid` | `BOOLEAN` | `NO` | `` |
+| `CalibratedStructuralValid` | `BOOLEAN` | `NO` | `` |
+| `BaselineScore` | `DOUBLE` | `NO` | `` |
+| `CalibratedScore` | `DOUBLE` | `NO` | `` |
+| `Decision` | `VARCHAR` | `NO` | `` |
+| `EvaluatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
 ### main.cal_zigzag_pivot (BASE TABLE)
 
 | Column | Type | Nullable | Default |
@@ -300,6 +412,31 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ConfirmationPrice` | `DOUBLE` | `NO` | `` |
 | `DeviationPct` | `DOUBLE` | `NO` | `` |
 | `CalculatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.cal_zigzag_regime_evaluation (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `RegimeVersion` | `VARCHAR` | `NO` | `` |
+| `CalibrationVersion` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `BaseDeviationPct` | `DOUBLE` | `NO` | `` |
+| `StaticSwingCount` | `BIGINT` | `NO` | `` |
+| `RegimeSwingCount` | `BIGINT` | `NO` | `` |
+| `StaticShortSwingRate` | `DOUBLE` | `NO` | `` |
+| `RegimeShortSwingRate` | `DOUBLE` | `NO` | `` |
+| `StaticMedianSwingBars` | `DOUBLE` | `NO` | `` |
+| `RegimeMedianSwingBars` | `DOUBLE` | `NO` | `` |
+| `StaticMedianAbsSwingPct` | `DOUBLE` | `NO` | `` |
+| `RegimeMedianAbsSwingPct` | `DOUBLE` | `NO` | `` |
+| `StaticStructuralValid` | `BOOLEAN` | `NO` | `` |
+| `RegimeStructuralValid` | `BOOLEAN` | `NO` | `` |
+| `StaticScore` | `DOUBLE` | `NO` | `` |
+| `RegimeScore` | `DOUBLE` | `NO` | `` |
+| `LowVolBars` | `BIGINT` | `NO` | `` |
+| `NormalBars` | `BIGINT` | `NO` | `` |
+| `HighVolBars` | `BIGINT` | `NO` | `` |
+| `EvaluatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.dimCalendar (BASE TABLE)
 
@@ -364,6 +501,27 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Description` | `VARCHAR` | `YES` | `` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 | `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.dim_price_movement_config (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `ConfigId` | `BIGINT` | `NO` | `` |
+| `ConfigCode` | `VARCHAR` | `NO` | `` |
+| `ModelVersion` | `VARCHAR` | `NO` | `` |
+| `Timeframe` | `VARCHAR` | `NO` | `` |
+| `ZigZagConfigCode` | `VARCHAR` | `NO` | `` |
+| `ProfileLookbackSwings` | `INTEGER` | `NO` | `` |
+| `MinimumProfileSwings` | `INTEGER` | `NO` | `` |
+| `TrendBiasThreshold` | `DOUBLE` | `NO` | `` |
+| `RangeBiasThreshold` | `DOUBLE` | `NO` | `` |
+| `EfficiencyThreshold` | `DOUBLE` | `NO` | `` |
+| `ATRPeriod` | `INTEGER` | `NO` | `` |
+| `EffectiveFrom` | `DATE` | `NO` | `CAST('2000-01-01' AS DATE)` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.dim_rs_model_version (BASE TABLE)
 
@@ -446,6 +604,24 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `EffectiveTo` | `DATE` | `YES` | `` |
 | `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+
+### main.dim_zigzag_ticker_config (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `CalibrationVersion` | `VARCHAR` | `NO` | `` |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Timeframe` | `VARCHAR` | `NO` | `` |
+| `BaseDeviationPct` | `DOUBLE` | `NO` | `` |
+| `SelectionMethod` | `VARCHAR` | `NO` | `` |
+| `TrainScore` | `DOUBLE` | `NO` | `` |
+| `ValidationScore` | `DOUBLE` | `NO` | `` |
+| `TestScore` | `DOUBLE` | `NO` | `` |
+| `Status` | `VARCHAR` | `NO` | `'RECOMMENDED'` |
+| `IsActive` | `BOOLEAN` | `NO` | `CAST('f' AS BOOLEAN)` |
+| `EffectiveFrom` | `DATE` | `YES` | `` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
 | `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.raw_active_eod (BASE TABLE)
@@ -1055,6 +1231,35 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
 
+### main.vw_Ticker_Movement_Profile (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `PriceMovementConfigCode` | `VARCHAR` | `YES` | `` |
+| `PriceMovementModelVersion` | `VARCHAR` | `YES` | `` |
+| `Timeframe` | `VARCHAR` | `YES` | `` |
+| `PriceMovementConfigId` | `BIGINT` | `YES` | `` |
+| `ZigZagConfigId` | `BIGINT` | `YES` | `` |
+| `ZigZagConfigCode` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `AsOfConfirmedAtDate` | `DATE` | `YES` | `` |
+| `ProfileLookbackSwings` | `INTEGER` | `YES` | `` |
+| `ConfirmedSwingCount` | `INTEGER` | `YES` | `` |
+| `LastSwingSeq` | `BIGINT` | `YES` | `` |
+| `LastSwingDirection` | `VARCHAR` | `YES` | `` |
+| `LastSwingPct` | `DOUBLE` | `YES` | `` |
+| `MedianUpSwingPct` | `DOUBLE` | `YES` | `` |
+| `MedianDownSwingAbsPct` | `DOUBLE` | `YES` | `` |
+| `MedianAbsSwingPct` | `DOUBLE` | `YES` | `` |
+| `MedianTradingBars` | `DOUBLE` | `YES` | `` |
+| `MedianAbsVelocityPctPerBar` | `DOUBLE` | `YES` | `` |
+| `MedianATRNormalizedMove` | `DOUBLE` | `YES` | `` |
+| `MedianPathEfficiency` | `DOUBLE` | `YES` | `` |
+| `MedianDirectionalPersistenceRate` | `DOUBLE` | `YES` | `` |
+| `DirectionalBias` | `DOUBLE` | `YES` | `` |
+| `MovementCharacter` | `VARCHAR` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `YES` | `` |
+
 ### main.vw_Ticker_OHLC_D (VIEW)
 
 | Column | Type | Nullable | Default |
@@ -1077,6 +1282,36 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ATO_Vol` | `BIGINT` | `YES` | `` |
 | `ATC_Val` | `BIGINT` | `YES` | `` |
 | `ATC_Vol` | `BIGINT` | `YES` | `` |
+
+### main.vw_Ticker_Price_Movement_Swings (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `PriceMovementConfigCode` | `VARCHAR` | `YES` | `` |
+| `PriceMovementModelVersion` | `VARCHAR` | `YES` | `` |
+| `Timeframe` | `VARCHAR` | `YES` | `` |
+| `PriceMovementConfigId` | `BIGINT` | `YES` | `` |
+| `ZigZagConfigId` | `BIGINT` | `YES` | `` |
+| `ZigZagConfigCode` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `SwingSeq` | `BIGINT` | `YES` | `` |
+| `Direction` | `VARCHAR` | `YES` | `` |
+| `StartPivotSeq` | `BIGINT` | `YES` | `` |
+| `StartDate` | `DATE` | `YES` | `` |
+| `StartPrice` | `DOUBLE` | `YES` | `` |
+| `EndPivotSeq` | `BIGINT` | `YES` | `` |
+| `EndDate` | `DATE` | `YES` | `` |
+| `EndPrice` | `DOUBLE` | `YES` | `` |
+| `ConfirmedAtDate` | `DATE` | `YES` | `` |
+| `SwingPct` | `DOUBLE` | `YES` | `` |
+| `TradingBars` | `INTEGER` | `YES` | `` |
+| `CalendarDays` | `INTEGER` | `YES` | `` |
+| `VelocityPctPerBar` | `DOUBLE` | `YES` | `` |
+| `AvgATRPct` | `DOUBLE` | `YES` | `` |
+| `ATRNormalizedMove` | `DOUBLE` | `YES` | `` |
+| `PathEfficiency` | `DOUBLE` | `YES` | `` |
+| `DirectionalPersistenceRate` | `DOUBLE` | `YES` | `` |
+| `CalculatedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.vw_Ticker_SmartMoney (VIEW)
 
@@ -1182,6 +1417,89 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `IndicatorCode` | `VARCHAR` | `YES` | `` |
 | `Timeframe` | `VARCHAR` | `YES` | `` |
 | `WarmupBars` | `INTEGER` | `YES` | `` |
+
+### main.vw_ZigZag_Calibration (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `CalibrationVersion` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `SplitName` | `VARCHAR` | `YES` | `` |
+| `DeviationPct` | `DOUBLE` | `YES` | `` |
+| `SourceBars` | `BIGINT` | `YES` | `` |
+| `PivotCount` | `BIGINT` | `YES` | `` |
+| `SwingCount` | `BIGINT` | `YES` | `` |
+| `PivotDensityPer100Bars` | `DOUBLE` | `YES` | `` |
+| `MedianSwingBars` | `DOUBLE` | `YES` | `` |
+| `MedianAbsSwingPct` | `DOUBLE` | `YES` | `` |
+| `ShortSwingRate` | `DOUBLE` | `YES` | `` |
+| `StructuralValid` | `BOOLEAN` | `YES` | `` |
+| `IsEligible` | `BOOLEAN` | `YES` | `` |
+| `CalibrationScore` | `DOUBLE` | `YES` | `` |
+| `EvaluatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.vw_ZigZag_Pilot (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `PilotVersion` | `VARCHAR` | `YES` | `` |
+| `CalibrationVersion` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `BaselineDeviationPct` | `DOUBLE` | `YES` | `` |
+| `CalibratedDeviationPct` | `DOUBLE` | `YES` | `` |
+| `BaselineSwingCount` | `BIGINT` | `YES` | `` |
+| `CalibratedSwingCount` | `BIGINT` | `YES` | `` |
+| `BaselineShortSwingRate` | `DOUBLE` | `YES` | `` |
+| `CalibratedShortSwingRate` | `DOUBLE` | `YES` | `` |
+| `BaselineMedianSwingBars` | `DOUBLE` | `YES` | `` |
+| `CalibratedMedianSwingBars` | `DOUBLE` | `YES` | `` |
+| `BaselineScore` | `DOUBLE` | `YES` | `` |
+| `CalibratedScore` | `DOUBLE` | `YES` | `` |
+| `Decision` | `VARCHAR` | `YES` | `` |
+| `EvaluatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.vw_ZigZag_Regime_Evaluation (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `RegimeVersion` | `VARCHAR` | `YES` | `` |
+| `CalibrationVersion` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `BaseDeviationPct` | `DOUBLE` | `YES` | `` |
+| `StaticSwingCount` | `BIGINT` | `YES` | `` |
+| `RegimeSwingCount` | `BIGINT` | `YES` | `` |
+| `StaticShortSwingRate` | `DOUBLE` | `YES` | `` |
+| `RegimeShortSwingRate` | `DOUBLE` | `YES` | `` |
+| `StaticMedianSwingBars` | `DOUBLE` | `YES` | `` |
+| `RegimeMedianSwingBars` | `DOUBLE` | `YES` | `` |
+| `StaticMedianAbsSwingPct` | `DOUBLE` | `YES` | `` |
+| `RegimeMedianAbsSwingPct` | `DOUBLE` | `YES` | `` |
+| `StaticStructuralValid` | `BOOLEAN` | `YES` | `` |
+| `RegimeStructuralValid` | `BOOLEAN` | `YES` | `` |
+| `StaticScore` | `DOUBLE` | `YES` | `` |
+| `RegimeScore` | `DOUBLE` | `YES` | `` |
+| `LowVolBars` | `BIGINT` | `YES` | `` |
+| `NormalBars` | `BIGINT` | `YES` | `` |
+| `HighVolBars` | `BIGINT` | `YES` | `` |
+| `EvaluatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.vw_ZigZag_Ticker_Config (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `CalibrationVersion` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Timeframe` | `VARCHAR` | `YES` | `` |
+| `BaseDeviationPct` | `DOUBLE` | `YES` | `` |
+| `SelectionMethod` | `VARCHAR` | `YES` | `` |
+| `TrainScore` | `DOUBLE` | `YES` | `` |
+| `ValidationScore` | `DOUBLE` | `YES` | `` |
+| `TestScore` | `DOUBLE` | `YES` | `` |
+| `Status` | `VARCHAR` | `YES` | `` |
+| `IsActive` | `BOOLEAN` | `YES` | `` |
+| `EffectiveFrom` | `DATE` | `YES` | `` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.vw_raw_stock_eod (VIEW)
 
