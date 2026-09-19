@@ -144,7 +144,7 @@ Expected upstream:
         SwingPct,
         TradingBars,
         VelocityPctPerBar,
-        AvgATR20Pct,
+        AvgATRPct,
         ATRNormalizedMove,
         PathEfficiency,
         DirectionalPersistenceRate
