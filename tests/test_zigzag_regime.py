@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from cherrystock.domain.analytics.zigzag.engine import calculate_zigzag
 from cherrystock.domain.analytics.zigzag.models import ZigZagConfig
@@ -98,11 +99,11 @@ def test_regime_resolver_applies_multipliers_and_clamps() -> None:
     )
     resolver = RegimeDeviationResolver(context, policy=policy)
 
-    assert resolver.deviation_at(0, 0.05) == 0.04
-    assert resolver.deviation_at(1, 0.05) == 0.05
-    assert resolver.deviation_at(2, 0.05) == 0.065
-    assert resolver.deviation_at(0, 0.02) == 0.02
-    assert resolver.deviation_at(2, 0.20) == 0.15
+    assert resolver.deviation_at(0, 0.05) == pytest.approx(0.04)
+    assert resolver.deviation_at(1, 0.05) == pytest.approx(0.05)
+    assert resolver.deviation_at(2, 0.05) == pytest.approx(0.065)
+    assert resolver.deviation_at(0, 0.02) == pytest.approx(0.02)
+    assert resolver.deviation_at(2, 0.20) == pytest.approx(0.15)
 
 
 def test_resolver_is_called_only_after_confirmed_pivots() -> None:
