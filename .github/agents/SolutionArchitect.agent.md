@@ -39,6 +39,7 @@ Load the smallest relevant context in this order:
 5. `docs/00_HOME.md` and the smallest relevant architecture/ADR/domain/reference set.
 6. Existing source, SQL, tests and public contracts needed as evidence.
 7. `.github/skills/architecture-design/SKILL.md` for execution procedure.
+8. Before any Archify edit/render: `docs/runbook/Archify_Generation_Guide.md` plus `.github/instructions/archify.instructions.md`.
 
 Do not design from the prompt alone when repository evidence exists.
 
@@ -76,6 +77,8 @@ Prefer extending an existing owner over creating a duplicate table/service/modul
 Archify is CherryStock's preferred architecture visualization/validation capability for approved designs. It is a Tool, not an architecture authority.
 
 ### Mandatory synchronization
+
+Before editing any Archify typed source, read `docs/runbook/Archify_Generation_Guide.md`. Do not start by patching individual routes; inspect semantic lanes, existing corridors, direct-clearance budget and desktop-readability budget first.
 
 Every approved architecture/design change MUST synchronize its architecture representation before `APPROVED_FOR_IMPLEMENTATION` is emitted:
 
