@@ -105,6 +105,10 @@ When both conditions become true on the same daily bar, deterministic tie-break 
 2. earlier candidate PivotDate;
 3. LOW if still tied.
 
+Daily OHLC cannot establish the intraday order of High and Low. After bootstrap, the engine
+therefore enforces one-pivot-per-trading-date: consecutive PivotDates are strictly increasing
+and the next pivot candidate must come from a strictly later bar.
+
 ### UP
 
 The last confirmed pivot is LOW.
@@ -126,9 +130,13 @@ and candidate HIGH must occur at least MinimumSwingBars after the last confirmed
 On confirmation:
 
 - emit HIGH with PivotDate = candidate-high date;
-- ConfirmedAtDate = current bar date;
+- require PivotDate < ConfirmedAtDate;
 - switch to DOWN;
-- seed next candidate LOW from the lowest Low observed since candidate HIGH.
+- seed next candidate LOW only from an opposite extreme on a bar strictly after the HIGH
+  PivotDate;
+- never reuse the HIGH pivot bar's Low as the next LOW candidate.
+
+If a new candidate HIGH is created on the current bar, it cannot also be confirmed on that bar.
 
 ### DOWN
 
@@ -147,8 +155,13 @@ Confirmation rule:
 On confirmation:
 
 - emit LOW;
+- require PivotDate < ConfirmedAtDate;
 - switch to UP;
-- seed next candidate HIGH from the highest High observed since candidate LOW.
+- seed next candidate HIGH only from an opposite extreme on a bar strictly after the LOW
+  PivotDate;
+- never reuse the LOW pivot bar's High as the next HIGH candidate.
+
+If a new candidate LOW is created on the current bar, it cannot also be confirmed on that bar.
 
 ## 6. Point-in-Time Contract
 
@@ -217,7 +230,7 @@ Fields:
 
 Constraints:
 
-    PivotDate <= ConfirmedAtDate
+    PivotDate < ConfirmedAtDate
     PivotPrice > 0
     ConfirmationPrice > 0
 
@@ -335,8 +348,9 @@ Structural validator checks:
 - increasing PivotSeq;
 - PivotDate <= ConfirmedAtDate;
 - confirmation dates non-decreasing;
-- each interior LOW equals the minimum Low between adjacent pivot dates;
-- each interior HIGH equals the maximum High between adjacent pivot dates;
+- PivotDates are strictly increasing with at most one confirmed pivot per trading date;
+- each interior LOW equals the minimum Low on bars strictly between adjacent PivotDates;
+- each interior HIGH equals the maximum High on bars strictly between adjacent PivotDates;
 - one current-leg row exists;
 - current direction is opposite the next expected pivot type.
 
