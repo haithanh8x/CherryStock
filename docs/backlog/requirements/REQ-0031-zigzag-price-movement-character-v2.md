@@ -1,10 +1,10 @@
 ---
 id: REQ-0031
 title: ZigZag-based Price Movement Characterization V2
-status: READY_FOR_DESIGN
+status: IMPLEMENTED_PENDING_VALIDATION
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: SolutionArchitect
+primary_next_owner: TestEngineer
 related:
   prerequisite:
     - docs/backlog/requirements/REQ-0027-price-movement-characterization.md
@@ -313,3 +313,22 @@ None blocking for the MWG-first implementation.
     Material: docs/backlog/requirements/REQ-0031-zigzag-price-movement-character-v2.md
     Open questions: none blocking
     Acceptance criteria count: 18
+
+
+## Current Delivery State
+
+Implementation, migration SQL, tests, validation script, post-golive reconciliation exporter
+and runbooks are present on main.
+
+    IMPLEMENTED_PENDING_VALIDATION
+
+Local validation still required:
+
+    .\scripts\render_archify_analytics.ps1 -NoOpen
+    python -m pytest tests\test_zigzag_engine.py tests\test_price_movement_zigzag.py -v
+    python -m pytest tests\test_sync_write_pipeline_service.py -v
+    python scripts\initload\init_reload_price_movement_mwg.py
+    python scripts\validate_price_movement_mwg.py
+    python scripts\export_price_movement_reconciliation.py --ticker MWG
+
+Final PASS/FAIL belongs to TestEngineer. No run.py integration is authorized.
