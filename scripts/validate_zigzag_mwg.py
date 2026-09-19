@@ -121,11 +121,17 @@ def validate() -> int:
 
             left_date = pivots.iloc[i - 1]["PivotDate"]
             right_date = pivots.iloc[i + 1]["PivotDate"]
+            # Point-in-time contract: only knowledge at confirmation time is
+            # valid. Bars after ConfirmedAtDate belong to the next leg and must
+            # not influence the expected local extreme, so the window closes at
+            # ConfirmedAtDate instead of the next pivot date.
+            confirm_date = row["ConfirmedAtDate"]
+            window_end = min(right_date, confirm_date)
             # Daily OHLC cannot establish intraday ordering on either neighboring
             # pivot bar. Local-extreme validation therefore uses only bars strictly
             # between adjacent PivotDates. The current pivot itself is inside this
             # interval because confirmed PivotDates must be strictly increasing.
-            segment = source.loc[(source["Date"] > left_date) & (source["Date"] < right_date)]
+            segment = source.loc[(source["Date"] > left_date) & (source["Date"] < window_end)]
             if segment.empty:
                 failures.append(
                     f"empty strict local-extreme window at pivot seq {int(row['PivotSeq'])}"
