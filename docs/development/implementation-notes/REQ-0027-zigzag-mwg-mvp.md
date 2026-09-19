@@ -2,7 +2,7 @@
 
 ## Outcome
 
-    IMPLEMENTED_PENDING_VALIDATION
+    IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE
 
 The rolled-back ATR-based Price Movement implementation has been replaced by an isolated
 event-first ZigZag MVP.
@@ -97,3 +97,24 @@ Implementation changes:
 - docs/runbook/ZigZag_MWG_MVP.md
 
 Validation state remains IMPLEMENTED_PENDING_VALIDATION. Local CherryMon must rerun Phase 1-5.
+
+
+## 2026-09-19 — TestEngineer technical PASS
+
+Runbook Phase 1–8 completed successfully after correcting the validator to honor the
+point-in-time contract.
+
+Evidence:
+
+- 7 focused ZigZag tests PASS;
+- 3,041 MWG daily source rows;
+- 279 confirmed pivots;
+- structural_errors = 0;
+- deterministic/idempotent rerun = 279 pivots;
+- current leg = PROVISIONAL / UP from LOW 2026-09-14 @ 68.60;
+- Jul–Sep review includes UP from LOW 2026-07-28 @ 61.54;
+- calculation ~0.02–0.06s;
+- 3 daily-pipeline regression tests PASS.
+
+The remaining rollout gate is user visual acceptance of MWG and acceptance of the 5% config.
+No multi-ticker implementation is authorized yet.
