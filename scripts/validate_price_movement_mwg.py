@@ -82,7 +82,7 @@ def _load(connection):
             TradingBars,
             CalendarDays,
             VelocityPctPerBar,
-            AvgATR20Pct,
+            AvgATRPct,
             ATRNormalizedMove,
             PathEfficiency,
             DirectionalPersistenceRate
