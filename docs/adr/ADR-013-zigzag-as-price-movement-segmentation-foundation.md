@@ -51,7 +51,10 @@ PivotDate is the date on which the actual High/Low extreme occurred.
 ConfirmedAtDate is the later date on which the Close has reversed by at least DeviationPct
 from that candidate extreme.
 
-This distinction is mandatory for point-in-time safety.
+This distinction is mandatory for point-in-time safety. For the daily MVP, every confirmed
+pivot must satisfy:
+
+    PivotDate < ConfirmedAtDate
 
 ## State Machine
 
@@ -71,7 +74,24 @@ ambiguity deterministically:
 2. if tied, choose the earlier candidate pivot date;
 3. if still tied, choose LOW.
 
-This rule handles daily-bar ordering ambiguity without inventing intraday information.
+This rule handles bootstrap ambiguity without inventing intraday information.
+
+### Daily-bar whipsaw policy
+
+Daily OHLC does not reveal whether High occurred before Low on the same trading day.
+Therefore the MVP adopts **one confirmed pivot per trading date**.
+
+Consequences:
+
+- consecutive PivotDates must be strictly increasing;
+- a next-leg candidate must come from a bar strictly after the previous PivotDate;
+- a candidate updated on the current bar cannot be confirmed on that same bar;
+- post-hoc deduplication of emitted pivots is prohibited because it can break alternation
+  and local-extreme semantics;
+- the local-extreme validator excludes the two neighboring pivot bars and evaluates the
+  current interior pivot only on bars strictly between adjacent PivotDates.
+
+This is a daily-resolution policy, not an assertion about the true intraday order.
 
 ### UP state
 
