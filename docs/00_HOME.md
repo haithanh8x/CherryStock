@@ -96,7 +96,8 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/Analytics_Calculation_Engines|Analytics & Calculation Engines]]
 - [[architecture/Data_Architecture|Data Architecture]]
 - [[architecture/Indicator_Engine|Indicator Engine]]
-- [[architecture/Price_Movement_Character|Price Movement Character Engine]]
+- [[architecture/ZigZag_Engine|ZigZag Swing Engine — MWG MVP]]
+- [[architecture/Price_Movement_Character|Price Movement Character Engine — deferred downstream layer]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
 - [[architecture/Second_Brain|Second Brain Architecture]]
@@ -113,11 +114,14 @@ Architecture/system/solution/data/integration/refactor work:
 - [[runbook/SmartMoneyTradeActionConfidence_V1|TradeActionConfidence V1 Runbook]]
 - [[runbook/SmartMoney_NiceGUI_Tab|SmartMoney NiceGUI Runbook]]
 
-### Price Movement Character
+### ZigZag / Price Movement
 
-- [[backlog/requirements/REQ-0027-price-movement-characterization|REQ-0027 Price Movement Characterization and Swing Profile]]
-- [[architecture/Price_Movement_Character|Price Movement Character Engine]]
+- [[backlog/requirements/REQ-0027-price-movement-characterization|REQ-0027 ZigZag-based Price Movement Foundation]]
+- [[architecture/ZigZag_Engine|ZigZag Swing Engine — MWG MVP]]
+- [[architecture/Price_Movement_Character|Price Movement Character — deferred downstream layer]]
 - [[adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Analytics Boundary]]
+- [[adr/ADR-013-zigzag-as-price-movement-segmentation-foundation|ADR-013 ZigZag Segmentation Foundation]]
+- [[runbook/ZigZag_MWG_MVP|ZigZag MWG MVP Runbook]]
 
 ### R/S / chart-related architecture
 
@@ -204,6 +208,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 - [[adr/ADR-010-separate-adjusted-as-traded-market-limit|ADR-010 Adjusted vs As-Traded Market Limits]]
 - [[adr/ADR-011-agent-harness-responsibility-hierarchy|ADR-011 Agent Harness Responsibility Hierarchy]]
 - [[adr/ADR-012-price-movement-character-as-separate-analytics-domain|ADR-012 Price Movement Character Analytics Boundary]]
+- [[adr/ADR-013-zigzag-as-price-movement-segmentation-foundation|ADR-013 ZigZag Segmentation Foundation]]
 
 ## Runbooks
 
@@ -213,6 +218,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 - [[runbook/Indicator_OBV_AD|OBV + AD Activation / Initload]]
 - [[runbook/SmartMoneyScore_V1|SmartMoneyScore V1]]
 - [[runbook/SmartMoneyStrategy_V1|SmartMoneyStrategy V1]]
+- [[runbook/ZigZag_MWG_MVP|ZigZag MWG MVP]]
 - [[runbook/RS_V2_4_Monthly_Full_Evaluation|R/S V2.4 Monthly Evaluation]]
 - [[runbook/Drawio_Skill|Draw.io Skill]]
 
