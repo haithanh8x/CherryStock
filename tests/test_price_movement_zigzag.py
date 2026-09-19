@@ -107,7 +107,7 @@ def _swing(
         trading_bars=2,
         calendar_days=2,
         velocity_pct_per_bar=swing_pct / 2.0,
-        avg_atr20_pct=0.02,
+        avg_atr_pct=0.02,
         atr_normalized_move=abs(swing_pct) / 0.02,
         path_efficiency=efficiency,
         directional_persistence_rate=persistence,
