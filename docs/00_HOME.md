@@ -43,6 +43,7 @@ Canonical explanation:
 - [[../.github/instructions/python.instructions|Python]]
 - [[../.github/instructions/testing.instructions|Testing]]
 - [[../.github/instructions/archify.instructions|Archify]]
+- [[runbook/Archify_Generation_Guide|Archify Generation Guide — mandatory before every Archify edit/render]]
 
 ## Skills — repeatable procedures
 
@@ -253,6 +254,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 - [[runbook/ZigZag_MWG_MVP|ZigZag MWG MVP]]
 - [[runbook/RS_V2_4_Monthly_Full_Evaluation|R/S V2.4 Monthly Evaluation]]
 - [[runbook/Drawio_Skill|Draw.io Skill]]
+- [[runbook/Archify_Generation_Guide|Archify Generation Guide]]
 
 ## Development
 
