@@ -63,6 +63,30 @@ For database or indicator work, AI agents must read `DB_Metadata.md` first for s
 
 These four files are one generated reference set produced by `Ults.DuckLib.exportDuckDB_metadata()`. Do not infer current dimension values from the Markdown schema alone.
 
+## ChatGPT / AI data handoff exports
+
+Any SQL/Python export created so ChatGPT can inspect database results, validation evidence,
+reconciliation data or diagnostics MUST write to:
+
+```text
+docs/reference/data/
+```
+
+Prefer a domain/ticker hierarchy when useful, for example:
+
+```text
+docs/reference/data/zigzag/mwg/
+docs/reference/data/smart_money/mwg/
+docs/reference/data/data_quality/
+```
+
+For tabular extracts, prefer CSV with headers. Keep exports bounded to the requested
+ticker/date/config scope rather than exporting whole tables by default.
+
+Runbooks and diagnostic scripts that instruct a user to export data for ChatGPT MUST use this
+path. These files are generated reference evidence only; DuckDB/public views remain the
+runtime Source of Truth.
+
 ## Validation before database changes
 Confirm:
 - read vs write intent;
