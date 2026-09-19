@@ -88,8 +88,11 @@ def validate() -> int:
                 failures.append(f"pivot types do not alternate at seq {i + 1}")
                 break
 
-        if (pivots["PivotDate"] > pivots["ConfirmedAtDate"]).any():
-            failures.append("PivotDate > ConfirmedAtDate")
+        if (pivots["PivotDate"] >= pivots["ConfirmedAtDate"]).any():
+            failures.append("PivotDate must be strictly before ConfirmedAtDate")
+
+        if pivots["PivotDate"].duplicated().any():
+            failures.append("multiple confirmed pivots share the same PivotDate")
 
         confirmations = pivots["ConfirmedAtDate"].tolist()
         if any(confirmations[i] < confirmations[i - 1] for i in range(1, len(confirmations))):
@@ -118,9 +121,15 @@ def validate() -> int:
 
             left_date = pivots.iloc[i - 1]["PivotDate"]
             right_date = pivots.iloc[i + 1]["PivotDate"]
-            segment = source.loc[(source["Date"] >= left_date) & (source["Date"] <= right_date)]
+            # Daily OHLC cannot establish intraday ordering on either neighboring
+            # pivot bar. Local-extreme validation therefore uses only bars strictly
+            # between adjacent PivotDates. The current pivot itself is inside this
+            # interval because confirmed PivotDates must be strictly increasing.
+            segment = source.loc[(source["Date"] > left_date) & (source["Date"] < right_date)]
             if segment.empty:
-                failures.append(f"empty local-extreme window at pivot seq {int(row['PivotSeq'])}")
+                failures.append(
+                    f"empty strict local-extreme window at pivot seq {int(row['PivotSeq'])}"
+                )
                 continue
 
             if row["PivotType"] == "LOW":
