@@ -1,1 +1,0 @@
-"""Reusable analytical domain models."""

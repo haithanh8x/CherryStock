@@ -15,7 +15,6 @@ from Ults.lstPara import DUCKDB_SQL_PATH
 from calcEngine import calc_fv_Trend
 from calcEngine.calcIndexes import calculate_VNINDEX_NOT_VIN
 from calcEngine.calcIndicators import refresh_technical_indicators
-from calcEngine.priceMovementCharacter import refresh_price_movement_character
 from calcEngine.smartMoneyScore import refresh_smart_money_score
 
 
@@ -33,7 +32,6 @@ class SyncWritePipelineService:
         calc_index: Callable[..., None] = calculate_VNINDEX_NOT_VIN,
         calc_trend: Callable[..., None] = calc_fv_Trend.cal_Moving_Average,
         calc_indicators: Callable[..., dict] = refresh_technical_indicators,
-        calc_price_movement: Callable[..., dict] = refresh_price_movement_character,
         calc_smart_money: Callable[..., dict] = refresh_smart_money_score,
         execute_sql: Callable[..., None] = executeDuckSQL,
         validate_dated: Callable[..., dict] = validate_and_persist_data_quality,
@@ -49,7 +47,6 @@ class SyncWritePipelineService:
         self._calc_index = calc_index
         self._calc_trend = calc_trend
         self._calc_indicators = calc_indicators
-        self._calc_price_movement = calc_price_movement
         self._calc_smart_money = calc_smart_money
         self._execute_sql = execute_sql
         self._validate_dated = validate_dated
@@ -83,7 +80,6 @@ class SyncWritePipelineService:
         index_repository=None,
         trend_repository=None,
         indicator_repository=None,
-        price_movement_repository=None,
         smart_money_repository=None,
     ) -> dict[str, object]:
         self._sync_amibroker_eod(from_last_day=days_diff, connection=connection)
@@ -103,7 +99,10 @@ class SyncWritePipelineService:
             raise_on_fail=True,
         )
 
-        self._sync_amibroker_intraday(from_last_day=days_diff, connection=connection)
+        self._sync_amibroker_intraday(
+            from_last_day=days_diff,
+            connection=connection,
+        )
         for table_name, pipeline_name in (
             ('"CherryMon"."main"."raw_futures_intraday"', "AmiBroker Intraday Futures"),
             ('"CherryMon"."main"."raw_index_intraday"', "AmiBroker Intraday Index"),
@@ -117,7 +116,15 @@ class SyncWritePipelineService:
                 date_col="Date",
                 symbol_col="Ticker",
                 key_cols=["Ticker", "Date", "RawTime", "TickSeq"],
-                required_cols=["Ticker", "Date", "DateTime", "RawTime", "TickSeq", "Close", "Volume"],
+                required_cols=[
+                    "Ticker",
+                    "Date",
+                    "DateTime",
+                    "RawTime",
+                    "TickSeq",
+                    "Close",
+                    "Volume",
+                ],
                 max_row_change_pct=1.0,
                 max_symbol_change_pct=0.25,
                 raise_on_fail=True,
@@ -173,7 +180,11 @@ class SyncWritePipelineService:
             raise_on_fail=True,
         )
 
-        self._calc_trend(from_last_day=days_diff, connection=connection, repository=trend_repository)
+        self._calc_trend(
+            from_last_day=days_diff,
+            connection=connection,
+            repository=trend_repository,
+        )
         self._validate_dated(
             connection=connection,
             table_name='"CherryMon"."main"."cal_Trends"',
@@ -200,47 +211,11 @@ class SyncWritePipelineService:
                 symbol_col="Ticker",
                 key_cols=["Ticker", "Date", "ConfigId", "ComponentCode"],
                 required_cols=["Ticker", "Date", "ConfigId", "ComponentCode", "Value"],
+                # cal_indicator_values mixes many configs/timeframes/components.
+                # Daily row/symbol counts are therefore not a stable quality contract.
                 check_count_anomalies=False,
                 raise_on_fail=True,
             )
-
-        movement_summary: dict[str, object] = {
-            "status": "SKIPPED",
-            "reason": "price_movement_repository_not_supplied",
-            "swing_rows_upserted": 0,
-            "daily_rows_upserted": 0,
-        }
-        if price_movement_repository is not None:
-            self._execute_sql(
-                con=connection,
-                sql_file_path=str(self._sql_dir / "price_movement_character_v1_schema.sql"),
-                sql_description="Ensure Price Movement Character V1 schema",
-            )
-            self._execute_sql(
-                con=connection,
-                sql_file_path=str(self._sql_dir / "price_movement_character_v1_profile_view.sql"),
-                sql_description="Ensure Price Movement Character V1 bounded profile view",
-            )
-            movement_summary = self._calc_price_movement(
-                from_last_day=days_diff,
-                connection=connection,
-                repository=price_movement_repository,
-            )
-            if int(movement_summary.get("daily_rows_upserted", 0)) > 0:
-                self._validate_dated(
-                    connection=connection,
-                    table_name='"CherryMon"."main"."cal_price_movement_daily"',
-                    pipeline_name="Price Movement Character",
-                    date_col="Date",
-                    symbol_col="Ticker",
-                    key_cols=["ConfigId", "Ticker", "Date"],
-                    required_cols=[
-                        "ConfigId", "Ticker", "Date", "SwingStatus",
-                        "MovementCharacter", "HistoricalSameDirSwingCount", "QualityStatus",
-                    ],
-                    check_count_anomalies=False,
-                    raise_on_fail=True,
-                )
 
         self._execute_sql(
             con=connection,
@@ -261,14 +236,19 @@ class SyncWritePipelineService:
                 symbol_col="Ticker",
                 key_cols=["ModelId", "Ticker", "Date"],
                 required_cols=[
-                    "ModelId", "Ticker", "Date", "SmartMoneyScore", "ConfidenceScore",
-                    "MarketState", "FactorCoverage", "DataQualityStatus",
+                    "ModelId",
+                    "Ticker",
+                    "Date",
+                    "SmartMoneyScore",
+                    "ConfidenceScore",
+                    "MarketState",
+                    "FactorCoverage",
+                    "DataQualityStatus",
                 ],
                 raise_on_fail=True,
             )
 
         return {
             "indicator": indicator_summary,
-            "price_movement": movement_summary,
             "smart_money": smart_money_summary,
         }

@@ -32,11 +32,10 @@ def _run_all_steps(
     """Run the canonical daily write pipeline in one DuckDB transaction.
 
     The application service owns ordering, intraday/EOD synchronization,
-    stage-level data-quality validation, Indicators, Price Movement Character
-    and SmartMoney refresh. run.py owns only the transaction boundary and
-    runtime dependencies.
+    stage-level data-quality validation, indicators and SmartMoney refresh.
+    run.py owns only the transaction boundary and runtime dependencies.
     """
-    print("[daily] ▶ Sync + DQ + Indicators + SmartMoney (Price Movement temporarily disabled)")
+    print("[daily] ▶ Sync + Data Quality + Indicators + SmartMoney")
     summary = write_pipeline.run(
         days_diff=days_diff,
         amibroker=amibroker_adapter,
@@ -45,13 +44,9 @@ def _run_all_steps(
         index_repository=uow.indexes,
         trend_repository=uow.trends,
         indicator_repository=uow.indicators,
-        # TEMP: Price Movement disabled from the canonical daily flow while
-        # movement_summary performance is investigated. Standalone/full runners
-        # remain available for analysis and validation.
-        price_movement_repository=None,
         smart_money_repository=uow.smart_money,
     )
-    print("[daily] ✓ Sync + DQ + Indicators + SmartMoney (Price Movement skipped)")
+    print("[daily] ✓ Sync + Data Quality + Indicators + SmartMoney")
     return summary
 
 
@@ -69,9 +64,7 @@ def main():
 
     # Daily Source of Truth:
     # EOD + Intraday sync -> stage Data Quality -> Index/Trend/Indicators
-    # -> SmartMoneyScore -> Data Quality. Price Movement Character is temporarily
-    # excluded while movement_summary performance is investigated.
-    # all in one caller-owned DuckDBUnitOfWork transaction.
+    # -> SmartMoneyScore -> SmartMoney Data Quality, all in one UnitOfWork.
     with DuckDBUnitOfWork(connection_factory) as uow:
         connection = uow.connection
         if connection is None:

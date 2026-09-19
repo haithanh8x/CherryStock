@@ -1,1 +1,0 @@
-"""CherryStock domain layer."""
