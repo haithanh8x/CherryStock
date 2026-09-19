@@ -113,11 +113,13 @@ Create/update an ADR when the design makes a durable cross-module choice involvi
 
 ### 8. Synchronize architecture artifacts
 
+Before any Archify authoring/rendering, read `docs/runbook/Archify_Generation_Guide.md` and `.github/instructions/archify.instructions.md`.
+
 For approved CherryStock architecture changes, follow the mandatory Solution Architect/Archify contract:
 
 1. update canonical `docs/architecture/**`;
 2. update ADR when required;
-3. update corresponding Archify typed source under `docs/architecture/diagrams/**`;
+3. plan semantic lanes/corridors and update corresponding Archify typed source under `docs/architecture/diagrams/**`;
 4. regenerate/validate the corresponding artifact under `docs/architecture/generated/**` using repository automation;
 5. do not claim `APPROVED_FOR_IMPLEMENTATION` while canonical docs and generated representation disagree.
 
