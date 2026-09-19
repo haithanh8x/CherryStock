@@ -247,7 +247,7 @@ def build_price_movement_swings(
                 trading_bars=int(trading_bars),
                 calendar_days=(end_date - start_date).days,
                 velocity_pct_per_bar=float(velocity),
-                avg_atr20_pct=avg_atr_pct,
+                avg_atr_pct=avg_atr_pct,
                 atr_normalized_move=(
                     float(atr_normalized) if atr_normalized is not None else None
                 ),
