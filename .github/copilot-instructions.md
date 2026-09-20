@@ -9,6 +9,25 @@ Canonical architecture:
 - `docs/architecture/agent-harness/AGENT_SKILL_INSTRUCTION_DOC_TOOL.md`
 - `docs/adr/ADR-011-agent-harness-responsibility-hierarchy.md`
 
+## Canonical execution boundary
+
+All CherryStock work MUST be performed against this repository:
+
+```text
+https://github.com/haithanh8x/CherryStock
+```
+
+GitHub is the project Source of Truth. A local VS Code checkout is only the execution workspace for that same repository; Obsidian is a navigation/knowledge view over the same versioned files.
+
+Rules:
+
+- Read, create, modify, validate and hand off CherryStock code, documentation, runbooks, scripts, tests, architecture artifacts and reusable evidence only within this repository.
+- Do not create a parallel local-only project, personal copy, external document, or untracked handoff as a substitute for repository work.
+- For a durable change, update the repository working tree, run the applicable validation, then commit and push the change to the GitHub repository. A local edit is not complete until it is represented in GitHub.
+- Use repository-relative paths and project configuration; never make a user's Desktop, Downloads, temporary directory, or machine-specific path the canonical location.
+- Before changing files, synchronize the checkout with the repository and preserve unrelated user changes. Use a branch/worktree and pull request when the active repository workflow requires it.
+- ChatGPT-readable evidence remains under `docs/reference/data/**`; reusable safe evidence should be committed with its owning change.
+
 ## Official responsibility hierarchy
 
 ```text
@@ -264,7 +283,8 @@ Do not create a second knowledge Source of Truth inside Agent, Skill or generate
 - Architecture contract changes update `docs/architecture/**`; durable cross-module choices update `docs/adr/**`.
 - Operational procedures update `docs/runbook/**`.
 - Major release/architecture changes update `docs/ChangeRequest/**`.
-- GitHub repository Markdown remains the engineering Single Source of Truth; VS Code and Obsidian read the same checkout.
+- GitHub repository content at `https://github.com/haithanh8x/CherryStock` remains the engineering Single Source of Truth; VS Code and Obsidian read the same checkout.
+- No CherryStock change is complete until its durable artifacts and applicable evidence are committed and pushed to this repository.
 
 ## Completion rule
 
