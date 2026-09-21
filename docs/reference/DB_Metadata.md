@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-21T14:57:15.086760+00:00
+- Generated at: 2026-09-21T16:23:45.338051+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 73
+- Table/view count: 75
 
 ## Schemas
 
@@ -46,6 +46,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`dim_indicator` (BASE TABLE)
 - `main`.`dim_indicator_component` (BASE TABLE)
 - `main`.`dim_indicator_config` (BASE TABLE)
+- `main`.`dim_movement_context_config` (BASE TABLE)
 - `main`.`dim_price_movement_config` (BASE TABLE)
 - `main`.`dim_rs_model_version` (BASE TABLE)
 - `main`.`dim_smart_money_config` (BASE TABLE)
@@ -85,6 +86,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`vw_Indicator_config` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
+- `main`.`vw_Ticker_Movement_Context` (VIEW)
 - `main`.`vw_Ticker_Movement_Profile` (VIEW)
 - `main`.`vw_Ticker_OHLC_D` (VIEW)
 - `main`.`vw_Ticker_Price_Movement_Swings` (VIEW)
@@ -501,6 +503,36 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Description` | `VARCHAR` | `YES` | `` |
 | `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 | `UpdatedAt` | `TIMESTAMP` | `YES` | `` |
+
+### main.dim_movement_context_config (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `MovementContextConfigId` | `BIGINT` | `NO` | `` |
+| `ConfigCode` | `VARCHAR` | `NO` | `` |
+| `ModelVersion` | `VARCHAR` | `NO` | `` |
+| `Timeframe` | `VARCHAR` | `NO` | `` |
+| `PriceMovementConfigCode` | `VARCHAR` | `NO` | `` |
+| `ZigZagConfigCode` | `VARCHAR` | `NO` | `` |
+| `LastSwingShallowMaxRatio` | `DOUBLE` | `NO` | `` |
+| `LastSwingBelowTypicalMaxRatio` | `DOUBLE` | `NO` | `` |
+| `LastSwingTypicalMaxRatio` | `DOUBLE` | `NO` | `` |
+| `LastSwingExtendedMaxRatio` | `DOUBLE` | `NO` | `` |
+| `TrendQualityModerateEfficiency` | `DOUBLE` | `NO` | `` |
+| `TrendQualityModeratePersistence` | `DOUBLE` | `NO` | `` |
+| `TrendQualityModerateHighEfficiency` | `DOUBLE` | `NO` | `` |
+| `TrendQualityModerateHighPersistence` | `DOUBLE` | `NO` | `` |
+| `TrendQualityHighEfficiency` | `DOUBLE` | `NO` | `` |
+| `TrendQualityHighPersistence` | `DOUBLE` | `NO` | `` |
+| `SpeedVerySlowMaxRatio` | `DOUBLE` | `NO` | `` |
+| `SpeedSlowMaxRatio` | `DOUBLE` | `NO` | `` |
+| `SpeedNormalMaxRatio` | `DOUBLE` | `NO` | `` |
+| `SpeedFastMaxRatio` | `DOUBLE` | `NO` | `` |
+| `EffectiveFrom` | `DATE` | `NO` | `CAST('2000-01-01' AS DATE)` |
+| `EffectiveTo` | `DATE` | `YES` | `` |
+| `IsEnabled` | `BOOLEAN` | `NO` | `CAST('t' AS BOOLEAN)` |
+| `CreatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
+| `UpdatedAt` | `TIMESTAMP` | `NO` | `CURRENT_TIMESTAMP` |
 
 ### main.dim_price_movement_config (BASE TABLE)
 
@@ -1230,6 +1262,55 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Book Value` | `DOUBLE` | `YES` | `` |
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
+
+### main.vw_Ticker_Movement_Context (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `MovementContextConfigId` | `BIGINT` | `YES` | `` |
+| `MovementContextConfigCode` | `VARCHAR` | `YES` | `` |
+| `MovementContextModelVersion` | `VARCHAR` | `YES` | `` |
+| `Timeframe` | `VARCHAR` | `YES` | `` |
+| `PriceMovementConfigCode` | `VARCHAR` | `YES` | `` |
+| `PriceMovementModelVersion` | `VARCHAR` | `YES` | `` |
+| `ZigZagConfigCode` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `ContextAsOfDate` | `DATE` | `YES` | `` |
+| `ProfileAsOfConfirmedAtDate` | `DATE` | `YES` | `` |
+| `CurrentLegAsOfDate` | `DATE` | `YES` | `` |
+| `ContextStatus` | `VARCHAR` | `YES` | `` |
+| `TrendRegime` | `VARCHAR` | `YES` | `` |
+| `TrendQuality` | `VARCHAR` | `YES` | `` |
+| `TypicalSwingPct` | `DOUBLE` | `YES` | `` |
+| `TypicalSwingBars` | `DOUBLE` | `YES` | `` |
+| `TypicalMoveSpeedPctPerBar` | `DOUBLE` | `YES` | `` |
+| `MedianATRNormalizedMove` | `DOUBLE` | `YES` | `` |
+| `MedianPathEfficiency` | `DOUBLE` | `YES` | `` |
+| `MedianDirectionalPersistenceRate` | `DOUBLE` | `YES` | `` |
+| `DirectionalBias` | `DOUBLE` | `YES` | `` |
+| `ProfileLookbackSwings` | `INTEGER` | `YES` | `` |
+| `ConfirmedSwingCount` | `INTEGER` | `YES` | `` |
+| `LastSwingSeq` | `BIGINT` | `YES` | `` |
+| `LastSwingDirection` | `VARCHAR` | `YES` | `` |
+| `LastSwingPct` | `DOUBLE` | `YES` | `` |
+| `LastSwingTypicalPct` | `DOUBLE` | `YES` | `` |
+| `LastSwingExtentRatio` | `DOUBLE` | `YES` | `` |
+| `LastSwingState` | `VARCHAR` | `YES` | `` |
+| `CurrentLegDirection` | `VARCHAR` | `YES` | `` |
+| `CurrentMovePct` | `DOUBLE` | `YES` | `` |
+| `CurrentTradingBars` | `BIGINT` | `YES` | `` |
+| `CurrentMoveSpeedPctPerBar` | `DOUBLE` | `YES` | `` |
+| `CurrentMoveSpeedRatio` | `DOUBLE` | `YES` | `` |
+| `CurrentMoveSpeedState` | `VARCHAR` | `YES` | `` |
+| `CurrentLegStatus` | `VARCHAR` | `YES` | `` |
+| `CurrentStartPivotSeq` | `BIGINT` | `YES` | `` |
+| `CurrentStartPivotDate` | `DATE` | `YES` | `` |
+| `CurrentStartPivotPrice` | `DOUBLE` | `YES` | `` |
+| `CurrentCandidatePivotType` | `VARCHAR` | `YES` | `` |
+| `CurrentCandidatePivotDate` | `DATE` | `YES` | `` |
+| `CurrentCandidatePivotPrice` | `DOUBLE` | `YES` | `` |
+| `CurrentLastClose` | `DOUBLE` | `YES` | `` |
+| `ReversalFromCandidatePct` | `DOUBLE` | `YES` | `` |
 
 ### main.vw_Ticker_Movement_Profile (VIEW)
 
