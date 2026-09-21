@@ -328,7 +328,7 @@
       "id": "movement_public",
       "type": "database",
       "label": "Movement Public Contracts",
-      "sublabel": "pivots · swings · profile",
+      "sublabel": "pivots · swings · profile · context",
       "pos": [
         1160,
         440
@@ -345,6 +345,10 @@
         {
           "path": "docs/architecture/Price_Movement_Character_V2.md",
           "label": "Price Movement public contracts"
+        },
+        {
+          "path": "docs/architecture/Movement_Context_V1.md",
+          "label": "MovementContext public contract"
         }
       ]
     },
@@ -792,7 +796,7 @@
     {
       "from": "movement_character",
       "to": "consumers",
-      "label": "movement profile",
+      "label": "profile / context",
       "variant": "emphasis",
       "route": "straight",
       "fromSide": "left",
