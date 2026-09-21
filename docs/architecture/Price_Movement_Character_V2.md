@@ -390,8 +390,8 @@ Compatibility:
 
 Backfill:
 
-- initial MWG-only full deterministic rebuild
-- multi-ticker expansion requires TestEngineer gate
+- initial MWG-only full deterministic rebuild was the REQ-0031 validation boundary
+- whole-active-universe expansion is owned separately by REQ-0033 and requires its TestEngineer full-universe gate
 
 Rerun:
 
@@ -478,6 +478,20 @@ Canonical design:
 Decision:
 
     docs/adr/ADR-017-movement-context-as-price-behavior-contract.md
+
+## 12B. Active Ticker Rollout
+
+REQ-0033 authorizes a separate manual initial-load orchestration across the universe from
+`vw_Ticker_Active`. It reuses this Price Movement contract unchanged after each ticker's
+ZigZag stage has committed.
+
+Canonical materials:
+
+    docs/backlog/requirements/REQ-0033-active-ticker-movement-initload.md
+    docs/architecture/Active_Ticker_Movement_Initload.md
+    docs/runbook/Active_Ticker_Movement_Initload.md
+
+REQ-0033 does not add Price Movement to run.py and does not change PM_ZZ_D_V2 semantics.
 
 ## 13. Architecture Artifact Synchronization
 
