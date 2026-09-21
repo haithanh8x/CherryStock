@@ -459,6 +459,26 @@ REQ-0031 is manual/initload first.
 No production scheduling, no daily pipeline integration and no SmartMoney integration are
 authorized by this design.
 
+## 12A. Downstream MovementContext V1
+
+REQ-0032 adds a separate semantic read contract:
+
+    vw_Ticker_Movement_Context
+
+It consumes the existing confirmed `vw_Ticker_Movement_Profile`, matching
+`vw_Ticker_ZigZag_Current`, and daily OHLC only for current-leg trading-bar count.
+
+MovementContext does not change Price Movement persistence or classification and must not add
+R/S/SmartMoney semantics to this domain.
+
+Canonical design:
+
+    docs/architecture/Movement_Context_V1.md
+
+Decision:
+
+    docs/adr/ADR-017-movement-context-as-price-behavior-contract.md
+
 ## 13. Architecture Artifact Synchronization
 
 Typed source:

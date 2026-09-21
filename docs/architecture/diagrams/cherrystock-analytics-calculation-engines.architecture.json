@@ -8,7 +8,7 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "1138700c9b2ca74f14394f244a109831f032e605"
+      "revision": "9b5df385a425fbc1f8bf236ba02256ecf62763dd"
     },
     "viewBox": [
       1390,
@@ -328,7 +328,7 @@
       "id": "movement_public",
       "type": "database",
       "label": "Movement Public Contracts",
-      "sublabel": "pivots · swings · profile",
+      "sublabel": "pivots · swings · profile · context",
       "pos": [
         1160,
         440
@@ -345,6 +345,10 @@
         {
           "path": "docs/architecture/Price_Movement_Character_V2.md",
           "label": "Price Movement public contracts"
+        },
+        {
+          "path": "docs/architecture/Movement_Context_V1.md",
+          "label": "MovementContext public contract"
         }
       ]
     },
@@ -792,7 +796,7 @@
     {
       "from": "movement_character",
       "to": "consumers",
-      "label": "movement profile",
+      "label": "profile / context",
       "variant": "emphasis",
       "route": "straight",
       "fromSide": "left",

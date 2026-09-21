@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-09-19
+- **Last reviewed:** 2026-09-21
 - **Purpose:** Central status dashboard for planned CherryStock engineering work.
 - **Scope:** Requirement backlog, Architecture backlog, and Agent Harness backlog.
 - **Status authority:** This file is a summary/index only. The detailed backlog/requirement file remains the authoritative material for each item.
@@ -11,17 +11,17 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 10 canonical requirements | 3 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
+| Requirements | 11 canonical requirements | 4 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **34** | **7 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
+| **Total** | **35** | **8 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
 
 ### Priority Summary
 
 | Priority | Count | Notes |
 |---|---:|---|
 | P0 | 4 | REQ-0022, REQ-0023, REQ-0024, CS-ARCH-010 |
-| P1 | 20 | REQ-0025 through REQ-0031 + 6 Architecture + 7 Harness |
+| P1 | 21 | REQ-0025 through REQ-0032 + 6 Architecture + 7 Harness |
 | P2 | 7 | 2 Architecture + 5 Harness |
 | P3 | 3 | 1 Architecture + 2 Harness |
 
@@ -74,6 +74,7 @@ Canonical index:
 | REQ-0029 | ZigZag Multi-Ticker Pilot V1.2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0029-zigzag-multi-ticker-pilot-v1-2|REQ-0029]] |
 | REQ-0030 | ZigZag Regime-Aware Swing-Locked Deviation V2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0030-zigzag-regime-aware-v2|REQ-0030]] |
 | REQ-0031 | ZigZag-based Price Movement Characterization V2 | P1 | **DONE** | None | [[requirements/REQ-0031-zigzag-price-movement-character-v2|REQ-0031]] |
+| REQ-0032 | MovementContext V1 | P1 | **DONE** | None | [[requirements/REQ-0032-movement-context-v1|REQ-0032]] |
 
 ## Requirement Delivery Flow
 
@@ -117,6 +118,10 @@ IMPLEMENTED_PENDING_VALIDATION
 REQ-0031 Price Movement Character V2
 DONE
 (TestEngineer PASS / reconciliation PASS on 2026-09-19)
+        ↓
+REQ-0032 MovementContext V1
+DONE
+(TestEngineer PASS / KEEP on 2026-09-21)
 ```
 
 Related approved Smart Money design:
@@ -285,6 +290,7 @@ CS-HARNESS-014
 | REQ-0029 ZigZag V1.2 | REQ-0028 calibrated ticker config |
 | REQ-0030 ZigZag V2 | REQ-0028 calibrated base + ADR-015 swing-lock rule |
 | REQ-0031 Price Movement V2 | Active ZigZag public swings + adjusted OHLC + ADR-016 |
+| REQ-0032 MovementContext V1 | REQ-0031 movement profile + active ZigZag current leg + daily OHLC trading dates + ADR-017 |
 | REQ-0024 R/S V2.6 | Requires V2.5 evidence/promotion gate before production confidence integration |
 
 ---
