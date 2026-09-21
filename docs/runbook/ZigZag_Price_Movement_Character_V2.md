@@ -282,8 +282,10 @@ Final verdict belongs to TestEngineer:
 
 ## 13. Expansion gate
 
-Do not move to multi-ticker scheduling until MWG PASS.
+MWG PASS is complete. The approved manual whole-active-universe expansion is now REQ-0033:
 
-A later expansion may use the reusable refresh_price_movement_ticker function, but requires a
-separate approved rollout/promotion decision. REQ-0031 does not authorize daily run.py
-integration.
+    docs/backlog/requirements/REQ-0033-active-ticker-movement-initload.md
+    docs/runbook/Active_Ticker_Movement_Initload.md
+
+REQ-0033 uses the reusable per-ticker ZigZag and Price Movement entry points but still does not
+authorize daily run.py integration.
