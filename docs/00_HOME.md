@@ -99,6 +99,7 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/Indicator_Engine|Indicator Engine]]
 - [[architecture/ZigZag_Engine|ZigZag Swing Engine — MWG MVP]]
 - [[architecture/Price_Movement_Character_V2|Price Movement Character V2 — ZigZag-based characterization]]
+- [[architecture/Movement_Context_V1|MovementContext V1 — semantic price-behavior contract]]
 - [[architecture/Price_Movement_Character|Price Movement Character — historical deferred design]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
@@ -141,6 +142,10 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/Price_Movement_Character_V2|Price Movement Character V2]]
 - [[adr/ADR-016-zigzag-price-movement-characterization-v2|ADR-016 Price Movement Characterization]]
 - [[runbook/ZigZag_Price_Movement_Character_V2|Price Movement V2 Validation Runbook]]
+- [[backlog/requirements/REQ-0032-movement-context-v1|REQ-0032 MovementContext V1]]
+- [[architecture/Movement_Context_V1|MovementContext V1]]
+- [[adr/ADR-017-movement-context-as-price-behavior-contract|ADR-017 MovementContext Boundary]]
+- [[runbook/Movement_Context_V1|MovementContext V1 Validation Runbook]]
 - [[runbook/ZigZag_Price_Movement_Reconciliation|Price Movement Post-Golive Reconciliation]]
 
 ### R/S / chart-related architecture
@@ -252,6 +257,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 - [[runbook/SmartMoneyScore_V1|SmartMoneyScore V1]]
 - [[runbook/SmartMoneyStrategy_V1|SmartMoneyStrategy V1]]
 - [[runbook/ZigZag_MWG_MVP|ZigZag MWG MVP]]
+- [[runbook/Movement_Context_V1|MovementContext V1]]
 - [[runbook/RS_V2_4_Monthly_Full_Evaluation|R/S V2.4 Monthly Evaluation]]
 - [[runbook/Drawio_Skill|Draw.io Skill]]
 - [[runbook/Archify_Generation_Guide|Archify Generation Guide]]
