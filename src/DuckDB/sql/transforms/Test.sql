@@ -8,8 +8,8 @@ select * from "CherryMon"."main"."vw_Ticker";
 select * from CherryMon.main.raw_stock_fa;
 
 
-select * from CherryMon.main.cal_price_movement_daily where date='2026-09-15' and ticker='MWG';
-select * from "CherryMon"."main"."vw_ZigZag_Ticker_Config";
-select * from "CherryMon"."main"."vw_ZigZag_Regime_Evaluation";
-select * from "CherryMon"."main"."vw_ZigZag_Pilot";
-select * from "CherryMon"."main"."vw_ZigZag_Calibration";
+select * from CherryMon.main.vw_Ticker_ZigZag_Swings;
+
+select * from "CherryMon"."main"."vw_Ticker_Price_Movement_Swings";
+
+select * from "CherryMon"."main"."vw_Ticker_Movement_Profile";
