@@ -322,3 +322,42 @@ STOP
 ```
 
 Do not continue into Strategy, R/S, SmartMoney or unrelated refactoring.
+
+
+## 15. Validation Closure — 2026-09-21
+
+TestEngineer execution completed with:
+
+```text
+Focused tests:             PASS (13/13)
+Migration:                 PASS
+MWG validator:             PASS (structural_errors=0)
+Idempotency:               PASS
+Daily pipeline regression: PASS (3/3)
+Archify:                   PASS (ok=true, showcase 9/9)
+DB metadata refresh:       PASS
+
+Verdict: PASS
+Action: KEEP
+```
+
+Observed MWG context during the validation run:
+
+```text
+ContextStatus         PROFILE_PLUS_CURRENT
+TrendRegime           MIXED
+TrendQuality          MODERATE_HIGH
+LastSwingState        TYPICAL_DOWN_SWING
+LastSwingExtentRatio  ~0.98
+CurrentLegDirection   UP
+CurrentMoveSpeedState NORMAL
+CurrentMoveSpeedRatio ~1.13
+```
+
+Validation evidence commit:
+
+```text
+d95a6f0d717fe71d5e3447fb4a2f416c89b26558
+```
+
+REQ-0032 functional gate is closed. No Strategy/R/S/SmartMoney expansion is implied by this PASS.
