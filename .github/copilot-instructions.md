@@ -21,6 +21,8 @@ GitHub is the project Source of Truth. A local VS Code checkout is only the exec
 
 Rules:
 
+- **ChatGPT direct-write policy:** when ChatGPT creates, modifies, renames or deletes CherryStock artifacts, the write MUST be performed directly against `https://github.com/haithanh8x/CherryStock` through the GitHub connection. Do not use a local checkout, container filesystem, temporary workspace or another storage system as a staging/write target for CherryStock changes unless the user explicitly requests that exception.
+- ChatGPT MAY use local/container tooling for transient analysis or validation only when it does not become the write location or Source of Truth for CherryStock artifacts.
 - Read, create, modify, validate and hand off CherryStock code, documentation, runbooks, scripts, tests, architecture artifacts and reusable evidence only within this repository.
 - Do not create a parallel local-only project, personal copy, external document, or untracked handoff as a substitute for repository work.
 - For a durable change, update the repository working tree, run the applicable validation, then commit and push the change to the GitHub repository. A local edit is not complete until it is represented in GitHub.
