@@ -1,0 +1,10 @@
+{
+  "active_ticker_count": 349,
+  "zigzag_ok": 349,
+  "zigzag_failed": 0,
+  "price_movement_ok": 349,
+  "price_movement_skipped_no_confirmed_swing": 0,
+  "price_movement_failed": 0,
+  "failure_count": 0,
+  "elapsed_seconds": 21434.605278
+}
