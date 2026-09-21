@@ -40,38 +40,43 @@ def load_mwg_source(connection) -> pd.DataFrame:
     return load_ticker_source(connection, MVP_TICKER)
 
 
-def refresh_zigzag_mwg(
+def refresh_zigzag_ticker(
     *,
     connection,
+    ticker: str,
     repository: ZigZagRepository | None = None,
 ) -> dict[str, object]:
-    """Full deterministic rebuild of the ZigZag MVP for MWG only."""
+    """Full deterministic rebuild of the active ZigZag config for one ticker."""
+
+    resolved_ticker = ticker.strip().upper()
+    if not resolved_ticker:
+        raise ValueError("ticker must not be empty.")
 
     resolved_repository = repository or ZigZagRepository(connection)
     config = resolved_repository.load_mvp_config()
-    source = load_mwg_source(connection)
+    source = load_ticker_source(connection, resolved_ticker)
     if source.empty:
-        raise RuntimeError("ZigZag MWG MVP source returned no rows.")
+        raise RuntimeError(f"ZigZag source returned no rows for {resolved_ticker}.")
 
     started = perf_counter()
     pivots, current, diagnostics = calculate_zigzag(
         source,
-        ticker=MVP_TICKER,
+        ticker=resolved_ticker,
         config=config,
     )
     calc_seconds = perf_counter() - started
 
     persisted = resolved_repository.replace_ticker(
         config_id=config.config_id,
-        ticker=MVP_TICKER,
+        ticker=resolved_ticker,
         pivots=pivots,
         current=current,
     )
 
     return {
         "status": "OK",
-        "scope": "MWG_MVP_ONLY",
-        "ticker": MVP_TICKER,
+        "scope": "TICKER_FULL_REBUILD",
+        "ticker": resolved_ticker,
         "config_id": config.config_id,
         "config_code": config.config_code,
         "deviation_pct": config.deviation_pct,
@@ -85,3 +90,19 @@ def refresh_zigzag_mwg(
         "calculation_seconds": round(calc_seconds, 6),
         **persisted,
     }
+
+
+def refresh_zigzag_mwg(
+    *,
+    connection,
+    repository: ZigZagRepository | None = None,
+) -> dict[str, object]:
+    """Backward-compatible MWG entry point used by the validated MVP runbook."""
+
+    summary = refresh_zigzag_ticker(
+        connection=connection,
+        ticker=MVP_TICKER,
+        repository=repository,
+    )
+    summary["scope"] = "MWG_MVP_ONLY"
+    return summary
