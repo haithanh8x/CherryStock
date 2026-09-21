@@ -1,10 +1,10 @@
 ---
 id: REQ-0032
 title: MovementContext V1
-status: IMPLEMENTED_PENDING_VALIDATION
+status: DONE
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: TestEngineer
+primary_next_owner: None
 related:
   prerequisite:
     - docs/backlog/requirements/REQ-0031-zigzag-price-movement-character-v2.md
@@ -202,18 +202,32 @@ None blocking for V1.
 - provisional current-leg values can change until a new pivot is confirmed;
 - a future promoted ZigZag config requires the MovementContext config mapping to be versioned/updated explicitly.
 
+## Validation Evidence
+
+Independent local TestEngineer execution on 2026-09-21 completed the full integration runbook with PASS / KEEP:
+
+- focused tests: 13/13 PASS (4 MovementContext + 9 Price Movement);
+- schema migration: PASS, one MWG context row;
+- MWG validator: PASS, structural_errors=0;
+- idempotent rerun: PASS;
+- daily pipeline regression: 3/3 PASS;
+- Archify showcase: PASS, ok=true, 9/9 checks;
+- generated DB metadata contains `main.dim_movement_context_config` and `main.vw_Ticker_Movement_Context`.
+
+Validation evidence commit: `d95a6f0d717fe71d5e3447fb4a2f416c89b26558`.
+
 ## Suggested Routing
 
-- Architecture required: Yes
-- Primary next owner: TestEngineer
+- Architecture required: Yes — completed
+- Primary next owner: None
 - Domain instructions: database.instructions.md, testing.instructions.md
-- Validation owner: TestEngineer
+- Validation owner: TestEngineer — PASS / KEEP
 
 ## Handoff
 
 ```text
-Status: IMPLEMENTED_PENDING_VALIDATION
-Primary next owner: TestEngineer
+Status: DONE
+Primary next owner: None
 Acceptance criteria count: 12
 Blocking questions: none
 ```
