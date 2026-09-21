@@ -200,6 +200,14 @@ def validate(*, evidence_dir: Path | None = None) -> int:
             .str.strip(";")
         )
 
+    run_text = (PROJECT_ROOT / "run.py").read_text(encoding="utf-8")
+    run_py_unchanged = (
+        "active_ticker_movement_initload" not in run_text
+        and "init_reload_zigzag_price_movement_active" not in run_text
+    )
+    if not run_py_unchanged:
+        failures.append("run.py unexpectedly contains REQ-0033 active movement integration")
+
     summary = {
         "active_ticker_count": int(len(coverage)),
         "active_with_ohlc": int((coverage["OHLCRows"] > 0).sum()),
@@ -208,6 +216,7 @@ def validate(*, evidence_dir: Path | None = None) -> int:
         "price_movement_profile_covered": int(
             (coverage["MovementProfileRows"] == 1).sum()
         ),
+        "run_py_unchanged": bool(run_py_unchanged),
         "validation_failures": int(len(failures)),
     }
 
