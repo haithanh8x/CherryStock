@@ -99,7 +99,7 @@ Execution order:
 ## Price Movement characterization
 
 - [[REQ-0031-zigzag-price-movement-character-v2|REQ-0031 — ZigZag-based Price Movement Characterization V2]] — **DONE**; TestEngineer PASS on MWG (19 focused/regression tests, 278/278 swings, structural validation PASS, idempotency PASS, reconciliation TotalCoreErrors=0). Evidence: `docs/reference/data/price_movement/mwg/`.
-- [[REQ-0032-movement-context-v1|REQ-0032 — MovementContext V1]] — **IMPLEMENTED_PENDING_VALIDATION**; additive semantic view over confirmed Movement Profile + provisional ZigZag Current, with versioned interpretation thresholds and no R/S/SmartMoney dependency.
+- [[REQ-0032-movement-context-v1|REQ-0032 — MovementContext V1]] — **DONE**; TestEngineer PASS / KEEP on 2026-09-21 (13/13 focused tests, migration + MWG validator + idempotency + daily regression PASS, Archify showcase ok=true, DB metadata refreshed).
 
 Validation:
 
