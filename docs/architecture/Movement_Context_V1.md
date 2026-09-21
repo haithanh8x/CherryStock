@@ -1,7 +1,7 @@
 # MovementContext V1 — Price Behavior Semantic Contract
 
 - **Requirement:** REQ-0032
-- **Status:** IMPLEMENTED_PENDING_VALIDATION
+- **Status:** DONE — TESTENGINEER_PASS_KEEP
 - **Owner:** .github/agents/SolutionArchitect.agent.md
 - **Decision:** docs/adr/ADR-017-movement-context-as-price-behavior-contract.md
 - **Upstream:** Price Movement V2 + ZigZag Current + daily OHLC
@@ -413,17 +413,43 @@ pivots · swings · profile · context
 Generated HTML must be regenerated/validated by the repository Archify workflow or local
 renderer before architecture visualization synchronization is considered complete.
 
-## 16. Handoff
+## 16. Validation Closure
+
+Independent local validation completed on 2026-09-21:
+
+- 13/13 focused tests PASS;
+- additive migration PASS;
+- MWG validator structural_errors=0;
+- idempotency PASS;
+- daily pipeline regression 3/3 PASS;
+- Archify showcase `ok=true` with 9/9 checks;
+- DB metadata refreshed from the actual local DuckDB.
+
+Observed MWG context at validation time:
+
+```text
+TrendRegime          MIXED
+TrendQuality         MODERATE_HIGH
+LastSwingState       TYPICAL_DOWN_SWING
+LastSwingExtentRatio ~0.98
+CurrentLegDirection  UP
+CurrentMoveSpeedState NORMAL
+CurrentMoveSpeedRatio ~1.13
+```
+
+Validation evidence commit: `d95a6f0d717fe71d5e3447fb4a2f416c89b26558`.
+
+## 17. Handoff
 
 ```text
 DESIGN HANDOFF
 Requirement: REQ-0032
-Outcome: IMPLEMENTED_PENDING_VALIDATION
+Outcome: DONE — TESTENGINEER_PASS_KEEP
 Design path: docs/architecture/Movement_Context_V1.md
 ADR: docs/adr/ADR-017-movement-context-as-price-behavior-contract.md
 Implementation: src/DuckDB/sql/movement_context_v1_schema.sql
 Migration: additive config + derived public view; no backfill
 Validation: focused tests + MWG local runbook
 Known risk: heuristic thresholds require empirical strategy validation later
-Next owner: TestEngineer
+Next owner: None
 ```
