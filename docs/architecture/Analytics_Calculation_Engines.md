@@ -243,6 +243,10 @@ REQ-0032 adds a derived MovementContext public contract over the movement profil
 matching provisional ZigZag current leg. It adds no calculated persistence and remains outside
 run.py. R/S and SmartMoney composition is explicitly deferred to a future TickerStrategyContext.
 
+REQ-0033 adds a manual whole-active-universe initial-load orchestrator driven by
+`vw_Ticker_Active`. It reuses the same ZigZag/Price Movement semantics, commits each ticker/stage
+independently, and remains outside run.py.
+
 ### SmartMoneyScore Engine
 
 **Implementation:** `src/calcEngine/smartMoneyScore.py`
@@ -355,8 +359,9 @@ V2.4 is research/governance. It does **not** automatically mutate runtime provid
 | Composite Index | daily | `calculate_VNINDEX_NOT_VIN()` | `cal_Indexes` | shared daily UoW |
 | Trend / MA | daily | `cal_Moving_Average()` | `cal_Trends` | shared daily UoW |
 | Indicator Engine | daily | `refresh_technical_indicators()` | `cal_indicator_values` → `vw_Ticker_indicators` | shared daily UoW |
-| ZigZag Swing Engine | manual MWG MVP | O(n) 5% reversal pivot segmentation | `cal_zigzag_pivot`, `cal_zigzag_current_leg` → three public views | separate manual UoW; not in run.py |
-| Price Movement V2 | manual MWG-first | confirmed swing characterization + recent profile | `cal_price_movement_swing`, `cal_price_movement_profile` → two public views | separate manual UoW; not in run.py |
+| ZigZag Swing Engine | manual per-ticker; full active-universe initload under REQ-0033 | O(n) 5% reversal pivot segmentation | `cal_zigzag_pivot`, `cal_zigzag_current_leg` → three public views | ticker-local manual UoW; not in run.py |
+| Price Movement V2 | manual per-ticker; full active-universe initload under REQ-0033 | confirmed swing characterization + recent profile | `cal_price_movement_swing`, `cal_price_movement_profile` → two public views | ticker-local manual UoW; not in run.py |
+| Active Ticker Movement Initload | manual full universe | `vw_Ticker_Active` → ZigZag stage → Price Movement stage | existing ZigZag/Price Movement persistence only | per-ticker/stage isolation; not in run.py |
 | MovementContext V1 | manual/research read layer | profile + provisional current-leg interpretation | `dim_movement_context_config` → `vw_Ticker_Movement_Context` | derived view; no calculated context persistence; not in run.py |
 | SmartMoneyScore | daily | `refresh_smart_money_score()` | factor + score tables → `vw_Ticker_SmartMoney` | shared daily UoW |
 | R/S Runtime Ladder | on demand / consumer | `build_level_ladder()` family | `LevelLadderResult` | read/calculation path, separate from daily writer |
@@ -475,6 +480,8 @@ Operational entry points:
     scripts/export_price_movement_reconciliation.py
     scripts/initload/init_movement_context_v1.py
     scripts/validate_movement_context_mwg.py
+    scripts/initload/init_reload_zigzag_price_movement_active.py
+    scripts/validate_movement_active.py
 
 The path remains outside the canonical daily pipeline until a separate production-promotion
 decision is approved.
