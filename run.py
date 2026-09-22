@@ -6,6 +6,7 @@ from src.Ults.Timing import timeit
 from src.Ults.getData import get_last_point
 from src.cherrystock.config.settings import settings
 from src.cherrystock.application.services.sync_write_pipeline import SyncWritePipelineService
+from src.cherrystock.application.services.movement_daily_pipeline import MovementDailyPipelineService
 from src.cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiBrokerAdapter
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
@@ -50,6 +51,38 @@ def _run_all_steps(
     return summary
 
 
+def _run_movement_steps(
+    *,
+    movement_pipeline: MovementDailyPipelineService,
+) -> dict[str, object]:
+    """Run the post-commit daily Movement pipeline.
+
+    The core daily transaction has already committed before this function runs.
+    Movement uses ticker-local transactions so one failed ticker cannot roll back
+    ingestion, Indicator, or SmartMoney results.
+    """
+    print("[daily] ▶ Incremental ZigZag + Price Movement")
+    summary = movement_pipeline.run()
+
+    print(
+        "[daily] Movement | "
+        f"selected={summary['selected_ticker_count']} "
+        f"zigzag={summary['zigzag_refreshed']} "
+        f"price_movement={summary['price_movement_refreshed']} "
+        f"failures={summary['failure_count']}"
+    )
+
+    if int(summary["failure_count"]) > 0:
+        raise RuntimeError(
+            "Daily Movement pipeline completed with "
+            f"{summary['failure_count']} failure(s). "
+            "Core daily data is already committed; run the Movement validator/runbook."
+        )
+
+    print("[daily] ✓ Incremental ZigZag + Price Movement")
+    return summary
+
+
 # --- HÀM MAIN ---
 @timeit
 def main():
@@ -58,6 +91,9 @@ def main():
     )
     write_pipeline = SyncWritePipelineService()
     connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
+    movement_pipeline = MovementDailyPipelineService(
+        connection_factory=connection_factory
+    )
     days_diff = _resolve_days_diff()
 
     print(f"CherryStock Run All | from_last_day={days_diff}")
@@ -78,7 +114,11 @@ def main():
             uow=uow,
         )
 
-    # Chỉ export metadata sau khi toàn bộ transaction đã commit thành công.
+    # Movement runs after the canonical daily transaction commits so it can
+    # read the newly committed EOD while keeping ticker-local failure isolation.
+    _run_movement_steps(movement_pipeline=movement_pipeline)
+
+    # Chỉ export metadata sau khi core + Movement daily stages hoàn tất.
     DuckLib.exportDuckDB_metadata()
     print("✓ Run All hoàn tất. DuckDB metadata đã được export.")
 
