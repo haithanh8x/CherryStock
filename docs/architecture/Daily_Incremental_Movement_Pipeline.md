@@ -118,11 +118,13 @@ ZigZag:
   SwingCount
   LastSwingSeq
   LastConfirmedAtDate
+  confirmed swing geometry
 
 Price Movement:
   SwingCount
   LastSwingSeq
   LastConfirmedAtDate
+  copied confirmed swing geometry
 
 Movement Profile:
   ProfileRows
@@ -211,7 +213,7 @@ Structural validator requires:
 - all active tickers have ZigZag current state;
 - LatestOHLCDate <= ZigZagAsOfDate, with equality expected after current daily load;
 - no source rewind;
-- exact ZigZag ↔ Price Movement swing parity;
+- exact ZigZag ↔ Price Movement swing row-count and confirmed-geometry parity;
 - one current Movement Profile for every ticker with confirmed swing;
 - profile lineage equals latest confirmed ZigZag lineage;
 - one MovementContext row for every Movement Profile.
