@@ -8,7 +8,7 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "9b5df385a425fbc1f8bf236ba02256ecf62763dd"
+      "revision": "132e940b932df5f1760260ad23e012e87f5172c2"
     },
     "viewBox": [
       1390,
@@ -20,7 +20,7 @@
       "id": "daily_orchestrator",
       "type": "backend",
       "label": "Daily Analytics Orchestration",
-      "sublabel": "daily pipeline · shared UoW",
+      "sublabel": "core UoW · movement post-commit",
       "pos": [
         30,
         80
@@ -37,6 +37,10 @@
         {
           "path": "src/cherrystock/application/services/sync_write_pipeline.py",
           "label": "Canonical daily ordering"
+        },
+        {
+          "path": "src/cherrystock/application/services/movement_daily_pipeline.py",
+          "label": "Post-commit Movement daily"
         }
       ]
     },
@@ -111,8 +115,8 @@
     {
       "id": "price_movement",
       "type": "backend",
-      "label": "ZigZag Swing Engine",
-      "sublabel": "adjusted OHLC · confirmed pivots",
+      "label": "Movement Daily Lane",
+      "sublabel": "stale ZigZag · conditional PM",
       "pos": [
         1160,
         80
@@ -123,16 +127,16 @@
       ],
       "sources": [
         {
-          "path": "docs/architecture/ZigZag_Engine.md",
-          "label": "ZigZag architecture"
+          "path": "src/cherrystock/application/services/movement_daily_pipeline.py",
+          "label": "Daily Movement orchestration"
+        },
+        {
+          "path": "docs/architecture/Daily_Incremental_Movement_Pipeline.md",
+          "label": "Daily Movement architecture"
         },
         {
           "path": "src/cherrystock/domain/analytics/zigzag/engine.py",
           "label": "ZigZag domain engine"
-        },
-        {
-          "path": "src/DuckDB/sql/vw_Ticker_OHLC_D.sql",
-          "label": "Adjusted OHLC input contract"
         }
       ]
     },
@@ -777,6 +781,19 @@
       "toSide": "left",
       "labelAt": [
         885,
+        55
+      ]
+    },
+    {
+      "from": "smart_money",
+      "to": "price_movement",
+      "label": "5 · post-commit Movement",
+      "variant": "emphasis",
+      "route": "straight",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        1145,
         55
       ]
     },
