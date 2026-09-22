@@ -273,9 +273,42 @@ It does **not** disable:
 - duplicate `Ticker + Date`;
 - required NULL checks;
 - invalid date/numeric checks;
-- OHLC integrity;
+- OHLC integrity detection;
 - negative price/volume checks where semantically applicable;
 - audit persistence.
+
+### Yahoo source-specific OHLC severity policy
+
+REQ-0035 keeps the generic OHLC predicate unchanged but applies an evidenced source-specific
+severity rule during Yahoo orchestration:
+
+~~~text
+VND=X OHLC envelope violation
+    → WARNING
+    → raw values preserved
+    → daily pipeline continues
+
+DX-Y.NYB / BTC-USD / GC=F OHLC violation
+    → FAIL
+
+Any non-OHLC VND=X DQ failure
+    → FAIL
+~~~
+
+Audit metrics preserve the total invalid count and add warning/blocking splits by ticker.
+
+Canonical design:
+
+~~~text
+docs/architecture/Yahoo_Source_Specific_DQ_Policy.md
+docs/adr/ADR-019-yahoo-vndx-source-specific-ohlc-dq-policy.md
+~~~
+
+Canonical validation entry:
+
+~~~text
+validate_and_persist_yahoo_eod_quality()
+~~~
 
 A normal transition from Sunday:
 
@@ -627,7 +660,7 @@ attempted. Core daily data remains committed by design.
 |---|---|---:|---|
 | `raw_stock_eod` | dated market data | ON | one EOD row per ticker/date |
 | 4 Intraday tables | dated tick data | ON, wider thresholds | tick activity varies strongly |
-| Yahoo `raw_other_eod` scope | mixed-calendar dated data | **OFF** | weekend calendars differ |
+| Yahoo `raw_other_eod` scope | mixed-calendar dated data + source-specific OHLC severity | **OFF** | weekend calendars differ; VND=X OHLC anomaly is warning-only under ADR-019 |
 | `raw_stock_fa` | snapshot/reference + freshness | N/A | grain is Ticker, not Date |
 | `raw_lstTicker` | reference | N/A | master data |
 | `cal_Indexes` | dated calculation | ON | filtered to VNINDEX_NOT_VIN |
