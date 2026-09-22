@@ -1,0 +1,12 @@
+{
+  "active_ticker_count": 349,
+  "latest_ohlc_covered": 349,
+  "zigzag_current_covered": 349,
+  "stale_zigzag_count": 0,
+  "source_rewind_count": 0,
+  "swing_parity_mismatch_count": 0,
+  "swing_geometry_mismatch_count": 0,
+  "profile_stale_count": 0,
+  "movement_context_covered": 349,
+  "validation_failures": 0
+}
