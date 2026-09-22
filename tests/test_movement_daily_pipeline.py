@@ -62,6 +62,38 @@ def _plan_db():
         )
         '''
     )
+    connection.execute(
+        '''
+        CREATE TABLE CherryMon.main.vw_Ticker_ZigZag_Swings (
+            Ticker VARCHAR,
+            ConfigCode VARCHAR,
+            SwingSeq BIGINT,
+            ConfirmedAtDate DATE
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE CherryMon.main.vw_Ticker_Price_Movement_Swings (
+            Ticker VARCHAR,
+            PriceMovementConfigCode VARCHAR,
+            ZigZagConfigCode VARCHAR,
+            SwingSeq BIGINT,
+            ConfirmedAtDate DATE
+        )
+        '''
+    )
+    connection.execute(
+        '''
+        CREATE TABLE CherryMon.main.vw_Ticker_Movement_Profile (
+            Ticker VARCHAR,
+            PriceMovementConfigCode VARCHAR,
+            ZigZagConfigCode VARCHAR,
+            LastSwingSeq BIGINT,
+            AsOfConfirmedAtDate DATE
+        )
+        '''
+    )
     return connection
 
 
@@ -92,7 +124,7 @@ def test_plan_selects_only_missing_or_stale_tickers() -> None:
 
         assert plan["AAA"]["PlanState"] == "UP_TO_DATE"
         assert plan["AAA"]["Selected"] is False
-        assert plan["BBB"]["PlanState"] == "STALE"
+        assert plan["BBB"]["PlanState"] == "STALE_ZIGZAG"
         assert plan["BBB"]["Selected"] is True
         assert plan["CCC"]["PlanState"] == "MISSING_ZIGZAG"
         assert plan["CCC"]["Selected"] is True
@@ -120,6 +152,51 @@ def test_plan_force_selects_up_to_date_ticker() -> None:
         row = service.plan(force=True)[0]
 
         assert row["PlanState"] == "FORCED"
+        assert row["Selected"] is True
+    finally:
+        connection.close()
+
+
+def test_plan_selects_stale_price_movement_even_when_zigzag_is_current() -> None:
+    connection = _plan_db()
+    try:
+        connection.execute(
+            "INSERT INTO CherryMon.main.vw_Ticker_Active VALUES ('AAA')"
+        )
+        connection.execute(
+            "INSERT INTO CherryMon.main.vw_Ticker_OHLC_D VALUES ('AAA', DATE '2026-09-22')"
+        )
+        connection.execute(
+            """
+            INSERT INTO CherryMon.main.vw_Ticker_ZigZag_Current
+            VALUES ('AAA', 'ZZ_D_5_MVP', DATE '2026-09-22')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO CherryMon.main.vw_Ticker_ZigZag_Swings
+            VALUES
+                ('AAA', 'ZZ_D_5_MVP', 1, DATE '2026-09-20'),
+                ('AAA', 'ZZ_D_5_MVP', 2, DATE '2026-09-22')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO CherryMon.main.vw_Ticker_Price_Movement_Swings
+            VALUES ('AAA', 'PM_ZZ_D_V2', 'ZZ_D_5_MVP', 1, DATE '2026-09-20')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO CherryMon.main.vw_Ticker_Movement_Profile
+            VALUES ('AAA', 'PM_ZZ_D_V2', 'ZZ_D_5_MVP', 1, DATE '2026-09-20')
+            """
+        )
+
+        service = MovementDailyPipelineService(connection_factory=_Factory(connection))
+        row = service.plan()[0]
+
+        assert row["PlanState"] == "STALE_PRICE_MOVEMENT"
         assert row["Selected"] is True
     finally:
         connection.close()
@@ -197,7 +274,7 @@ def test_selected_ticker_refreshes_zigzag_but_skips_pm_when_lineage_unchanged(
                 "LatestOHLCDate": date(2026, 9, 22),
                 "OHLCRows": 100,
                 "ZigZagAsOfDate": date(2026, 9, 21),
-                "PlanState": "STALE",
+                "PlanState": "STALE_ZIGZAG",
                 "Selected": True,
             }
         ],
@@ -307,3 +384,60 @@ def test_zigzag_failure_isolated_and_reported(monkeypatch) -> None:
     assert summary["zigzag_failed"] == 1
     assert summary["failure_count"] == 1
     assert summary["results"][0]["PriceMovementStatus"] == "SKIPPED_ZIGZAG_FAILED"
+
+
+def test_stale_price_movement_repairs_without_rebuilding_zigzag(monkeypatch) -> None:
+    zigzag_calls: list[str] = []
+    pm_calls: list[str] = []
+    service = MovementDailyPipelineService(
+        connection_factory=object(),
+        unit_of_work_cls=_FakeUow,
+        refresh_zigzag=lambda **kwargs: zigzag_calls.append(kwargs["ticker"]) or {},
+        refresh_price_movement=lambda **kwargs: (
+            pm_calls.append(kwargs["ticker"])
+            or {
+                "confirmed_movement_swings": 11,
+                "profile_character": "TRENDING_UP",
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        service,
+        "plan",
+        lambda **_: [
+            {
+                "Ticker": "AAA",
+                "LatestOHLCDate": date(2026, 9, 22),
+                "OHLCRows": 100,
+                "ZigZagAsOfDate": date(2026, 9, 22),
+                "ZigZagSwingRows": 11,
+                "PriceMovementSwingRows": 10,
+                "ProfileRows": 1,
+                "PlanState": "STALE_PRICE_MOVEMENT",
+                "Selected": True,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        service,
+        "_load_price_movement_state",
+        lambda ticker: {
+            "zigzag_swing_count": 11,
+            "zigzag_last_swing_seq": 11,
+            "zigzag_last_confirmed_at": date(2026, 9, 22),
+            "price_movement_swing_count": 10,
+            "price_movement_last_swing_seq": 10,
+            "price_movement_last_confirmed_at": date(2026, 9, 20),
+            "profile_rows": 1,
+            "profile_last_swing_seq": 10,
+            "profile_as_of_confirmed_at": date(2026, 9, 20),
+        },
+    )
+
+    summary = service.run()
+
+    assert zigzag_calls == []
+    assert pm_calls == ["AAA"]
+    assert summary["zigzag_refreshed"] == 0
+    assert summary["price_movement_refreshed"] == 1
+    assert summary["failure_count"] == 0
