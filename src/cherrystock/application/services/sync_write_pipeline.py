@@ -9,6 +9,7 @@ from CrawlStock.readYahooFinance import YAHOO_OTHER_TICKERS, syncYahooFinance_EO
 from Ults.DataQualityOrchestration import (
     validate_and_persist_data_quality,
     validate_and_persist_reference_quality,
+    validate_and_persist_yahoo_eod_quality,
 )
 from Ults.DuckLib import executeDuckSQL, returnSQL
 from Ults.lstPara import DUCKDB_SQL_PATH
@@ -35,6 +36,7 @@ class SyncWritePipelineService:
         calc_smart_money: Callable[..., dict] = refresh_smart_money_score,
         execute_sql: Callable[..., None] = executeDuckSQL,
         validate_dated: Callable[..., dict] = validate_and_persist_data_quality,
+        validate_yahoo: Callable[..., dict] = validate_and_persist_yahoo_eod_quality,
         validate_reference: Callable[..., dict] = validate_and_persist_reference_quality,
         resolve_yahoo_expected_date: Callable[[object], object] | None = None,
     ) -> None:
@@ -50,6 +52,7 @@ class SyncWritePipelineService:
         self._calc_smart_money = calc_smart_money
         self._execute_sql = execute_sql
         self._validate_dated = validate_dated
+        self._validate_yahoo = validate_yahoo
         self._validate_reference = validate_reference
         self._resolve_yahoo_expected_date = resolve_yahoo_expected_date or self._latest_yahoo_date
 
@@ -132,17 +135,12 @@ class SyncWritePipelineService:
 
         self._sync_yahoo_eod(from_last_day=days_diff, connection=connection)
         yahoo_expected_date = self._resolve_yahoo_expected_date(connection)
-        self._validate_dated(
+        self._validate_yahoo(
             connection=connection,
             table_name='"CherryMon"."main"."raw_other_eod"',
             pipeline_name="Yahoo Finance EOD",
-            date_col="Date",
-            symbol_col="Ticker",
-            key_cols=["Ticker", "Date"],
-            required_cols=["Ticker", "Date", "Open", "High", "Low", "Close"],
+            scope_tickers=list(YAHOO_OTHER_TICKERS),
             expected_date=yahoo_expected_date,
-            check_count_anomalies=False,
-            filters={"Ticker": list(YAHOO_OTHER_TICKERS)},
             raise_on_fail=True,
         )
 
