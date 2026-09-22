@@ -205,13 +205,19 @@ def validate_and_persist_yahoo_eod_quality(
     if not isinstance(raise_on_fail, bool):
         raise TypeError("raise_on_fail must be bool")
 
-    resolved_scope = [str(value).strip() for value in scope_tickers if str(value).strip()]
+    resolved_scope = [
+        str(value).strip()
+        for value in scope_tickers
+        if value is not None and str(value).strip()
+    ]
     if not resolved_scope:
         raise ValueError("scope_tickers must not be empty")
     resolved_scope = list(dict.fromkeys(resolved_scope))
 
     resolved_warning = [
-        str(value).strip() for value in ohlc_warning_tickers if str(value).strip()
+        str(value).strip()
+        for value in ohlc_warning_tickers
+        if value is not None and str(value).strip()
     ]
     resolved_warning = list(dict.fromkeys(resolved_warning))
     unknown_warning = sorted(set(resolved_warning).difference(resolved_scope))
