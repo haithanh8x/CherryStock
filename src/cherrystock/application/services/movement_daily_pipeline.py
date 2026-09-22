@@ -288,6 +288,50 @@ class MovementDailyPipelineService:
                     WHERE Ticker = ?
                       AND PriceMovementConfigCode = ?
                       AND ZigZagConfigCode = ?
+                ),
+                zz_identity AS (
+                    SELECT
+                        SwingSeq,
+                        Direction,
+                        StartPivotSeq,
+                        StartDate,
+                        StartPrice,
+                        EndPivotSeq,
+                        EndDate,
+                        EndPrice,
+                        ConfirmedAtDate
+                    FROM "CherryMon"."main"."vw_Ticker_ZigZag_Swings"
+                    WHERE Ticker = ?
+                      AND ConfigCode = ?
+                ),
+                pm_identity AS (
+                    SELECT
+                        SwingSeq,
+                        Direction,
+                        StartPivotSeq,
+                        StartDate,
+                        StartPrice,
+                        EndPivotSeq,
+                        EndDate,
+                        EndPrice,
+                        ConfirmedAtDate
+                    FROM "CherryMon"."main"."vw_Ticker_Price_Movement_Swings"
+                    WHERE Ticker = ?
+                      AND PriceMovementConfigCode = ?
+                      AND ZigZagConfigCode = ?
+                ),
+                identity_diff AS (
+                    SELECT * FROM (
+                        SELECT * FROM zz_identity
+                        EXCEPT
+                        SELECT * FROM pm_identity
+                    )
+                    UNION ALL
+                    SELECT * FROM (
+                        SELECT * FROM pm_identity
+                        EXCEPT
+                        SELECT * FROM zz_identity
+                    )
                 )
                 SELECT
                     zz.SwingCount,
@@ -298,7 +342,8 @@ class MovementDailyPipelineService:
                     pm.LastConfirmedAtDate,
                     profile.ProfileRows,
                     profile.LastSwingSeq,
-                    profile.AsOfConfirmedAtDate
+                    profile.AsOfConfirmedAtDate,
+                    (SELECT COUNT(*) FROM identity_diff) AS IdentityMismatchCount
                 FROM zz, pm, profile
                 """,
                 [
@@ -306,6 +351,11 @@ class MovementDailyPipelineService:
                     ZIGZAG_CONFIG_CODE,
                     ticker,
                     PRICE_MOVEMENT_CONFIG_CODE,
+                    ZIGZAG_CONFIG_CODE,
+                    ticker,
+                    PRICE_MOVEMENT_CONFIG_CODE,
+                    ZIGZAG_CONFIG_CODE,
+                    ticker,
                     ZIGZAG_CONFIG_CODE,
                     ticker,
                     PRICE_MOVEMENT_CONFIG_CODE,
@@ -326,6 +376,7 @@ class MovementDailyPipelineService:
             "profile_rows": int(row[6] or 0),
             "profile_last_swing_seq": row[7],
             "profile_as_of_confirmed_at": row[8],
+            "identity_mismatch_count": int(row[9] or 0),
         }
 
     @staticmethod
@@ -333,7 +384,8 @@ class MovementDailyPipelineService:
         if int(state["zigzag_swing_count"]) <= 0:
             return False
         return (
-            int(state["price_movement_swing_count"]) != int(state["zigzag_swing_count"])
+            int(state.get("identity_mismatch_count", 0)) > 0
+            or int(state["price_movement_swing_count"]) != int(state["zigzag_swing_count"])
             or state["price_movement_last_swing_seq"] != state["zigzag_last_swing_seq"]
             or state["price_movement_last_confirmed_at"] != state["zigzag_last_confirmed_at"]
             or int(state["profile_rows"]) != 1
