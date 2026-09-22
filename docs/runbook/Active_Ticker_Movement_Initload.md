@@ -401,3 +401,40 @@ STOP
 ~~~
 
 Do not merge a failed full-universe rollout and do not add it to run.py as part of REQ-0033.
+
+
+## 16. Validation Closure — 2026-09-22
+
+~~~text
+Focused tests:              PASS (24/24)
+Universe/OHLC prerequisite: PASS (349/349)
+Canary MWG+FPT:             PASS (2/2)
+Canary first 20:            PASS (20/20)
+Full ZigZag load:           PASS (349/349)
+Full Price Movement load:   PASS (349/349)
+Structural validator:       PASS (validation_failures=0)
+MovementContext downstream: PASS (349/349)
+Idempotency:                PASS
+Daily pipeline regression:  PASS (3/3)
+run.py unchanged:           PASS
+
+Verdict: PASS
+Action: KEEP
+~~~
+
+Stable business row counts after unchanged rerun:
+
+~~~text
+cal_zigzag_pivot              154795
+cal_zigzag_current_leg           349
+cal_price_movement_swing      154446
+cal_price_movement_profile       349
+~~~
+
+Validation evidence commit:
+
+~~~text
+7e872c1b5b51834e8cec8f847bf6658fa03e9167
+~~~
+
+REQ-0033 is closed. Daily/incremental production integration belongs to a new requirement.
