@@ -754,3 +754,30 @@ docs/adr/ADR-018-daily-movement-post-commit-incremental-refresh.md
 ```
 
 This runbook is the canonical operational description of the daily sequence.
+
+
+## Yahoo Finance EOD OHLC Diagnostic
+
+If the core daily transaction stops at:
+
+~~~text
+Yahoo Finance EOD
+raw_other_eod
+invalid_ohlc_count > 0
+~~~
+
+use the dedicated read-only diagnostic before changing source data or DQ policy:
+
+~~~powershell
+python scripts\diagnose_yahoo_raw_other_eod.py --allow-invalid
+python scripts\diagnose_yahoo_raw_other_eod.py --refetch-yahoo --allow-invalid
+~~~
+
+Canonical runbook:
+
+~~~text
+docs/runbook/Yahoo_Raw_Other_EOD_Diagnostic.md
+~~~
+
+The diagnostic reproduces the exact OHLC envelope predicate, reports per-rule violation deltas and
+can optionally compare the offending stored row with the current Yahoo adjusted EOD response.
