@@ -456,8 +456,8 @@
       "title": "Luồng ghi dữ liệu hằng ngày",
       "items": [
         "run.py mở một DuckDBUnitOfWork và gọi SyncWritePipelineService",
-        "DQ FAIL rollback daily write set; approved source-specific warnings remain observable without mutating raw data",
-        "Metadata chỉ được export sau khi COMMIT thành công"
+        "DQ FAIL rollback; approved source warnings stay auditable and raw data stays unchanged",
+        "Core COMMIT xong mới chạy Movement; metadata export sau các stage thành công"
       ]
     },
     {
@@ -475,7 +475,7 @@
       "items": [
         ".github/** quản trị Agent Harness; docs/** là engineering knowledge SSOT",
         "SolutionArchitect sở hữu quyết định kiến trúc; Archify chỉ render và validate sơ đồ",
-        "Sơ đồ phản ánh bằng chứng runtime tại revision 711b9a58 và không suy diễn deployment topology"
+        "Sơ đồ phản ánh bằng chứng runtime tại revision 0e2d2afc và không suy diễn deployment topology"
       ]
     }
   ]
