@@ -493,6 +493,21 @@ Canonical materials:
 
 REQ-0033 does not add Price Movement to run.py and does not change PM_ZZ_D_V2 semantics.
 
+## 12C. Daily Incremental Promotion
+
+REQ-0034 separately promotes the validated fixed-5% lineage into the normal daily runtime after
+the core EOD/Indicator/SmartMoney transaction commits.
+
+It reuses PM_ZZ_D_V2 unchanged and refreshes Price Movement only when confirmed ZigZag lineage
+or copied confirmed swing geometry is stale.
+
+Canonical materials:
+
+    docs/backlog/requirements/REQ-0034-daily-incremental-movement-pipeline.md
+    docs/architecture/Daily_Incremental_Movement_Pipeline.md
+    docs/adr/ADR-018-daily-movement-post-commit-incremental-refresh.md
+    docs/runbook/Daily_Incremental_Movement_Pipeline.md
+
 ## 13. Architecture Artifact Synchronization
 
 Typed source:
