@@ -1,7 +1,7 @@
 # Daily Incremental Movement Pipeline
 
 - **Requirement:** REQ-0034
-- **Status:** IMPLEMENTED_PENDING_VALIDATION
+- **Status:** DONE — TESTENGINEER_PASS_KEEP
 - **Decision:** ADR-018
 - **Daily entry:** run.py
 - **Service:** src/cherrystock/application/services/movement_daily_pipeline.py
@@ -252,16 +252,40 @@ python scripts\validate_daily_movement.py
 - SmartMoney daily order/contract is unchanged.
 - MovementContext remains derived.
 
-## 13. Handoff
+## 13. Validation Closure
+
+Local validation completed on 2026-09-22 with PASS / KEEP:
+
+- 39/39 focused tests PASS;
+- REQ-0033 baseline 349/349 PASS;
+- same-day NOOP PASS;
+- MWG forced canary PASS;
+- PM-only recovery PASS;
+- daily structural validation PASS with zero stale/parity/geometry/profile errors;
+- rerun NOOP PASS;
+- regression 7/7 PASS;
+- Archify showcase ok=true, 9/9.
+
+Evidence commit: `86ec548efc2164b438e895c5f5e2ce0fb0c43afe`.
+
+Operational note: the attempted full `run.py` execution stopped in the existing Yahoo Finance
+Data Quality gate before the core Phase A commit because
+`raw_other_eod invalid_ohlc_count=1`. Therefore no live same-process core-commit → Movement
+transition was observed in that run. The ordering contract is separately covered by the dedicated
+integration test and the Movement runtime paths were validated standalone. The Yahoo DQ defect is
+outside this architecture change.
+
+## 14. Handoff
 
 ~~~text
 DESIGN HANDOFF
 Requirement: REQ-0034
-Outcome: IMPLEMENTED_PENDING_VALIDATION
+Outcome: DONE — TESTENGINEER_PASS_KEEP
 ADR: ADR-018
 Daily transaction: core commit first
 Movement transaction: ticker/stage isolated
 Incremental unit: ticker selection + Price Movement lineage
 ZigZag V1 execution: deterministic full-history per selected ticker
-Next owner: TestEngineer
+Next owner: None
+Residual operational blocker: Yahoo core DQ before commit
 ~~~
