@@ -101,9 +101,11 @@ Execution order:
 - [[REQ-0031-zigzag-price-movement-character-v2|REQ-0031 — ZigZag-based Price Movement Characterization V2]] — **DONE**; TestEngineer PASS on MWG (19 focused/regression tests, 278/278 swings, structural validation PASS, idempotency PASS, reconciliation TotalCoreErrors=0). Evidence: `docs/reference/data/price_movement/mwg/`.
 - [[REQ-0032-movement-context-v1|REQ-0032 — MovementContext V1]] — **DONE**; TestEngineer PASS / KEEP on 2026-09-21 (13/13 focused tests, migration + MWG validator + idempotency + daily regression PASS, Archify showcase ok=true, DB metadata refreshed).
 - [[REQ-0033-active-ticker-movement-initload|REQ-0033 — Active Ticker ZigZag + Price Movement Initial Load]] — **DONE**; TestEngineer PASS / KEEP on 2026-09-22 across 349 active tickers, with 0 OHLC gaps, 0 structural mismatches, 349/349 MovementContext coverage, idempotent row counts, and daily regression 3/3 PASS.
+- [[REQ-0034-daily-incremental-movement-pipeline|REQ-0034 — Daily Incremental Movement Pipeline]] — **IMPLEMENTED_PENDING_VALIDATION**; post-core-commit ticker-level incremental planner, deterministic ZigZag rebuild for stale tickers, lineage-aware Price Movement refresh, PM-only same-day recovery, standalone runner and structural validator.
 
 Validation:
 
     docs/runbook/ZigZag_Price_Movement_Character_V2.md
     docs/runbook/ZigZag_Price_Movement_Reconciliation.md
     docs/runbook/Active_Ticker_Movement_Initload.md
+    docs/runbook/Daily_Incremental_Movement_Pipeline.md
