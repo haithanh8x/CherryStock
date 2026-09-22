@@ -5,7 +5,7 @@
 - **Parent:** `docs/architecture/CherryStock_High_Level.md` → **Analytics & Calculation Engines**
 - **Archify source:** `docs/architecture/diagrams/cherrystock-analytics-calculation-engines.architecture.json`
 - **Generated HTML:** `docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html`
-- **Mapped repository revision:** `cec702c6788a75f6f430be11dc3055c955dc4e0c`
+- **Mapped repository revision:** `132e940b932df5f1760260ad23e012e87f5172c2`
 
 ## Purpose
 
@@ -418,6 +418,7 @@ Until the command above succeeds and the generated HTML is committed, this drill
 - `docs/architecture/Indicator_Engine.md`
 - `docs/architecture/ZigZag_Engine.md`
 - `docs/architecture/Price_Movement_Character_V2.md`
+- `docs/architecture/Daily_Incremental_Movement_Pipeline.md`
 - `docs/architecture/Price_Movement_Character.md` (historical deferred design)
 - `docs/architecture/SmartMoneyScore.md`
 - `docs/architecture/RS_Ladder.md`
