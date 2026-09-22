@@ -78,6 +78,55 @@ def validate(*, evidence_dir: Path | None = None) -> int:
                 WHERE PriceMovementConfigCode = 'PM_ZZ_D_V2'
                   AND ZigZagConfigCode = 'ZZ_D_5_MVP'
                 GROUP BY Ticker
+            ),
+            zz_identity AS (
+                SELECT
+                    Ticker,
+                    SwingSeq,
+                    Direction,
+                    StartPivotSeq,
+                    StartDate,
+                    StartPrice,
+                    EndPivotSeq,
+                    EndDate,
+                    EndPrice,
+                    ConfirmedAtDate
+                FROM "CherryMon"."main"."vw_Ticker_ZigZag_Swings"
+                WHERE ConfigCode = 'ZZ_D_5_MVP'
+            ),
+            pm_identity AS (
+                SELECT
+                    Ticker,
+                    SwingSeq,
+                    Direction,
+                    StartPivotSeq,
+                    StartDate,
+                    StartPrice,
+                    EndPivotSeq,
+                    EndDate,
+                    EndPrice,
+                    ConfirmedAtDate
+                FROM "CherryMon"."main"."vw_Ticker_Price_Movement_Swings"
+                WHERE PriceMovementConfigCode = 'PM_ZZ_D_V2'
+                  AND ZigZagConfigCode = 'ZZ_D_5_MVP'
+            ),
+            identity_diff AS (
+                SELECT * FROM (
+                    SELECT * FROM zz_identity
+                    EXCEPT
+                    SELECT * FROM pm_identity
+                )
+                UNION ALL
+                SELECT * FROM (
+                    SELECT * FROM pm_identity
+                    EXCEPT
+                    SELECT * FROM zz_identity
+                )
+            ),
+            identity_mismatch AS (
+                SELECT Ticker, COUNT(*) AS IdentityMismatchRows
+                FROM identity_diff
+                GROUP BY Ticker
             )
             SELECT
                 a.Ticker,
@@ -92,7 +141,8 @@ def validate(*, evidence_dir: Path | None = None) -> int:
                 COALESCE(p.MovementProfileRows, 0) AS MovementProfileRows,
                 p.ProfileLastSwingSeq,
                 p.ProfileAsOfConfirmedAtDate,
-                COALESCE(c.MovementContextRows, 0) AS MovementContextRows
+                COALESCE(c.MovementContextRows, 0) AS MovementContextRows,
+                COALESCE(i.IdentityMismatchRows, 0) AS IdentityMismatchRows
             FROM active AS a
             LEFT JOIN ohlc AS o ON o.Ticker = a.Ticker
             LEFT JOIN zz_current AS z ON z.Ticker = a.Ticker
@@ -100,6 +150,7 @@ def validate(*, evidence_dir: Path | None = None) -> int:
             LEFT JOIN pm ON pm.Ticker = a.Ticker
             LEFT JOIN profile AS p ON p.Ticker = a.Ticker
             LEFT JOIN context AS c ON c.Ticker = a.Ticker
+            LEFT JOIN identity_mismatch AS i ON i.Ticker = a.Ticker
             ORDER BY a.Ticker
             """
         ).df()
@@ -141,6 +192,12 @@ def validate(*, evidence_dir: Path | None = None) -> int:
             f"ZigZag/Price Movement swing mismatch ticker(s): {int(parity.sum())}"
         )
 
+    geometry_mismatch = coverage["IdentityMismatchRows"] > 0
+    if geometry_mismatch.any():
+        failures.append(
+            f"confirmed swing geometry mismatch ticker(s): {int(geometry_mismatch.sum())}"
+        )
+
     profile_bad = (coverage["ZigZagSwingRows"] > 0) & (
         coverage["MovementProfileRows"] != 1
     )
@@ -176,6 +233,7 @@ def validate(*, evidence_dir: Path | None = None) -> int:
         "stale_zigzag_count": int(stale.sum()),
         "source_rewind_count": int(source_rewind.sum()),
         "swing_parity_mismatch_count": int(parity.sum()),
+        "swing_geometry_mismatch_count": int(geometry_mismatch.sum()),
         "profile_stale_count": int(profile_stale.sum()),
         "movement_context_covered": int((coverage["MovementContextRows"] == 1).sum()),
         "validation_failures": len(failures),
