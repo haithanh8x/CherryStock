@@ -23,7 +23,11 @@ from cherrystock.config.settings import settings  # noqa: E402
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory  # noqa: E402
 
 
-def _refetch_yahoo(\n    invalid: pd.DataFrame,\n    *,\n    precision_tolerance_bps: float,\n) -> pd.DataFrame:
+def _refetch_yahoo(
+    invalid: pd.DataFrame,
+    *,
+    precision_tolerance_bps: float,
+) -> pd.DataFrame:
     import yfinance as yf
 
     records: list[dict[str, object]] = []
@@ -255,7 +259,10 @@ def main() -> int:
     provider_compare: pd.DataFrame | None = None
     if args.refetch_yahoo and not invalid.empty:
         print("\n--- Refetch Yahoo comparison ---")
-        provider_compare = _refetch_yahoo(\n            invalid,\n            precision_tolerance_bps=args.precision_tolerance_bps,\n        )
+        provider_compare = _refetch_yahoo(
+            invalid,
+            precision_tolerance_bps=args.precision_tolerance_bps,
+        )
         if provider_compare.empty:
             print("No provider comparison rows.")
         else:
