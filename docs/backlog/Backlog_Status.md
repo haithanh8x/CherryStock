@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-09-21
+- **Last reviewed:** 2026-09-22
 - **Purpose:** Central status dashboard for planned CherryStock engineering work.
 - **Scope:** Requirement backlog, Architecture backlog, and Agent Harness backlog.
 - **Status authority:** This file is a summary/index only. The detailed backlog/requirement file remains the authoritative material for each item.
@@ -11,10 +11,10 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 12 canonical requirements | 4 DONE · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
+| Requirements | 12 canonical requirements | 5 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **36** | **8 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
+| **Total** | **36** | **9 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
 
 ### Priority Summary
 
@@ -75,7 +75,7 @@ Canonical index:
 | REQ-0030 | ZigZag Regime-Aware Swing-Locked Deviation V2 | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0030-zigzag-regime-aware-v2|REQ-0030]] |
 | REQ-0031 | ZigZag-based Price Movement Characterization V2 | P1 | **DONE** | None | [[requirements/REQ-0031-zigzag-price-movement-character-v2|REQ-0031]] |
 | REQ-0032 | MovementContext V1 | P1 | **DONE** | None | [[requirements/REQ-0032-movement-context-v1|REQ-0032]] |
-| REQ-0033 | Active Ticker ZigZag + Price Movement Initial Load | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0033-active-ticker-movement-initload|REQ-0033]] |
+| REQ-0033 | Active Ticker ZigZag + Price Movement Initial Load | P1 | **DONE** | None | [[requirements/REQ-0033-active-ticker-movement-initload|REQ-0033]] |
 
 ## Requirement Delivery Flow
 
@@ -125,7 +125,8 @@ DONE
 (TestEngineer PASS / KEEP on 2026-09-21)
         ↓
 REQ-0033 Active Ticker Movement Initial Load
-IMPLEMENTED_PENDING_VALIDATION
+DONE
+(TestEngineer PASS / KEEP on 2026-09-22)
 ```
 
 Related approved Smart Money design:
@@ -310,10 +311,9 @@ Based on current status and priority, the next actionable queue is:
 | 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
 | 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
 | 4 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
-| 5 | **REQ-0033** | Validate the all-active-ticker ZigZag → Price Movement initial load before downstream Strategy work relies on broad coverage. |
-| 6 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
-| 7 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
-| 8 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
+| 5 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
+| 6 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
+| 7 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
 
