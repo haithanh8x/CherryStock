@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 import duckdb
+import pandas as pd
 import pytest
 
 from src.Ults.DataQualityOrchestration import (
@@ -193,5 +194,88 @@ def test_warning_tickers_must_be_inside_scope() -> None:
                 expected_date=date(2026, 9, 22),
                 audit_table="data_quality_audit",
             )
+    finally:
+        connection.close()
+
+
+def test_clean_yahoo_scope_remains_pass_with_sufficient_history() -> None:
+    connection = duckdb.connect(":memory:")
+    try:
+        _create_audit_table(connection)
+        _create_yahoo_table(connection)
+
+        start = date(2026, 9, 2)
+        rows = []
+        for offset in range(21):
+            current = start + timedelta(days=offset)
+            rows.extend(
+                [
+                    ("DX-Y.NYB", current, 100.0, 101.0, 99.0, 100.0),
+                    ("BTC-USD", current, 60000.0, 61000.0, 59000.0, 60500.0),
+                    ("VND=X", current, 25979.0, 26010.0, 25950.0, 25990.0),
+                    ("GC=F", current, 3600.0, 3610.0, 3590.0, 3605.0),
+                ]
+            )
+        connection.executemany(
+            "INSERT INTO raw_other_eod VALUES (?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+        expected = start + timedelta(days=20)
+        result = validate_and_persist_yahoo_eod_quality(
+            connection=connection,
+            table_name="raw_other_eod",
+            pipeline_name="Yahoo Finance EOD",
+            scope_tickers=_scope(),
+            expected_date=expected,
+            audit_table="data_quality_audit",
+            raise_on_fail=True,
+        )
+
+        assert result["status"] == "PASS"
+        assert result["metrics"]["invalid_ohlc_count"] == 0
+        assert result["metrics"]["invalid_ohlc_warning_count"] == 0
+        assert result["metrics"]["invalid_ohlc_blocking_count"] == 0
+        assert result["metrics"]["check_count_anomalies"] is False
+        assert not result["errors"]
+        assert not result["warnings"]
+    finally:
+        connection.close()
+
+
+def test_policy_fails_safe_when_symbol_reconciliation_disagrees(monkeypatch) -> None:
+    connection = duckdb.connect(":memory:")
+    try:
+        _create_audit_table(connection)
+        _create_yahoo_table(connection)
+        connection.execute(
+            """
+            INSERT INTO raw_other_eod
+            VALUES ('VND=X', DATE '2026-09-22', 25979, 25999, 25970, 26010)
+            """
+        )
+
+        monkeypatch.setattr(
+            "src.Ults.DataQualityOrchestration.returnSQL",
+            lambda *args, **kwargs: pd.DataFrame(
+                [{"symbol": "VND=X", "invalid_count": 0}]
+            ),
+        )
+
+        with pytest.raises(RuntimeError, match="reconciliation mismatch"):
+            validate_and_persist_yahoo_eod_quality(
+                connection=connection,
+                table_name="raw_other_eod",
+                pipeline_name="Yahoo Finance EOD",
+                scope_tickers=_scope(),
+                expected_date=date(2026, 9, 22),
+                audit_table="data_quality_audit",
+                raise_on_fail=True,
+            )
+
+        status = connection.execute(
+            "SELECT status FROM data_quality_audit"
+        ).fetchone()[0]
+        assert status == "FAIL"
     finally:
         connection.close()
