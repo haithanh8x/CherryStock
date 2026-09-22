@@ -30,7 +30,7 @@ class _Factory:
 def _db():
     connection = duckdb.connect()
     connection.execute("ATTACH ':memory:' AS CherryMon")
-    connection.execute("CREATE SCHEMA CherryMon.main")
+    connection.execute("CREATE SCHEMA IF NOT EXISTS CherryMon.main")
     connection.execute(
         """
         CREATE TABLE CherryMon.main.raw_other_eod (
