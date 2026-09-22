@@ -1,0 +1,17 @@
+{
+  "target_date": "2026-09-22",
+  "scope_tickers": [
+    "DX-Y.NYB",
+    "BTC-USD",
+    "VND=X",
+    "GC=F"
+  ],
+  "scope_ticker_count": 4,
+  "rows_on_target_date": 0,
+  "invalid_ohlc_count": 0,
+  "precision_candidate_count": 0,
+  "material_violation_count": 0,
+  "max_violation_abs": 0.0,
+  "max_violation_bps": 0.0,
+  "precision_tolerance_bps": 0.01
+}
