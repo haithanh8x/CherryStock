@@ -108,7 +108,7 @@ def _refetch_yahoo(
 
         if bool(classified["InvalidOHLC"]):
             comparison = "SOURCE_YAHOO_CANDIDATE"
-        elif max_delta_bps > 0.01:
+        elif max_delta_bps > precision_tolerance_bps:
             comparison = "DB_DIFFERS_PROVIDER"
         else:
             comparison = "PROVIDER_NOW_VALID_DB_NEAR_MATCH"
