@@ -355,6 +355,16 @@ def validate_and_persist_yahoo_eod_quality(
             else "PASS"
         )
 
+        print(
+            "[DataQualityOrchestration][YAHOO_OHLC_POLICY] "
+            f"table={table_name} | final_status={validation_result['status']} | "
+            f"invalid_ohlc_total={metrics['invalid_ohlc_count']} | "
+            f"warning_count={metrics['invalid_ohlc_warning_count']} | "
+            f"blocking_count={metrics['invalid_ohlc_blocking_count']} | "
+            f"warning_symbols={metrics['invalid_ohlc_warning_symbols']} | "
+            f"blocking_symbols={metrics['invalid_ohlc_blocking_symbols']}"
+        )
+
         resolved_validation_id = persist_data_quality_result(
             connection=connection,
             validation_result=validation_result,
