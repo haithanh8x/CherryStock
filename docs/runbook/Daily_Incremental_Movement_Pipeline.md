@@ -161,6 +161,7 @@ PASS requires:
 stale_zigzag_count: 0
 source_rewind_count: 0
 swing_parity_mismatch_count: 0
+swing_geometry_mismatch_count: 0
 profile_stale_count: 0
 validation_failures: 0
 DAILY MOVEMENT VALIDATION: PASS
@@ -283,6 +284,7 @@ Evidence:
 - selected_ticker_count=<N on real new EOD>
 - stale_zigzag_count=0
 - swing_parity_mismatch_count=0
+- swing_geometry_mismatch_count=0
 - profile_stale_count=0
 - validation_failures=0
 
