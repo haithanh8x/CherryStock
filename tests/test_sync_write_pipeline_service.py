@@ -42,6 +42,7 @@ def _build_service(recorder: Recorder, *, validate_dated=None) -> SyncWritePipel
         ),
         execute_sql=recorder.make("execute_sql"),
         validate_dated=validate_dated or recorder.make("validate_dated"),
+        validate_yahoo=recorder.make("validate_yahoo"),
         validate_reference=recorder.make("validate_reference"),
         resolve_yahoo_expected_date=lambda _connection: date(2026, 8, 21),
     )
@@ -80,7 +81,7 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
         "validate_dated",
         "validate_dated",
         "sync_yahoo_eod",
-        "validate_dated",
+        "validate_yahoo",
         "upsert_fa",
         "validate_reference",
         "upsert_tickers",
@@ -117,12 +118,15 @@ def test_sync_write_pipeline_calls_steps_and_validation_in_order() -> None:
     assert all(kwargs["max_row_change_pct"] == 1.0 for _, kwargs in intraday_validations)
 
     assert recorder.calls[8][1] == {"from_last_day": 9, "connection": connection}
+    assert recorder.calls[9][0] == "validate_yahoo"
     assert recorder.calls[9][1]["pipeline_name"] == "Yahoo Finance EOD"
     assert recorder.calls[9][1]["expected_date"] == date(2026, 8, 21)
-    assert recorder.calls[9][1]["check_count_anomalies"] is False
-    assert recorder.calls[9][1]["filters"] == {
-        "Ticker": ["DX-Y.NYB", "BTC-USD", "VND=X", "GC=F"]
-    }
+    assert recorder.calls[9][1]["scope_tickers"] == [
+        "DX-Y.NYB",
+        "BTC-USD",
+        "VND=X",
+        "GC=F",
+    ]
 
     assert recorder.calls[10][1] == {"amibroker": amibroker, "connection": connection}
     assert recorder.calls[11][1]["pipeline_name"] == "Fundamental Analysis"
@@ -192,6 +196,7 @@ def test_indicator_validation_is_skipped_when_engine_has_no_rows() -> None:
         ),
         execute_sql=recorder.make("execute_sql"),
         validate_dated=recorder.make("validate_dated"),
+        validate_yahoo=recorder.make("validate_yahoo"),
         validate_reference=recorder.make("validate_reference"),
         resolve_yahoo_expected_date=lambda _connection: date(2026, 8, 21),
     )
