@@ -269,6 +269,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 - [[runbook/Movement_Context_V1|MovementContext V1]]
 - [[runbook/Active_Ticker_Movement_Initload|Active Ticker Movement Initial Load]]
 - [[runbook/Daily_Incremental_Movement_Pipeline|Daily Incremental Movement Pipeline]]
+- [[runbook/Yahoo_Raw_Other_EOD_Diagnostic|Yahoo raw_other_eod OHLC Diagnostic]]
 - [[runbook/RS_V2_4_Monthly_Full_Evaluation|R/S V2.4 Monthly Evaluation]]
 - [[runbook/Drawio_Skill|Draw.io Skill]]
 - [[runbook/Archify_Generation_Guide|Archify Generation Guide]]
