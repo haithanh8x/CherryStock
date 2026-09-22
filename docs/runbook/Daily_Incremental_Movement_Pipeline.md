@@ -39,7 +39,7 @@ files or unrelated artifacts.
 ~~~powershell
 python -m compileall src\cherrystock\application\services\movement_daily_pipeline.py scripts\run_daily_movement.py scripts\validate_daily_movement.py
 
-python -m pytest tests\test_movement_daily_pipeline.py tests\test_active_ticker_movement_initload.py tests\test_zigzag_engine.py tests\test_price_movement_zigzag.py tests\test_movement_context_v1.py tests\test_sync_write_pipeline_service.py -v
+python -m pytest tests\test_movement_daily_pipeline.py tests\test_run_daily_movement_integration.py tests\test_active_ticker_movement_initload.py tests\test_zigzag_engine.py tests\test_price_movement_zigzag.py tests\test_movement_context_v1.py tests\test_sync_write_pipeline_service.py -v
 ~~~
 
 PASS requires all selected tests PASS.
