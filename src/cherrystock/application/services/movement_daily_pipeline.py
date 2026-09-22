@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import date
 from time import perf_counter
 from typing import Callable, Iterable
 
@@ -42,7 +41,7 @@ class MovementDailyPipelineService:
         refresh_zigzag: Callable[..., dict[str, object]] = refresh_zigzag_ticker,
         refresh_price_movement: Callable[..., dict[str, object]] = refresh_price_movement_ticker,
         clear_price_movement: Callable[..., dict[str, object]] = clear_price_movement_ticker,
-        unit_of_work_cls= DuckDBUnitOfWork,
+        unit_of_work_cls=DuckDBUnitOfWork,
     ) -> None:
         self._factory = connection_factory
         self._refresh_zigzag = refresh_zigzag
