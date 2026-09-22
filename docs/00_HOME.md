@@ -100,6 +100,7 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/ZigZag_Engine|ZigZag Swing Engine — MWG MVP]]
 - [[architecture/Price_Movement_Character_V2|Price Movement Character V2 — ZigZag-based characterization]]
 - [[architecture/Movement_Context_V1|MovementContext V1 — semantic price-behavior contract]]
+- [[architecture/Active_Ticker_Movement_Initload|Active Ticker Movement Initial Load]]
 - [[architecture/Price_Movement_Character|Price Movement Character — historical deferred design]]
 - [[architecture/Chart_Architecture|Chart Architecture]]
 - [[architecture/theme|Theme Architecture]]
@@ -146,6 +147,9 @@ Architecture/system/solution/data/integration/refactor work:
 - [[architecture/Movement_Context_V1|MovementContext V1]]
 - [[adr/ADR-017-movement-context-as-price-behavior-contract|ADR-017 MovementContext Boundary]]
 - [[runbook/Movement_Context_V1|MovementContext V1 Validation Runbook]]
+- [[backlog/requirements/REQ-0033-active-ticker-movement-initload|REQ-0033 Active Ticker Movement Initial Load]]
+- [[architecture/Active_Ticker_Movement_Initload|Active Ticker Movement Initial Load Architecture]]
+- [[runbook/Active_Ticker_Movement_Initload|Active Ticker Movement Initial Load Runbook]]
 - [[runbook/ZigZag_Price_Movement_Reconciliation|Price Movement Post-Golive Reconciliation]]
 
 ### R/S / chart-related architecture
@@ -258,6 +262,7 @@ Canonical domain knowledge no longer lives under `.github/agents/Instructions/**
 - [[runbook/SmartMoneyStrategy_V1|SmartMoneyStrategy V1]]
 - [[runbook/ZigZag_MWG_MVP|ZigZag MWG MVP]]
 - [[runbook/Movement_Context_V1|MovementContext V1]]
+- [[runbook/Active_Ticker_Movement_Initload|Active Ticker Movement Initial Load]]
 - [[runbook/RS_V2_4_Monthly_Full_Evaluation|R/S V2.4 Monthly Evaluation]]
 - [[runbook/Drawio_Skill|Draw.io Skill]]
 - [[runbook/Archify_Generation_Guide|Archify Generation Guide]]

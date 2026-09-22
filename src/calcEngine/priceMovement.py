@@ -77,6 +77,37 @@ def refresh_price_movement_ticker(
     }
 
 
+def clear_price_movement_ticker(
+    *,
+    connection,
+    ticker: str,
+    config_code: str = MVP_CONFIG_CODE,
+    repository: PriceMovementRepository | None = None,
+) -> dict[str, object]:
+    """Remove stale Price Movement rows when upstream has no confirmed ZigZag swing."""
+
+    resolved_ticker = ticker.strip().upper()
+    if not resolved_ticker:
+        raise ValueError("ticker must not be empty.")
+
+    resolved_repository = repository or PriceMovementRepository(connection)
+    config = resolved_repository.load_config(config_code)
+    persisted = resolved_repository.replace_ticker(
+        price_movement_config_id=config.config_id,
+        ticker=resolved_ticker,
+        swings=[],
+        profile=None,
+    )
+    return {
+        "status": "CLEARED",
+        "ticker": resolved_ticker,
+        "price_movement_config_id": config.config_id,
+        "price_movement_config_code": config.config_code,
+        "zigzag_config_code": config.zigzag_config_code,
+        **persisted,
+    }
+
+
 def refresh_price_movement_mwg(
     *,
     connection,
