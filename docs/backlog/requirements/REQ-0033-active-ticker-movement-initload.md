@@ -1,10 +1,10 @@
 ---
 id: REQ-0033
 title: Active Ticker ZigZag and Price Movement Initial Load
-status: IMPLEMENTED_PENDING_VALIDATION
+status: DONE
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: TestEngineer
+primary_next_owner: None
 related:
   prerequisite:
     - docs/backlog/requirements/REQ-0027-price-movement-characterization.md
@@ -192,17 +192,49 @@ None blocking for initial-load implementation.
 - The fixed 5% baseline can segment tickers differently across volatility regimes; this rollout
   intentionally does not resolve that separate research question.
 
+## Validation Evidence
+
+Independent full-universe integration validation completed on 2026-09-22 with PASS / KEEP:
+
+- focused tests: 24/24 PASS;
+- active universe: 349 tickers;
+- OHLC prerequisite: 349/349, zero missing;
+- MWG + FPT canary: 2/2 PASS;
+- deterministic 20-ticker canary: 20/20 PASS;
+- full ZigZag: 349/349 PASS;
+- full Price Movement: 349/349 PASS;
+- structural validator: validation_failures=0;
+- MovementContext downstream: 349/349 PASS;
+- idempotency: business row counts unchanged after rerun;
+- daily pipeline regression: 3/3 PASS;
+- run.py unchanged.
+
+Stable row counts after unchanged rerun:
+
+~~~text
+cal_zigzag_pivot              154795
+cal_zigzag_current_leg           349
+cal_price_movement_swing      154446
+cal_price_movement_profile       349
+~~~
+
+Evidence commit:
+
+~~~text
+7e872c1b5b51834e8cec8f847bf6658fa03e9167
+~~~
+
 ## Suggested Routing
 
-- Architecture required: Yes
-- Primary next owner: TestEngineer
-- Validation owner: TestEngineer
+- Architecture required: Yes — completed
+- Primary next owner: None
+- Validation owner: TestEngineer — PASS / KEEP
 
 ## Handoff
 
 ~~~text
-Status: IMPLEMENTED_PENDING_VALIDATION
-Primary next owner: TestEngineer
+Status: DONE
+Primary next owner: None
 Acceptance criteria count: 14
 Blocking questions: none
 ~~~
