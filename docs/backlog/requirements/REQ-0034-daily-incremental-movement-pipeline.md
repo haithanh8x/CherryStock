@@ -54,8 +54,7 @@ unnecessary same-day recomputation.
     can detect partial Movement freshness.
 12. MovementContext MUST remain a derived view; no daily MovementContext persistence step is added.
 13. A standalone runner MUST support dry-run planning, explicit tickers, limit, force, and evidence export.
-14. A daily validator MUST detect stale ZigZag, source rewind, ZigZag/Price Movement parity mismatch,
-    stale Movement Profile, and MovementContext coverage mismatch.
+14. A daily validator MUST detect stale ZigZag, source rewind, ZigZag/Price Movement row-count or confirmed-geometry mismatch, stale Movement Profile, and MovementContext coverage mismatch.
 
 ## Business Rules
 
@@ -100,7 +99,7 @@ unnecessary same-day recomputation.
 - AC-10 run.py invokes Movement after core UoW commit.
 - AC-11 Movement failure returns non-zero/raises after core commit.
 - AC-12 validator reports stale_zigzag_count=0 after successful daily run.
-- AC-13 global ZigZag/Price Movement swing parity remains zero mismatch.
+- AC-13 global ZigZag/Price Movement swing row-count and confirmed geometry parity remain zero mismatch.
 - AC-14 MovementContext remains covered for all eligible profiles.
 - AC-15 rerun after successful daily run is a NOOP unless forced.
 - AC-16 existing daily pipeline tests and REQ-0033 full-universe contracts do not regress.
