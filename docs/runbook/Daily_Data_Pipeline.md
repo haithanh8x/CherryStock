@@ -776,6 +776,7 @@ tests/test_movement_daily_pipeline.py
 tests/test_run_daily_movement_integration.py
 scripts/validate_daily_movement.py
 tests/test_data_quality_orchestration.py
+tests/test_yahoo_source_specific_dq_policy.py
 ```
 
 Architecture:
@@ -783,7 +784,9 @@ Architecture:
 ```text
 docs/architecture/Data_Architecture.md
 docs/architecture/Daily_Incremental_Movement_Pipeline.md
+docs/architecture/Yahoo_Source_Specific_DQ_Policy.md
 docs/adr/ADR-018-daily-movement-post-commit-incremental-refresh.md
+docs/adr/ADR-019-yahoo-vndx-source-specific-ohlc-dq-policy.md
 ```
 
 This runbook is the canonical operational description of the daily sequence.
