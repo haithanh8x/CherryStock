@@ -223,6 +223,23 @@ def test_price_movement_refresh_rule_detects_only_lineage_change() -> None:
     assert MovementDailyPipelineService._price_movement_needs_refresh(changed) is True
 
 
+def test_price_movement_refresh_rule_detects_geometry_mismatch() -> None:
+    state = {
+        "zigzag_swing_count": 10,
+        "zigzag_last_swing_seq": 10,
+        "zigzag_last_confirmed_at": date(2026, 9, 20),
+        "price_movement_swing_count": 10,
+        "price_movement_last_swing_seq": 10,
+        "price_movement_last_confirmed_at": date(2026, 9, 20),
+        "profile_rows": 1,
+        "profile_last_swing_seq": 10,
+        "profile_as_of_confirmed_at": date(2026, 9, 20),
+        "identity_mismatch_count": 2,
+    }
+
+    assert MovementDailyPipelineService._price_movement_needs_refresh(state) is True
+
+
 def test_no_selected_ticker_is_noop(monkeypatch) -> None:
     service = MovementDailyPipelineService(
         connection_factory=object(),
