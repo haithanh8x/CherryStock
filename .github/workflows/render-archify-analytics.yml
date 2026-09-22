@@ -9,6 +9,7 @@ on:
       - "docs/architecture/Analytics_Calculation_Engines.md"
       - "docs/architecture/Price_Movement_Character_V2.md"
       - "docs/architecture/Movement_Context_V1.md"
+      - "docs/architecture/Daily_Incremental_Movement_Pipeline.md"
       - "scripts/validate_archify_source.py"
       - "scripts/customize_archify_typography.py"
       - "scripts/customize_archify_navigation.py"

@@ -4,7 +4,7 @@
 - **Entry point:** `run.py`
 - **Canonical orchestrator:** `src/cherrystock/application/services/sync_write_pipeline.py`
 - **Transaction owner:** `DuckDBUnitOfWork`
-- **Last aligned with runtime:** 2026-09-07
+- **Last aligned with runtime:** 2026-09-22
 
 ## Purpose
 
@@ -18,19 +18,26 @@ daily order:
 ```text
 run.py
   ↓
-DuckDBUnitOfWork
+Phase A — DuckDBUnitOfWork
   ↓
 SyncWritePipelineService.run()
   ↓
 daily ingestion / calculation / Data Quality
   ↓
-COMMIT
+COMMIT core daily transaction
+  ↓
+Phase B — MovementDailyPipelineService.run()
+  ↓
+incremental ticker plan
+  ↓
+ticker-local ZigZag / conditional Price Movement
   ↓
 exportDuckDB_metadata()
 ```
 
-If any blocking Data Quality check raises before commit, the shared UnitOfWork
-rolls back the whole daily write set.
+If any blocking Data Quality check raises before the Phase A commit, the shared UnitOfWork
+rolls back the whole core daily write set. Phase B Movement starts only after that commit and
+uses separate ticker-local transactions; its failure is reported without undoing committed core data.
 
 ---
 
@@ -77,9 +84,17 @@ rolls back the whole daily write set.
         ↓
 20  SmartMoney Data Quality
         ↓
-21  COMMIT shared DuckDB transaction
+21  COMMIT shared core DuckDB transaction
         ↓
-22  exportDuckDB_metadata()
+22  Movement incremental plan — active ticker freshness / lineage
+        ↓
+23  Selected ticker ZigZag deterministic refresh
+        ↓
+24  Price Movement refresh only when confirmed swing lineage changed
+        ↓
+25  MovementContext reflects current leg/profile dynamically
+        ↓
+26  exportDuckDB_metadata()
 ```
 
 The Trading Calendar refresh intentionally runs **immediately after AmiBroker EOD
@@ -555,7 +570,58 @@ docs/runbook/SmartMoneyScore_V1.md
 
 ---
 
-# 12. Data Quality profiles by dataset
+# 12. Daily Incremental Movement
+
+**Requirement:** REQ-0034  
+**Architecture:** docs/architecture/Daily_Incremental_Movement_Pipeline.md  
+**Decision:** ADR-018  
+**Implementation:** src/cherrystock/application/services/movement_daily_pipeline.py
+
+Movement runs after the shared core daily transaction commits.
+
+~~~text
+Latest active OHLC
+        +
+ZigZag current watermark
+        +
+confirmed ZigZag ↔ Price Movement lineage
+        ↓
+MovementDailyPipelineService.plan()
+        ↓
+MISSING_ZIGZAG / STALE_ZIGZAG
+        → deterministic full-history ZigZag rebuild for selected ticker
+
+STALE_PRICE_MOVEMENT
+        → keep current ZigZag
+        → repair Price Movement only
+
+UP_TO_DATE
+        → no write
+~~~
+
+The V1 incremental unit is ticker selection and downstream recomputation. The ZigZag calculation
+itself remains the validated full-history algorithm for each selected ticker.
+
+Price Movement runs only when confirmed swing count/sequence/confirmation date or profile lineage
+is stale. A provisional current-leg change alone does not force Price Movement recomputation;
+MovementContext sees the current leg dynamically.
+
+Normal same-day rerun after a successful daily run should select zero tickers.
+
+Same-date OHLC corrections cannot currently be detected from a Date-only watermark. Use:
+
+~~~powershell
+python scripts\run_daily_movement.py --ticker <TICKER> --force
+~~~
+
+for explicit repair.
+
+If Movement has hard failures, run.py exits with an error after all selected ticker work is
+attempted. Core daily data remains committed by design.
+
+---
+
+# 13. Data Quality profiles by dataset
 
 | Dataset / stage | Validation profile | Count anomaly gate | Important semantics |
 |---|---|---:|---|
@@ -574,7 +640,7 @@ semantics**. Do not apply one generic time-series rule to every dataset.
 
 ---
 
-# 13. Transaction and rollback behavior
+# 14. Transaction and rollback behavior
 
 All stages before commit reuse the same DuckDB writer transaction.
 
@@ -613,7 +679,7 @@ which conditions are warnings versus failures.
 
 ---
 
-# 14. Runtime command
+# 15. Runtime command
 
 Normal daily execution:
 
@@ -636,7 +702,7 @@ and update this runbook in the same change.
 
 ---
 
-# 15. Current explicit gaps
+# 16. Current explicit gaps
 
 The current daily pipeline intentionally documents the following gap:
 
@@ -656,13 +722,14 @@ history from adjusted prices.
 
 ---
 
-# 16. Source of Truth
+# 17. Source of Truth
 
 Runtime:
 
 ```text
 run.py
 src/cherrystock/application/services/sync_write_pipeline.py
+src/cherrystock/application/services/movement_daily_pipeline.py
 src/cherrystock/config/settings.py
 src/Ults/DataValidation.py
 src/Ults/DataQualityOrchestration.py
@@ -672,6 +739,9 @@ Validation:
 
 ```text
 tests/test_sync_write_pipeline_service.py
+tests/test_movement_daily_pipeline.py
+tests/test_run_daily_movement_integration.py
+scripts/validate_daily_movement.py
 tests/test_data_quality_orchestration.py
 ```
 
@@ -679,6 +749,8 @@ Architecture:
 
 ```text
 docs/architecture/Data_Architecture.md
+docs/architecture/Daily_Incremental_Movement_Pipeline.md
+docs/adr/ADR-018-daily-movement-post-commit-incremental-refresh.md
 ```
 
 This runbook is the canonical operational description of the daily sequence.
