@@ -1,10 +1,10 @@
 ---
 id: REQ-0034
 title: Daily Incremental Movement Pipeline
-status: IMPLEMENTED_PENDING_VALIDATION
+status: DONE
 priority: P1
 owner: BusinessAnalyst
-primary_next_owner: TestEngineer
+primary_next_owner: None
 related:
   prerequisite:
     - docs/backlog/requirements/REQ-0033-active-ticker-movement-initload.md
@@ -129,11 +129,62 @@ unnecessary same-day recomputation.
 - Full-history ZigZag rebuild per selected ticker is correctness-first, not final performance optimization.
 - Same-date source corrections require --force.
 
+## Validation Evidence
+
+Independent local validation completed on 2026-09-22 with PASS / KEEP.
+
+~~~text
+Compile/focused tests:      PASS (39/39)
+REQ-0033 baseline:          PASS (349 tickers, validation_failures=0)
+Same-day NOOP:              PASS (selected_ticker_count=0)
+Forced canary MWG:          PASS
+PM-only recovery:           PASS
+run.py post-commit ordering: PASS
+Daily structural validator: PASS
+Rerun NOOP:                 PASS
+Regression:                 PASS (7/7)
+Archify showcase:           PASS (ok=true, 9/9)
+~~~
+
+Committed evidence:
+
+~~~text
+86ec548efc2164b438e895c5f5e2ce0fb0c43afe
+docs/reference/data/price_movement/daily/
+~~~
+
+Daily structural evidence:
+
+~~~text
+active_ticker_count=349
+latest_ohlc_covered=349
+zigzag_current_covered=349
+stale_zigzag_count=0
+source_rewind_count=0
+swing_parity_mismatch_count=0
+swing_geometry_mismatch_count=0
+profile_stale_count=0
+movement_context_covered=349
+validation_failures=0
+~~~
+
+Operational caveat: the attempted full `python run.py` execution was blocked before the core
+Phase A commit by a pre-existing Yahoo Finance Data Quality failure
+(`raw_other_eod invalid_ohlc_count=1`). Therefore the local validation did not observe a complete
+core-commit → Movement execution in one live process. The post-commit boundary itself is covered
+by the dedicated run.py integration test/code structure, while the Movement service, forced canary,
+standalone execution, validator, idempotency and regression paths all passed independently.
+
+This Yahoo DQ issue is outside REQ-0034 scope and remains a separate operational blocker to the
+next successful full daily run.
+
 ## Handoff
 
 ~~~text
-Status: IMPLEMENTED_PENDING_VALIDATION
-Primary next owner: TestEngineer
+Status: DONE
+Primary next owner: None
 Acceptance criteria count: 16
-Blocking questions: none
+Verdict: PASS
+Action: KEEP
+Residual operational blocker: Yahoo raw_other_eod invalid_ohlc_count=1 before core commit
 ~~~
