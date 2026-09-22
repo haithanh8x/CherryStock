@@ -60,7 +60,8 @@ run.py
   → ingestion + stage Data Quality
   → calculations (Index / Trend / Indicators / SmartMoney)
   → blocking Data Quality gates
-  → COMMIT
+  → COMMIT core daily transaction
+  → MovementDailyPipelineService
   → exportDuckDB_metadata()
 ```
 
