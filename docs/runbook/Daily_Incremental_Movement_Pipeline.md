@@ -297,3 +297,66 @@ Residual risk:
 PASS → KEEP → STOP.
 
 Do not optimize ZigZag into a new stateful algorithm as part of validation.
+
+
+## 16. Validation Closure — 2026-09-22
+
+~~~text
+Compile/focused tests:      PASS (39/39)
+REQ-0033 baseline:          PASS (349 tickers)
+Same-day NOOP:              PASS
+Forced canary MWG:          PASS
+PM-only recovery:           PASS
+run.py ordering contract:   PASS
+Daily structural validator: PASS
+Rerun NOOP:                 PASS
+Regression:                 PASS (7/7)
+Archify:                    PASS (ok=true, 9/9)
+
+Verdict: PASS
+Action: KEEP
+~~~
+
+Canonical evidence:
+
+~~~text
+docs/reference/data/price_movement/daily/
+commit 86ec548efc2164b438e895c5f5e2ce0fb0c43afe
+~~~
+
+Structural summary:
+
+~~~text
+active_ticker_count                 349
+latest_ohlc_covered                 349
+zigzag_current_covered              349
+stale_zigzag_count                    0
+source_rewind_count                   0
+swing_parity_mismatch_count           0
+swing_geometry_mismatch_count         0
+profile_stale_count                   0
+movement_context_covered            349
+validation_failures                   0
+~~~
+
+### Operational exception recorded during Phase 6
+
+The attempted normal `python run.py` execution did not reach Movement because the existing core
+daily pipeline failed its Yahoo Finance DQ before the Phase A commit:
+
+~~~text
+raw_other_eod
+invalid_ohlc_count=1
+~~~
+
+This is classified as a pre-existing core-data blocker outside REQ-0034. Because Phase A did not
+commit, the designed behavior is that Phase B Movement does not run.
+
+The post-commit placement was validated by the dedicated run.py integration test/code structure;
+the actual Movement service was validated through forced canary, standalone execution, structural
+validation and NOOP/idempotency.
+
+A future clean daily run should still be observed after the Yahoo DQ issue is repaired, but it is
+not treated as a defect in REQ-0034.
+
+REQ-0034 is closed as DONE / PASS / KEEP.
