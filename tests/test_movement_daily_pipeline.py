@@ -347,7 +347,7 @@ def test_selected_ticker_refreshes_pm_when_new_confirmed_swing(monkeypatch) -> N
                 "LatestOHLCDate": date(2026, 9, 22),
                 "OHLCRows": 100,
                 "ZigZagAsOfDate": date(2026, 9, 21),
-                "PlanState": "STALE",
+                "PlanState": "STALE_ZIGZAG",
                 "Selected": True,
             }
         ],
