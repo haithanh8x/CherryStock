@@ -83,20 +83,74 @@ class MovementDailyPipelineService:
                         AsOfDate AS ZigZagAsOfDate
                     FROM "CherryMon"."main"."vw_Ticker_ZigZag_Current"
                     WHERE ConfigCode = ?
+                ),
+                zz AS (
+                    SELECT
+                        Ticker,
+                        COUNT(*) AS ZigZagSwingRows,
+                        MAX(SwingSeq) AS ZigZagLastSwingSeq,
+                        MAX(ConfirmedAtDate) AS ZigZagLastConfirmedAtDate
+                    FROM "CherryMon"."main"."vw_Ticker_ZigZag_Swings"
+                    WHERE ConfigCode = ?
+                    GROUP BY Ticker
+                ),
+                pm AS (
+                    SELECT
+                        Ticker,
+                        COUNT(*) AS PriceMovementSwingRows,
+                        MAX(SwingSeq) AS PriceMovementLastSwingSeq,
+                        MAX(ConfirmedAtDate) AS PriceMovementLastConfirmedAtDate
+                    FROM "CherryMon"."main"."vw_Ticker_Price_Movement_Swings"
+                    WHERE PriceMovementConfigCode = ?
+                      AND ZigZagConfigCode = ?
+                    GROUP BY Ticker
+                ),
+                profile AS (
+                    SELECT
+                        Ticker,
+                        COUNT(*) AS ProfileRows,
+                        MAX(LastSwingSeq) AS ProfileLastSwingSeq,
+                        MAX(AsOfConfirmedAtDate) AS ProfileAsOfConfirmedAtDate
+                    FROM "CherryMon"."main"."vw_Ticker_Movement_Profile"
+                    WHERE PriceMovementConfigCode = ?
+                      AND ZigZagConfigCode = ?
+                    GROUP BY Ticker
                 )
                 SELECT
                     a.Ticker,
                     o.LatestOHLCDate,
                     COALESCE(o.OHLCRows, 0) AS OHLCRows,
-                    z.ZigZagAsOfDate
+                    z.ZigZagAsOfDate,
+                    COALESCE(zz.ZigZagSwingRows, 0) AS ZigZagSwingRows,
+                    zz.ZigZagLastSwingSeq,
+                    zz.ZigZagLastConfirmedAtDate,
+                    COALESCE(pm.PriceMovementSwingRows, 0) AS PriceMovementSwingRows,
+                    pm.PriceMovementLastSwingSeq,
+                    pm.PriceMovementLastConfirmedAtDate,
+                    COALESCE(profile.ProfileRows, 0) AS ProfileRows,
+                    profile.ProfileLastSwingSeq,
+                    profile.ProfileAsOfConfirmedAtDate
                 FROM active AS a
                 LEFT JOIN latest_ohlc AS o
                     ON o.Ticker = a.Ticker
                 LEFT JOIN current_zigzag AS z
                     ON z.Ticker = a.Ticker
+                LEFT JOIN zz
+                    ON zz.Ticker = a.Ticker
+                LEFT JOIN pm
+                    ON pm.Ticker = a.Ticker
+                LEFT JOIN profile
+                    ON profile.Ticker = a.Ticker
                 ORDER BY a.Ticker
                 """,
-                [ZIGZAG_CONFIG_CODE],
+                [
+                    ZIGZAG_CONFIG_CODE,
+                    ZIGZAG_CONFIG_CODE,
+                    PRICE_MOVEMENT_CONFIG_CODE,
+                    ZIGZAG_CONFIG_CODE,
+                    PRICE_MOVEMENT_CONFIG_CODE,
+                    ZIGZAG_CONFIG_CODE,
+                ],
             ).fetchall()
 
         available = {str(row[0]) for row in rows}
@@ -109,10 +163,45 @@ class MovementDailyPipelineService:
                 )
 
         planned: list[dict[str, object]] = []
-        for ticker_raw, latest_ohlc, ohlc_rows, zigzag_as_of in rows:
+        for row in rows:
+            (
+                ticker_raw,
+                latest_ohlc,
+                ohlc_rows,
+                zigzag_as_of,
+                zz_count,
+                zz_last_seq,
+                zz_last_confirmed,
+                pm_count,
+                pm_last_seq,
+                pm_last_confirmed,
+                profile_rows,
+                profile_last_seq,
+                profile_as_of,
+            ) = row
             ticker = str(ticker_raw)
             if requested is not None and ticker not in requested:
                 continue
+
+            movement_state = {
+                "zigzag_swing_count": int(zz_count or 0),
+                "zigzag_last_swing_seq": zz_last_seq,
+                "zigzag_last_confirmed_at": zz_last_confirmed,
+                "price_movement_swing_count": int(pm_count or 0),
+                "price_movement_last_swing_seq": pm_last_seq,
+                "price_movement_last_confirmed_at": pm_last_confirmed,
+                "profile_rows": int(profile_rows or 0),
+                "profile_last_swing_seq": profile_last_seq,
+                "profile_as_of_confirmed_at": profile_as_of,
+            }
+            if int(zz_count or 0) <= 0:
+                price_movement_stale = (
+                    int(pm_count or 0) > 0 or int(profile_rows or 0) > 0
+                )
+            else:
+                price_movement_stale = self._price_movement_needs_refresh(
+                    movement_state
+                )
 
             if latest_ohlc is None or int(ohlc_rows) <= 0:
                 state = "NO_OHLC"
@@ -127,7 +216,10 @@ class MovementDailyPipelineService:
                 state = "MISSING_ZIGZAG"
                 selected = True
             elif latest_ohlc > zigzag_as_of:
-                state = "STALE"
+                state = "STALE_ZIGZAG"
+                selected = True
+            elif price_movement_stale:
+                state = "STALE_PRICE_MOVEMENT"
                 selected = True
             else:
                 state = "UP_TO_DATE"
@@ -139,6 +231,9 @@ class MovementDailyPipelineService:
                     "LatestOHLCDate": latest_ohlc,
                     "OHLCRows": int(ohlc_rows),
                     "ZigZagAsOfDate": zigzag_as_of,
+                    "ZigZagSwingRows": int(zz_count or 0),
+                    "PriceMovementSwingRows": int(pm_count or 0),
+                    "ProfileRows": int(profile_rows or 0),
                     "PlanState": state,
                     "Selected": selected,
                 }
@@ -299,31 +394,34 @@ class MovementDailyPipelineService:
                 "ErrorMessage": None,
             }
 
-            try:
-                with self._unit_of_work_cls(self._factory) as uow:
-                    if uow.connection is None:
-                        raise RuntimeError(
-                            "UnitOfWork did not initialize a writer connection."
+            if row["PlanState"] == "STALE_PRICE_MOVEMENT":
+                result["ZigZagStatus"] = "UP_TO_DATE"
+            else:
+                try:
+                    with self._unit_of_work_cls(self._factory) as uow:
+                        if uow.connection is None:
+                            raise RuntimeError(
+                                "UnitOfWork did not initialize a writer connection."
+                            )
+                        zigzag_summary = self._refresh_zigzag(
+                            connection=uow.connection,
+                            ticker=ticker,
                         )
-                    zigzag_summary = self._refresh_zigzag(
-                        connection=uow.connection,
-                        ticker=ticker,
-                    )
 
-                result["ZigZagStatus"] = "OK"
-                result["ZigZagConfirmedPivots"] = int(
-                    zigzag_summary["confirmed_pivots"]
-                )
-                result["ZigZagCurrentStatus"] = zigzag_summary["current_status"]
-            except Exception as exc:
-                result["ZigZagStatus"] = "FAILED"
-                result["PriceMovementStatus"] = "SKIPPED_ZIGZAG_FAILED"
-                result["ErrorStage"] = "ZIGZAG"
-                result["ErrorMessage"] = f"{type(exc).__name__}: {exc}"
-                results.append(result)
-                if progress_callback is not None:
-                    progress_callback(index, total, ticker, "FAILED_ZIGZAG")
-                continue
+                    result["ZigZagStatus"] = "OK"
+                    result["ZigZagConfirmedPivots"] = int(
+                        zigzag_summary["confirmed_pivots"]
+                    )
+                    result["ZigZagCurrentStatus"] = zigzag_summary["current_status"]
+                except Exception as exc:
+                    result["ZigZagStatus"] = "FAILED"
+                    result["PriceMovementStatus"] = "SKIPPED_ZIGZAG_FAILED"
+                    result["ErrorStage"] = "ZIGZAG"
+                    result["ErrorMessage"] = f"{type(exc).__name__}: {exc}"
+                    results.append(result)
+                    if progress_callback is not None:
+                        progress_callback(index, total, ticker, "FAILED_ZIGZAG")
+                    continue
 
             try:
                 state = self._load_price_movement_state(ticker)
