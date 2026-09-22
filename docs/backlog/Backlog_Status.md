@@ -11,10 +11,10 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 13 canonical requirements | 5 DONE · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
+| Requirements | 13 canonical requirements | 6 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **37** | **9 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
+| **Total** | **37** | **10 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
 
 ### Priority Summary
 
@@ -76,7 +76,7 @@ Canonical index:
 | REQ-0031 | ZigZag-based Price Movement Characterization V2 | P1 | **DONE** | None | [[requirements/REQ-0031-zigzag-price-movement-character-v2|REQ-0031]] |
 | REQ-0032 | MovementContext V1 | P1 | **DONE** | None | [[requirements/REQ-0032-movement-context-v1|REQ-0032]] |
 | REQ-0033 | Active Ticker ZigZag + Price Movement Initial Load | P1 | **DONE** | None | [[requirements/REQ-0033-active-ticker-movement-initload|REQ-0033]] |
-| REQ-0034 | Daily Incremental Movement Pipeline | P1 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0034-daily-incremental-movement-pipeline|REQ-0034]] |
+| REQ-0034 | Daily Incremental Movement Pipeline | P1 | **DONE** | None | [[requirements/REQ-0034-daily-incremental-movement-pipeline|REQ-0034]] |
 
 ## Requirement Delivery Flow
 
@@ -130,7 +130,8 @@ DONE
 (TestEngineer PASS / KEEP on 2026-09-22)
         ↓
 REQ-0034 Daily Incremental Movement Pipeline
-IMPLEMENTED_PENDING_VALIDATION
+DONE
+(Local TestEngineer PASS / KEEP on 2026-09-22)
 ```
 
 Related approved Smart Money design:
@@ -316,10 +317,9 @@ Based on current status and priority, the next actionable queue is:
 | 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
 | 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
 | 4 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
-| 5 | **REQ-0034** | Validate post-commit daily Movement integration before treating Movement as production-fresh after every run.py execution. |
-| 6 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
-| 7 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
-| 8 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
+| 5 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
+| 6 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
+| 7 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
 
