@@ -3,7 +3,7 @@
 - **Status:** ACTIVE
 - **Owner:** `.github/agents/SolutionArchitect.agent.md`
 - **Visualization tool:** Archify
-- **Mapped runtime revision:** `711b9a582e66e0660966907a82a6e901cd76764d`
+- **Mapped runtime revision:** `c8889041c3a1545f45c4e5afcc30c55ff667e46d`
 - **Archify source:** `docs/architecture/diagrams/cherrystock-high-level.architecture.json`
 - **Generated HTML:** `docs/architecture/generated/CherryStock_High_Level.html`
 
