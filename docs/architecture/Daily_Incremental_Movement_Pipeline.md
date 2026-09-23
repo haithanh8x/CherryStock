@@ -1,9 +1,9 @@
 # Daily Incremental Movement Pipeline
 
 - **Requirement:** REQ-0034
-- **Status:** DONE — TESTENGINEER_PASS_KEEP
+- **Status:** DONE — HISTORICAL; NORMAL SCHEDULING SUPERSEDED BY REQ-0036 / ADR-020
 - **Decision:** ADR-018
-- **Daily entry:** run.py
+- **Historical daily entry:** run.py (removed by REQ-0036)
 - **Service:** src/cherrystock/application/services/movement_daily_pipeline.py
 - **Universe:** vw_Ticker_Active
 - **Lineage:** ZZ_D_5_MVP → PM_ZZ_D_V2 → MovementContext
@@ -289,3 +289,8 @@ ZigZag V1 execution: deterministic full-history per selected ticker
 Next owner: None
 Residual operational blocker: Yahoo core DQ before commit
 ~~~
+
+
+## Scheduling Supersession — REQ-0036
+
+REQ-0034 remains validation evidence for the prior daily design. Normal full-universe Movement scheduling is now owned by `runWeekly.py` under REQ-0036 / ADR-020. `scripts/run_daily_movement.py` remains available only as manual/on-demand repair.
