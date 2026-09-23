@@ -104,7 +104,7 @@ times per trading week to once per week, while retaining on-demand ticker refres
 - AC-09 manual force refresh remains functional.
 - AC-10 formulas/lineage unchanged.
 - AC-11 daily core regression PASS.
-- AC-12 weekly rerun structurally idempotent.
+- AC-12 the reused full-universe runner remains structurally idempotent; local REQ-0036 validation may use a bounded MWG/FPT rerun because REQ-0033 already proved full-universe idempotency for the same calculation path.
 - AC-13 MovementContext one row per eligible ticker/config.
 - AC-14 Archify depicts Movement weekly/manual.
 - AC-15 runMonthly.py remains unchanged.
