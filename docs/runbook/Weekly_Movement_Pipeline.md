@@ -185,26 +185,43 @@ entry point, not part of normal daily scheduling.
 
 ## 12. Phase 10 — Idempotency
 
-Capture row counts:
+REQ-0033 already proved full-universe business-row idempotency for the same underlying runner.
+REQ-0036 therefore validates idempotency with a bounded MWG/FPT rerun instead of paying for a second
+full ~60-minute universe run.
+
+Capture ticker-local counts:
 
 ~~~sql
-SELECT COUNT(*) FROM "CherryMon"."main"."cal_zigzag_pivot";
-SELECT COUNT(*) FROM "CherryMon"."main"."cal_zigzag_current_leg";
-SELECT COUNT(*) FROM "CherryMon"."main"."cal_price_movement_swing";
-SELECT COUNT(*) FROM "CherryMon"."main"."cal_price_movement_profile";
+SELECT Ticker, COUNT(*) AS RowCount
+FROM "CherryMon"."main"."vw_Ticker_ZigZag_Pivots"
+WHERE ConfigCode = 'ZZ_D_5_MVP'
+  AND Ticker IN ('MWG', 'FPT')
+GROUP BY Ticker
+ORDER BY Ticker;
+
+SELECT Ticker, COUNT(*) AS RowCount
+FROM "CherryMon"."main"."vw_Ticker_Price_Movement_Swings"
+WHERE PriceMovementConfigCode = 'PM_ZZ_D_V2'
+  AND Ticker IN ('MWG', 'FPT')
+GROUP BY Ticker
+ORDER BY Ticker;
 ~~~
 
-Run weekly again unchanged:
+Rerun the bounded canary:
 
 ~~~powershell
-python runWeekly.py
+python scripts\initload\init_reload_zigzag_price_movement_active.py --ticker MWG --ticker FPT
 ~~~
 
 Expected:
-- business row counts stable;
-- structural validator PASS;
-- freshness valid;
-- no duplicates.
+
+- ticker-local business row counts remain stable;
+- no duplicates;
+- structural validator remains PASS;
+- freshness remains valid.
+
+Do **not** run a second full-universe weekly execution solely for idempotency unless the focused
+canary exposes a mismatch.
 
 ## 13. Phase 11 — Monthly Regression
 
