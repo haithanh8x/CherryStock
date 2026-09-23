@@ -8,7 +8,7 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "711b9a582e66e0660966907a82a6e901cd76764d"
+      "revision": "c8889041c3a1545f45c4e5afcc30c55ff667e46d"
     },
     "viewBox": [
       1340,
@@ -483,7 +483,7 @@
       "items": [
         ".github/** quản trị Agent Harness; docs/** là engineering knowledge SSOT",
         "SolutionArchitect sở hữu quyết định kiến trúc; Archify chỉ render và validate sơ đồ",
-        "Sơ đồ phản ánh bằng chứng runtime tại revision 711b9a58 và không suy diễn deployment topology"
+        "Sơ đồ phản ánh bằng chứng runtime tại revision c8889041 và không suy diễn deployment topology"
       ]
     }
   ]
