@@ -317,13 +317,14 @@ Based on current status and priority, the next actionable queue is:
 
 | Order | Item | Why now |
 |---:|---|---|
-| 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
-| 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
-| 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
-| 4 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
-| 5 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
-| 6 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
-| 7 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
+| 1 | **REQ-0036** | Weekly Movement scheduling is implemented and needs local full-universe/freshness validation before merge. |
+| 2 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
+| 3 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
+| 4 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
+| 5 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
+| 6 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
+| 7 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
+| 8 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
 
