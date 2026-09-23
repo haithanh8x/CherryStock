@@ -15,7 +15,7 @@ This document drills down the **Analytics & Calculation Engines** component from
 2. the read/on-demand **R/S Runtime Ladder** path;
 3. the independent **monthly R/S historical research/effectiveness** path.
 
-REQ-0027 established the ZigZag segmentation foundation. REQ-0033 validated that movement chain across all active tickers, and REQ-0034 now adds the validated movement lineage to the normal daily runtime as a separate post-core-commit phase.
+REQ-0027 established the ZigZag segmentation foundation. REQ-0033 validated that movement chain across all active tickers. REQ-0034 validated a daily integration, but REQ-0036 supersedes the normal schedule: full-universe Movement now runs weekly, with manual/on-demand ticker refresh retained.
 
 ## Navigation Contract
 
@@ -74,13 +74,16 @@ SyncWritePipelineService / shared DuckDBUnitOfWork
         │
         ▼
 COMMIT shared core daily UoW
+
+runWeekly.py
         │
         ▼
-MovementDailyPipelineService
-        ├─ stale/missing ZigZag ticker selection
+MovementWeeklyPipelineService
+        ├─ full active-ticker universe
         ├─ deterministic per-ticker ZigZag rebuild
-        ├─ confirmed-lineage-aware Price Movement refresh
-        └─> vw_Ticker_Movement_Context (derived)
+        ├─ Price Movement rebuild
+        └─> vw_Ticker_Movement_Context
+             + freshness status
 
 Indicator public contracts + market/price inputs
         │
@@ -113,7 +116,7 @@ vw_RS_Source_Effectiveness
 
 ## 1. Daily Analytics Order
 
-The daily runtime now has two transaction phases. `SyncWritePipelineService.run()` owns the shared core Phase A order:
+The daily runtime owns only the shared core calculation transaction:
 
 ```text
 Composite Index
@@ -121,18 +124,12 @@ Composite Index
 → Technical Indicators
 → SmartMoneyScore
 → COMMIT core UoW
+→ metadata export
+→ STOP
 ```
 
-After that commit, `MovementDailyPipelineService.run()` owns Phase B:
-
-```text
-incremental movement plan
-→ selected ZigZag ticker refresh
-→ Price Movement only when confirmed lineage changed
-→ derived MovementContext
-```
-
-The ordering is orchestration order, not an assertion that each engine consumes every prior engine's persistence output. Blocking Data Quality failure before the Phase A commit rolls back the core daily write set. Movement uses ticker-local transactions after commit and reports partial failures without undoing core data.
+Full-universe Movement is intentionally excluded from normal daily execution under REQ-0036.
+The ordering is orchestration order, not an assertion that each engine consumes every prior engine's persistence output. Blocking Data Quality failure before commit rolls back the core daily write set.
 
 ### Composite Index Engine
 
@@ -226,9 +223,9 @@ vw_Ticker_indicators
 
 Normal finite-window indicators use configured warmup/checkpoint behavior. Cumulative full-history indicators such as OBV and AD reload history from inception so incremental calculation preserves the same cumulative baseline as historical backfill.
 
-### ZigZag / Price Movement Daily Movement Lane
+### ZigZag / Price Movement Weekly Movement Lane
 
-**Status:** REQ-0033 full-universe baseline DONE; REQ-0034 daily integration IMPLEMENTED_PENDING_VALIDATION.
+**Status:** REQ-0033 full-universe baseline DONE; REQ-0034 daily integration historical; REQ-0036 weekly scheduling IMPLEMENTED_PENDING_VALIDATION.
 
 **Architecture contract:** docs/architecture/ZigZag_Engine.md.
 
@@ -257,7 +254,7 @@ REQ-0031 defines the downstream characterization layer without changing segmenta
 REQ-0032 adds a derived MovementContext public contract over the movement profile plus the matching provisional ZigZag current leg. It adds no calculated persistence. R/S and SmartMoney composition is explicitly deferred to a future TickerStrategyContext.
 
 REQ-0033 adds the whole-active-universe initial-load baseline driven by `vw_Ticker_Active`.
-REQ-0034 promotes the same semantics into `run.py` after the core daily commit, using stale/recovery ticker selection and conditional Price Movement refresh. The ZigZag algorithm itself remains deterministic full-history per selected ticker.
+REQ-0034 validated daily integration. REQ-0036 removes full-universe Movement from `run.py` and promotes the same deterministic full-history semantics into `runWeekly.py`. Manual/on-demand repair keeps the existing ticker-level refresh path. The ZigZag algorithm itself remains deterministic full-history per selected ticker.
 
 ### SmartMoneyScore Engine
 
@@ -371,11 +368,11 @@ V2.4 is research/governance. It does **not** automatically mutate runtime provid
 | Composite Index | daily | `calculate_VNINDEX_NOT_VIN()` | `cal_Indexes` | shared daily UoW |
 | Trend / MA | daily | `cal_Moving_Average()` | `cal_Trends` | shared daily UoW |
 | Indicator Engine | daily | `refresh_technical_indicators()` | `cal_indicator_values` → `vw_Ticker_indicators` | shared daily UoW |
-| ZigZag Swing Engine | daily post-core-commit when stale + manual initload | O(n) 5% reversal pivot segmentation | `cal_zigzag_pivot`, `cal_zigzag_current_leg` → three public views | ticker-local UoW after core commit |
-| Price Movement V2 | daily when confirmed lineage changed + manual initload | confirmed swing characterization + recent profile | `cal_price_movement_swing`, `cal_price_movement_profile` → two public views | ticker-local UoW after ZigZag/current check |
+| ZigZag Swing Engine | weekly full universe + manual/on-demand | O(n) 5% reversal pivot segmentation | `cal_zigzag_pivot`, `cal_zigzag_current_leg` → three public views | ticker-local UoW in weekly/manual runs |
+| Price Movement V2 | weekly full universe + manual/on-demand | confirmed swing characterization + recent profile | `cal_price_movement_swing`, `cal_price_movement_profile` → two public views | ticker-local UoW after ZigZag |
 | Active Ticker Movement Initload | manual full universe | `vw_Ticker_Active` → ZigZag stage → Price Movement stage | existing ZigZag/Price Movement persistence only | per-ticker/stage isolation |
-| Daily Incremental Movement | daily | stale/recovery planner → ZigZag → conditional Price Movement | existing movement persistence; MovementContext derived | post-core-commit, ticker/stage isolation |
-| MovementContext V1 | daily-derived/read layer | profile + provisional current-leg interpretation | `dim_movement_context_config` → `vw_Ticker_Movement_Context` | derived view; no calculated context persistence |
+| Weekly Movement | weekly | full active universe → ZigZag → Price Movement | existing movement persistence; MovementContext derived | separate weekly runner, ticker/stage isolation |
+| MovementContext V1 | derived/read layer | profile + provisional current-leg interpretation + freshness | `dim_movement_context_config` → `vw_Ticker_Movement_Context` | derived view; no calculated context persistence |
 | SmartMoneyScore | daily | `refresh_smart_money_score()` | factor + score tables → `vw_Ticker_SmartMoney` | shared daily UoW |
 | R/S Runtime Ladder | on demand / consumer | `build_level_ladder()` family | `LevelLadderResult` | read/calculation path, separate from daily writer |
 | R/S V2.4 Evaluation | monthly/manual | baseline + ablation + effectiveness | `cal_rs_source_effectiveness*`, audit + public view | separate monthly research run |
@@ -418,7 +415,8 @@ Until the command above succeeds and the generated HTML is committed, this drill
 - `docs/architecture/Indicator_Engine.md`
 - `docs/architecture/ZigZag_Engine.md`
 - `docs/architecture/Price_Movement_Character_V2.md`
-- `docs/architecture/Daily_Incremental_Movement_Pipeline.md`
+- `docs/architecture/Daily_Incremental_Movement_Pipeline.md` (historical scheduling)
+- `docs/architecture/Weekly_Movement_Pipeline.md`
 - `docs/architecture/Price_Movement_Character.md` (historical deferred design)
 - `docs/architecture/SmartMoneyScore.md`
 - `docs/architecture/RS_Ladder.md`
@@ -427,7 +425,7 @@ Until the command above succeeds and the generated HTML is committed, this drill
 
 ## ADR
 
-- `ADR-012` owns the stateful analytics domain boundary; `ADR-013` owns ZigZag segmentation; `ADR-016` owns downstream Price Movement characterization; `ADR-017` owns the MovementContext semantic boundary; `ADR-018` owns the daily post-commit Movement transaction/incremental boundary.
+- `ADR-012` owns the stateful analytics domain boundary; `ADR-013` owns ZigZag segmentation; `ADR-016` owns downstream Price Movement characterization; `ADR-017` owns the MovementContext semantic boundary; `ADR-018` documents the historical daily/on-demand recovery design; `ADR-020` owns normal weekly Movement scheduling.
 - No new ADR is required for the pre-existing calculation-engine drill-down itself.
 
 
@@ -496,7 +494,9 @@ Operational entry points:
     scripts/validate_movement_context_mwg.py
     scripts/initload/init_reload_zigzag_price_movement_active.py
     scripts/validate_movement_active.py
+    runWeekly.py
+    scripts/validate_weekly_movement.py
     scripts/run_daily_movement.py
     scripts/validate_daily_movement.py
 
-REQ-0034 is the production-promotion decision for the current fixed-5% lineage. The Movement lane runs after the core daily UoW commit. Calibrated/regime-aware ZigZag research remains outside run.py.
+REQ-0036 is the current production scheduling decision for the fixed-5% lineage. Full-universe Movement runs weekly; the manual ticker refresh path remains available. Calibrated/regime-aware ZigZag research remains outside `run.py` and `runWeekly.py`.
