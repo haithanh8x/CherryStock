@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-21T16:23:45.338051+00:00
+- Generated at: 2026-09-22T17:12:40.933676+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 75
+- Table/view count: 76
 
 ## Schemas
 
@@ -86,6 +86,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`vw_Indicator_config` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
+- `main`.`vw_Ticker_Active` (VIEW)
 - `main`.`vw_Ticker_Movement_Context` (VIEW)
 - `main`.`vw_Ticker_Movement_Profile` (VIEW)
 - `main`.`vw_Ticker_OHLC_D` (VIEW)
@@ -1245,6 +1246,25 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `CompletedAt` | `TIMESTAMP` | `YES` | `` |
 
 ### main.vw_Ticker (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Stock` | `VARCHAR` | `YES` | `` |
+| `Company Name` | `VARCHAR` | `YES` | `` |
+| `Industry` | `VARCHAR` | `YES` | `` |
+| `IndustryCode` | `VARCHAR` | `YES` | `` |
+| `Status` | `VARCHAR` | `YES` | `` |
+| `MarketCap` | `BIGINT` | `YES` | `` |
+| `Shares Outstanding` | `BIGINT` | `YES` | `` |
+| `FreeFloat` | `BIGINT` | `YES` | `` |
+| `EPS` | `DOUBLE` | `YES` | `` |
+| `PE` | `DOUBLE` | `YES` | `` |
+| `Book Value` | `DOUBLE` | `YES` | `` |
+| `ROA` | `DOUBLE` | `YES` | `` |
+| `ROE` | `DOUBLE` | `YES` | `` |
+
+### main.vw_Ticker_Active (VIEW)
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
