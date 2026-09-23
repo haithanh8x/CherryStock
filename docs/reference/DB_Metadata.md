@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-09-22T17:12:40.933676+00:00
+- Generated at: 2026-09-23T16:07:48.196675+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -1298,6 +1298,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ContextAsOfDate` | `DATE` | `YES` | `` |
 | `ProfileAsOfConfirmedAtDate` | `DATE` | `YES` | `` |
 | `CurrentLegAsOfDate` | `DATE` | `YES` | `` |
+| `LatestOHLCDate` | `DATE` | `YES` | `` |
+| `MovementAgeTradingDays` | `BIGINT` | `YES` | `` |
+| `MovementFreshnessStatus` | `VARCHAR` | `YES` | `` |
 | `ContextStatus` | `VARCHAR` | `YES` | `` |
 | `TrendRegime` | `VARCHAR` | `YES` | `` |
 | `TrendQuality` | `VARCHAR` | `YES` | `` |

@@ -20,7 +20,7 @@
       "id": "entrypoints",
       "type": "backend",
       "label": "Runtime Entry Points",
-      "sublabel": "Daily · Weekly · Monthly · Rundeck",
+      "sublabel": "Daily · Weekly · Monthly",
       "pos": [
         40,
         90
@@ -41,10 +41,6 @@
         {
           "path": "runMonthly.py",
           "label": "Monthly runner"
-        },
-        {
-          "path": "src/Orchestrator/run_rundeck_ingest_intraday.py",
-          "label": "Intraday runner"
         }
       ]
     },

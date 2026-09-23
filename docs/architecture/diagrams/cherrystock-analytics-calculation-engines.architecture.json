@@ -807,25 +807,16 @@
       ]
     },
     {
-      "from": "analytics_inputs",
+      "from": "smart_money",
       "to": "price_movement",
-      "label": "weekly OHLC + active universe",
+      "label": "Movement weekly trigger",
       "variant": "emphasis",
+      "route": "straight",
       "fromSide": "right",
       "toSide": "left",
-      "via": [
-        [
-          245,
-          210
-        ],
-        [
-          1140,
-          210
-        ]
-      ],
       "labelAt": [
-        735,
-        225
+        1145,
+        55
       ]
     }
   ]
