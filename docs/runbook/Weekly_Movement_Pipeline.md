@@ -218,10 +218,11 @@ Expected: no REQ-0036 changes to runMonthly.py.
 ## 14. Phase 12 — Archify
 
 ~~~powershell
+.\scripts\render_archify_cherrystock.ps1 -NoOpen
 .\scripts\render_archify_analytics.ps1 -NoOpen
 ~~~
 
-PASS requires showcase `ok=true` and generated HTML showing Movement as weekly/manual, not daily post-commit.
+PASS requires both showcase validations `ok=true`. High-level runtime entry points must include weekly, and the analytics diagram must show Movement as weekly/manual rather than daily post-commit.
 
 ## 15. Evidence Commit
 
@@ -229,6 +230,7 @@ After PASS:
 
 ~~~powershell
 git add docs\reference\data\price_movement\weekly
+git add docs\architecture\generated\CherryStock_High_Level.html
 git add docs\architecture\generated\CherryStock_Analytics_Calculation_Engines.html
 git add docs\reference\DB_Metadata.md
 git commit -m "validation: add weekly Movement pipeline evidence"
