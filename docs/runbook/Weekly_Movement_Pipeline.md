@@ -1,9 +1,11 @@
 # Runbook — REQ-0036 Weekly Movement Pipeline
 
+> This runbook is intentionally published on `main` so a local validation agent can pull the operational instructions before switching to the implementation branch.
+
 - Requirement: REQ-0036
 - Architecture: docs/architecture/Weekly_Movement_Pipeline.md
 - ADR: ADR-020
-- Branch: feature/weekly-movement-pipeline
+- Implementation branch: feature/weekly-movement-pipeline
 - Validation owner: TestEngineer
 
 ## 1. Objective
@@ -22,7 +24,9 @@ runWeekly.py
 → MovementContext freshness
 ~~~
 
-## 2. Phase 0 — Sync Branch
+## 2. Phase 0 — Sync Implementation Branch
+
+The runbook itself is available from `main`, but REQ-0036 code is still isolated on the feature branch until validation passes.
 
 ~~~powershell
 cd C:\Github\CherryStock
@@ -180,14 +184,11 @@ MWG = UP_TO_DATE
 Selected=False
 ~~~
 
-The existing script name is retained for backward compatibility. It is now a manual/on-demand
-entry point, not part of normal daily scheduling.
+The existing script name is retained for backward compatibility. It is now a manual/on-demand entry point, not part of normal daily scheduling.
 
 ## 12. Phase 10 — Idempotency
 
-REQ-0033 already proved full-universe business-row idempotency for the same underlying runner.
-REQ-0036 therefore validates idempotency with a bounded MWG/FPT rerun instead of paying for a second
-full ~60-minute universe run.
+REQ-0033 already proved full-universe business-row idempotency for the same underlying runner. REQ-0036 therefore validates idempotency with a bounded MWG/FPT rerun instead of paying for a second full ~60-minute universe run.
 
 Capture ticker-local counts:
 
@@ -220,8 +221,7 @@ Expected:
 - structural validator remains PASS;
 - freshness remains valid.
 
-Do **not** run a second full-universe weekly execution solely for idempotency unless the focused
-canary exposes a mismatch.
+Do **not** run a second full-universe weekly execution solely for idempotency unless the focused canary exposes a mismatch.
 
 ## 13. Phase 11 — Monthly Regression
 
