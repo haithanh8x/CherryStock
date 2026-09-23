@@ -204,6 +204,9 @@ def validate(*, evidence_dir: Path | None = None) -> int:
     run_py_unchanged = (
         "active_ticker_movement_initload" not in run_text
         and "init_reload_zigzag_price_movement_active" not in run_text
+        and "MovementDailyPipelineService" not in run_text
+        and "MovementWeeklyPipelineService" not in run_text
+        and "_run_movement_steps" not in run_text
     )
     if not run_py_unchanged:
         failures.append("run.py unexpectedly contains REQ-0033 active movement integration")
