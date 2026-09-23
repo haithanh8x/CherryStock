@@ -5,7 +5,7 @@
 - **Parent:** `docs/architecture/CherryStock_High_Level.md` → **Analytics & Calculation Engines**
 - **Archify source:** `docs/architecture/diagrams/cherrystock-analytics-calculation-engines.architecture.json`
 - **Generated HTML:** `docs/architecture/generated/CherryStock_Analytics_Calculation_Engines.html`
-- **Mapped repository revision:** `132e940b932df5f1760260ad23e012e87f5172c2`
+- **Mapped repository revision:** `c8889041c3a1545f45c4e5afcc30c55ff667e46d`
 
 ## Purpose
 
