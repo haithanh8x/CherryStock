@@ -63,7 +63,7 @@ def validate(*, evidence_dir: Path | None = None) -> int:
             f"stale weekly Movement ticker(s): {int(stale.sum())}"
         )
 
-    unknown = coverage["MovementFreshnessStatus"].isin(["UNKNOWN", None])
+    unknown = coverage["MovementFreshnessStatus"].fillna("UNKNOWN").eq("UNKNOWN")
     if unknown.any():
         failures.append(
             f"unknown Movement freshness ticker(s): {int(unknown.sum())}"
