@@ -17,7 +17,7 @@ This document is the canonical high-level system map for CherryStock. It describ
 
 The map covers the current repository-level architecture:
 
-- daily and monthly runtime entry points;
+- daily, weekly and monthly runtime entry points;
 - market/reference data ingestion;
 - application orchestration;
 - shared DuckDB transaction and Data Quality gates;
@@ -37,9 +37,9 @@ Deployment infrastructure that is not evidenced in the repository is intentional
 | Component | Responsibility | Primary evidence |
 | --- | --- | --- |
 | Market Data Sources | External/local source data consumed by CherryStock | `src/CrawlStock/readAmi.py`, `readYahooFinance.py`, `upsertFA.py` |
-| Runtime Entry Points | Start daily, monthly and focused operational runs | `run.py`, `runMonthly.py`, `src/Orchestrator/run_rundeck_ingest_intraday.py` |
+| Runtime Entry Points | Start daily, weekly, monthly and focused operational runs | `run.py`, `runWeekly.py`, `runMonthly.py`, `src/Orchestrator/run_rundeck_ingest_intraday.py` |
 | Ingestion & Adapters | Normalize AmiBroker/market/reference inputs behind application-facing adapters/services | `src/cherrystock/infrastructure/amibroker/windows_adapter.py`, sync services |
-| Application Orchestration | Own execution order and coordinate daily/monthly jobs | `src/cherrystock/application/services/sync_write_pipeline.py`, `src/Orchestrator/**` |
+| Application Orchestration | Own execution order and coordinate daily/weekly/monthly jobs | `src/cherrystock/application/services/sync_write_pipeline.py`, `src/cherrystock/application/services/movement_weekly_pipeline.py`, `src/Orchestrator/**` |
 | Transaction & Data Quality Gate | Keep daily writes atomic and stop commit on blocking validation failures | `DuckDBUnitOfWork`, `DataQualityOrchestration.py`, `DataValidation.py` |
 | CherryMon DuckDB | Persist `raw_*`, `dim_*`, `cal_*`, `sys_*` data | centralized connection layer, `src/DuckDB/sql/**` |
 | Analytics & Calculation Engines | Build Trend, Indicators, R/S and SmartMoney outputs; drill-down detail in `Analytics_Calculation_Engines.md` | `src/calcEngine/**`, detail architecture doc |
@@ -78,6 +78,10 @@ AmiBroker / Yahoo / FA sources
 ```
 
 The public read layer is intentionally separated from internal calculated persistence. Consumers should prefer stable `vw_*` contracts when a public read contract exists.
+
+### Weekly Movement path
+
+`runWeekly.py` is the normal full-universe Movement entry point. It runs deterministic ZigZag + Price Movement for the active ticker universe outside the daily core transaction. `vw_Ticker_Movement_Context` exposes freshness so consumers can distinguish FRESH / AGING / STALE weekly context.
 
 ### Monthly path
 
