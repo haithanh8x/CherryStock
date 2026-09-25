@@ -1,4 +1,6 @@
-# SmartMoney NiceGUI Tab — MarketState Flow + MA200 Split Deployment
+# SmartMoney NiceGUI Tab — MarketState Flow, MA200 Split & TradingView
+
+> Triển khai tính năng click ticker mở TradingView (2026-09-25): chạy mục 12 bên dưới. Các mục 1–11 là runbook nền của MA200 Flow.
 
 - **Status:** ACTIVE
 - **UI entry:** `src/webapp/NiceGUI_chart.py`
@@ -382,3 +384,174 @@ full pytest suite
 ```
 
 Those validate different contracts and do not provide additional evidence for this presentation change.
+
+---
+
+## 12. Click ticker → TradingView — local-agent deployment
+
+### Objective and ownership
+
+Request: every ticker displayed in the SmartMoney tab of `NiceGUI_chart.py`
+opens the corresponding Vietnamese TradingView chart in a separate browser window.
+
+Implementation state: **IMPLEMENTED_PENDING_VALIDATION**.
+Local agent acts as TestEngineer and owns the final runtime verdict.
+Read governance, TestEngineer, testing instructions, Python execution conventions,
+and the regression-testing skill before executing this bounded runbook.
+
+### Changed files / allowed repair scope
+
+- `src/webapp/smart_money_tab.py`: native ticker links and synchronous client-side popup handler.
+- `src/webapp/tradingview_links.py`: validated exchange-qualified URL construction.
+- `src/webapp/smart_money_snapshot_query.py`: current listing market enrichment.
+- `tests/test_tradingview_links.py`
+- `tests/test_smart_money_snapshot_query.py`
+- This runbook.
+
+`src/webapp/NiceGUI_chart.py` already calls `smart_money_tab_content()`;
+no change to the entry point is needed.
+
+No schema migration, dependency addition, score recalculation, indicator initload,
+or daily/full-universe pipeline run is required.
+
+### Behavior and data contract
+
+- All three buckets (>= MA200, < MA200, MA200 N/A) render individual clickable tickers.
+- Keep original confidence order, top-two bold emphasis, counts, and state navigation.
+- Latest `raw_stock_fa.Market` by `Date DESC NULLS LAST` supplies current listing
+  metadata in one batched LEFT JOIN, at most one metadata row per normalized ticker.
+  `vw_Ticker` does not expose Market in the current metadata contract.
+  This uses the same current-market source as the existing enriched EOD view,
+  without running that view's historical limit calculations for navigation.
+- Current listing metadata is intentional: this is external navigation, not a
+  point-in-time market field for analytics. Missing metadata keeps the ticker.
+- Mapping: HOSE/HSX → HOSE, HNX → HNX, UPCOM → UPCOM.
+- URLs always include the exchange; never fall back to a bare ticker or default HOSE.
+- Missing/unsupported market: clicking opens a dialog with HOSE/HNX/UPCOM choices.
+  The user must choose the correct listing; the selection does not mutate metadata.
+- Validated alphanumeric ticker plus URL encoding prevents URL/script injection.
+- Known-market click opens TradingView synchronously in the browser gesture,
+  requests a 1280×820 popup, and clears the popup opener before navigation.
+  Browser settings may render this as a tab instead of a separate window.
+- If the popup is refused, the native `target=_blank` link remains the fallback.
+  Ctrl/Cmd/Shift/Alt click retains normal browser link behavior.
+- No iframe of the full TradingView site is used.
+- External availability/login/network requirements remain TradingView behavior.
+
+Reference examples checked during implementation:
+[HOSE:MWG](https://vn.tradingview.com/symbols/HOSE-MWG/),
+[HNX:SHS](https://vn.tradingview.com/symbols/HNX-SHS/),
+[UPCOM:ACV](https://vn.tradingview.com/symbols/UPCOM-ACV/).
+
+### Step A — safe sync
+
+Run from the existing repository root using its established Python environment.
+First stop the running NiceGUI process. Do not kill unrelated Python processes.
+
+```powershell
+git status --short
+git branch --show-current
+```
+
+If there are unexpected local changes: BLOCKED / STOP. Do not reset or stash them
+automatically. Record the previous branch and SHA for rollback:
+
+```powershell
+$previousBranch = git branch --show-current
+$previousCommit = git rev-parse HEAD
+git fetch origin
+git switch --track origin/feature/smartmoney-tradingview-popup
+```
+
+If that local feature branch already exists, instead run:
+
+```powershell
+git switch feature/smartmoney-tradingview-popup
+git pull --ff-only origin feature/smartmoney-tradingview-popup
+```
+
+Record `git rev-parse HEAD`. After the PR is merged, the equivalent deployment
+path is `git switch main` then `git pull --ff-only origin main`.
+
+### Step B — compile and focused tests
+
+```powershell
+python -m py_compile src\webapp\NiceGUI_chart.py src\webapp\smart_money_tab.py src\webapp\tradingview_links.py src\webapp\smart_money_snapshot_query.py
+python -m pytest tests\test_tradingview_links.py tests\test_smart_money_snapshot_query.py tests\test_smart_money_state_flow.py -q
+```
+
+Require exit 0; currently 16 test cases. Cases cover HOSE/HSX/HNX/UPCOM, missing
+and unsupported markets, invalid/injected symbols, latest listing row selection,
+missing listing preservation, and the unchanged MA200/state-flow boundary.
+Collection failure is an environment/import blocker, not automatically a regression.
+
+### Step C — real snapshot and browser smoke (maximum 10 minutes)
+
+```powershell
+python scripts\validate_smart_money_ui_snapshot.py
+python src\webapp\NiceGUI_chart.py
+```
+
+Open the configured endpoint (normally http://127.0.0.1:8081) → SmartMoney.
+
+1. Record snapshot date and count. Verify existing grouping/counts and state anchors.
+2. Click one ticker in each nonempty MA200 bucket, including N/A when present.
+   Require exactly one destination per normal click, matching that ticker and its
+   current Vietnamese exchange. Original SmartMoney page stays open.
+3. Check HOSE, HNX and UPCOM listings present in the snapshot. Suggested examples
+   are MWG, SHS and ACV; use another actual ticker if one is absent.
+   Verify the exchange on TradingView, not only the ticker text.
+4. Click two different tickers successively; each must open its own correct symbol.
+5. Tab to a ticker and press Enter; verify navigation. Check Ctrl/Cmd click.
+6. Block popups in the browser, click once, and verify the native new-tab fallback
+   where the browser permits it. Restore the original popup setting afterwards.
+   If browser policy blocks both methods, record BLOCKED with browser evidence.
+7. Refresh twice, repeating one ticker click after each refresh. Require one
+   window/tab per click, no stale ticker, preserved ordering and bold top two.
+8. Check the missing-market dialog if such a ticker is present. If absent, do not
+   edit production DB to manufacture it; record real-data case N/A and use
+   the deterministic missing-market fixture test as data-path evidence.
+9. Empty buckets still display “Không có ticker”; no new traceback or JS error.
+10. STOP the NiceGUI process after the smoke test.
+
+PASS requires compile/tests/snapshot validator plus observed browser behavior.
+External TradingView outage or missing local dependencies/data → BLOCKED.
+Wrong ticker/exchange, duplicate windows, lost tickers/counts, or broken refresh
+caused by this change → FAIL/REGRESSION.
+
+### Keep / rollback / STOP
+
+- PASS: KEEP the branch; hand off evidence for PR review/merge. Restart the app on
+  the validated revision only when ready to use it. Do not auto-merge as a test step.
+- FAIL/BLOCKED: stop the app. With a clean working tree, restore the recorded
+  previous branch; if the previous checkout was detached, use
+  `git switch --detach $previousCommit`. Restart the previous known-good revision
+  only if requested by the operator. No database rollback is needed.
+- Do not use `git reset --hard` or force push.
+- A focused repair may touch only the files listed above; maximum two materially
+  justified attempts, no unchanged failed reruns, no unrelated refactor.
+- End the execution path after a terminal verdict.
+
+### Required local-agent report
+
+Store reusable, non-sensitive evidence under
+`docs/reference/data/smart_money/tradingview_popup/` and reference the tested SHA.
+
+```text
+SMARTMONEY TRADINGVIEW
+HEAD:
+Previous branch/SHA:
+Compile:
+Focused tests:
+Snapshot validator:
+HOSE / HNX / UPCOM:
+>= MA200 / < MA200 / N/A:
+Popup / fallback / keyboard:
+Missing-market dialog: PASS / FAIL / N/A
+Refresh twice:
+Counts/order/state anchors:
+Browser/version:
+Verdict: PASS / FAIL / BLOCKED / REGRESSION
+Action: KEEP / ROLLBACK / STOP
+Evidence:
+```
