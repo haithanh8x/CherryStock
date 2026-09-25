@@ -43,7 +43,7 @@ def _run_all_steps(
         connection=connection,
         ticker_repository=uow.tickers,
         index_repository=uow.indexes,
-        trend_repository=uow.trends,
+        trend_repository=None, # uow.trends
         indicator_repository=uow.indicators,
         smart_money_repository=uow.smart_money,
     )

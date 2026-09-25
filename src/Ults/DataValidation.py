@@ -937,9 +937,9 @@ def persist_data_quality_result(
             f"into {audit_table!r}: {exc}"
         ) from exc
 
-    print(
-        "[DataValidation][AUDIT] "
-        f"validation_id={resolved_validation_id} | pipeline={pipeline_name.strip()} | "
-        f"table={validation_result['table']} | status={validation_result['status']}"
-    )
+    # print(
+    #     "[DataValidation][AUDIT] "
+    #     f"validation_id={resolved_validation_id} | pipeline={pipeline_name.strip()} | "
+    #     f"table={validation_result['table']} | status={validation_result['status']}"
+    # )
     return resolved_validation_id
