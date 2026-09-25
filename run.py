@@ -45,7 +45,7 @@ def _run_all_steps(
         index_repository=uow.indexes,
         trend_repository=None, # uow.trends
         indicator_repository=uow.indicators,
-        smart_money_repository=uow.smart_money,
+        smart_money_repository=None, # uow.smart_money
     )
     print("[daily] ✓ Sync + Data Quality + Indicators + SmartMoney")
     return summary
