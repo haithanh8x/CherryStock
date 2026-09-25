@@ -8,7 +8,7 @@
       "url": "https://github.com/haithanh8x/CherryStock",
       "provider": "github",
       "link_mode": "web",
-      "revision": "132e940b932df5f1760260ad23e012e87f5172c2"
+      "revision": "c8889041c3a1545f45c4e5afcc30c55ff667e46d"
     },
     "viewBox": [
       1390,
@@ -20,7 +20,7 @@
       "id": "daily_orchestrator",
       "type": "backend",
       "label": "Daily Analytics Orchestration",
-      "sublabel": "core UoW · movement post-commit",
+      "sublabel": "core daily UoW only",
       "pos": [
         30,
         80
@@ -37,10 +37,6 @@
         {
           "path": "src/cherrystock/application/services/sync_write_pipeline.py",
           "label": "Canonical daily ordering"
-        },
-        {
-          "path": "src/cherrystock/application/services/movement_daily_pipeline.py",
-          "label": "Post-commit Movement daily"
         }
       ]
     },
@@ -115,8 +111,8 @@
     {
       "id": "price_movement",
       "type": "backend",
-      "label": "Movement Daily Lane",
-      "sublabel": "stale ZigZag · conditional PM",
+      "label": "Movement Weekly Lane",
+      "sublabel": "full universe · weekly + manual",
       "pos": [
         1160,
         80
@@ -127,16 +123,16 @@
       ],
       "sources": [
         {
-          "path": "src/cherrystock/application/services/movement_daily_pipeline.py",
-          "label": "Daily Movement orchestration"
+          "path": "runWeekly.py",
+          "label": "Weekly Movement runner"
         },
         {
-          "path": "docs/architecture/Daily_Incremental_Movement_Pipeline.md",
-          "label": "Daily Movement architecture"
+          "path": "src/cherrystock/application/services/movement_weekly_pipeline.py",
+          "label": "Weekly Movement orchestration"
         },
         {
-          "path": "src/cherrystock/domain/analytics/zigzag/engine.py",
-          "label": "ZigZag domain engine"
+          "path": "docs/architecture/Weekly_Movement_Pipeline.md",
+          "label": "Weekly Movement architecture"
         }
       ]
     },
@@ -785,19 +781,6 @@
       ]
     },
     {
-      "from": "smart_money",
-      "to": "price_movement",
-      "label": "5 · post-commit Movement",
-      "variant": "emphasis",
-      "route": "straight",
-      "fromSide": "right",
-      "toSide": "left",
-      "labelAt": [
-        1145,
-        55
-      ]
-    },
-    {
       "from": "movement_public",
       "to": "movement_character",
       "label": "confirmed swings",
@@ -821,6 +804,19 @@
       "labelAt": [
         1145,
         705
+      ]
+    },
+    {
+      "from": "smart_money",
+      "to": "price_movement",
+      "label": "Movement weekly trigger",
+      "variant": "emphasis",
+      "route": "straight",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [
+        1145,
+        55
       ]
     }
   ]

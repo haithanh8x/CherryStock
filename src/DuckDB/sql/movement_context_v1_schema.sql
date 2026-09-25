@@ -302,6 +302,28 @@ ratios AS (
             ELSE NULL
         END AS CurrentMoveSpeedRatio
     FROM base AS b
+),
+latest_ohlc AS (
+    SELECT
+        Ticker,
+        MAX(Date) AS LatestOHLCDate
+    FROM "CherryMon"."main"."vw_Ticker_OHLC_D"
+    GROUP BY Ticker
+),
+freshness AS (
+    SELECT
+        r.*,
+        l.LatestOHLCDate,
+        (
+            SELECT COUNT(*)
+            FROM "CherryMon"."main"."vw_Ticker_OHLC_D" AS o
+            WHERE o.Ticker = r.Ticker
+              AND o.Date > COALESCE(r.CurrentLegAsOfDate, r.ProfileAsOfConfirmedAtDate)
+              AND o.Date <= l.LatestOHLCDate
+        ) AS MovementAgeTradingDays
+    FROM ratios AS r
+    LEFT JOIN latest_ohlc AS l
+        ON l.Ticker = r.Ticker
 )
 SELECT
     MovementContextConfigId,
@@ -316,6 +338,18 @@ SELECT
     COALESCE(CurrentLegAsOfDate, ProfileAsOfConfirmedAtDate) AS ContextAsOfDate,
     ProfileAsOfConfirmedAtDate,
     CurrentLegAsOfDate,
+    LatestOHLCDate,
+    MovementAgeTradingDays,
+    CASE
+        WHEN LatestOHLCDate IS NULL
+          OR COALESCE(CurrentLegAsOfDate, ProfileAsOfConfirmedAtDate) IS NULL
+            THEN 'UNKNOWN'
+        WHEN MovementAgeTradingDays = 0
+            THEN 'FRESH'
+        WHEN MovementAgeTradingDays <= 5
+            THEN 'AGING'
+        ELSE 'STALE'
+    END AS MovementFreshnessStatus,
 
     CASE
         WHEN MovementCharacter = 'INSUFFICIENT_HISTORY'
@@ -400,7 +434,7 @@ SELECT
     CurrentLastClose,
     ReversalFromCandidatePct
 
-FROM ratios
+FROM freshness
 WHERE COALESCE(CurrentLegAsOfDate, ProfileAsOfConfirmedAtDate) >= EffectiveFrom
   AND (
       EffectiveTo IS NULL

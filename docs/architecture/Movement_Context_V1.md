@@ -139,6 +139,9 @@ persisting a second current-state copy would introduce synchronization/staleness
 - ContextAsOfDate
 - ProfileAsOfConfirmedAtDate
 - CurrentLegAsOfDate
+- LatestOHLCDate
+- MovementAgeTradingDays
+- MovementFreshnessStatus
 - ContextStatus
 
 ### Historical regime / baseline
@@ -350,6 +353,21 @@ coalesce(CurrentLegAsOfDate, ProfileAsOfConfirmedAtDate)
 
 Consumers must not confuse provisional current-leg values with confirmed historical facts.
 
+### Weekly freshness extension
+
+REQ-0036 adds an explicit operational freshness contract without changing movement formulas:
+
+```text
+MovementAgeTradingDays = ticker trading sessions after ContextAsOfDate through LatestOHLCDate
+
+0     → FRESH
+1..5  → AGING
+>5    → STALE
+missing dates → UNKNOWN
+```
+
+This status describes data recency only; it is not a market regime or trading signal.
+
 ## 12. Migration / Compatibility
 
 Forward change:
@@ -453,3 +471,8 @@ Validation: focused tests + MWG local runbook
 Known risk: heuristic thresholds require empirical strategy validation later
 Next owner: None
 ```
+
+
+## 18. Weekly Operational Scheduling
+
+Normal full-universe refresh is owned by `runWeekly.py` under REQ-0036 / ADR-020. The analytical timeframe remains daily; only execution frequency changes. Consumers requiring daily-current movement should gate on `MovementFreshnessStatus = 'FRESH'`.

@@ -42,7 +42,7 @@ def _export(summary: dict[str, object], evidence_dir: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run daily ticker-level incremental ZigZag + Price Movement refresh."
+        description="Run manual/on-demand ticker-level ZigZag + Price Movement refresh."
     )
     parser.add_argument(
         "--ticker",
@@ -100,7 +100,7 @@ def main() -> int:
         progress_callback=_progress,
     )
 
-    print("\n=== Daily Incremental Movement Pipeline ===")
+    print("\n=== Manual / On-Demand Movement Refresh ===")
     for key, value in summary.items():
         if key not in {"plan", "results"}:
             print(f"{key}: {value}")

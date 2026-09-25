@@ -1,6 +1,6 @@
 # ADR-018 — Daily Movement Uses Post-Commit Ticker-Level Incremental Refresh
 
-- **Status:** Accepted
+- **Status:** Superseded for normal scheduling by ADR-020; retained for on-demand recovery semantics
 - **Date:** 2026-09-22
 - **Requirement:** REQ-0034
 
@@ -86,3 +86,8 @@ Trade-offs:
 A true stateful ZigZag bar-advance engine may replace per-ticker full rebuild only after a separate
 requirement proves replay parity with the canonical full-history engine across broad history and
 edge cases.
+
+
+## Supersession
+
+ADR-020 removes automatic full-universe Movement from normal daily execution because the full-history ZigZag path costs about 60 minutes per trading day. Per-ticker recovery/isolation observations in this ADR remain applicable to manual/on-demand refresh.
