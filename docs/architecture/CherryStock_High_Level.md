@@ -3,7 +3,7 @@
 - **Status:** ACTIVE
 - **Owner:** `.github/agents/SolutionArchitect.agent.md`
 - **Visualization tool:** Archify
-- **Mapped runtime revision:** `711b9a582e66e0660966907a82a6e901cd76764d`
+- **Mapped runtime revision:** `0e2d2afc5513e7bbc8409020fccc250b0351c1cf`
 - **Archify source:** `docs/architecture/diagrams/cherrystock-high-level.architecture.json`
 - **Generated HTML:** `docs/architecture/generated/CherryStock_High_Level.html`
 
@@ -60,11 +60,12 @@ run.py
   → ingestion + stage Data Quality
   → calculations (Index / Trend / Indicators / SmartMoney)
   → blocking Data Quality gates
-  → COMMIT
+  → COMMIT core daily transaction
+  → MovementDailyPipelineService
   → exportDuckDB_metadata()
 ```
 
-A blocking Data Quality failure before commit raises and causes the shared `DuckDBUnitOfWork` to roll back the daily write set. The exact operational ordering remains owned by `docs/runbook/Daily_Data_Pipeline.md`.
+A blocking Data Quality failure before commit raises and causes the shared `DuckDBUnitOfWork` to roll back the daily write set. Dataset/source-specific severity policy is owned by Data Quality orchestration; REQ-0035 keeps generic OHLC rules strict while allowing the evidenced Yahoo `VND=X` OHLC anomaly to remain an auditable WARNING instead of a rollback trigger. The exact operational ordering remains owned by `docs/runbook/Daily_Data_Pipeline.md`.
 
 ### Data path
 
@@ -244,6 +245,8 @@ The HTML is a derived presentation artifact. The architectural facts remain gove
 
 - `docs/architecture/Analytics_Calculation_Engines.md`
 - `docs/architecture/Data_Architecture.md`
+- `docs/architecture/Yahoo_Source_Specific_DQ_Policy.md`
+- `docs/adr/ADR-019-yahoo-vndx-source-specific-ohlc-dq-policy.md`
 - `docs/architecture/Indicator_Engine.md`
 - `docs/architecture/SmartMoneyScore.md`
 - `docs/architecture/Chart_Architecture.md`

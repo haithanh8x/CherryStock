@@ -11,16 +11,16 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 13 canonical requirements | 6 DONE · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
+| Requirements | 14 canonical requirements | 6 DONE · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **37** | **10 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
+| **Total** | **38** | **10 DONE · 3 IN_PROGRESS · 2 READY_FOR_DESIGN · 5 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
 
 ### Priority Summary
 
 | Priority | Count | Notes |
 |---|---:|---|
-| P0 | 4 | REQ-0022, REQ-0023, REQ-0024, CS-ARCH-010 |
+| P0 | 5 | REQ-0022, REQ-0023, REQ-0024, REQ-0035, CS-ARCH-010 |
 | P1 | 23 | REQ-0025 through REQ-0034 + 6 Architecture + 7 Harness |
 | P2 | 7 | 2 Architecture + 5 Harness |
 | P3 | 3 | 1 Architecture + 2 Harness |
@@ -77,6 +77,7 @@ Canonical index:
 | REQ-0032 | MovementContext V1 | P1 | **DONE** | None | [[requirements/REQ-0032-movement-context-v1|REQ-0032]] |
 | REQ-0033 | Active Ticker ZigZag + Price Movement Initial Load | P1 | **DONE** | None | [[requirements/REQ-0033-active-ticker-movement-initload|REQ-0033]] |
 | REQ-0034 | Daily Incremental Movement Pipeline | P1 | **DONE** | None | [[requirements/REQ-0034-daily-incremental-movement-pipeline|REQ-0034]] |
+| REQ-0035 | Yahoo VND=X Source-Specific OHLC Data Quality Policy | P0 | **IMPLEMENTED_PENDING_VALIDATION** | TestEngineer | [[requirements/REQ-0035-yahoo-vndx-source-specific-dq-policy|REQ-0035]] |
 
 ## Requirement Delivery Flow
 
@@ -303,6 +304,7 @@ CS-HARNESS-014
 | REQ-0032 MovementContext V1 | REQ-0031 movement profile + active ZigZag current leg + daily OHLC trading dates + ADR-017 |
 | REQ-0033 Active Ticker Movement Initload | `vw_Ticker_Active` + REQ-0027 ZigZag + REQ-0031 Price Movement + REQ-0032 downstream context |
 | REQ-0034 Daily Incremental Movement | REQ-0033 baseline + core daily post-commit boundary + ADR-018 |
+| REQ-0035 Yahoo VND=X Source-Specific DQ | Yahoo diagnostic evidence + generic DataValidation + ADR-019 |
 | REQ-0024 R/S V2.6 | Requires V2.5 evidence/promotion gate before production confidence integration |
 
 ---
@@ -313,13 +315,14 @@ Based on current status and priority, the next actionable queue is:
 
 | Order | Item | Why now |
 |---:|---|---|
-| 1 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
-| 2 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
-| 3 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
-| 4 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
-| 5 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
-| 6 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
-| 7 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
+| 1 | **REQ-0035** | P0 production blocker policy; validate Yahoo VND=X warning severity so normal daily core execution is no longer rolled back by the evidenced upstream anomaly. |
+| 2 | **CS-ARCH-010** | P0 repository-integrity/security hygiene remains TODO; `.env`, workspace file and `__pycache__` are still tracked. |
+| 3 | **REQ-0023** | P0 requirement ready for SolutionArchitect design. |
+| 4 | **REQ-0024** | P0 but logically follows V2.5 evidence/design gate. |
+| 5 | **REQ-0026** | Implementation exists but still needs independent local validation to close. |
+| 6 | **CS-HARNESS-003** | Complete deterministic developer-hook foundation after harness architecture + native Skills. |
+| 7 | **CS-ARCH-001 / 002** | Continue the already-started canonical runtime package and dependency inversion migration. |
+| 8 | **CS-HARNESS-004 / 005** | Define semantic read tools and read/admin security boundary before runtime agents. |
 
 This order is a planning recommendation only; it does not change status in the owning backlog files.
 

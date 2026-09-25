@@ -102,6 +102,7 @@ Execution order:
 - [[REQ-0032-movement-context-v1|REQ-0032 — MovementContext V1]] — **DONE**; TestEngineer PASS / KEEP on 2026-09-21 (13/13 focused tests, migration + MWG validator + idempotency + daily regression PASS, Archify showcase ok=true, DB metadata refreshed).
 - [[REQ-0033-active-ticker-movement-initload|REQ-0033 — Active Ticker ZigZag + Price Movement Initial Load]] — **DONE**; TestEngineer PASS / KEEP on 2026-09-22 across 349 active tickers, with 0 OHLC gaps, 0 structural mismatches, 349/349 MovementContext coverage, idempotent row counts, and daily regression 3/3 PASS.
 - [[REQ-0034-daily-incremental-movement-pipeline|REQ-0034 — Daily Incremental Movement Pipeline]] — **DONE**; local TestEngineer PASS / KEEP on 2026-09-22 (39/39 focused tests, 349/349 structural coverage, zero stale/parity/geometry/profile errors, NOOP/idempotency PASS, Archify 9/9). Full `run.py` live path was blocked before core commit by a pre-existing Yahoo DQ error, recorded as a separate operational blocker.
+- [[REQ-0035-yahoo-vndx-source-specific-dq-policy|REQ-0035 — Yahoo VND=X Source-Specific OHLC Data Quality Policy]] — **IMPLEMENTED_PENDING_VALIDATION**; preserves generic OHLC rules, downgrades only evidenced `VND=X` Yahoo envelope anomalies to auditable WARNING, and keeps all other Yahoo/non-OHLC failures blocking.
 
 Validation:
 
@@ -109,3 +110,11 @@ Validation:
     docs/runbook/ZigZag_Price_Movement_Reconciliation.md
     docs/runbook/Active_Ticker_Movement_Initload.md
     docs/runbook/Daily_Incremental_Movement_Pipeline.md
+
+
+## Yahoo source-specific Data Quality
+
+- [[REQ-0035-yahoo-vndx-source-specific-dq-policy|REQ-0035 — Yahoo VND=X Source-Specific OHLC Data Quality Policy]]
+- Architecture: [[../../architecture/Yahoo_Source_Specific_DQ_Policy|Yahoo Source-Specific DQ Policy]]
+- ADR: [[../../adr/ADR-019-yahoo-vndx-source-specific-ohlc-dq-policy|ADR-019]]
+- Runbook: [[../../runbook/Yahoo_VNDX_Source_Specific_DQ_Policy|Yahoo VND=X Source-Specific DQ Policy]]
