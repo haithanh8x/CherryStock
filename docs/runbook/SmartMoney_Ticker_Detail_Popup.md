@@ -1,201 +1,216 @@
-# SmartMoney Ticker Detail Popup — triển khai và nghiệm thu
+# SmartMoney popup fixes & ticker timing — local deployment runbook
 
 Status: IMPLEMENTED_PENDING_VALIDATION
-Implementation commit: fc7f5bb23ea0d8d7302704fd24dc0a18b1eee231
-Branch: feature/smartmoney-ticker-detail
+Implementation commit: f224b8ac6ae99476abb36639cdb41986677ac362
+Deployment branch: feature/smartmoney-popup-fixes-timing
+Runbook location: main
 Entry: src/webapp/NiceGUI_chart.py → SmartMoney
 Next owner: local TestEngineer
 
-## 1. Mục tiêu / phạm vi
+## 1. Accepted backlog and scope
 
-Một click ticker mở popup bên trong CherryStock gồm:
-- TradingView Advanced Chart cùng ticker/sàn, có link mở website đầy đủ.
-- R/S Price Ladder và chi tiết mức giá, dùng engine/renderer hiện hữu.
-- Đủ 21 trường SmartMoney, 24 trường Movement Profile, 44 trường Movement Context.
-- Tooltip tiếng Việt có ý nghĩa, đơn vị và ví dụ minh họa; hover/focus hỗ trợ bàn phím.
-- Ticker hover/active/focus dùng theme; 150ms ease-out; không nhảy layout; reduced motion.
+1. Replace the extra sandboxed srcdoc TradingView wrapper with the official
+   external-embedding loader mounted into a live 620px DOM container. Preserve
+   qualified Vietnamese symbol, attribution, locked symbol and direct link.
+2. Use R/S-style tooltip background, border, padding, type and layout:
+   bold title, wrapped explanation, separate illustrative example; hover/focus.
+3. All ticker links bold; BUY positive, HOLD warning, SELL negative, unknown muted.
+   Hover/active/focus use the same action color.
+4. Remove MA200 column headings and segmentation from the displayed state list.
+5. Remove commas between ticker links. Keep all rows, confidence order and anchors.
+6. Measure read connections, each public view, market lookup, R/S, server rendering
+   and TradingView lifecycle; export evidence for a later tuning decision.
 
-Không chạy migration, initload, run.py, full-universe/backtest hoặc sửa công thức.
-Popup chỉ đọc dữ liệu. Không gộp ba view thành tín hiệu mua/bán mới.
-Controls bên trong iframe do TradingView quản lý; tooltip mới áp dụng UI CherryStock.
+No migration, initload, daily pipeline, full-universe test, cache or query tuning.
+The state builder's MA200 diagnostics remain available; the UI shows block.rows.
+R/S engine and three public view definitions/calculations are unchanged.
+The opaque-origin sandbox is a suspected integration failure point, not a locally
+confirmed production root cause. Real candles must be verified below.
 
-PR #22 chưa merge ở thời điểm bắt đầu thay đổi. Nhánh này xuất phát từ main
-fc5f2370f4856e664495ca04602090ceb87566b0 và bao gồm phần ticker link/market enrichment
-của PR #22. Kiểm tra/merge nhánh này như một thay đổi đầy đủ; không cần merge PR #22 trước.
+## 2. Read / allowed repair scope
 
-## 2. Đọc trước khi chạy / allowed repair scope
+Read repository governance, GeneralCoding/TestEngineer agents, Python/testing
+instructions, regression-testing skill and Python_Execution_Conventions.md.
+Allowed files: src/webapp/{smart_money_tab,ticker_detail_dialog,ticker_detail_data,
+ticker_detail_trace,tradingview_widget}.py; src/Presentation/theme.py;
+scripts/profile_ticker_detail.py; corresponding focused tests;
+docs/architecture/{Chart_Architecture,theme}.md; this runbook.
+Do not alter engines, DB schema, calculations or unrelated pages.
+Two focused repair attempts maximum; never rerun an unchanged failure.
 
-- .github/copilot-instructions.md
-- .github/agents/TestEngineer.agent.md
-- .github/instructions/testing.instructions.md
-- .github/instructions/python.instructions.md
-- .github/skills/regression-testing/SKILL.md
-- docs/development/Python_Execution_Conventions.md
-- docs/architecture/Chart_Architecture.md — SmartMoney ticker detail popup
+## 3. Sync safely
 
-Chỉ sửa trong phạm vi:
-src/webapp/{smart_money_tab,tradingview_links,smart_money_snapshot_query,ticker_detail_contract,ticker_detail_data,ticker_detail_dialog}.py;
-src/Presentation/theme.py;
-tests/test_{ticker_detail_contract,ticker_detail_dialog,tradingview_links,smart_money_snapshot_query}.py;
-docs/architecture/{Chart_Architecture,theme}.md; runbook này.
-
-Không sửa analytics engines/schema hoặc unrelated UI để làm smoke test chạy.
-
-## 3. Safe sync
-
-Từ root checkout CherryStock; dùng Python environment đang chạy được NiceGUI.
-Dừng đúng process NiceGUI hiện tại, không kill mọi python.exe.
+Use the existing working NiceGUI Python environment, from repository root.
+Stop only the current NiceGUI process.
 
 ~~~powershell
 git status --short
-git branch --show-current
 $previousBranch = git branch --show-current
 $previousCommit = git rev-parse HEAD
 git fetch origin
 ~~~
 
-Nếu có thay đổi ngoài phạm vi: BLOCKED/STOP; không stash/reset tự động.
-Nếu chưa có local feature branch:
+If tree is dirty: preserve changes, BLOCKED/STOP; no automatic stash/reset.
+Before this feature PR merges, deploy its branch (the runbook itself is on main):
 
 ~~~powershell
-git switch --track origin/feature/smartmoney-ticker-detail
+git switch --track origin/feature/smartmoney-popup-fixes-timing
 ~~~
 
-Nếu đã có:
+If the local branch already exists:
 
 ~~~powershell
-git switch feature/smartmoney-ticker-detail
-git pull --ff-only origin feature/smartmoney-ticker-detail
+git switch feature/smartmoney-popup-fixes-timing
+git pull --ff-only origin feature/smartmoney-popup-fixes-timing
 ~~~
 
-Ghi lại git rev-parse HEAD. Sau merge, dùng main + pull --ff-only origin main.
-Không kiểm tra main cũ rồi báo PASS cho feature branch.
-
-## 4. Compile + tests hẹp
+After this feature PR merges, use:
 
 ~~~powershell
-python -m py_compile src\webapp\NiceGUI_chart.py src\webapp\smart_money_tab.py src\webapp\tradingview_links.py src\webapp\smart_money_snapshot_query.py src\webapp\ticker_detail_contract.py src\webapp\ticker_detail_data.py src\webapp\ticker_detail_dialog.py src\Presentation\theme.py
-python -m pytest tests\test_ticker_detail_contract.py tests\test_ticker_detail_dialog.py tests\test_tradingview_links.py tests\test_smart_money_snapshot_query.py tests\test_smart_money_state_flow.py -q
+git switch main
+git pull --ff-only origin main
 ~~~
 
-Dự kiến 25 passed, exit=0:
-- 89 fields có catalog diễn giải/ví dụ.
-- Phần trăm thập phân, score, ratio, giá không lẫn đơn vị; NULL không thành 0.
-- View allowlist, bound ticker parameter, isolation MWG/FPT, latest mỗi cấu hình.
-- Widget khóa symbol, giữ attribution.
-- Dựng popup NiceGUI và xóa iframe khi đóng.
-- Kết quả MWG tải chậm không ghi đè popup FPT mới.
-- Regression 16 cases ticker URL, snapshot query, state flow.
+Confirm git rev-parse HEAD includes implementation f224b8ac6ae99476abb36639cdb41986677ac362.
+Do not test an older main and report a verdict for this fix.
+For reference, the original popup PR #23 merged as 01093ac.
 
-Collection/import failure: phân loại lỗi environment/import, không tự gọi REGRESSION.
-Thiếu nicegui: dùng environment web hiện hữu; dependency đã khai báo trong
-pyproject.toml [project.optional-dependencies].web. Không tự nâng phiên bản toàn project.
-
-## 5. Dữ liệu thật, phạm vi 1 ticker trước
-
-Invocation: chạy từ repository root. Lệnh dưới bootstrap src rõ ràng giống entry
-point NiceGUI_chart.py, không yêu cầu biến PYTHONPATH toàn máy.
+## 4. Compile and focused developer regression
 
 ~~~powershell
-python scripts\validate_smart_money_ui_snapshot.py
-python -c "import sys; sys.path.insert(0,'src'); from webapp.ticker_detail_data import load_ticker_details; d=load_ticker_details('MWG'); print('ticker=',d['ticker'],'market=',d['market']); print('sections=',{k:len(v) for k,v in d['sections'].items()}); print('errors=',d['errors']); print('ladder=',None if d['ladder'] is None else (d['ladder'].ticker,str(d['ladder'].as_of_date),d['ladder'].current_price))"
+python -m py_compile src\webapp\smart_money_tab.py src\webapp\ticker_detail_dialog.py src\webapp\ticker_detail_data.py src\webapp\ticker_detail_trace.py src\webapp\tradingview_widget.py src\Presentation\theme.py scripts\profile_ticker_detail.py
+python -m pytest tests\test_ticker_detail_contract.py tests\test_ticker_detail_dialog.py tests\test_ticker_detail_trace.py tests\test_ticker_detail_data_timing.py tests\test_smart_money_ticker_presentation.py tests\test_profile_ticker_detail.py tests\test_tradingview_links.py tests\test_smart_money_snapshot_query.py tests\test_smart_money_state_flow.py -q
 ~~~
 
-Kỳ vọng: đúng MWG, ladder MWG, không có lỗi nguồn nếu views đã triển khai.
-Không có record → UI “Chưa có dữ liệu”; missing view/query error → panel báo lỗi
-và server log, các panel khác vẫn phải hoạt động. Không tự tạo dữ liệu giả.
+Expected: 33 cases, exit 0. Collection failure is an import/environment blocker,
+not a product regression. Use existing web dependencies, do not upgrade the project.
 
-## 6. Browser smoke (Chrome/Edge thường, tối đa 15 phút)
+Developer evidence: 33 tests ran with in-memory module collection, actual NiceGUI
+components and DuckDB fixtures; production DB/engine boundaries stubbed.
+Python source compilation and node --check for mount JavaScript succeeded.
+Headless browser smoke was BLOCKED: installed Playwright lacked Chromium.
+No real TradingView candles or production latency measured in that environment.
+
+## 5. Backend timing — baseline, then call hotspots
+
+Run once with 3 tickers × 3 samples. Do not run the full universe.
 
 ~~~powershell
+python scripts\profile_ticker_detail.py --tickers MWG SHS ACV --repeat 3
+$baselineExit = $LASTEXITCODE
+python scripts\profile_ticker_detail.py --tickers MWG --repeat 1 --profile
+$profileExit = $LASTEXITCODE
+~~~
+
+If the baseline fails, inspect its bounded evidence and stop before profiling;
+do not proceed through a broken import or DB connection. A nonzero code can mean
+a partial source error; CSV is still exported after handled runtime errors.
+
+Output under docs/reference/data/smart_money/ticker_detail_popup/:
+- stages_baseline.csv: per request/sample/stage, status, duration and elapsed_ms.
+- summary_baseline.csv: first sample, median, nearest-rank p95, max, error count.
+- stages_profiled.csv / summary_profiled.csv: separate instrumented measurements.
+- python_hotspots.csv: top 100 cumulative call sites per profiled sample,
+  call counts, self_ms, cumulative_ms; filenames redacted to repo-relative/basename.
+
+Same-mode reruns overwrite those CSVs; preserve the first evidence before rerunning.
+First sample is merely first in process, not guaranteed cold DB/OS cache.
+With only 3 samples p95 equals the maximum; it is not a production SLA estimate.
+cProfile changes latency: use baseline for timing, profiled data only to locate
+expensive calls, especially R/S source loaders and DuckDB execute.
+No raw data records, SQL text, credentials or full database are exported.
+
+## 6. Popup/browser timing and visual smoke (maximum 15 minutes)
+
+~~~powershell
+$env:CHERRYSTOCK_TICKER_TRACE = "1"
 python src\webapp\NiceGUI_chart.py
 ~~~
 
-Mở http://127.0.0.1:8081 → SmartMoney.
+Open http://127.0.0.1:8081 → SmartMoney in normal Chrome/Edge.
 
-1. Hover ticker: pointer + gạch chân + nền nhạt; không đổi độ đậm/kích thước/vị trí.
-   Hai mã đầu mỗi bucket vẫn bold. Dừng khoảng 400ms hiện tooltip.
-2. Tab tới ticker: focus ring rõ; Enter mở popup. Escape đóng và trả tương tác
-   về danh sách. Tooltip field mở bằng focus; blur/Escape ẩn tooltip.
-3. Click MWG: popup có HOSE:MWG, widget đúng mã, R/S và ba nhóm view đúng MWG.
-   Chart không cho đổi sang ticker khác bên trong widget.
-4. R/S: đối chiếu cùng ticker với tab R/S mặc định (ngày mới nhất, cluster 1%).
-   So sánh as_of_date, current_price, S1/R1, Strength và Reward/Risk.
-   Marker và chi tiết mức giá có tooltip giải nghĩa/ví dụ.
-5. SmartMoney: kiểm tra Date, ModelCode, ModelVersion; đủ 21 fields.
-   Profile: đủ 24 fields, cấu hình, AsOfConfirmedAtDate.
-   Context: đủ 44 fields, ContextAsOfDate, ProfileAsOfConfirmedAtDate,
-   CurrentLegAsOfDate; nhịp hiện tại ghi rõ là tạm thời.
-   Nếu nhiều cấu hình, hiện riêng từng dòng latest, không ngầm LIMIT 1.
-6. Đối chiếu giá trị với public view cùng Ticker/config/date.
-   Movement 0.1 → 10%; ConfidenceScore 80 → 80; DirectionalBias 0.3 → 0.3;
-   R/S Dist 2.5 đã là 2.5%, không thành 250%; NULL → “—”.
-   Tooltip ghi rõ ví dụ minh họa, không nhầm với giá hiện tại.
-7. Đóng MWG → mở SHS (HNX) → ACV (UPCOM) và một ticker MA200 N/A nếu có.
-   Widget/R/S/ba view thay đồng bộ. Đóng/mở hai mã nhanh không bị kết quả
-   trả về chậm của mã trước ghi đè.
-8. Ctrl/Cmd-click link đã có sàn vẫn mở trực tiếp TradingView.
-   Link “Mở trên TradingView” trong popup luôn sẵn. Nếu widget lỗi mạng/không hỗ trợ
-   mã, link ngoài vẫn mở đúng mã; analytics local vẫn xem được.
-9. Mã thiếu sàn nếu có: chọn HOSE/HNX/UPCOM trong popup; chỉ chart thay đổi,
-   không sửa metadata DB. Nếu không có case thật: ghi N/A, không sửa DB production.
-   Có thể dùng fixture/mock trong tests và ghi rõ đó là mock.
-10. Refresh danh sách hai lần: counts/MA200/state anchors/order giữ đúng.
-    Popup không tự refresh dữ liệu đang mở: đóng/mở lại để tải snapshot mới.
-11. Desktop ~1440px: chart trái + ladder phải. Viewport 420px: xếp dọc, trường
-    đọc được, không tràn ngang trang. Bật reduced-motion: ticker không transition.
-    Chạy light/dark bằng CHERRYSTOCK_THEME theo runbook theme; focus/text đủ rõ.
-12. Đóng popup: widget iframe được tháo. Dừng server smoke.
-    Không đánh đồng mock với TradingView render thật.
+1. In each state: one wrapping list, all ticker links bold; no >= MA200,
+   < MA200, MA200 N/A headings or comma separators. Total coverage and
+   confidence order must match the snapshot; anchors and Refresh still work.
+2. Check BUY/HOLD/SELL against row data: green/amber/red theme tokens respectively.
+   Hover shows same-color tint and underline, keyboard focus clear; no layout shift.
+   Unknown action uses muted; action name is available in the hint.
+3. Open MWG, wait at most 20 seconds after the widget starts. Observe actual candles
+   and HOSE:MWG (not merely an iframe event). Check R/S and all three local panels.
+   Repeat SHS/HNX and ACV/UPCOM once each. If vendor says unsupported/no data,
+   record the exact displayed reason; do not claim candle-render PASS for that symbol.
+4. Close and reopen MWG three times, one at a time. Record observed click-to-content
+   and click-to-candles duration; this includes browser transport/paint, unlike CLI.
+5. Hover/focus one ticker, one field name/value and one R/S marker:
+   same tooltip background/border/padding/text scale, title/explanation/example
+   hierarchy, wrapping within viewport. Blur hides; Escape closes tooltip/popup.
+6. Rapidly open another ticker / close during loading: no stale overwrite, no old
+   widget remains. Ctrl/Cmd-click opens qualified external TradingView directly.
+7. Block only the s3.tradingview.com loader in browser DevTools for one attempt:
+   visible failure/fallback link, analytics still usable. Restore the block immediately.
+   Timeout is UNKNOWN, not proof of failure or success of candle/data rendering.
+8. 1440px: chart/ladder side by side; 420px: stacked, no page horizontal overflow.
+   Check dark/light and reduced motion with existing theme environment setting.
+9. Inspect timing.jsonl; each activation has its own request_id and ticker.
+   Server spans: *.connect, *.execute, *.fetch_map, *.close, market.query,
+   rs.total, data.total, ui.data_wait, ui.render_build, ui.server_total.
+   Browser events: tv.mount, tv.script_load, tv.iframe_created, tv.iframe_load,
+   or tv.script_error / tv.timeout. tv.mount_error indicates JS/transport failure.
+   Errors in one panel must not suppress other panels or their timing.
+10. Stop the smoke server and turn off tracing:
 
-Không cần mọi ticker: MWG + SHS + ACV + một N/A là đủ.
-TradingView có thể khác nguồn/ngày/đơn vị so với CherryStock; so đúng ticker/sàn,
-không yêu cầu hai nguồn có giá bằng nhau tuyệt đối.
+~~~powershell
+Remove-Item Env:CHERRYSTOCK_TICKER_TRACE
+~~~
+
+JSONL appends only while the environment variable equals 1.
+Archive an existing timing.jsonl before a new comparison session; no automatic deletion.
+Do not leave instrumentation enabled for routine indefinite operation.
+
+Interpretation:
+- ui.data_wait includes worker scheduling + data.total, not network widget load.
+- ui.render_build measures Python component construction, not browser paint.
+- ui.server_total starts at server handler entry, not the user's physical click.
+- Browser duration_ms starts at its own widget mount; clock=browser_since_mount.
+  Server elapsed_ms is receipt time from request start. Do not subtract clocks.
+- iframe_load is a document lifecycle event, not candle readiness or feed readiness.
+- Nested totals/cumulative cProfile times overlap: do not sum them.
+- Long *.connect suggests connection/setup overhead; long *.execute points to that
+  view/query; rs.total plus hotspot CSV identifies engine/provider call cost;
+  long tv.* after quick backend suggests browser/network/vendor investigation.
+  These are follow-up directions only; do not tune in this runbook.
 
 ## 7. Verdict / rollback / STOP
 
-PASS: compile/tests + dữ liệu thật + browser render đã quan sát, đủ tooltip và
-R/S đối chiếu đúng. KEEP; handoff PR review/merge; STOP.
-FAIL/REGRESSION: thay đổi làm sai ticker, đơn vị, query, mất dữ liệu hoặc lỗi popup.
-BLOCKED: thiếu dependency/view/quyền đọc/mạng widget/browser không quan sát được.
-Không ghi PASS toàn bộ nếu widget/popup chưa quan sát được.
+PASS only after actual browser charts, UI acceptance and local data checks succeed.
+KEEP and STOP; do not start tuning without an evidence-backed next task.
+FAIL/REGRESSION if ticker/action/color/coverage wrong, popup breaks or timings absent.
+BLOCKED if dependency, DB, browser or vendor/network prevents proving the behavior.
+Do not report whole feature PASS from the 33 mocked/component checks alone.
 
-Sau FAIL/BLOCKED: dừng đúng server; với working tree sạch chuyển lại branch/SHA
-đã lưu. Detached checkout: git switch --detach $previousCommit.
-Không git reset --hard, không force push; không rollback DB vì không có DB writes.
-Tối đa hai sửa chữa hẹp có bằng chứng mới, không chạy lại lỗi y nguyên.
-Sau verdict kết thúc, không mở rộng sang giả thuyết khác.
+On FAIL/BLOCKED stop server, preserve logs, return to the recorded clean branch:
+git switch $previousBranch; if originally detached, git switch --detach $previousCommit.
+No reset --hard, force push or DB rollback. After a merged release, use a reviewed
+revert commit if rollback is needed. Keep evidence under docs/reference/data/**.
 
-## 8. Evidence / handoff
-
-Developer verification of implementation commit:
-25 pytest cases passed with in-memory source collection, real DuckDB fixtures,
-and real NiceGUI component construction. UI DB/engine boundary was stubbed;
-normal checkout collection, production DB, external widget/browser remain local gates.
-Environment here was Python 3.12, not the user's Python 3.13 runtime.
-One pytest assertion-rewrite warning for preloaded anyio; no failing case.
-All source writes were direct GitHub writes.
-
-Lưu bằng chứng an toàn dưới docs/reference/data/smart_money/ticker_detail_popup/.
-Không đưa token, thông tin bí mật hoặc database dump vào evidence.
+Local agent report:
 
 ~~~text
-SMARTMONEY TICKER DETAIL
-HEAD / Branch:
+SMARTMONEY POPUP FOLLOW-UP
+HEAD / branch:
 Python / NiceGUI / Browser:
-Compile:
-25 focused tests:
-Snapshot / ticker counts:
-TradingView HOSE/HNX/UPCOM:
-R/S vs existing tab:
-SmartMoney 21 / Profile 24 / Context 44:
-Units / NULL / separate dates / config identity:
-Hover / focus / Enter / Escape / reduced motion:
-Missing market: PASS / FAIL / N/A
-Partial error / empty view:
-Rapid ticker switching / close cleanup:
-Desktop / 420px / dark / light:
-Verdict: PASS / FAIL / BLOCKED / REGRESSION
-Action: KEEP / ROLLBACK / STOP
-Evidence:
+Compile / 33 focused tests:
+Ticker coverage/order / bold / action colors / no MA200 / no commas:
+Tooltip R/S appearance / hover / focus:
+Actual candles MWG / SHS / ACV:
+Partial errors / close / rapid switch / external link:
+Baseline exit / profile exit:
+Slowest non-overlapping backend stages per ticker:
+Top R/S call sites (self vs cumulative):
+Observed click-to-content / click-to-candles:
+Browser tv events / errors:
+Desktop / 420px / themes:
+Verdict: PASS | FAIL | BLOCKED | REGRESSION
+Action: KEEP | ROLLBACK | STOP
+Evidence paths:
 ~~~
