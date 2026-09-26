@@ -103,8 +103,11 @@ distance percent units. Movement fractions are formatted as percent (0.1 → 10%
 scores stay 0–100; DirectionalBias remains a signed ratio, not a return.
 Provisional current-leg data are clearly distinguished from confirmed profile data.
 
-The widget runs in a sandboxed srcdoc iframe with symbol changes disabled, retaining
-TradingView attribution. It receives only the exchange-qualified symbol and chart
+The widget uses the official external-embedding script mounted as a real script
+node into a live, explicitly sized (620px) DOM container after dialog render.
+The vendor creates its own cross-origin iframe; there is no extra srcdoc sandbox
+with an opaque origin around it. Symbol changes are disabled and TradingView
+attribution is retained. Script failure/20s timeout has a visible fallback link. It receives only the exchange-qualified symbol and chart
 settings; CherryStock analytics are not sent to TradingView. A direct external
 link remains visible when the widget is unavailable. TradingView owns its internal
 controls/tooltips; CherryStock owns hints on its surrounding UI and every rendered
@@ -117,3 +120,24 @@ introduced; existing analytics topology remains unchanged.
 
 Deployment and independent validation:
 `docs/runbook/SmartMoney_Ticker_Detail_Popup.md`.
+
+### Ticker diagnostics and UI follow-up
+
+The state block now renders its complete confidence-ranked rows in a single wrapping
+list; no MA200 headings/separators are shown. Each ticker is bold and colored by
+its own TradeAction. Snapshot/builder calculations and coverage are unchanged.
+
+Optional CHERRYSTOCK_TICKER_TRACE=1 emits request-correlated JSONL under
+docs/reference/data/smart_money/ticker_detail_popup/timing.jsonl. Spans distinguish
+each view's connection, execute, fetch/map and close, market lookup, R/S total,
+worker wait, server render build, and TradingView script/iframe lifecycle.
+Browser durations use performance.now since widget mount; server elapsed_ms
+uses its own perf_counter. Never add nested/inclusive spans or mix these clocks.
+iframe_load means the document loaded, not that candles or market data are ready.
+
+scripts/profile_ticker_detail.py calls the production read-only loader with
+bounded tickers/repetitions and exports baseline stage/summary CSV. --profile
+adds separate Python cumulative/self-time hotspot evidence for R/S subcalls;
+it incurs measurement overhead and is not a latency baseline.
+No cache, query tuning, provider selection or engine calculation changes are
+included before real measurements establish the bottleneck.

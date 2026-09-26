@@ -63,47 +63,30 @@ _DETAIL_CLICK_JS = """(event) => {
 }"""
 
 
-def _render_ticker_links(rows: list[dict], show_detail, *, muted: bool = False) -> None:
+def _render_ticker_links(rows: list[dict], show_detail) -> None:
     with ui.row().classes("w-full items-baseline gap-x-1 gap-y-0 flex-wrap"):
-        for index, row in enumerate(rows):
+        for row in rows:
             ticker = str(row.get("Ticker") or "").strip().upper()
             market = row.get("Market")
             url = tradingview_chart_url(ticker, market)
             async def open_detail(_event, selected=ticker):
                 await show_detail(selected)
-            if index:
-                ui.label(",").classes("text-xs")
             if url:
                 element = ui.link(ticker, url, new_tab=True).props(
                     'rel="noopener noreferrer"'
                 ).on("click", open_detail, js_handler=_DETAIL_CLICK_JS)
             else:
                 element = ui.button(ticker, on_click=open_detail).props("flat dense no-caps")
-            element.classes("cs-ticker-link " + ("font-bold" if index < 2 else "font-normal"))
+            action = str(row.get("TradeAction") or "").strip().upper()
+            color = _action_color(action)
+            element.classes("cs-ticker-link font-bold").style(
+                f"--ticker-color:{color};--ticker-hover:{with_alpha(color, 0.10)};"
+                f"--ticker-active:{with_alpha(color, 0.18)};"
+            )
             hint(element, (
-                f"{market or 'Chưa rõ sàn'}:{ticker} · Mở popup TradingView, R/S và thông tin ticker. "
+                f"{market or 'Chưa rõ sàn'}:{ticker} · {action or 'Chưa có hành động'} · Mở popup TradingView, R/S và thông tin ticker. "
                 "Ví dụ: HOSE:MWG. Ctrl/Cmd-click liên kết mở TradingView trực tiếp."
             ))
-
-
-def _render_ticker_bucket(title: str, count: int, rows: list[dict], show_detail) -> None:
-    with ui.column().classes(
-        "w-full min-w-0 gap-1.5 rounded-xl border p-3 "
-        f"bg-[{THEME['surface_alt']}] border-[{THEME['border']}]"
-    ):
-        with ui.row().classes("w-full items-center justify-between gap-2"):
-            hint(ui.label(title).classes(f"text-xs font-bold text-[{THEME['text']}]"),
-                 "So sánh giá đóng cửa với MA200. Ví dụ: Close=110, MA200=100 nằm trong >= MA200; thiếu MA200 nằm ở N/A.")
-            hint(ui.label(str(count)).classes(
-                f"text-xs font-bold text-[{THEME['primary']}]"
-            ), "Số ticker trong nhóm ở snapshot hiện tại. Ví dụ: 24 nghĩa có 24 mã.")
-
-        if rows:
-            _render_ticker_links(rows, show_detail)
-        else:
-            ui.label("Không có ticker").classes(
-                f"text-xs italic text-[{THEME['muted']}] py-1"
-            )
 
 
 def _render_state_block(block: dict, show_detail) -> None:
@@ -150,29 +133,7 @@ def _render_state_block(block: dict, show_detail) -> None:
                 )
                 return
 
-            with ui.element("div").classes(
-                "grid grid-cols-1 lg:grid-cols-2 gap-3 w-full"
-            ):
-                _render_ticker_bucket(
-                    ">= MA200",
-                    int(block["above_ma200_count"]),
-                    block["above_ma200_rows"],
-                    show_detail,
-                )
-                _render_ticker_bucket(
-                    "< MA200",
-                    int(block["below_ma200_count"]),
-                    block["below_ma200_rows"],
-                    show_detail,
-                )
-
-            unavailable_count = int(block.get("ma200_unavailable_count", 0))
-            if unavailable_count > 0:
-                with ui.row().classes("w-full items-start gap-2 mt-2 flex-wrap"):
-                    hint(ui.label(f"MA200 N/A · {unavailable_count}").classes(
-                        f"text-[10px] font-semibold text-[{THEME['muted']}]"
-                    ), "Thiếu Close hoặc MA200 nên chưa phân nhóm được. Ví dụ: cổ phiếu mới chưa đủ lịch sử MA200.")
-                    _render_ticker_links(block["ma200_unavailable_rows"], show_detail, muted=True)
+            _render_ticker_links(block["rows"], show_detail)
 
 
 def _render_state_flow_links(container, blocks: list[dict]) -> None:
@@ -196,7 +157,7 @@ def _render_state_flow_links(container, blocks: list[dict]) -> None:
 
 
 def smart_money_tab_content() -> None:
-    """Render SmartMoney MarketState flow with MA200 detail segmentation."""
+    """Render confidence-ranked tickers by MarketState and TradeAction."""
     detail_popup = TickerDetailDialog()
     latest_date_label: ui.label
     total_tickers_label: ui.label
@@ -213,7 +174,7 @@ def smart_money_tab_content() -> None:
                         f"text-lg font-bold text-[{THEME['text']}]"
                     ), "Các nhóm trạng thái dòng tiền ở snapshot mới nhất. Ví dụ: bấm ACCUMULATION để tới các mã tích lũy.")
                     ui.label(
-                        "Latest snapshot · MarketState / TradeAction · MA200 position"
+                        "Latest snapshot · MarketState / TradeAction"
                     ).classes(f"text-xs text-[{THEME['muted']}]")
             refresh_button = ui.button("Refresh", icon="refresh").props(
                 "outline dense no-caps"
