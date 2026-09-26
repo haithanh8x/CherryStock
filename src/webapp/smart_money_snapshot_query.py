@@ -22,6 +22,17 @@ def latest_smart_money_snapshot_sql() -> str:
             FROM {SMART_MONEY_VIEW}
             WHERE ModelCode = ?
         ),
+        market_ranked AS (
+            -- Current listing metadata for external navigation, not historical analytics.
+            SELECT
+                UPPER(TRIM(Ticker)) AS Ticker,
+                Market,
+                ROW_NUMBER() OVER (
+                    PARTITION BY UPPER(TRIM(Ticker))
+                    ORDER BY Date DESC NULLS LAST, Market ASC NULLS LAST
+                ) AS rn
+            FROM "CherryMon"."main"."raw_stock_fa"
+        ),
         ma200 AS (
             SELECT
                 iv.Ticker,
@@ -51,7 +62,8 @@ def latest_smart_money_snapshot_sql() -> str:
             v.TradeAction,
             v.TradeActionConfidenceScore,
             o.Close,
-            m.MA200
+            m.MA200,
+            listing.Market
         FROM {SMART_MONEY_VIEW} AS v
         INNER JOIN latest AS d
             ON d.Date = v.Date
@@ -61,6 +73,9 @@ def latest_smart_money_snapshot_sql() -> str:
         LEFT JOIN ma200 AS m
             ON m.Ticker = v.Ticker
            AND m.Date = v.Date
+        LEFT JOIN market_ranked AS listing
+            ON listing.Ticker = UPPER(TRIM(v.Ticker))
+           AND listing.rn = 1
         WHERE v.ModelCode = ?
         ORDER BY v.MarketState, v.TradeActionConfidenceScore DESC, v.Ticker
     """
