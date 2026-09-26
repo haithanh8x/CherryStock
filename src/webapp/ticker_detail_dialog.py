@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import html
-import json
 import logging
+from time import perf_counter
 
 from nicegui import run, ui
-from Presentation.theme import THEME, is_dark_theme
+from Presentation.theme import THEME
 from Chart.levelLadderChart import build_level_ladder_chart_options, ladder_rows
 from webapp.ticker_detail_contract import (
     FIELDS, FIELD_HINTS, VIEW_LABELS, DATE_FIELDS, PARTITIONS,
@@ -14,8 +14,21 @@ from webapp.ticker_detail_contract import (
 )
 from webapp.ticker_detail_data import load_ticker_details
 from webapp.tradingview_links import tradingview_chart_url
+from webapp.tradingview_widget import render_tradingview
+from webapp.ticker_detail_trace import TickerTrace
 
 LOGGER = logging.getLogger(__name__)
+
+
+def tooltip_html(title: str, text: str) -> str:
+    """Shared compact R/S-style title, explanation and example layout."""
+    marker = "Ví dụ minh họa:" if "Ví dụ minh họa:" in text else "Ví dụ:"
+    meaning, separator, example = text.partition(marker)
+    content = f'<div style="font-weight:700;margin-bottom:6px">{html.escape(title)}</div>'
+    content += f'<div>{html.escape(meaning.strip())}</div>'
+    if separator:
+        content += '<div style="margin-top:6px"><b>Ví dụ:</b> ' + html.escape(example.strip()) + '</div>'
+    return content
 
 
 def hint(element, text: str):
@@ -23,7 +36,14 @@ def hint(element, text: str):
     element.props('tabindex=0')
     element._props["aria-label"] = text
     with element:
-        tooltip = ui.tooltip(text).props("delay=400").classes("max-w-sm whitespace-normal")
+        tooltip = ui.tooltip().props("delay=400").style(
+            f"background:{THEME['tooltip_background']};color:{THEME['text']};"
+            f"border:1px solid {THEME['border']};border-radius:4px;padding:10px;"
+            "max-width:min(360px,calc(100vw - 24px));white-space:normal;"
+            "font:14px/1.5 sans-serif;box-shadow:1px 2px 10px rgba(0,0,0,0.2)"
+        )
+        with tooltip:
+            ui.html(tooltip_html(str(getattr(element, "text", "") or "Thông tin"), text))
     def toggle(visible: bool):
         tooltip._props["model-value"] = visible
         tooltip.update()
@@ -32,31 +52,6 @@ def hint(element, text: str):
     element.on("keydown.escape", lambda: toggle(False))
     return element
 
-
-def widget_document(ticker: str, market: str) -> str:
-    ticker = normalize_ticker(ticker)
-    url = tradingview_chart_url(ticker, market)
-    if url is None:
-        raise ValueError("Sàn TradingView không được hỗ trợ.")
-    exchange = "HOSE" if market.strip().upper() == "HSX" else market.strip().upper()
-    config = json.dumps({
-        "autosize": True, "symbol": f"{exchange}:{ticker}", "interval": "D",
-        "timezone": "Asia/Ho_Chi_Minh", "theme": "dark" if is_dark_theme() else "light",
-        "style": "1", "locale": "vi_VN", "allow_symbol_change": False,
-        "calendar": False, "support_host": "https://www.tradingview.com",
-    })
-    # Official widget loader inside an isolated srcdoc, not an iframe of the full site.
-    return (
-        '<!doctype html><html><head><meta charset="utf-8"><style>'
-        'html,body{height:100%;margin:0}.tradingview-widget-container{height:100%}'
-        '.tradingview-widget-container__widget{height:calc(100% - 28px)}'
-        '</style></head><body><div class="tradingview-widget-container">'
-        '<div class="tradingview-widget-container__widget"></div>'
-        '<div class="tradingview-widget-copyright"><a href="' + html.escape(url, quote=True) +
-        '" target="_blank" rel="noopener noreferrer">Biểu đồ ' + ticker + ' trên TradingView</a></div>'
-        '<script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" '
-        'type="text/javascript" async>' + config + '</script></div></body></html>'
-    )
 
 
 def _field(field: str, value: object) -> None:
@@ -115,8 +110,8 @@ def _ladder_options(ladder):
                 "Giá: nghìn đồng/cp; Dist: %. Ví dụ: +2.5% là cao hơn giá hiện tại 2.5%. "
                 "Strength 80 là điểm độ mạnh, không phải xác suất 80%."
             )
-            point["tooltip"] = {"formatter": html.escape(str(point.get("name", "Giá hiện tại"))) +
-                                "<br>" + html.escape(explanation)}
+            point["tooltip"] = {"formatter": tooltip_html(str(point.get("name", "Giá hiện tại")), explanation)}
+    options.setdefault("tooltip", {}).update({"padding": 10, "borderWidth": 1, "extraCssText": "max-width:360px;white-space:normal;line-height:1.5;border-radius:4px"})
     return options
 
 
@@ -141,6 +136,7 @@ class TickerDetailDialog:
 
     async def show(self, ticker: str):
         ticker = normalize_ticker(ticker)
+        trace = TickerTrace(ticker)
         self.generation += 1
         generation = self.generation
         self.title.set_text(f"{ticker} · TradingView & phân tích")
@@ -150,7 +146,8 @@ class TickerDetailDialog:
             ui.label("Đang tải dữ liệu theo ticker…")
         self.dialog.open()
         try:
-            data = await run.io_bound(load_ticker_details, ticker)
+            with trace.span("ui.data_wait"):
+                data = await run.io_bound(load_ticker_details, ticker, trace)
         except Exception:
             LOGGER.exception("Ticker popup load failed | ticker=%s", ticker)
             if generation == self.generation:
@@ -159,7 +156,9 @@ class TickerDetailDialog:
                     ui.label("Không tải được dữ liệu. Đóng và mở lại; xem log nếu lỗi tiếp diễn.")
             return
         if generation != self.generation or self.dialog.is_deleted:
+            trace.record("ui.discarded", 0, "cancelled")
             return
+        render_started = perf_counter()
         self.body.clear()
         with self.body:
             hint(ui.label("Dữ liệu từng nguồn có thể khác ngày. Các ví dụ trong tooltip chỉ để minh họa.").classes("text-xs"),
@@ -176,15 +175,7 @@ class TickerDetailDialog:
                             if not url:
                                 ui.label("Chọn sàn Việt Nam để xem biểu đồ.")
                                 return
-                            hint(ui.link("Mở trên TradingView ↗", url, new_tab=True).props('rel="noopener noreferrer"'),
-                                 f"{market}:{ticker}. Mở website đầy đủ nếu widget không hiển thị.")
-                            ui.label("Nếu biểu đồ không tải, dùng liên kết phía trên.").classes("text-xs")
-                            frame = ui.element("iframe").classes("w-full border-0 h-[620px]")
-                            frame._props.update({
-                                "srcdoc": widget_document(ticker, market),
-                                "title": f"TradingView {market}:{ticker}",
-                                "sandbox": "allow-scripts allow-popups allow-popups-to-escape-sandbox",
-                            })
+                            render_tradingview(ticker, market, trace, hint)
                     market = data["market"]
                     if tradingview_chart_url(ticker, market):
                         render_chart(str(market))
@@ -220,3 +211,6 @@ class TickerDetailDialog:
                                 hint(ui.label(f"{field}: {row[field]}").classes("text-sm"), explanation)
             for view in FIELDS:
                 _section(view, data["sections"].get(view, []), data["errors"].get(view))
+
+        trace.record("ui.render_build", (perf_counter() - render_started) * 1000)
+        trace.record("ui.server_total", (perf_counter() - trace.started) * 1000)

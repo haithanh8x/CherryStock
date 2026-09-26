@@ -290,7 +290,8 @@ def build_nicegui_css(theme: ThemeTokens | None = None) -> str:
             display: inline-block;
             padding: 1px 4px;
             border-radius: 4px;
-            color: {tokens['primary']} !important;
+            color: var(--ticker-color, {tokens['primary']}) !important;
+            font-weight: 700;
             cursor: pointer;
             text-decoration: none;
             font-size: 0.875rem;
@@ -299,15 +300,15 @@ def build_nicegui_css(theme: ThemeTokens | None = None) -> str:
             transition: color 150ms ease-out, background-color 150ms ease-out;
         }}
         .cs-ticker-link:hover {{
-            background-color: {with_alpha(tokens['primary'], 0.10)};
+            background-color: var(--ticker-hover, {with_alpha(tokens['primary'], 0.10)});
             text-decoration: underline;
             text-underline-offset: 3px;
         }}
         .cs-ticker-link:active {{
-            background-color: {with_alpha(tokens['primary'], 0.18)};
+            background-color: var(--ticker-active, {with_alpha(tokens['primary'], 0.18)});
         }}
         .cs-ticker-link:focus-visible {{
-            outline: 2px solid {tokens['primary']};
+            outline: 2px solid var(--ticker-color, {tokens['primary']});
             outline-offset: 2px;
             text-decoration: underline;
         }}
