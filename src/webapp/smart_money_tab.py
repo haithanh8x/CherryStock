@@ -7,6 +7,8 @@ from nicegui import ui
 
 from Presentation.theme import THEME, with_alpha
 from Ults.DuckLib import DuckDBManager
+from webapp.tradingview_links import tradingview_chart_url
+from webapp.ticker_detail_dialog import TickerDetailDialog, hint
 from webapp.smart_money_snapshot_query import (
     MODEL_CODE,
     latest_smart_money_snapshot_sql,
@@ -53,28 +55,58 @@ def _state_title(state: str) -> str:
     return state.replace("_", " ")
 
 
-def _render_ticker_bucket(title: str, count: int, ticker_sequence: str) -> None:
+# Keep Ctrl/Cmd/Shift/Alt-click as native external navigation.
+_DETAIL_CLICK_JS = """(event) => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    emit();
+}"""
+
+
+def _render_ticker_links(rows: list[dict], show_detail, *, muted: bool = False) -> None:
+    with ui.row().classes("w-full items-baseline gap-x-1 gap-y-0 flex-wrap"):
+        for index, row in enumerate(rows):
+            ticker = str(row.get("Ticker") or "").strip().upper()
+            market = row.get("Market")
+            url = tradingview_chart_url(ticker, market)
+            async def open_detail(_event, selected=ticker):
+                await show_detail(selected)
+            if index:
+                ui.label(",").classes("text-xs")
+            if url:
+                element = ui.link(ticker, url, new_tab=True).props(
+                    'rel="noopener noreferrer"'
+                ).on("click", open_detail, js_handler=_DETAIL_CLICK_JS)
+            else:
+                element = ui.button(ticker, on_click=open_detail).props("flat dense no-caps")
+            element.classes("cs-ticker-link " + ("font-bold" if index < 2 else "font-normal"))
+            hint(element, (
+                f"{market or 'Chưa rõ sàn'}:{ticker} · Mở popup TradingView, R/S và thông tin ticker. "
+                "Ví dụ: HOSE:MWG. Ctrl/Cmd-click liên kết mở TradingView trực tiếp."
+            ))
+
+
+def _render_ticker_bucket(title: str, count: int, rows: list[dict], show_detail) -> None:
     with ui.column().classes(
         "w-full min-w-0 gap-1.5 rounded-xl border p-3 "
         f"bg-[{THEME['surface_alt']}] border-[{THEME['border']}]"
     ):
         with ui.row().classes("w-full items-center justify-between gap-2"):
-            ui.label(title).classes(f"text-xs font-bold text-[{THEME['text']}]")
-            ui.label(str(count)).classes(
+            hint(ui.label(title).classes(f"text-xs font-bold text-[{THEME['text']}]"),
+                 "So sánh giá đóng cửa với MA200. Ví dụ: Close=110, MA200=100 nằm trong >= MA200; thiếu MA200 nằm ở N/A.")
+            hint(ui.label(str(count)).classes(
                 f"text-xs font-bold text-[{THEME['primary']}]"
-            )
+            ), "Số ticker trong nhóm ở snapshot hiện tại. Ví dụ: 24 nghĩa có 24 mã.")
 
-        if ticker_sequence:
-            ui.markdown(ticker_sequence).classes(
-                f"w-full text-sm leading-7 text-[{THEME['text']}]"
-            )
+        if rows:
+            _render_ticker_links(rows, show_detail)
         else:
             ui.label("Không có ticker").classes(
                 f"text-xs italic text-[{THEME['muted']}] py-1"
             )
 
 
-def _render_state_block(block: dict) -> None:
+def _render_state_block(block: dict, show_detail) -> None:
     state = str(block["market_state"])
     total = int(block["total_tickers"])
     action_counts = dict(block["action_counts"])
@@ -89,18 +121,18 @@ def _render_state_block(block: dict) -> None:
                 )
                 with ui.column().classes("gap-1 min-w-0 flex-1"):
                     with ui.row().classes("items-center gap-2 flex-wrap"):
-                        ui.label(_state_title(state)).classes(
+                        hint(ui.label(_state_title(state)).classes(
                             f"font-bold text-base text-[{THEME['text']}]"
-                        )
+                        ), str(block["description"]) + ". Ví dụ: ACCUMULATION mô tả tích lũy, không phải xác suất tăng giá.")
                         rendered_action = False
                         for action in TRADE_ACTION_ORDER:
                             count = int(action_counts.get(action, 0))
                             if count <= 0:
                                 continue
                             rendered_action = True
-                            ui.label(f"{action} {count}").classes(
+                            hint(ui.label(f"{action} {count}").classes(
                                 "text-[10px] font-bold rounded-full px-2.5 py-1"
-                            ).style(_action_style(action))
+                            ).style(_action_style(action)), "Hành động mô hình và số mã. Ví dụ: BUY 10 = 10 mã có BUY; HOLD có thể là chờ.")
                         if not rendered_action:
                             ui.label("NO TICKER").classes(
                                 f"text-[10px] font-semibold rounded-full px-2.5 py-1 "
@@ -124,25 +156,23 @@ def _render_state_block(block: dict) -> None:
                 _render_ticker_bucket(
                     ">= MA200",
                     int(block["above_ma200_count"]),
-                    str(block.get("above_ma200_ticker_sequence") or ""),
+                    block["above_ma200_rows"],
+                    show_detail,
                 )
                 _render_ticker_bucket(
                     "< MA200",
                     int(block["below_ma200_count"]),
-                    str(block.get("below_ma200_ticker_sequence") or ""),
+                    block["below_ma200_rows"],
+                    show_detail,
                 )
 
             unavailable_count = int(block.get("ma200_unavailable_count", 0))
             if unavailable_count > 0:
                 with ui.row().classes("w-full items-start gap-2 mt-2 flex-wrap"):
-                    ui.label(f"MA200 N/A · {unavailable_count}").classes(
+                    hint(ui.label(f"MA200 N/A · {unavailable_count}").classes(
                         f"text-[10px] font-semibold text-[{THEME['muted']}]"
-                    )
-                    ui.markdown(
-                        str(block.get("ma200_unavailable_ticker_sequence") or "")
-                    ).classes(
-                        f"min-w-0 flex-1 text-xs leading-6 text-[{THEME['muted']}]"
-                    )
+                    ), "Thiếu Close hoặc MA200 nên chưa phân nhóm được. Ví dụ: cổ phiếu mới chưa đủ lịch sử MA200.")
+                    _render_ticker_links(block["ma200_unavailable_rows"], show_detail, muted=True)
 
 
 def _render_state_flow_links(container, blocks: list[dict]) -> None:
@@ -155,18 +185,19 @@ def _render_state_flow_links(container, blocks: list[dict]) -> None:
                 )
             state = str(block["market_state"])
             total = int(block["total_tickers"])
-            ui.link(
+            hint(ui.link(
                 f"{_state_title(state)} · {total}",
                 f"#{block['anchor_id']}",
             ).classes(
                 f"text-[10px] font-semibold px-2 py-1 rounded-lg no-underline "
                 f"bg-[{THEME['surface_alt']}] text-[{THEME['primary']}] "
                 "hover:underline"
-            )
+            ), str(block["description"]) + ". Ví dụ: bấm vào trạng thái để tới nhóm ticker tương ứng.")
 
 
 def smart_money_tab_content() -> None:
     """Render SmartMoney MarketState flow with MA200 detail segmentation."""
+    detail_popup = TickerDetailDialog()
     latest_date_label: ui.label
     total_tickers_label: ui.label
 
@@ -178,9 +209,9 @@ def smart_money_tab_content() -> None:
                     "rounded-lg p-2"
                 )
                 with ui.column().classes("gap-0"):
-                    ui.label("SmartMoney State Flow").classes(
+                    hint(ui.label("SmartMoney State Flow").classes(
                         f"text-lg font-bold text-[{THEME['text']}]"
-                    )
+                    ), "Các nhóm trạng thái dòng tiền ở snapshot mới nhất. Ví dụ: bấm ACCUMULATION để tới các mã tích lũy.")
                     ui.label(
                         "Latest snapshot · MarketState / TradeAction · MA200 position"
                     ).classes(f"text-xs text-[{THEME['muted']}]")
@@ -200,6 +231,9 @@ def smart_money_tab_content() -> None:
             "w-full items-center gap-1.5 flex-wrap mt-3"
         )
 
+    hint(refresh_button, "Nạp lại snapshot danh sách. Ví dụ: sau pipeline ngày mới, Refresh cập nhật nhóm và số mã.")
+    hint(latest_date_label, "Ngày phiên snapshot SmartMoney. Ví dụ: 2026-09-25; không phải thời điểm mở trang.")
+    hint(total_tickers_label, "Tổng số ticker duy nhất trong snapshot. Ví dụ: 347 mã được phân vào các trạng thái.")
     state_container = ui.column().classes("w-full gap-4")
 
     def refresh_snapshot() -> None:
@@ -245,7 +279,7 @@ def smart_money_tab_content() -> None:
 
         with state_container:
             for block in blocks:
-                _render_state_block(block)
+                _render_state_block(block, detail_popup.show)
 
     refresh_button.on("click", refresh_snapshot)
     refresh_snapshot()

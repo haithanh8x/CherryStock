@@ -75,3 +75,45 @@ See [[theme|Theme Architecture]] and [[../adr/ADR-003-centralized-theme-system|A
 Implementation policy: [[../../.github/instructions/chart.instructions|Chart Instructions]].
 
 Back to [[../00_HOME|Knowledge Home]].
+
+## SmartMoney ticker detail popup (2026-09-26)
+
+This is presentation integration of existing contracts, not a new strategy engine.
+The SmartMoney tab owns one reusable client-local NiceGUI dialog. A normal ticker
+click (or Enter) opens it; modifier-click retains the native external TradingView link.
+
+- `ticker_detail_contract.py`: explicit allowlist of 21 SmartMoney, 24 Movement
+  Profile and 44 Movement Context columns, deterministic latest-per-config queries,
+  field explanations/examples and unit formatting.
+- `ticker_detail_data.py`: bounded ticker reads with `DuckDBManager(read_only=True)`;
+  reuses `build_level_ladder` without changing source selection or calculations.
+- `ticker_detail_dialog.py`: official TradingView Advanced Chart widget beside
+  the existing `levelLadderChart` renderer; full view fields below.
+- `Presentation.theme.build_nicegui_css()`: theme-derived ticker hover/active/focus
+  rules, 150ms transitions and reduced-motion support.
+
+Each public view returns the latest row per declared configuration grain for the
+selected ticker. Each row displays its own date and config identity. This is a
+latest-state inspection screen, not a historical point-in-time join or synthesized
+buy/sell recommendation. Missing fields stay unavailable rather than becoming zero.
+A panel error is logged and displayed without suppressing unrelated panels.
+
+R/S values retain the existing engine's price units (thousand VND/share) and
+distance percent units. Movement fractions are formatted as percent (0.1 → 10%);
+scores stay 0–100; DirectionalBias remains a signed ratio, not a return.
+Provisional current-leg data are clearly distinguished from confirmed profile data.
+
+The widget runs in a sandboxed srcdoc iframe with symbol changes disabled, retaining
+TradingView attribution. It receives only the exchange-qualified symbol and chart
+settings; CherryStock analytics are not sent to TradingView. A direct external
+link remains visible when the widget is unavailable. TradingView owns its internal
+controls/tooltips; CherryStock owns hints on its surrounding UI and every rendered
+analytics field. Widget coverage/data freshness may differ from the local database.
+
+Loading runs off the UI event loop only on ticker activation. A generation guard
+prevents results for a closed/replaced request from updating the current dialog;
+closing unloads the widget. No new calculation/persistence/SSOT or migration is
+introduced; existing analytics topology remains unchanged.
+
+Deployment and independent validation:
+`docs/runbook/SmartMoney_Ticker_Detail_Popup.md`.
