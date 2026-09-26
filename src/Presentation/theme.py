@@ -286,6 +286,35 @@ def build_nicegui_css(theme: ThemeTokens | None = None) -> str:
             border-color: {tokens['hover_border']};
         }}
 
+        .cs-ticker-link {{
+            display: inline-block;
+            padding: 1px 4px;
+            border-radius: 4px;
+            color: {tokens['primary']} !important;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.875rem;
+            line-height: 1.75rem;
+            min-height: 0;
+            transition: color 150ms ease-out, background-color 150ms ease-out;
+        }}
+        .cs-ticker-link:hover {{
+            background-color: {with_alpha(tokens['primary'], 0.10)};
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }}
+        .cs-ticker-link:active {{
+            background-color: {with_alpha(tokens['primary'], 0.18)};
+        }}
+        .cs-ticker-link:focus-visible {{
+            outline: 2px solid {tokens['primary']};
+            outline-offset: 2px;
+            text-decoration: underline;
+        }}
+        @media (prefers-reduced-motion: reduce) {{
+            .cs-ticker-link {{ transition: none; }}
+        }}
+
         .metric-card {{
             min-height: 112px;
         }}

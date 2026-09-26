@@ -1,5 +1,7 @@
 # SmartMoney NiceGUI Tab — MarketState Flow + MA200 Split Deployment
 
+> Nâng cấp ticker popup (TradingView + R/S + 3 public views + tooltip): thực hiện [SmartMoney_Ticker_Detail_Popup.md](SmartMoney_Ticker_Detail_Popup.md). Các bước dưới đây chỉ kiểm tra nền MA200 Flow.
+
 - **Status:** ACTIVE
 - **UI entry:** `src/webapp/NiceGUI_chart.py`
 - **Renderer:** `src/webapp/smart_money_tab.py`
