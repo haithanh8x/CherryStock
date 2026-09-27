@@ -781,3 +781,38 @@ docs/runbook/Yahoo_Raw_Other_EOD_Diagnostic.md
 
 The diagnostic reproduces the exact OHLC envelope predicate, reports per-rule violation deltas and
 can optionally compare the offending stored row with the current Yahoo adjusted EOD response.
+
+
+## REQ-0036 Weekly Movement Scheduling
+
+Normal full-universe ZigZag + Price Movement is no longer part of `run.py`.
+
+~~~text
+DAILY
+run.py
+→ core EOD / DQ / Index / Trend / Indicators / SmartMoney
+→ COMMIT
+→ metadata export
+→ STOP
+
+WEEKLY
+runWeekly.py
+→ full-universe ZigZag
+→ Price Movement
+→ MovementContext
+
+MANUAL / ON DEMAND
+scripts/run_daily_movement.py --ticker <TICKER> --force
+~~~
+
+The prior REQ-0034 daily post-commit Movement design is retained as historical validation evidence,
+but ADR-020 supersedes its normal scheduling decision.
+
+Canonical weekly materials:
+
+~~~text
+docs/backlog/requirements/REQ-0036-weekly-movement-pipeline.md
+docs/architecture/Weekly_Movement_Pipeline.md
+docs/adr/ADR-020-weekly-movement-scheduling.md
+docs/runbook/Weekly_Movement_Pipeline.md
+~~~

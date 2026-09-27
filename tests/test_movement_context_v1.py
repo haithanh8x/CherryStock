@@ -226,7 +226,10 @@ def test_mwg_like_context_interprets_profile_and_current_leg() -> None:
                 CurrentTradingBars,
                 CurrentMoveSpeedPctPerBar,
                 CurrentMoveSpeedRatio,
-                CurrentMoveSpeedState
+                CurrentMoveSpeedState,
+                LatestOHLCDate,
+                MovementAgeTradingDays,
+                MovementFreshnessStatus
             FROM "CherryMon"."main"."vw_Ticker_Movement_Context"
             WHERE Ticker = 'MWG'
             """
@@ -245,6 +248,9 @@ def test_mwg_like_context_interprets_profile_and_current_leg() -> None:
         assert row[7] == pytest.approx(0.025)
         assert row[8] == pytest.approx(0.025 / 0.015733630956432567)
         assert row[9] == "FAST"
+        assert str(row[10]) == "2026-09-21"
+        assert row[11] == 0
+        assert row[12] == "FRESH"
     finally:
         connection.close()
 
@@ -311,3 +317,70 @@ def test_movement_context_schema_has_no_rs_or_smartmoney_dependency() -> None:
     assert "vw_ticker_smartmoney" not in sql
     assert "vw_rs_" not in sql
     assert "levelladder" not in sql
+
+
+def test_movement_freshness_aging_counts_trading_sessions_after_context_date() -> None:
+    connection = _connection()
+    try:
+        _insert_profile(connection)
+        _insert_current_leg(connection)
+        connection.execute(
+            """
+            INSERT INTO "CherryMon"."main"."vw_Ticker_OHLC_D" (Ticker, Date)
+            VALUES
+                ('MWG', DATE '2026-09-22'),
+                ('MWG', DATE '2026-09-23'),
+                ('MWG', DATE '2026-09-24')
+            """
+        )
+
+        row = connection.execute(
+            """
+            SELECT
+                ContextAsOfDate,
+                LatestOHLCDate,
+                MovementAgeTradingDays,
+                MovementFreshnessStatus
+            FROM "CherryMon"."main"."vw_Ticker_Movement_Context"
+            WHERE Ticker = 'MWG'
+            """
+        ).fetchone()
+
+        assert row is not None
+        assert str(row[0]) == "2026-09-21"
+        assert str(row[1]) == "2026-09-24"
+        assert row[2] == 3
+        assert row[3] == "AGING"
+    finally:
+        connection.close()
+
+
+def test_movement_freshness_stale_after_more_than_five_trading_sessions() -> None:
+    connection = _connection()
+    try:
+        _insert_profile(connection)
+        _insert_current_leg(connection)
+        connection.execute(
+            """
+            INSERT INTO "CherryMon"."main"."vw_Ticker_OHLC_D" (Ticker, Date)
+            VALUES
+                ('MWG', DATE '2026-09-22'),
+                ('MWG', DATE '2026-09-23'),
+                ('MWG', DATE '2026-09-24'),
+                ('MWG', DATE '2026-09-25'),
+                ('MWG', DATE '2026-09-28'),
+                ('MWG', DATE '2026-09-29')
+            """
+        )
+
+        row = connection.execute(
+            """
+            SELECT MovementAgeTradingDays, MovementFreshnessStatus
+            FROM "CherryMon"."main"."vw_Ticker_Movement_Context"
+            WHERE Ticker = 'MWG'
+            """
+        ).fetchone()
+
+        assert row == (6, "STALE")
+    finally:
+        connection.close()

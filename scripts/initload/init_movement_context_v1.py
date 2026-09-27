@@ -33,6 +33,8 @@ def main() -> int:
                 Ticker,
                 ContextAsOfDate,
                 ContextStatus,
+                MovementAgeTradingDays,
+                MovementFreshnessStatus,
                 TrendRegime,
                 TrendQuality,
                 LastSwingState,

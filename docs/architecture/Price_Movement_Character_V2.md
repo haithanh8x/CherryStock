@@ -542,3 +542,24 @@ architecture visualization status remains:
     Implementation owner: GeneralCoding — COMPLETE
     Current next owner: TestEngineer
     Delivery state: IMPLEMENTED_PENDING_VALIDATION
+
+
+## 12D. Weekly Scheduling Supersession
+
+REQ-0036 / ADR-020 supersedes REQ-0034 for the normal full-universe schedule.
+
+~~~text
+run.py
+→ no full-universe Movement
+
+runWeekly.py
+→ full active universe
+→ ZigZag
+→ PM_ZZ_D_V2
+
+scripts/run_daily_movement.py
+→ manual/on-demand ticker repair
+~~~
+
+Price Movement formulas, configuration and persistence remain unchanged. Only orchestration
+frequency moves from daily to weekly.
