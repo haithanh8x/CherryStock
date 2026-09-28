@@ -438,3 +438,59 @@ Important current boundary: all twelve AmiBroker EOD domains are ingested daily,
 but the current blocking EOD DQ gate explicitly validates `raw_stock_eod`; the
 other eleven EOD domains do not yet have individual blocking per-table DQ profiles.
 
+
+
+## Yahoo raw_other_eod source-specific Data Quality
+
+Yahoo EOD is a mixed-instrument raw source:
+
+~~~text
+DX-Y.NYB
+BTC-USD
+VND=X
+GC=F
+    ↓
+raw_other_eod
+~~~
+
+Generic data validity remains owned by `Ults.DataValidation.validate_data_quality()`.
+
+REQ-0035 adds a source-specific severity layer in Data Quality orchestration because diagnostic
+evidence proves recurrent material Yahoo `VND=X` OHLC envelope anomalies while the raw source
+values remain useful and must not be manufactured into valid bars.
+
+~~~text
+generic OHLC fact
+    ↓
+invalid_ohlc_count
+    ↓
+Yahoo policy reconciliation by Ticker
+    ├─ VND=X → WARNING
+    └─ other Yahoo ticker → FAIL
+~~~
+
+The policy does not alter `raw_other_eod` and does not change the generic OHLC predicate.
+
+Audit evidence is stored in the existing `sys_data_quality_audit.metrics` JSON contract, including:
+
+~~~text
+ohlc_policy
+ohlc_warning_tickers
+invalid_ohlc_warning_count
+invalid_ohlc_blocking_count
+invalid_ohlc_warning_symbols
+invalid_ohlc_blocking_symbols
+invalid_ohlc_by_symbol
+~~~
+
+Design:
+
+~~~text
+docs/architecture/Yahoo_Source_Specific_DQ_Policy.md
+~~~
+
+Decision:
+
+~~~text
+docs/adr/ADR-019-yahoo-vndx-source-specific-ohlc-dq-policy.md
+~~~

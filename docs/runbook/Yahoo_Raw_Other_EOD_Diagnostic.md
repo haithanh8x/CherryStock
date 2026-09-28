@@ -332,3 +332,19 @@ PROVIDER_NOW_VALID_DB_NEAR_MATCH | PROVIDER_UNAVAILABLE
 Recommended next action:
 <evidence-based action>
 ```
+
+
+## 14. Follow-up Policy
+
+The diagnostic evidence from 2026-09-22 established recurrent material Yahoo `VND=X` OHLC
+envelope anomalies and is the evidence basis for:
+
+~~~text
+REQ-0035 — Yahoo VND=X Source-Specific OHLC Data Quality Policy
+docs/backlog/requirements/REQ-0035-yahoo-vndx-source-specific-dq-policy.md
+docs/architecture/Yahoo_Source_Specific_DQ_Policy.md
+docs/adr/ADR-019-yahoo-vndx-source-specific-ohlc-dq-policy.md
+~~~
+
+This diagnostic remains read-only. REQ-0035 changes severity policy in orchestration and does not
+retroactively alter the diagnostic or mutate source rows.

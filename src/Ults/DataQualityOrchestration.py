@@ -172,6 +172,219 @@ def validate_and_persist_data_quality(
             connection.execute(f"DROP VIEW IF EXISTS {_quote_identifier(temporary_view)}")
 
 
+
+YAHOO_OHLC_WARNING_TICKERS: tuple[str, ...] = ("VND=X",)
+
+
+def validate_and_persist_yahoo_eod_quality(
+    connection: Any,
+    table_name: str,
+    pipeline_name: str,
+    *,
+    scope_tickers: Sequence[str],
+    expected_date: date | datetime | str | None = None,
+    ohlc_warning_tickers: Sequence[str] = YAHOO_OHLC_WARNING_TICKERS,
+    date_col: str = "Date",
+    symbol_col: str = "Ticker",
+    key_cols: Sequence[str] = ("Ticker", "Date"),
+    required_cols: Sequence[str] = ("Ticker", "Date", "Open", "High", "Low", "Close"),
+    audit_table: str = DEFAULT_AUDIT_TABLE,
+    validation_id: str | None = None,
+    checked_at: datetime | None = None,
+    raise_on_fail: bool = True,
+) -> dict[str, Any]:
+    """Validate Yahoo EOD with a source-specific OHLC warning policy for VND=X.
+
+    The generic DataValidation contract remains unchanged. This wrapper validates the
+    complete Yahoo scope once, then downgrades only current-date OHLC envelope
+    violations attributable exclusively to configured warning tickers. All other
+    validation failures remain blocking.
+    """
+    if connection is None:
+        raise ValueError("connection is required")
+    if not isinstance(raise_on_fail, bool):
+        raise TypeError("raise_on_fail must be bool")
+
+    resolved_scope = [
+        str(value).strip()
+        for value in scope_tickers
+        if value is not None and str(value).strip()
+    ]
+    if not resolved_scope:
+        raise ValueError("scope_tickers must not be empty")
+    resolved_scope = list(dict.fromkeys(resolved_scope))
+
+    resolved_warning = [
+        str(value).strip()
+        for value in ohlc_warning_tickers
+        if value is not None and str(value).strip()
+    ]
+    resolved_warning = list(dict.fromkeys(resolved_warning))
+    unknown_warning = sorted(set(resolved_warning).difference(resolved_scope))
+    if unknown_warning:
+        raise ValueError(
+            "ohlc_warning_tickers must be a subset of scope_tickers: "
+            + ", ".join(unknown_warning)
+        )
+
+    filter_predicate = _build_filter_predicate({symbol_col: resolved_scope})
+    temporary_view = f"_dq_yahoo_scope_{uuid4().hex}"
+    quoted_view = _quote_identifier(temporary_view)
+    quoted_source = _quote_relation(table_name)
+    connection.execute(
+        f"CREATE TEMPORARY VIEW {quoted_view} AS "
+        f"SELECT * FROM {quoted_source} WHERE {filter_predicate}"
+    )
+
+    try:
+        validation_result = validate_data_quality(
+            connection=connection,
+            table_name=temporary_view,
+            date_col=date_col,
+            symbol_col=symbol_col,
+            key_cols=key_cols,
+            required_cols=required_cols,
+            expected_date=expected_date,
+            check_count_anomalies=False,
+        )
+        validation_result["table"] = table_name
+        metrics = validation_result["metrics"]
+        metrics["filters"] = {symbol_col: resolved_scope}
+        metrics["ohlc_policy"] = "YAHOO_SOURCE_SPECIFIC_V1"
+        metrics["ohlc_warning_tickers"] = resolved_warning
+        metrics["invalid_ohlc_warning_count"] = 0
+        metrics["invalid_ohlc_blocking_count"] = int(
+            metrics.get("invalid_ohlc_count") or 0
+        )
+        metrics["invalid_ohlc_warning_symbols"] = []
+        metrics["invalid_ohlc_blocking_symbols"] = []
+        metrics["invalid_ohlc_by_symbol"] = {}
+
+        invalid_ohlc_total = int(metrics.get("invalid_ohlc_count") or 0)
+        if invalid_ohlc_total > 0:
+            current_date = metrics.get("max_date")
+            if not current_date:
+                validation_result["errors"].append(
+                    "Yahoo OHLC policy cannot reconcile invalid rows without max_date."
+                )
+            else:
+                quoted_date = _quote_identifier(date_col)
+                quoted_symbol = _quote_identifier(symbol_col)
+                open_col = _quote_identifier("Open")
+                high_col = _quote_identifier("High")
+                low_col = _quote_identifier("Low")
+                close_col = _quote_identifier("Close")
+                breakdown = returnSQL(
+                    connection,
+                    f"""
+                    SELECT
+                        CAST({quoted_symbol} AS VARCHAR) AS symbol,
+                        COUNT(*) AS invalid_count
+                    FROM {quoted_view}
+                    WHERE TRY_CAST({quoted_date} AS DATE) = DATE '{current_date}'
+                      AND (
+                          TRY_CAST({high_col} AS DOUBLE) < TRY_CAST({low_col} AS DOUBLE)
+                          OR TRY_CAST({high_col} AS DOUBLE) < TRY_CAST({open_col} AS DOUBLE)
+                          OR TRY_CAST({high_col} AS DOUBLE) < TRY_CAST({close_col} AS DOUBLE)
+                          OR TRY_CAST({low_col} AS DOUBLE) > TRY_CAST({open_col} AS DOUBLE)
+                          OR TRY_CAST({low_col} AS DOUBLE) > TRY_CAST({close_col} AS DOUBLE)
+                      )
+                    GROUP BY CAST({quoted_symbol} AS VARCHAR)
+                    ORDER BY symbol
+                    """,
+                )
+                by_symbol = {
+                    str(row.symbol): int(row.invalid_count)
+                    for row in breakdown.itertuples(index=False)
+                }
+                reconciled_total = sum(by_symbol.values())
+                metrics["invalid_ohlc_by_symbol"] = by_symbol
+
+                warning_symbols = sorted(
+                    symbol
+                    for symbol, count in by_symbol.items()
+                    if count > 0 and symbol in resolved_warning
+                )
+                blocking_symbols = sorted(
+                    symbol
+                    for symbol, count in by_symbol.items()
+                    if count > 0 and symbol not in resolved_warning
+                )
+                warning_count = sum(by_symbol[symbol] for symbol in warning_symbols)
+                blocking_count = sum(by_symbol[symbol] for symbol in blocking_symbols)
+
+                metrics["invalid_ohlc_warning_count"] = warning_count
+                metrics["invalid_ohlc_blocking_count"] = blocking_count
+                metrics["invalid_ohlc_warning_symbols"] = warning_symbols
+                metrics["invalid_ohlc_blocking_symbols"] = blocking_symbols
+
+                # Replace only the generic OHLC error. Every other generic DQ error
+                # remains untouched and therefore blocking.
+                validation_result["errors"] = [
+                    error
+                    for error in validation_result["errors"]
+                    if not str(error).startswith("invalid_ohlc_count=")
+                ]
+
+                if reconciled_total != invalid_ohlc_total:
+                    validation_result["errors"].append(
+                        "Yahoo OHLC policy reconciliation mismatch: "
+                        f"generic={invalid_ohlc_total}, by_symbol={reconciled_total}."
+                    )
+
+                if warning_count > 0:
+                    validation_result["warnings"].append(
+                        "Yahoo source-specific OHLC envelope warning accepted without "
+                        "mutating raw values: "
+                        f"symbols={warning_symbols}, count={warning_count}, "
+                        f"date={current_date}."
+                    )
+
+                if blocking_count > 0:
+                    validation_result["errors"].append(
+                        "Yahoo OHLC envelope violation remains blocking: "
+                        f"symbols={blocking_symbols}, count={blocking_count}, "
+                        f"date={current_date}."
+                    )
+
+        validation_result["status"] = (
+            "FAIL"
+            if validation_result["errors"]
+            else "WARNING"
+            if validation_result["warnings"]
+            else "PASS"
+        )
+
+        print(
+            "[DataQualityOrchestration][YAHOO_OHLC_POLICY] "
+            f"table={table_name} | final_status={validation_result['status']} | "
+            f"invalid_ohlc_total={metrics['invalid_ohlc_count']} | "
+            f"warning_count={metrics['invalid_ohlc_warning_count']} | "
+            f"blocking_count={metrics['invalid_ohlc_blocking_count']} | "
+            f"warning_symbols={metrics['invalid_ohlc_warning_symbols']} | "
+            f"blocking_symbols={metrics['invalid_ohlc_blocking_symbols']}"
+        )
+
+        resolved_validation_id = persist_data_quality_result(
+            connection=connection,
+            validation_result=validation_result,
+            pipeline_name=pipeline_name,
+            audit_table=audit_table,
+            validation_id=validation_id,
+            checked_at=checked_at,
+        )
+        validation_result["validation_id"] = resolved_validation_id
+
+        if raise_on_fail and validation_result["status"] == "FAIL":
+            error_summary = " | ".join(validation_result["errors"]) or "Unknown validation error"
+            raise RuntimeError(
+                f"Data quality validation failed for {table_name!r}: {error_summary}"
+            )
+
+        return validation_result
+    finally:
+        connection.execute(f"DROP VIEW IF EXISTS {quoted_view}")
+
 def validate_and_persist_reference_quality(
     connection: Any,
     table_name: str,
