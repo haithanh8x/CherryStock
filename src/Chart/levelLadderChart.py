@@ -103,12 +103,12 @@ def build_level_ladder_chart_options(
 
     support_levels = [
         level
-        for level in support_levels
+        for level in ladder.support_levels
         if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
     ]
     resistance_levels = [
         level
-        for level in resistance_levels
+        for level in ladder.resistance_levels
         if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
     ]
     ranked = [*support_levels, *resistance_levels]
