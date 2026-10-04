@@ -1,5 +1,6 @@
 import sys
 import io
+from time import perf_counter
 
 from src.Ults import DuckLib
 from src.Ults.Timing import timeit
@@ -37,6 +38,7 @@ def _run_all_steps(
     run.py owns only the transaction boundary and runtime dependencies.
     """
     print("[daily] ▶ Sync + Data Quality + Indicators + SmartMoney")
+    started = perf_counter()
     summary = write_pipeline.run(
         days_diff=days_diff,
         amibroker=amibroker_adapter,
@@ -47,7 +49,12 @@ def _run_all_steps(
         indicator_repository=uow.indicators,
         smart_money_repository=None, # uow.smart_money
     )
+    elapsed = perf_counter() - started
     print("[daily] ✓ Sync + Data Quality + Indicators + SmartMoney")
+    print(
+        "⏱️   [Duration] 'sync_data_quality_indicators_smartmoney' "
+        f"total time: {elapsed:.1f} seconds"
+    )
     return summary
 
 
@@ -62,6 +69,7 @@ def _run_movement_steps(
     ingestion, Indicator, or SmartMoney results.
     """
     print("[daily] ▶ Incremental ZigZag + Price Movement")
+    started = perf_counter()
     summary = movement_pipeline.run()
 
     print(
@@ -79,7 +87,12 @@ def _run_movement_steps(
             "Core daily data is already committed; run the Movement validator/runbook."
         )
 
+    elapsed = perf_counter() - started
     print("[daily] ✓ Incremental ZigZag + Price Movement")
+    print(
+        "⏱️   [Duration] 'incremental_zigzag_price_movement' "
+        f"total time: {elapsed:.1f} seconds"
+    )
     return summary
 
 
@@ -119,7 +132,13 @@ def main():
     _run_movement_steps(movement_pipeline=movement_pipeline)
 
     # Chỉ export metadata sau khi core + Movement daily stages hoàn tất.
+    metadata_started = perf_counter()
     DuckLib.exportDuckDB_metadata()
+    metadata_elapsed = perf_counter() - metadata_started
+    print(
+        "⏱️   [Duration] 'exportDuckDB_metadata' "
+        f"total time: {metadata_elapsed:.1f} seconds"
+    )
     print("✓ Run All hoàn tất. DuckDB metadata đã được export.")
 
 
