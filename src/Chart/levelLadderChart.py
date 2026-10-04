@@ -66,6 +66,77 @@ def ladder_rows(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
     return rows
 
 
+def ladder_tree_nodes(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
+    """Return collapsible level/source nodes; no DB reads or score recalculation.
+
+    Roots follow ladder_rows ordering/filtering. IDs are unique per result, and
+    optional source values remain unavailable (—) rather than becoming zero.
+    """
+    levels = [
+        level
+        for level in [*reversed(ladder.resistance_levels), *ladder.support_levels]
+        if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
+    ]
+    nodes: list[dict[str, Any]] = []
+    for index, (level, row) in enumerate(zip(levels, ladder_rows(ladder), strict=True)):
+        node_id = f"level-{index}-{level.rank}"
+        source_nodes = []
+        for source_index, source in enumerate(level.sources):
+            source_id = f"{node_id}-source-{source_index}"
+            details = [
+                ("Family", source.source_family),
+                ("Type / role", f"{source.source_type} / {source.source_role}"),
+                ("Config", source.config_code),
+                ("Config ID", source.config_id),
+                ("Component", source.component_code),
+                ("Weight", f"{source.weight:.2f}"),
+                ("Source date", source.source_date.isoformat() if source.source_date else None),
+                ("Confirmed at", source.confirmed_at.isoformat() if source.confirmed_at else None),
+            ]
+            source_nodes.append(
+                {
+                    "id": source_id,
+                    "label": (
+                        f"{source.source_code} · {source.timeframe or '—'} · "
+                        f"{_format_price(source.price)}"
+                    ),
+                    "children": [
+                        {
+                            "id": f"{source_id}-detail-{detail_index}",
+                            "label": f"{name}: {value if value is not None else '—'}",
+                        }
+                        for detail_index, (name, value) in enumerate(details)
+                    ],
+                }
+            )
+        nodes.append(
+            {
+                "id": node_id,
+                "label": _level_label(level),
+                "is_level": True,
+                "rank": row["rank"],
+                "level_type": row["type"],
+                "price_label": _format_price(row["price"]),
+                "distance_label": f"{row['distance_pct']:+.2f}%",
+                "strength_label": f"{row['strength']:.1f}",
+                "children": [
+                    {"id": f"{node_id}-zone", "label": f"Zone: {row['zone']}"},
+                    {"id": f"{node_id}-tf", "label": f"Timeframes: {row['timeframes'] or '—'}"},
+                    {
+                        "id": f"{node_id}-families",
+                        "label": f"Families ({row['source_family_count']}): {row['families'] or '—'}",
+                    },
+                    {
+                        "id": f"{node_id}-sources",
+                        "label": f"Sources ({row['source_count']})",
+                        "children": source_nodes,
+                    },
+                ],
+            }
+        )
+    return nodes
+
+
 def empty_level_ladder_chart_options(message: str = "Chưa có dữ liệu R/S") -> dict[str, Any]:
     theme = get_theme()
     return {

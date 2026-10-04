@@ -141,3 +141,33 @@ adds separate Python cumulative/self-time hotspot evidence for R/S subcalls;
 it incurs measurement overhead and is not a latency baseline.
 No cache, query tuning, provider selection or engine calculation changes are
 included before real measurements establish the bottleneck.
+
+## R/S Level Details tree (2026-10-04)
+
+The R/S tab renders Level Details as a native NiceGUI tree instead of a flat
+AG Grid row. `levelLadderChart.ladder_tree_nodes(LevelLadderResult)` is a pure
+presentation adapter over the existing ranked levels and `ladder_rows` contract.
+
+- Each root displays the original rank, price, signed distance percent and Strength.
+  Only levels with `strength_score >= MIN_DISPLAY_STRENGTH_SCORE` (currently 80)
+  appear, using the same resistance/support ordering as the previous table.
+- Expanding a root exposes zone bounds, timeframes, family count/names and a
+  Sources branch. Expanding Sources exposes each constituent source; expanding
+  that source shows family, type/role, config/code/ID, component, weight, source date
+  and confirmation date from the existing `NormalizedLevel` contract.
+- Roots and children have unique IDs even when source codes repeat. Missing
+  optional values display as unavailable (—). Vue interpolation renders labels
+  as text. Colors use the centralized presentation theme.
+- Nodes start collapsed; Refresh replaces nodes and resets expansion so a previous
+  ticker/date cannot leave stale details open. Initial, empty-filter and error
+  states display a visible message and clear prior nodes.
+- This interaction does not change R/S calculation, rank assignment, the Price
+  Ladder chart, R/R calculation or the UI's existing 50-level request per side.
+
+Bounded UI verification: open R/S, Refresh a ticker with qualifying levels, open
+one R/S → Sources → one source, then collapse the R/S and open another. Confirm
+the four root summary values match the chart/result, details belong to the chosen
+level, and no horizontal flat-row overflow remains. Refresh a different ticker/date
+and confirm nodes reset collapsed. Check an empty-filter result and invalid input
+show a message without stale nodes. Stop after these interactions; a live
+NiceGUI/browser check is required before an independent UI validation verdict.

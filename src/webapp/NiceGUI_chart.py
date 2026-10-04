@@ -1941,63 +1941,47 @@ def rs_tab_content() -> None:
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Level Details",
-                "Source family, timeframe, distance và strength",
-                icon="table_chart",
+                "Bấm mở từng R/S để xem zone, timeframe và nguồn chi tiết",
+                icon="account_tree",
             )
-            level_grid = ui.aggrid(
-                {
-                    "defaultColDef": {
-                        "sortable": True,
-                        "resizable": True,
-                    },
-                    "columnDefs": [
-                        {"headerName": "Rank", "field": "rank", "width": 72},
-                        {
-                            "headerName": "Price",
-                            "field": "price",
-                            "width": 105,
-                            ":valueFormatter": "params => Number(params.value).toLocaleString('vi-VN', {minimumFractionDigits: 1, maximumFractionDigits: 1})",
-                        },
-                        {
-                            "headerName": "Dist %",
-                            "field": "distance_pct",
-                            "width": 92,
-                            ":valueFormatter": "params => (params.value > 0 ? '+' : '') + Number(params.value).toFixed(2) + '%'",
-                        },
-                        {
-                            "headerName": "Strength",
-                            "field": "strength",
-                            "width": 96,
-                        },
-                        {"headerName": "TF", "field": "timeframes", "width": 78},
-                        {
-                            "headerName": "Families",
-                            "field": "families",
-                            "minWidth": 150,
-                        },
-                        {
-                            "headerName": "Sources",
-                            "field": "sources",
-                            "minWidth": 190,
-                            "flex": 1,
-                        },
-                    ],
-                    "rowData": [],
-                    "animateRows": True,
-                    "headerHeight": 36,
-                    "rowHeight": 38,
-                },
-                theme=get_ag_grid_theme(),
-                auto_size_columns=False,
-            ).classes("w-full h-[620px] dashboard-data-grid")
+            with ui.column().classes("w-full h-[620px] overflow-auto gap-2"):
+                level_empty = ui.label("Chưa có dữ liệu R/S").classes(
+                    f"text-sm text-[{THEME['muted']}] p-3"
+                )
+                level_tree = ui.tree([], node_key="id", label_key="label").props(
+                    "dense"
+                ).classes("w-full")
+                level_tree.add_slot(
+                    "default-header",
+                    """
+                    <div v-if="props.node.is_level"
+                         class="flex items-center flex-wrap gap-x-4 gap-y-1 py-2 text-sm">
+                        <strong :style="{color: props.node.level_type === 'SUPPORT'
+                            ? 'var(--cs-positive)' : 'var(--cs-negative)'}">
+                            {{ props.node.rank }}
+                        </strong>
+                        <span class="font-semibold">{{ props.node.price_label }}</span>
+                        <span style="color: var(--cs-muted)">
+                            Dist {{ props.node.distance_label }}
+                        </span>
+                        <span>Strength <strong>{{ props.node.strength_label }}</strong></span>
+                    </div>
+                    <span v-else class="text-sm whitespace-normal break-words">
+                        {{ props.node.label }}
+                    </span>
+                    """,
+                )
 
     def clear_output(message: str) -> None:
         metric_values["rr"].set_text("—")
         ladder_chart.options.clear()
         ladder_chart.options.update(level_ladder_chart.empty_level_ladder_chart_options(message))
         ladder_chart.update()
-        level_grid.options["rowData"] = []
-        level_grid.update()
+        level_tree.props["nodes"] = []
+        level_tree.props["expanded"] = []
+        level_tree.update()
+        level_empty.set_text(message)
+        level_empty.set_visibility(True)
 
     def refresh_rs_ladder() -> None:
         ticker = str(ticker_input.value or "").strip().upper()
@@ -2045,8 +2029,14 @@ def rs_tab_content() -> None:
         )
         ladder_chart.update()
 
-        level_grid.options["rowData"] = level_ladder_chart.ladder_rows(result)
-        level_grid.update()
+        nodes = level_ladder_chart.ladder_tree_nodes(result)
+        level_tree.props["nodes"] = nodes
+        level_tree.props["expanded"] = []
+        level_tree.update()
+        level_empty.set_text(
+            f"Không có R/S đạt Strength ≥ {level_ladder_chart.MIN_DISPLAY_STRENGTH_SCORE:g}"
+        )
+        level_empty.set_visibility(not nodes)
 
         ui.notify(
             f"{result.ticker} R/S V2.4 [{result.model_version}] @ {result.as_of_date.isoformat()} | "
