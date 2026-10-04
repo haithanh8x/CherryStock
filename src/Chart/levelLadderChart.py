@@ -9,7 +9,7 @@ try:
 except ModuleNotFoundError:
     from src.Presentation.theme import get_theme
 
-MIN_DISPLAY_STRENGTH_SCORE = 85.0
+MIN_DISPLAY_STRENGTH_SCORE = 80.0
 
 
 if TYPE_CHECKING:
