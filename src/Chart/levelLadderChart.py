@@ -103,19 +103,21 @@ def build_level_ladder_chart_options(
 
     support_levels = [
         level
-        for level in ladder.support_levels
+        for level in support_levels
         if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
     ]
     resistance_levels = [
         level
-        for level in ladder.resistance_levels
+        for level in resistance_levels
         if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
     ]
-    ranked = [*support_levels, *resistance_levels]
-    if not ranked:
+    all_ranked = [*ladder.support_levels, *ladder.resistance_levels]
+    if not all_ranked:
         return empty_level_ladder_chart_options("Không có R/S V2.4 level hợp lệ")
 
-    prices = [level.price for level in ranked] + [ladder.current_price]
+    ranked = [*support_levels, *resistance_levels]
+    axis_levels = ranked or all_ranked
+    prices = [level.price for level in axis_levels] + [ladder.current_price]
     min_price, max_price = min(prices), max(prices)
     span = max(max_price - min_price, ladder.current_price * 0.04)
     padding = span * 0.12
