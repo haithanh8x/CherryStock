@@ -2022,6 +2022,8 @@ def rs_tab_content() -> None:
                 ticker,
                 as_of_date=selected_date,
                 cluster_threshold_pct=cluster_pct / 100.0,
+                max_support_levels=50,
+                max_resistance_levels=50,
             )
         except Exception as exc:
             logging.getLogger(__name__).exception(
