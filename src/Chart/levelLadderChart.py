@@ -9,6 +9,9 @@ try:
 except ModuleNotFoundError:
     from src.Presentation.theme import get_theme
 
+MIN_DISPLAY_STRENGTH_SCORE = 85.0
+
+
 if TYPE_CHECKING:
     try:
         from calcEngine.levelLadder import LevelLadderResult, RankedLevel
@@ -31,7 +34,11 @@ def _level_label(level: "RankedLevel") -> str:
 def ladder_rows(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
     """Return table-ready rows without querying DB or recalculating ladder logic."""
     rows: list[dict[str, Any]] = []
-    levels = [*reversed(ladder.resistance_levels), *ladder.support_levels]
+    levels = [
+        level
+        for level in [*reversed(ladder.resistance_levels), *ladder.support_levels]
+        if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
+    ]
     for level in levels:
         timeframes = sorted(
             {source.timeframe for source in level.sources if source.timeframe},
@@ -94,7 +101,17 @@ def build_level_ladder_chart_options(
     muted_color = muted_color or theme["muted"]
     grid_color = grid_color or theme["border"]
 
-    ranked = [*ladder.support_levels, *ladder.resistance_levels]
+    support_levels = [
+        level
+        for level in support_levels
+        if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
+    ]
+    resistance_levels = [
+        level
+        for level in resistance_levels
+        if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
+    ]
+    ranked = [*support_levels, *resistance_levels]
     if not ranked:
         return empty_level_ladder_chart_options("Không có R/S V2.4 level hợp lệ")
 
