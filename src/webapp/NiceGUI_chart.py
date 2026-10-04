@@ -1941,7 +1941,7 @@ def rs_tab_content() -> None:
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Level Details",
-                "Bấm mở từng R/S để xem zone, timeframe và nguồn chi tiết",
+                "Zone cạnh Strength; bấm mở để xem timeframe, families và sources",
                 icon="account_tree",
             )
             with ui.column().classes("w-full h-[620px] overflow-auto gap-2"):
@@ -1965,6 +1965,7 @@ def rs_tab_content() -> None:
                             Dist {{ props.node.distance_label }}
                         </span>
                         <span>Strength <strong>{{ props.node.strength_label }}</strong></span>
+                        <span>Zone <strong>{{ props.node.zone_label }}</strong></span>
                     </div>
                     <span v-else class="text-sm whitespace-normal break-words">
                         {{ props.node.label }}

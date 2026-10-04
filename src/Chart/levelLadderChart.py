@@ -98,7 +98,7 @@ def ladder_tree_nodes(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
                     "id": source_id,
                     "label": (
                         f"{source.source_code} · {source.timeframe or '—'} · "
-                        f"{_format_price(source.price)}"
+                        f"{source.source_family} · {_format_price(source.price)}"
                     ),
                     "children": [
                         {
@@ -119,16 +119,15 @@ def ladder_tree_nodes(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
                 "price_label": _format_price(row["price"]),
                 "distance_label": f"{row['distance_pct']:+.2f}%",
                 "strength_label": f"{row['strength']:.1f}",
+                "zone_label": row["zone"],
                 "children": [
-                    {"id": f"{node_id}-zone", "label": f"Zone: {row['zone']}"},
-                    {"id": f"{node_id}-tf", "label": f"Timeframes: {row['timeframes'] or '—'}"},
-                    {
-                        "id": f"{node_id}-families",
-                        "label": f"Families ({row['source_family_count']}): {row['families'] or '—'}",
-                    },
                     {
                         "id": f"{node_id}-sources",
-                        "label": f"Sources ({row['source_count']})",
+                        "label": (
+                            f"Timeframes: {row['timeframes'] or '—'} · "
+                            f"Families ({row['source_family_count']}): {row['families'] or '—'} · "
+                            f"Sources ({row['source_count']})"
+                        ),
                         "children": source_nodes,
                     },
                 ],
