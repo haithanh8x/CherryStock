@@ -103,12 +103,12 @@ def build_level_ladder_chart_options(
 
     support_levels = [
         level
-        for level in support_levels
+        for level in ladder.support_levels
         if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
     ]
     resistance_levels = [
         level
-        for level in resistance_levels
+        for level in ladder.resistance_levels
         if level.strength_score >= MIN_DISPLAY_STRENGTH_SCORE
     ]
     all_ranked = [*ladder.support_levels, *ladder.resistance_levels]
@@ -130,7 +130,7 @@ def build_level_ladder_chart_options(
             "name": _level_label(level),
             "symbolSize": max(16, min(32, 14 + level.source_family_count * 4)),
         }
-        for level in ladder.support_levels
+        for level in support_levels
     ]
     resistances = [
         {
@@ -138,7 +138,7 @@ def build_level_ladder_chart_options(
             "name": _level_label(level),
             "symbolSize": max(16, min(32, 14 + level.source_family_count * 4)),
         }
-        for level in ladder.resistance_levels
+        for level in resistance_levels
     ]
     current_name = f"PRICE  {_format_price(ladder.current_price)}"
 
