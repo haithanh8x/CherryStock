@@ -104,6 +104,7 @@ Execution order:
 - [[REQ-0034-daily-incremental-movement-pipeline|REQ-0034 — Daily Incremental Movement Pipeline]] — **DONE**; local TestEngineer PASS / KEEP on 2026-09-22 (39/39 focused tests, 349/349 structural coverage, zero stale/parity/geometry/profile errors, NOOP/idempotency PASS, Archify 9/9). Full `run.py` live path was blocked before core commit by a pre-existing Yahoo DQ error, recorded as a separate operational blocker.
 - [[REQ-0035-hybrid-cloud-railway-motherduck|REQ-0035 — Hybrid Cloud Deployment — Railway + MotherDuck with Local AmiBroker Pipeline]] — **READY_FOR_DESIGN**; retains local AmiBroker/daily processing, publishes the minimum required cloud-serving data to MotherDuck, and deploys the Python application to Railway with cloud reads independent of local-PC uptime.
 - [[REQ-0036-pair-discovery-stock-relationship-screening|REQ-0036 — Pair Discovery and Stock Relationship Screening]] — **READY_FOR_DESIGN**; adds a coarse-to-fine market-wide pair discovery funnel so low-cost eligibility/context/return-similarity screening reduces candidates before rolling stability, lead/lag and long-run relationship analysis.
+- [[REQ-0037-rs-averaging-down-position-sizing|REQ-0037 — R/S-based Averaging Down Strategy and Position Sizing]] — **READY_FOR_DESIGN**; defines bounded multi-tranche averaging down using qualified R/S support evidence, explicit invalidation, capital/risk limits and leakage-safe backtest comparison against a non-averaging baseline.
 
 Validation:
 
