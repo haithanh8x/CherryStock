@@ -44,6 +44,7 @@ from calcEngine.rsEvaluation import (  # noqa: E402
     evaluate_ladder_result,
     events_to_dataframe,
     metrics_to_dataframe,
+    select_evaluation_snapshot_dates,
 )
 from calcEngine.volumeProfile import VolumeProfileConfig  # noqa: E402
 from cherrystock.config.settings import settings  # noqa: E402
@@ -284,7 +285,9 @@ def main() -> None:
 
         snapshot_dates: list[date] = []
         snapshot_count = 0
+        warmup_skipped_count = 0
         ticker_frames: dict[str, pd.DataFrame] = {}
+        ticker_snapshot_dates: dict[str, tuple[date, ...]] = {}
         for ticker in tickers:
             frame = history[history["Ticker"] == ticker].copy()
             if frame.empty:
@@ -292,13 +295,24 @@ def main() -> None:
             frame["Date"] = pd.to_datetime(frame["Date"], errors="coerce")
             frame = frame.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
             ticker_frames[ticker] = frame
-            eligible = frame[
+
+            requested = frame[
                 (frame["Date"].dt.date >= start_date)
                 & (frame["Date"].dt.date <= end_date)
-            ]
-            sampled = eligible.iloc[:: args.snapshot_step]
-            snapshot_count += len(sampled)
-            snapshot_dates.extend(pd.Timestamp(value).date() for value in sampled["Date"])
+            ].iloc[:: args.snapshot_step]
+            selected_dates = select_evaluation_snapshot_dates(
+                frame,
+                start_date=start_date,
+                end_date=end_date,
+                snapshot_step=args.snapshot_step,
+                enabled_sources=enabled_sources,
+                volume_profile_min_records=volume_profile_config.min_records,
+                volume_profile_window_bars=volume_profile_config.window_bars,
+            )
+            ticker_snapshot_dates[ticker] = selected_dates
+            snapshot_count += len(selected_dates)
+            warmup_skipped_count += max(0, len(requested) - len(selected_dates))
+            snapshot_dates.extend(selected_dates)
 
         split_map = assign_temporal_splits(snapshot_dates, config=split_config)
         unique_snapshots = sorted(set(snapshot_dates))
@@ -311,13 +325,8 @@ def main() -> None:
         events = []
         for ticker in tickers:
             frame = ticker_frames[ticker]
-            eligible = frame[
-                (frame["Date"].dt.date >= start_date)
-                & (frame["Date"].dt.date <= end_date)
-            ].iloc[:: args.snapshot_step]
 
-            for raw_date in eligible["Date"]:
-                as_of_date = pd.Timestamp(raw_date).date()
+            for as_of_date in ticker_snapshot_dates[ticker]:
                 result = build_level_ladder(
                     ticker,
                     as_of_date=as_of_date,
@@ -398,6 +407,7 @@ def main() -> None:
                 "signature": model.signature,
                 "tickers": list(tickers),
                 "snapshots": snapshot_count,
+                "warmup_skipped_snapshots": warmup_skipped_count,
                 "events": len(events),
                 "metrics": len(metric_df),
                 "included_source_keys": list(included_source_keys),
