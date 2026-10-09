@@ -12,6 +12,9 @@ from src.cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiB
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
 
+# Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
+ENABLE_MOVEMENT_PIPELINE = False
+
 
 def _resolve_days_diff(default_days: int = 15) -> int:
     """Resolve số ngày cần cập nhật từ checkpoint hiện tại."""
@@ -104,9 +107,6 @@ def main():
     )
     write_pipeline = SyncWritePipelineService()
     connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
-    movement_pipeline = MovementDailyPipelineService(
-        connection_factory=connection_factory
-    )
     days_diff = _resolve_days_diff()
 
     print(f"CherryStock Run All | from_last_day={days_diff}")
@@ -127,11 +127,16 @@ def main():
             uow=uow,
         )
 
-    # Movement runs after the canonical daily transaction commits so it can
-    # read the newly committed EOD while keeping ticker-local failure isolation.
-    _run_movement_steps(movement_pipeline=movement_pipeline)
+    # Movement runs after the canonical daily transaction commits when enabled.
+    if ENABLE_MOVEMENT_PIPELINE:
+        movement_pipeline = MovementDailyPipelineService(
+            connection_factory=connection_factory
+        )
+        _run_movement_steps(movement_pipeline=movement_pipeline)
+    else:
+        print("[daily] ⏭ ZigZag + Price Movement tạm thời bỏ qua")
 
-    # Chỉ export metadata sau khi core + Movement daily stages hoàn tất.
+    # Export metadata sau core daily và Movement (nếu được bật).
     metadata_started = perf_counter()
     DuckLib.exportDuckDB_metadata()
     metadata_elapsed = perf_counter() - metadata_started
