@@ -60,7 +60,7 @@ python scripts/run_rs_v2_3_evaluation.py @COMMON --model-version RS_VP_DROP --ru
 python scripts/run_rs_v2_3_evaluation.py @COMMON --model-version RS_VP_DISTANCE --run-id vp-distance-20261011 --strength-config-json '{"volume_confirmation_mode":"DISTANCE_AWARE"}'
 python scripts/run_rs_v2_3_evaluation.py @COMMON --model-version RS_VP_INTRADAY --run-id vp-intraday-20261011 --volume-profile-config-json '{"source_mode":"INTRADAY"}'
 
-python scripts/compare_rs_volume_profile.py --baseline-run-id vp-eod-baseline-20261011 --challenger-run-ids vp-no-volume-20261011,vp-distance-20261011,vp-intraday-20261011 --output docs/reference/data/rs/volume_profile_ablation_comparison.csv
+python scripts/compare_rs_volume_profile.py --baseline-run-id vp-eod-baseline-20261011 --challenger-run-ids vp-no-volume-20261011,vp-distance-20261011,vp-intraday-20261011 --strong-threshold 80
 ~~~
 
 If the intraday candidate has insufficient 30-session EOD-matched warm-up at any sampled date, stop that variant rather than inventing intraday evidence. Prefer a later verified period or keep the P2 runtime disabled. Set unique `--run-id` on each rerun; preserve version/config signature lineage.
@@ -110,7 +110,7 @@ unpaired evidence CSV:
 
 - `docs/reference/data/rs/volume_profile_ablation_matched.csv`: paired
   VALIDATION/TEST metrics, baseline-relative deltas, threshold-80 conditional
-  hold rates, exact snapshot coverage, matching/changed-level counts, broken
+  hold rates, Strength-to-hold discrimination AUC, exact snapshot coverage, matching/changed-level counts, broken
   out by ALL, TICKER and REGIME.
 - `docs/reference/data/rs/volume_profile_level_diagnostics.csv`: one row per
   union event identity (ticker, date, split, level rank and level type).
@@ -121,11 +121,11 @@ unpaired evidence CSV:
 `matched_level` requires the same event identity, stable source-independent
 regime and price difference <=0.5% by default. Price-shifted or missing levels
 are **reported but excluded from paired-outcome rates**; the result explicitly
-marks `promotion_evidence_eligible=False`. This is not permission to ignore
+marks `paired_evidence_eligible=False` and `promotion_evidence_eligible=False`. This is not permission to ignore
 new/removed levels: they need a separate level-selection evaluation. No
 identical `Ticker/AsOfDate` count is treated as proof of identity.
 
-`hold_after_touch` has its usual conditional denominator (only touched
+AUC compares the rank-discrimination of point-in-time Strength against held vs failed touched outcomes. It is not a calibrated probability; when only one outcome class exists, AUC is NaN. **Minimum sample gate: 200 VALIDATION / 100 TEST matched events per reporting scope**, and passing that count does not establish promotion approval. The operator's 54-event VALIDATION/TEST splits are below this gate.\n\n`hold_after_touch` has its usual conditional denominator (only touched
 levels); a zero denominator is NaN, not a zero return. The threshold-80
 subpopulation can differ across variants and is **selection/calibration
 evidence**, not a matched treatment effect. It must be evaluated on OOS
