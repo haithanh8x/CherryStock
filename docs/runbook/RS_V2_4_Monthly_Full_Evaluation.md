@@ -95,6 +95,31 @@ Default horizons:
 
 The horizons are future observation windows, not different model versions.
 
+### Point-in-time Volume Profile warm-up
+
+A ticker can meet the full-window `--min-history-bars` requirement and still
+have fewer than 30 **valid** OHLCV bars at an early historical snapshot.
+The Volume Profile engine retains its `min_records=30` validation.
+
+When a historical snapshot has fewer than the required valid bars,
+`load_volume_profile_bundle()` emits a warning containing ticker/date/count and
+returns an empty Volume Profile bundle **for that snapshot only**. Other R/S
+providers are evaluated normally, without inventing a POC/HVN/LVN or volume
+confirmation. Invalid Volume Profile configuration, schema and other data
+errors still raise. Baseline and ablation must run with identical point-in-time
+inputs and snapshot sampling; no history from after `as_of_date` can be used as
+warm-up data.
+
+Source Effectiveness interpretation: early snapshots with unavailable Volume
+Profile cannot establish positive VP evidence. Review event coverage and
+marginal lift before promoting a volume source. Do not lower `min_records` to
+work around sparse history.
+
+After fixing a failed monthly run, update the checkout and rerun the original
+full-evaluation command with `--resume`. Compatible completed child runs can
+be reused; the failed H5 baseline must be recalculated. Keep the same
+`--start`, `--end`, universe, horizons and run prefix for this retry.
+
 ### What is evaluated
 
 For each historical S/R level, the evaluator records behavior such as:
