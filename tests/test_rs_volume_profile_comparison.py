@@ -161,3 +161,20 @@ def test_paired_evidence_never_promotes_on_undersized_validation_sample():
     assert validation["paired_evidence_eligible"]
     assert not validation["adequate_sample_size"]
     assert not validation["promotion_evidence_eligible"]
+
+
+def test_equal_snapshot_counts_with_different_dates_are_not_misreported_as_coverage():
+    from scripts.compare_rs_volume_profile import compare_matched_runs
+
+    frame = _paired_events()
+    replace = (frame["EvaluationRunId"] == "DISTANCE") & (
+        frame["AsOfDate"] == date(2026, 1, 6)
+    )
+    frame.loc[replace, "AsOfDate"] = date(2026, 1, 7)
+    summary, details = compare_matched_runs(frame, "BASE", ["DISTANCE"])
+    row = summary.loc[(summary["scope"] == "ALL") & (summary["split"] == "TEST")].iloc[0]
+    assert row["baseline_snapshots"] == row["candidate_snapshots"] == 2
+    assert row["matched_snapshots"] == 1
+    assert not row["coverage_matches_baseline"]
+    assert not row["paired_evidence_eligible"]
+    assert {"BASELINE_ONLY", "CHALLENGER_ONLY"} <= set(details["event_status"])
