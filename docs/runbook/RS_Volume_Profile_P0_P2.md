@@ -124,7 +124,9 @@ marks `paired_evidence_eligible=False` and `promotion_evidence_eligible=False`. 
 new/removed levels: they need a separate level-selection evaluation. No
 identical `Ticker/AsOfDate` count is treated as proof of identity.
 
-AUC compares the rank-discrimination of point-in-time Strength against held vs failed touched outcomes. It is not a calibrated probability; when only one outcome class exists, AUC is NaN. **Minimum sample gate: 200 VALIDATION / 100 TEST matched events per reporting scope**, and passing that count does not establish promotion approval. The operator's 54-event VALIDATION/TEST splits are below this gate.\n\n`hold_after_touch` has its usual conditional denominator (only touched
+AUC compares the rank-discrimination of point-in-time Strength against held vs failed touched outcomes. It is not a calibrated probability; when only one outcome class exists, AUC is NaN. **Minimum sample gate: 200 VALIDATION / 100 TEST matched events per reporting scope**, and passing that count does not establish promotion approval. The operator's 54-event VALIDATION/TEST splits are below this gate.
+
+`hold_after_touch` has its usual conditional denominator (only touched
 levels); a zero denominator is NaN, not a zero return. The threshold-80
 subpopulation can differ across variants and is **selection/calibration
 evidence**, not a matched treatment effect. It must be evaluated on OOS
