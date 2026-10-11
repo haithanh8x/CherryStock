@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from src.calcEngine.volumeProfile import (
+    InsufficientVolumeProfileHistoryError,
     VolumeProfileConfig,
     build_volume_profile_from_history,
 )
@@ -498,6 +499,45 @@ def test_volume_profile_excludes_future_bars() -> None:
 
     assert result.price_high < 999.0
     assert result.window_end <= date(2026, 4, 30)
+
+
+def test_volume_profile_engine_keeps_minimum_history_guard() -> None:
+    frame = _volume_history().iloc[:1]
+    with pytest.raises(InsufficientVolumeProfileHistoryError, match="1 < 30"):
+        build_volume_profile_from_history(
+            frame,
+            as_of_date=date(2026, 1, 2),
+            config=VolumeProfileConfig(min_records=30),
+        )
+
+
+def test_volume_profile_bundle_degrades_only_when_history_is_insufficient(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    frame = _volume_history().iloc[:1]
+    with caplog.at_level("WARNING"):
+        bundle = load_volume_profile_bundle(
+            _HistoryConnection(frame),
+            ticker="MWG",
+            as_of_date=date(2026, 1, 2),
+            volume_profile_config=VolumeProfileConfig(min_records=30),
+        )
+    assert bundle.candidates == ()
+    assert bundle.confirmations == ()
+    assert bundle.market_contexts == ()
+    assert "Volume Profile unavailable" in caplog.text
+    assert "ticker=MWG" in caplog.text
+    assert "1 < 30" in caplog.text
+
+
+def test_volume_profile_bundle_does_not_suppress_invalid_configuration() -> None:
+    with pytest.raises(ValueError, match="bins"):
+        load_volume_profile_bundle(
+            _HistoryConnection(_volume_history().iloc[:1]),
+            ticker="MWG",
+            as_of_date=date(2026, 1, 2),
+            volume_profile_config=VolumeProfileConfig(bins=4, min_records=30),
+        )
 
 
 def test_volume_profile_bundle_returns_levels_and_confirmations() -> None:
