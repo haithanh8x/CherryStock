@@ -77,6 +77,67 @@ Assess by ticker, market regime and multiple horizons through the existing R/S V
 
 **Acceptance / promotion gate:** same eligible timestamps, positive VALIDATION lift, non-negative TEST lift, adequate sample size, stable regimes and no material quality loss. A local Test Engineer must issue PASS/FAIL. V2.4 promotion approval is non-deploying. This feature must remain research-only until separate approval/PR authorizes switching runtime defaults.
 
+## RS-02 + RS-05 follow-up (2026-10-11; score-aware paired ablation)
+
+The initial four persisted runs used 233 events / 39 snapshots each. The original
+`docs/reference/data/rs/volume_profile_ablation_comparison.csv` is **UNPAIRED**
+aggregate evidence: it checked only counts of ticker/date snapshots, not matching
+individual levels. Its observed `DISTANCE_AWARE` delta_hold was zero in both
+VALIDATION and TEST, but this is **not sufficient to assert the challenger scoring
+does nothing**.
+
+### Root-cause contract (RS-02)
+
+`rank_levels()` ranks R/S by **nearest price** and does not select levels by
+Strength. `evaluate_ladder_result()` labels future touches/holds of these
+levels, independent of their Strength. `DISTANCE_AWARE` adjusts score and
+double-counting discount, **not the level geometry**. If the same levels are
+selected, the hold/break/retest labels are identical by construction. Keep the
+nearest-price runtime contract unchanged; do **not** force a score-based
+re-ranking solely to improve backtest statistics.
+
+### New paired analysis (RS-05)
+
+Run from the feature branch after confirming that all four run IDs still exist
+in local CherryMon:
+
+~~~powershell
+python scripts/compare_rs_volume_profile.py --baseline-run-id vp-eod-baseline-20261011 --challenger-run-ids vp-no-volume-20261011,vp-distance-20261011,vp-intraday-20261011 --strong-threshold 80 --price-tolerance-pct 0.005
+~~~
+
+Read-only database access. It produces **new** reports, preserving the original
+unpaired evidence CSV:
+
+- `docs/reference/data/rs/volume_profile_ablation_matched.csv`: paired
+  VALIDATION/TEST metrics, baseline-relative deltas, threshold-80 conditional
+  hold rates, exact snapshot coverage, matching/changed-level counts, broken
+  out by ALL, TICKER and REGIME.
+- `docs/reference/data/rs/volume_profile_level_diagnostics.csv`: one row per
+  union event identity (ticker, date, split, level rank and level type).
+  Includes prices, Strength, Strength delta, threshold crossings, outcome
+  consistency and the diagnosis `SCORE_ONLY_NO_OUTCOME_CHANGE` versus
+  `PRICE_CHANGED` / missing event.
+
+`matched_level` requires the same event identity, stable source-independent
+regime and price difference <=0.5% by default. Price-shifted or missing levels
+are **reported but excluded from paired-outcome rates**; the result explicitly
+marks `promotion_evidence_eligible=False`. This is not permission to ignore
+new/removed levels: they need a separate level-selection evaluation. No
+identical `Ticker/AsOfDate` count is treated as proof of identity.
+
+`hold_after_touch` has its usual conditional denominator (only touched
+levels); a zero denominator is NaN, not a zero return. The threshold-80
+subpopulation can differ across variants and is **selection/calibration
+evidence**, not a matched treatment effect. It must be evaluated on OOS
+data, checked for denominator/sample adequacy, and cannot override the
+promotion gate. The event table does not persist a per-level timeframe
+dimension; per-timeframe attribution requires a separate source-lineage
+contract, not guesses from level rank.
+
+**Scope decision:** no NiceGUI visual test is required for this follow-up;
+this does not certify RS-04 UI. Historical rerun and independent TestEngineer
+verdict remain outstanding, since remote CherryMon is not accessible in GitHub CI.
+
 ## Source of truth and limitations
 
 - Source: `src/calcEngine/volumeProfile.py`, `src/calcEngine/levelLadder.py`.
