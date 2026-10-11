@@ -116,3 +116,7 @@ Validation:
 ## Daily R/S V2.4 incremental evaluation
 
 - [[REQ-0038-rs-v2-4-daily-incremental-source-effectiveness|REQ-0038 — R/S V2.4 Daily Incremental Source Effectiveness Evaluation]] — **DRAFT**; daily post-EOD maturity-aware, idempotent incremental processing with replay, full-run reconciliation and no automatic promotion. Awaiting BusinessAnalyst readiness confirmation.
+
+## Market news and sentiment intelligence
+
+- [[REQ-0039-news-collection-sentiment-intelligence|REQ-0039 — Market News Collection, Entity Linking and Sentiment Intelligence]] — **DRAFT**; approved multi-source incremental news ingestion, deduplication, ticker/sector mapping, explainable Vietnamese/English sentiment, point-in-time historical queries, cost/quality monitoring. Awaiting BusinessAnalyst scope and readiness confirmation.
