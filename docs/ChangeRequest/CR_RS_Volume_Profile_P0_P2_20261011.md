@@ -53,6 +53,8 @@ Implementation for targeted RS-02/RS-05 research:
   are explicit.
 - Report `StrengthScore` delta, threshold-80 crossings, conditional
   strong-level hold rate and `SCORE_ONLY_NO_OUTCOME_CHANGE` diagnoses.
+- Report paired touch-conditioned Strength-to-hold discrimination AUC (NaN if no positive/negative outcome class). AUC lift tests better scoring even when raw event outcomes do not change.
+- Enforce V2.3 promotion sample policy of >=200 VALIDATION and >=100 TEST matched events. The supplied evidence has only 54 per split; treat as preliminary, not statistically adequate for promotion.
 - Keep original unpaired CSV intact, write separate matched and event-diagnostic
   evidence CSVs when local CherryMon is reachable.
 - No NiceGUI visual validation in this follow-up, per requester; prior UI
