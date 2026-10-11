@@ -261,9 +261,20 @@ def _scope_report(
         row[f"baseline_{metric}"] = b[metric]
         row[metric] = c[metric]
         row[f"delta_{metric}"] = c[metric] - b[metric]
-    row["promotion_evidence_eligible"] = (
+    row["paired_evidence_eligible"] = (
         row["coverage_matches_baseline"] and row["fully_matched_levels"]
         and row["baseline_touches"] > 0 and row["touches"] > 0
+    )
+    # Repository PromotionPolicy: at least 200 VALIDATION / 100 TEST events.
+    # This is a *sample gate only*: positive OOS lift, regime stability,
+    # complexity, and independent reviewer approval must still be verified.
+    min_events = 200 if split == "VALIDATION" else 100
+    row["min_events_required"] = min_events
+    row["adequate_sample_size"] = min(row["baseline_total_events"],
+                                      row["candidate_total_events"],
+                                      row["matched_levels"]) >= min_events
+    row["promotion_evidence_eligible"] = (
+        row["paired_evidence_eligible"] and row["adequate_sample_size"]
     )
     return row
 
