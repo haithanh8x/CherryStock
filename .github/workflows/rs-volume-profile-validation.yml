@@ -13,6 +13,7 @@ on:
       - "tests/test_rs_ladder.py"
       - "tests/test_rs_evaluation.py"
       - "tests/test_rs_volume_profile_p0_p2.py"
+      - "tests/test_rs_volume_profile_comparison.py"
   push:
     paths:
       - ".github/workflows/rs-volume-profile-validation.yml"
@@ -22,6 +23,7 @@ on:
       - "src/webapp/NiceGUI_chart.py"
       - "scripts/compare_rs_volume_profile.py"
       - "tests/test_rs_volume_profile_p0_p2.py"
+      - "tests/test_rs_volume_profile_comparison.py"
 
 jobs:
   focused-tests:
@@ -46,6 +48,6 @@ jobs:
           python -m py_compile src/Chart/levelLadderChart.py src/webapp/NiceGUI_chart.py
           python -m py_compile scripts/compare_rs_volume_profile.py tests/test_rs_volume_profile_p0_p2.py
       - name: Collect R/S tests
-        run: python -m pytest tests/test_rs_ladder.py tests/test_rs_evaluation.py tests/test_rs_volume_profile_p0_p2.py --collect-only -q
+        run: python -m pytest tests/test_rs_ladder.py tests/test_rs_evaluation.py tests/test_rs_volume_profile_p0_p2.py tests/test_rs_volume_profile_comparison.py --collect-only -q
       - name: Run R/S unit and regression tests
-        run: python -m pytest tests/test_rs_ladder.py tests/test_rs_evaluation.py tests/test_rs_volume_profile_p0_p2.py -q
+        run: python -m pytest tests/test_rs_ladder.py tests/test_rs_evaluation.py tests/test_rs_volume_profile_p0_p2.py tests/test_rs_volume_profile_comparison.py -q
