@@ -3,6 +3,8 @@
 Date: 2026-10-11. Owner: General Coding → Test Engineer. Status: **IMPLEMENTED_PENDING_VALIDATION**.
 This is a backward-compatible extension to ADR-006 and R/S V2.4. It is **not** a production model promotion.
 
+> **Main branch publication note:** This runbook is available on `main` for review and handoff, but the implementation, new scripts, and tests remain in [draft PR #25](https://github.com/haithanh8x/CherryStock/pull/25) on `feat/rs-volume-profile-p0-p2-20261011`. Check out that feature branch before executing P0–P2 commands. No code or model activation is implied by publishing this document.
+
 ## Scope / task mapping
 
 | Task | Delivered | Validation |
@@ -74,7 +76,6 @@ The comparison summarizes:
 Assess by ticker, market regime and multiple horizons through the existing R/S V2.4 Source Effectiveness framework. A real false-breakout outcome needs a separate explicit recross-and-hold labeling contract; do not mislabel the retest metric.
 
 **Acceptance / promotion gate:** same eligible timestamps, positive VALIDATION lift, non-negative TEST lift, adequate sample size, stable regimes and no material quality loss. A local Test Engineer must issue PASS/FAIL. V2.4 promotion approval is non-deploying. This feature must remain research-only until separate approval/PR authorizes switching runtime defaults.
-
 
 ## RS-02 + RS-05 follow-up (2026-10-11; score-aware paired ablation)
 
