@@ -81,6 +81,9 @@ def test_matched_distance_aware_detects_score_only_not_price_outcome_lift():
     assert overall["baseline_strong_hold_after_touch"] == pytest.approx(0)
     assert overall["candidate_strong_hold_after_touch"] == pytest.approx(1)
     assert overall["delta_strong_hold_after_touch"] == pytest.approx(1)
+    assert overall["baseline_hold_strength_auc"] == pytest.approx(0.0)
+    assert overall["hold_strength_auc"] == pytest.approx(1.0)
+    assert overall["delta_hold_strength_auc"] == pytest.approx(1.0)
     assert set(details["diagnosis"]) == {"SCORE_ONLY_NO_OUTCOME_CHANGE"}
     assert set(summary["scope"]) == {"ALL", "TICKER", "REGIME"}
 
@@ -132,3 +135,14 @@ def test_threshold_diagnostics_require_touched_levels_for_hold_rate():
     assert pd.isna(overall["candidate_strong_hold_after_touch"])
     assert pd.isna(overall["delta_strong_hold_after_touch"])
     assert overall["candidate_strong_touches"] == 0
+
+
+def test_hold_auc_is_undefined_for_one_class_or_no_touch():
+    from scripts.compare_rs_volume_profile import compare_matched_runs
+
+    frame = _paired_events()
+    frame["Held"] = True  # cannot discriminate with no negative label
+    summary, _ = compare_matched_runs(frame, "BASE", ["DISTANCE"])
+    row = summary.loc[(summary["scope"] == "ALL") & (summary["split"] == "TEST")].iloc[0]
+    assert pd.isna(row["hold_strength_auc"])
+    assert pd.isna(row["delta_hold_strength_auc"])
