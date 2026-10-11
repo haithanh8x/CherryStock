@@ -24,3 +24,43 @@
 ## Decision / next gate
 
 The implementation is ready for targeted local verification but cannot yet be claimed as a better scoring model. Keep runtime `LEGACY` and `EOD`; do not auto-promote, auto-merge or deploy until the V2.4 evidence gates have passed. See runbook for reproducible commands and explicit criteria.
+
+
+## RS-02 / RS-05 follow-up — matched evaluation (2026-10-11)
+
+**Status:** IMPLEMENTED_RESEARCH_DIAGNOSTICS; **NOT PROMOTED**.
+
+Local validation results supplied by the operator (not independently replayed from
+GitHub): 46 developer tests passed; EOD/intraday preflight passed; four runs
+each persisted 233 events / 39 snapshots. Initial unpaired aggregate evidence
+`docs/reference/data/rs/volume_profile_ablation_comparison.csv` reports
+DISTANCE_AWARE hold delta 0/0 on VALIDATION/TEST, INTRADAY +0.0645/0,
+NO_VOLUME +0.0323/-0.0218. None satisfies a positive VALIDATION and
+non-negative TEST promotion gate. The original comparison did **not** guarantee
+matching event identity and is *not* sufficient for model promotion.
+
+Root-cause/code finding: `score_zones()` changes Strength with the
+DISTANCE_AWARE volume discount, but `rank_levels()` selects the nearest R/S by
+price; the existing future-outcome evaluator labels the same price levels
+independently of Strength. Zero price-level outcome lift is therefore expected
+whenever the same levels are selected. This does **not** establish zero score
+or zero threshold-80 selection effect.
+
+Implementation for targeted RS-02/RS-05 research:
+- Compare persisted events on `Ticker, AsOfDate, Split, LevelRank, LevelType`.
+- Price-change/missing/regime-mismatched levels are reported and excluded from
+  strictly matched level outcome rates; split/ticker/regime and sample gates
+  are explicit.
+- Report `StrengthScore` delta, threshold-80 crossings, conditional
+  strong-level hold rate and `SCORE_ONLY_NO_OUTCOME_CHANGE` diagnoses.
+- Keep original unpaired CSV intact, write separate matched and event-diagnostic
+  evidence CSVs when local CherryMon is reachable.
+- No NiceGUI visual validation in this follow-up, per requester; prior UI
+  implementation remains unverified.
+
+**Remaining gate:** run read-only paired comparator on local CherryMon, review
+matched-level coverage, denominators and out-of-sample threshold-calibration
+metrics with independent TestEngineer. GitHub CI unit tests alone cannot
+produce these real-data artifacts. No changes to EOD/LEGACY defaults and no
+merge/deployment approval.
+
