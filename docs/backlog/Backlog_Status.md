@@ -11,17 +11,17 @@
 
 | Backlog area | Logical items | Current status summary |
 |---|---:|---|
-| Requirements | 16 canonical requirements | 6 DONE · 5 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE |
+| Requirements | 17 canonical requirements | 6 DONE · 5 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 1 DRAFT |
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
-| **Total** | **40** | **10 DONE · 3 IN_PROGRESS · 5 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO** |
+| **Total** | **41** | **10 DONE · 3 IN_PROGRESS · 5 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO · 1 DRAFT** |
 
 ### Priority Summary
 
 | Priority | Count | Notes |
 |---|---:|---|
 | P0 | 4 | REQ-0022, REQ-0023, REQ-0024, CS-ARCH-010 |
-| P1 | 26 | REQ-0025 through REQ-0037 + 6 Architecture + 7 Harness |
+| P1 | 27 | REQ-0025 through REQ-0038 + 6 Architecture + 7 Harness |
 | P2 | 7 | 2 Architecture + 5 Harness |
 | P3 | 3 | 1 Architecture + 2 Harness |
 
@@ -79,7 +79,7 @@ Canonical index:
 | REQ-0034 | Daily Incremental Movement Pipeline | P1 | **DONE** | None | [[requirements/REQ-0034-daily-incremental-movement-pipeline|REQ-0034]] |
 | REQ-0035 | Hybrid Cloud Deployment — Railway + MotherDuck with Local AmiBroker Pipeline | P1 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0035-hybrid-cloud-railway-motherduck|REQ-0035]] |
 | REQ-0036 | Pair Discovery and Stock Relationship Screening | P1 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0036-pair-discovery-stock-relationship-screening|REQ-0036]] |
-| REQ-0037 | R/S-based Averaging Down Strategy and Position Sizing | P1 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0037-rs-averaging-down-position-sizing|REQ-0037]] |
+| REQ-0037 | R/S-based Averaging Down Strategy and Position Sizing | P1 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0037-rs-averaging-down-position-sizing|REQ-0037]] |\n| REQ-0038 | R/S V2.4 Daily Incremental Source Effectiveness Evaluation | P1 | **DRAFT** | BusinessAnalyst | [[requirements/REQ-0038-rs-v2-4-daily-incremental-source-effectiveness|REQ-0038]] |
 
 ## Requirement Delivery Flow
 
@@ -366,7 +366,7 @@ DONE
 
 ## Status reconciliation boundary
 
-The 40 canonical items and their status counts above remain aligned with the owning requirement, architecture and harness backlog documents reviewed on 2026-10-11. No requirement is promoted to DONE solely because a PR exists or focused tests have been run. This review does not constitute a new TestEngineer sign-off or runtime acceptance.
+The previous 40 canonical items and their status counts were aligned with the owning requirement, architecture and harness backlog documents reviewed on 2026-10-11. No requirement is promoted to DONE solely because a PR exists or focused tests have been run. This review does not constitute a new TestEngineer sign-off or runtime acceptance.
 
 ## R/S V2.4 — active follow-up / validation evidence
 
@@ -409,4 +409,11 @@ Long-term/episodic agent memory is already represented by CS-HARNESS-007/008/013
 2. Update the owning R/S requirement or add a distinct scoped defect/task if a regression remains; only then adjust dashboard statuses/counts.
 3. Reconcile weekly Movement scheduling and SmartMoney UI behavior against approved docs and tests.
 4. Route AI-event trading through BusinessAnalyst intake; do not count it as an approved canonical requirement yet.
-5. Keep the 40-item counts unchanged until authoritative item states or new approved canonical IDs change.
+5. REQ-0038 is now registered as a DRAFT canonical requirement; total is 41. Do not count it as READY_FOR_DESIGN until BusinessAnalyst confirms readiness.
+
+## 2026-10-11 Backlog Addition — REQ-0038
+
+- **REQ-0038:** Daily incremental R/S V2.4 Source Effectiveness; **P1 / DRAFT**.
+- Reuse REQ-0022 full evaluation as parity baseline; post-EOD processing, horizon-maturity checkpoints, replay on corrections/version changes, idempotent publish, no promotion side effects.
+- Requires BusinessAnalyst confirmation, SolutionArchitect design and independent test evidence before delivery-state advancement.
+- Canonical requirement: [[requirements/REQ-0038-rs-v2-4-daily-incremental-source-effectiveness|REQ-0038]].
