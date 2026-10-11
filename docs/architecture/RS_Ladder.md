@@ -3235,3 +3235,18 @@ This is a provider-normalization rule, not a change to the Indicator Engine form
 The BB provider must preserve valid MIDDLE/UPPER candidates when a LOWER candidate is skipped.
 
 The rule must not weaken ValueSemantic validation or silently swallow malformed indicator values.
+
+
+---
+
+## R/S Volume Profile P0–P2 extension (2026-10-11, research-only)
+
+The V2.4 baseline retains its original configuration and source semantics. V2.2 POC/HVN/LVN remain `LEVEL` candidates in the single `VOLUME_STRUCTURE` family, and volume evidence is a separate confirmation context.
+
+- `VolumeProfileConfig.source_mode`: `EOD` (default), `INTRADAY` (explicit, fail closed), `AUTO` (explicit, logged EOD fallback for inadequate volume-matched sessions).
+- Intraday input: `raw_stock_intraday` bars, with each date's sum of volume validated against `raw_stock_eod` (default acceptable ratio 85%–115%; minimum 30 eligible sessions). The engine allocates bar volume over its High/Low bins and labels the result `INTRADAY_BAR_APPROX`; it is NOT tick-accurate.
+- `StrengthConfig.volume_confirmation_mode`: `LEGACY` (default), or opt-in `DISTANCE_AWARE` for research. The latter attenuates confirmation by node-to-zone distance and discounts correlated volume evidence if `VOLUME_STRUCTURE` already contributes to a zone.
+- `RankedLevel` now carries `volume_confirmation_score`, `volume_score_contribution` (signed normalized-strength marginal, *not* OOS lift), `volume_node_type`, `volume_share_pct`, `volume_profile_source`. The UI renders these without recomputing scores or changing proximity ranks, Risk/Reward or the Strength ≥80 display filter.
+- No DuckDB persistence schema changes. Point-in-time source bounds and V2.4 Source Effectiveness gates remain mandatory. Research scoring does not promote or deploy a runtime model.
+
+Reproducible verification: [RS Volume Profile P0–P2 runbook](../runbook/RS_Volume_Profile_P0_P2.md).
