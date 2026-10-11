@@ -196,3 +196,24 @@ PR #13
 then
 full monthly validation on main
 ```
+
+## 10. Current-main integration follow-up — 2026-10-11
+
+The historical PR #13 is stacked on old warm-up PR #12, which predates current
+`main` and must **not** be merged wholesale. The point-in-time Volume Profile
+warm-up condition was independently fixed on current `main` by PR #26.
+
+The exact previously validated BB provider skip logic and focused regression
+tests from PR #13 have now been reapplied on a fresh current-main branch:
+
+- **PR #27:** https://github.com/haithanh8x/CherryStock/pull/27
+- **Branch:** `fix/rs-v24-bb-nonpositive-on-main-20261011`
+- **Implementation state:** `IMPLEMENTED_PENDING_VALIDATION`.
+- **Integrated validation still needed:** focused BB tests, existing full ladder
+  suite, golden regression, then bounded real-data smoke; only afterward
+  approve merging and rerun the full monthly evaluation with `--resume`.
+
+The historical 2026-09-02 PASS/KEEP evidence above belongs to the old PR #13
+branch. It supports the isolated algorithm but is not a new independent PASS
+on the integrated PR #27. The original merge-order instructions for PR
+#12/#13 are superseded by the current-main PR #27 integration path.

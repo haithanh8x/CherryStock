@@ -242,3 +242,43 @@ Expected branch:
 ```text
 main
 ```
+
+## Current-main execution update — 2026-10-11
+
+The original branch workflow above documents the historical stacked PR #13.
+For the current CherryStock `main` with PR #26 already merged, validate the
+same narrow BB fix from **PR #27** without merging legacy PR #12/#13:
+
+```powershell
+git status --short
+git fetch origin
+git switch --track origin/fix/rs-v24-bb-nonpositive-on-main-20261011
+python -m py_compile src/calcEngine/levelLadder.py
+python -m pytest tests/test_rs_ladder.py -k "bb_provider" -v
+python -m pytest tests/test_rs_ladder.py -q
+python scripts/run_rs_v2_3_golden.py
+```
+
+If the branch already exists locally, use
+`git switch fix/rs-v24-bb-nonpositive-on-main-20261011` instead of `--track`.
+Preserve any local edits before switching branches.
+
+Verify the narrow current-main patch scope with:
+
+```powershell
+git diff --name-only origin/main...HEAD
+```
+
+Expected production-code change: only
+`src/calcEngine/levelLadder.py::load_bb_level_candidates`.
+The test file and documentation may also change.
+
+If all focused checks pass, independent TestEngineer can return PASS/KEEP.
+After authorized merge of PR #27, use `git fetch origin main` followed by
+`git merge --ff-only FETCH_HEAD` on the clean local main branch. Then run
+the original full evaluation with unchanged run parameters and `--resume`.
+Avoid `git pull --ff-only origin main` on checkouts with ambiguous
+`branch.main.merge` configuration.
+
+The historical old-branch commands and merge order above are retained solely
+as original 2026-09-02 validation record; the current-main path here supersedes them.
