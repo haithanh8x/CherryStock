@@ -71,7 +71,9 @@ def test_matched_distance_aware_detects_score_only_not_price_outcome_lift():
 
     summary, details = compare_matched_runs(_paired_events(), "BASE", ["DISTANCE"])
     overall = summary.loc[(summary["scope"] == "ALL") & (summary["split"] == "TEST")].iloc[0]
-    assert overall["promotion_evidence_eligible"]
+    assert overall["paired_evidence_eligible"]
+    assert not overall["promotion_evidence_eligible"]  # 2 events < 100 TEST minimum
+    assert overall["min_events_required"] == 100
     assert overall["matched_levels"] == 2
     assert overall["score_changed_levels"] == 2
     assert overall["identical_outcome_levels"] == 2
@@ -146,3 +148,16 @@ def test_hold_auc_is_undefined_for_one_class_or_no_touch():
     row = summary.loc[(summary["scope"] == "ALL") & (summary["split"] == "TEST")].iloc[0]
     assert pd.isna(row["hold_strength_auc"])
     assert pd.isna(row["delta_hold_strength_auc"])
+
+
+def test_paired_evidence_never_promotes_on_undersized_validation_sample():
+    from scripts.compare_rs_volume_profile import compare_matched_runs
+
+    summary, _ = compare_matched_runs(_paired_events(), "BASE", ["DISTANCE"])
+    validation = summary.loc[(summary["scope"] == "ALL") &
+                             (summary["split"] == "VALIDATION")].iloc[0]
+    assert validation["matched_levels"] == 2
+    assert validation["min_events_required"] == 200
+    assert validation["paired_evidence_eligible"]
+    assert not validation["adequate_sample_size"]
+    assert not validation["promotion_evidence_eligible"]
