@@ -27,6 +27,7 @@ class VolumeProfileConfig:
     min_intraday_sessions: int = 30
     min_session_volume_coverage: float = 0.85
     max_session_volume_coverage: float = 1.15
+    min_window_session_coverage: float = 0.90
 
 
 @dataclass(frozen=True)
@@ -73,6 +74,8 @@ def _validate_config(config: VolumeProfileConfig) -> None:
         raise ValueError("min_intraday_sessions must be > 0")
     if not 0 < config.min_session_volume_coverage <= 1 <= config.max_session_volume_coverage:
         raise ValueError("invalid intraday daily-volume coverage bounds")
+    if not 0 < config.min_window_session_coverage <= 1:
+        raise ValueError("min_window_session_coverage must be within (0, 1]")
 
 
 def _quantile(values: Sequence[float], q: float) -> float:
@@ -253,7 +256,13 @@ def build_volume_profile_from_intraday_history(
     reference["Volume"] = pd.to_numeric(reference["Volume"], errors="coerce")
     if reference["Date"].duplicated().any():
         raise ValueError("duplicate EOD dates in intraday coverage comparison")
-    reference = reference[reference["Volume"] > 0]
+    reference = reference[
+        reference["Date"].notna()
+        & (reference["Date"].dt.date <= as_of_date)
+        & reference["Volume"].map(lambda v: pd.notna(v) and math.isfinite(v) and v > 0)
+    ].sort_values("Date").tail(cfg.window_bars)
+    if len(reference) < cfg.min_intraday_sessions:
+        raise ValueError("insufficient EOD reference sessions for intraday comparison")
     daily_totals = frame.groupby("Date", as_index=False)["Volume"].sum()
     coverage = daily_totals.merge(reference, on="Date", how="inner", suffixes=("_intraday", "_eod"))
     coverage["ratio"] = coverage["Volume_intraday"] / coverage["Volume_eod"]
@@ -262,11 +271,17 @@ def build_volume_profile_from_intraday_history(
             cfg.min_session_volume_coverage, cfg.max_session_volume_coverage
         ), "Date"
     ].sort_values().tail(cfg.window_bars)
-    if len(valid_dates) < cfg.min_intraday_sessions:
+    required_sessions = max(
+        cfg.min_intraday_sessions,
+        math.ceil(len(reference) * cfg.min_window_session_coverage),
+    )
+    if len(valid_dates) < required_sessions:
         raise ValueError(
             f"insufficient volume-validated intraday sessions: "
-            f"{len(valid_dates)} < {cfg.min_intraday_sessions}"
+            f"{len(valid_dates)} < {required_sessions}"
         )
+    if valid_dates.iloc[-1] != reference["Date"].iloc[-1]:
+        raise ValueError("stale intraday profile: most recent EOD session is not covered")
     selected = frame.loc[frame["Date"].isin(valid_dates)].copy()
     selected["Date"] = selected["DateTime"]
     # Each intraday OHLCV bar allocates its own volume over crossed price bins.
