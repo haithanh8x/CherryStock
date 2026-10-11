@@ -22,9 +22,11 @@ except ModuleNotFoundError:
     from src.calcEngine.rsSourceIdentity import filter_source_objects
 
 try:
-    from calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
+    from calcEngine.volumeProfile import (VolumeProfileConfig, build_volume_profile_from_history,
+        build_volume_profile_from_intraday_history)
 except ModuleNotFoundError:
-    from src.calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
+    from src.calcEngine.volumeProfile import (VolumeProfileConfig, build_volume_profile_from_history,
+        build_volume_profile_from_intraday_history)
 
 try:
     from Ults.DuckLib import DuckDBManager
@@ -178,6 +180,10 @@ class ScoredLevel:
     structural_quality_score: float
     volume_confirmation_score: float
     touch_count: int
+    volume_score_contribution: float = 0.0
+    volume_node_type: str | None = None
+    volume_share_pct: float | None = None
+    volume_profile_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -192,6 +198,11 @@ class RankedLevel:
     source_count: int
     source_family_count: int
     sources: tuple[NormalizedLevel, ...]
+    volume_confirmation_score: float | None = None
+    volume_score_contribution: float = 0.0
+    volume_node_type: str | None = None
+    volume_share_pct: float | None = None
+    volume_profile_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -222,6 +233,8 @@ class StrengthConfig:
     confirmation_weight: float = 0.10
     structural_quality_weight: float = 0.15
     volume_confirmation_weight: float = 0.10
+    volume_confirmation_mode: str = "LEGACY"  # LEGACY or DISTANCE_AWARE challenger
+    volume_overlap_discount: float = 0.50  # prevent duplicated VP family evidence
     family_confluence_target: int = 3
     touch_target: int = 4
     touch_tolerance_pct: float = 0.003
@@ -1239,19 +1252,48 @@ def load_volume_profile_bundle(
     """Build POC/HVN/LVN levels and volume confirmations in one profile pass."""
     del timeframes
     config = volume_profile_config or VolumeProfileConfig()
-    history = _load_structural_history(
-        connection,
-        ticker=ticker,
-        as_of_date=as_of_date,
-        lookback_days=max(540, config.window_bars * 3),
-    )
-    if "Volume" not in history.columns:
-        raise ValueError("Volume Profile requires Volume in raw_stock_eod")
-    profile = build_volume_profile_from_history(
-        history,
-        as_of_date=as_of_date,
-        config=config,
-    )
+    if config.source_mode not in {"EOD", "INTRADAY", "AUTO"}:
+        raise ValueError("unsupported Volume Profile source_mode")
+    profile = None
+    fallback_reason = None
+    if config.source_mode in {"INTRADAY", "AUTO"}:
+        # Research-only, explicit opt-in. Compare session totals against EOD SSOT
+        # before allowing intraday OHLC bars to affect any R/S levels.
+        history_start = as_of_date - timedelta(days=max(540, config.window_bars * 3))
+        intraday_history = connection.execute(
+            'SELECT "DateTime", "High", "Low", "Volume" '
+            'FROM "CherryMon"."main"."raw_stock_intraday" '
+            'WHERE "Ticker" = ? AND "Date" >= ? AND "Date" <= ? '
+            'ORDER BY "DateTime", "TickSeq"',
+            [ticker, history_start, as_of_date],
+        ).df()
+        reference_daily = connection.execute(
+            'SELECT "Date", "Volume" FROM "CherryMon"."main"."raw_stock_eod" '
+            'WHERE "Ticker" = ? AND "Date" >= ? AND "Date" <= ? ORDER BY "Date"',
+            [ticker, history_start, as_of_date],
+        ).df()
+        try:
+            profile = build_volume_profile_from_intraday_history(
+                intraday_history, as_of_date=as_of_date,
+                daily_volume=reference_daily, config=config,
+            )
+        except ValueError as exc:
+            if config.source_mode == "INTRADAY":
+                raise
+            fallback_reason = str(exc)
+            LOGGER.warning("R/S Volume Profile AUTO fallback to EOD | %s: %s", ticker, exc)
+    if profile is None:
+        history = _load_structural_history(
+            connection,
+            ticker=ticker,
+            as_of_date=as_of_date,
+            lookback_days=max(540, config.window_bars * 3),
+        )
+        if "Volume" not in history.columns:
+            raise ValueError("Volume Profile requires Volume in raw_stock_eod")
+        profile = build_volume_profile_from_history(
+            history, as_of_date=as_of_date, config=config,
+        )
 
     nodes = [profile.poc, *profile.hvn, *profile.lvn]
     candidates: list[LevelCandidate] = []
@@ -1275,6 +1317,9 @@ def load_volume_profile_bundle(
             "window_end": profile.window_end.isoformat(),
             "profile_bars": profile.bars,
             "profile_bins": profile.bins,
+            "profile_source": profile.source_resolution,
+            "eligible_sessions": profile.eligible_sessions,
+            "fallback_reason": fallback_reason,
         }
         candidates.append(
             LevelCandidate(
@@ -1587,25 +1632,57 @@ def _rsi_confirmation_score(
     return weighted_total / weight_sum if weight_sum > 0 else 0.0
 
 
+def _volume_confirmation_evidence(
+    zone: LevelZone,
+    confirmations: Sequence[ConfirmationContext],
+    tolerance_pct: float,
+    mode: str,
+) -> tuple[float, bool, dict[str, Any]]:
+    """Use one best matching VP node; never sum correlated POC/HVN/LVN evidence."""
+    if zone.level_type not in {"SUPPORT", "RESISTANCE"}:
+        return 0.0, False, {}
+    low = zone.price_low * (1.0 - tolerance_pct)
+    high = zone.price_high * (1.0 + tolerance_pct)
+    matches = []
+    for context in confirmations:
+        if (context.source_family != SOURCE_FAMILY_VOLUME_CONFIRMATION
+                or context.reference_price is None):
+            continue
+        reference = float(context.reference_price)
+        if not math.isfinite(reference) or not low <= reference <= high:
+            continue
+        value = max(0.0, min(float(context.value), 100.0))
+        distance = abs(reference - zone.representative_price)
+        if mode == "DISTANCE_AWARE":
+            radius = max(
+                (zone.price_high - zone.price_low) / 2.0,
+                zone.representative_price * tolerance_pct,
+                1e-9,
+            )
+            value *= 1.0 - 0.5 * min(distance / radius, 1.0)
+        matches.append((value, -distance, context.source_code, context))
+    if not matches:
+        return 0.0, False, {}
+    best = sorted(matches, key=lambda x: (-x[0], -x[1], x[2]))[0][3]
+    score = sorted(matches, key=lambda x: (-x[0], -x[1], x[2]))[0][0]
+    share = best.metadata.get("volume_share")
+    return score, True, {
+        "node_type": best.component_code,
+        "volume_share_pct": float(share) * 100.0 if share is not None else None,
+        "profile_source": best.metadata.get("profile_source", "EOD_APPROX"),
+    }
+
+
 def _volume_confirmation_score(
     zone: LevelZone,
     confirmations: Sequence[ConfirmationContext],
     tolerance_pct: float,
 ) -> tuple[float, bool]:
-    if zone.level_type not in {"SUPPORT", "RESISTANCE"}:
-        return 0.0, False
-    low = zone.price_low * (1.0 - tolerance_pct)
-    high = zone.price_high * (1.0 + tolerance_pct)
-    matched = [
-        float(context.value)
-        for context in confirmations
-        if context.source_family == SOURCE_FAMILY_VOLUME_CONFIRMATION
-        and context.reference_price is not None
-        and low <= float(context.reference_price) <= high
-    ]
-    if not matched:
-        return 0.0, False
-    return max(0.0, min(max(matched), 100.0)), True
+    """Legacy compatibility helper for callers expecting score and presence."""
+    score, available, _ = _volume_confirmation_evidence(
+        zone, confirmations, tolerance_pct, "LEGACY",
+    )
+    return score, available
 
 
 def _structural_quality_score(
@@ -1655,6 +1732,10 @@ def score_zones(
         config.structural_quality_weight,
         config.volume_confirmation_weight,
     )
+    if config.volume_confirmation_mode not in {"LEGACY", "DISTANCE_AWARE"}:
+        raise ValueError("invalid volume_confirmation_mode")
+    if not 0 <= config.volume_overlap_discount <= 1:
+        raise ValueError("volume_overlap_discount must be within [0, 1]")
     if any(w < 0 for w in all_weights) or sum(base_weights) <= 0:
         raise ValueError("Strength weights must be non-negative and base weights sum to > 0")
     if config.family_confluence_target <= 0:
@@ -1697,10 +1778,9 @@ def score_zones(
             context.indicator_code == "RSI"
             for context in confirmations
         )
-        volume_confirmation, has_volume_confirmation = _volume_confirmation_score(
-            zone,
-            confirmations,
-            config.touch_tolerance_pct,
+        volume_confirmation, has_volume_confirmation, volume_evidence = _volume_confirmation_evidence(
+            zone, confirmations, config.touch_tolerance_pct,
+            config.volume_confirmation_mode,
         )
         structural_quality, has_structural = _structural_quality_score(
             zone,
@@ -1718,11 +1798,14 @@ def score_zones(
         if has_rsi and zone.level_type in {"SUPPORT", "RESISTANCE"}:
             weighted_score += confirmation * config.confirmation_weight
             effective_weight += config.confirmation_weight
+        volume_weight = config.volume_confirmation_weight
+        if (config.volume_confirmation_mode == "DISTANCE_AWARE" and
+                any(s.source_family == SOURCE_FAMILY_VOLUME_STRUCTURE for s in zone.sources)):
+            volume_weight *= config.volume_overlap_discount
+        without_volume_score = weighted_score / effective_weight
         if has_volume_confirmation:
-            weighted_score += (
-                volume_confirmation * config.volume_confirmation_weight
-            )
-            effective_weight += config.volume_confirmation_weight
+            weighted_score += volume_confirmation * volume_weight
+            effective_weight += volume_weight
         if has_structural:
             weighted_score += (
                 structural_quality * config.structural_quality_weight
@@ -1730,6 +1813,12 @@ def score_zones(
             effective_weight += config.structural_quality_weight
 
         score = weighted_score / effective_weight
+        score_without_volume = (
+            (weighted_score - volume_confirmation * volume_weight) /
+            (effective_weight - volume_weight)
+            if has_volume_confirmation and volume_weight > 0
+            else score
+        )
         result.append(
             ScoredLevel(
                 zone=zone,
@@ -1742,6 +1831,10 @@ def score_zones(
                 structural_quality_score=round(structural_quality, 2),
                 volume_confirmation_score=round(volume_confirmation, 2),
                 touch_count=touches,
+                volume_score_contribution=round(score - score_without_volume, 2),
+                volume_node_type=volume_evidence.get("node_type"),
+                volume_share_pct=volume_evidence.get("volume_share_pct"),
+                volume_profile_source=volume_evidence.get("profile_source"),
             )
         )
     return result
@@ -1781,6 +1874,11 @@ def rank_levels(
             source_count=zone.source_count,
             source_family_count=zone.source_family_count,
             sources=zone.sources,
+            volume_confirmation_score=(item.volume_confirmation_score if item.volume_node_type else None),
+            volume_score_contribution=item.volume_score_contribution,
+            volume_node_type=item.volume_node_type,
+            volume_share_pct=item.volume_share_pct,
+            volume_profile_source=item.volume_profile_source,
         )
 
     return (
