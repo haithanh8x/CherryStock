@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-10-07
+- **Last reviewed:** 2026-10-11
 - **Purpose:** Central status dashboard for planned CherryStock engineering work.
 - **Scope:** Requirement backlog, Architecture backlog, and Agent Harness backlog.
 - **Status authority:** This file is a summary/index only. The detailed backlog/requirement file remains the authoritative material for each item.
@@ -359,3 +359,54 @@ Test Evidence
         ↓
 DONE
 ```
+
+---
+
+# 9. Review Update — 2026-10-11
+
+## Status reconciliation boundary
+
+The 40 canonical items and their status counts above remain aligned with the owning requirement, architecture and harness backlog documents reviewed on 2026-10-11. No requirement is promoted to DONE solely because a PR exists or focused tests have been run. This review does not constitute a new TestEngineer sign-off or runtime acceptance.
+
+## R/S V2.4 — active follow-up / validation evidence
+
+REQ-0022 remains **DONE** according to its canonical requirement record, but subsequent R/S V2.4 monthly/full-evaluation work has produced fixes and still requires verification of the current operational evaluation path. Do not silently reopen or close REQ-0022 without updating its authoritative material and recording the validation decision.
+
+Recent PRs to reconcile with their actual merge status and independent evidence:
+
+| PR | Change | Follow-up |
+|---|---|---|
+| [#8](https://github.com/haithanh8x/CherryStock/pull/8) | R/S Ladder V2.4 Source Effectiveness governance | Preserve REQ-0022 baseline |
+| [#9](https://github.com/haithanh8x/CherryStock/pull/9) | Monthly R/S V2.4 full Source Effectiveness runner | Verify full-evaluation run |
+| [#10](https://github.com/haithanh8x/CherryStock/pull/10) | Monthly active-ticker universe restriction | Verify universe parity |
+| [#11](https://github.com/haithanh8x/CherryStock/pull/11), [#12](https://github.com/haithanh8x/CherryStock/pull/12) | Provider warm-up / immature snapshot handling | Verify historical evaluation behavior |
+| [#13](https://github.com/haithanh8x/CherryStock/pull/13) | Non-positive BB price-level handling | Regression-check BB candidates |
+| [#25](https://github.com/haithanh8x/CherryStock/pull/25) | VP P0–P2 scoring, explainability, intraday research, validation | Reconcile research/production boundary |
+| [#26](https://github.com/haithanh8x/CherryStock/pull/26) | Insufficient point-in-time VP warm-up handling | Validate full evaluation |
+| [#27](https://github.com/haithanh8x/CherryStock/pull/27) | Historical non-positive BB levels | Validate BB provider and full evaluation |
+
+As of this review, PR titles are discoverable but merge/acceptance states have not been independently established. A local branch/test invocation is not proof of PASS. In particular, the 2026-10-11 BB-provider focused pytest invocation requires its final result before recording validation as passed.
+
+## Pipeline / UI work to reconcile
+
+| PR | Scope | Backlog impact |
+|---|---|---|
+| [#19](https://github.com/haithanh8x/CherryStock/pull/19), [#20](https://github.com/haithanh8x/CherryStock/pull/20) | Yahoo OHLC diagnostics and VND=X source-specific DQ policy | Review the operational blocker documented under REQ-0034; do not alter its canonical DONE state without evidence |
+| [#21](https://github.com/haithanh8x/CherryStock/pull/21) | Full-universe Movement moved to weekly pipeline | Reconcile REQ-0034 runtime scheduling documentation |
+| [#22](https://github.com/haithanh8x/CherryStock/pull/22), [#23](https://github.com/haithanh8x/CherryStock/pull/23), [#24](https://github.com/haithanh8x/CherryStock/pull/24) | SmartMoney ticker interaction, TradingView, R/S popup, UI diagnostics | Review feature and regression evidence separately from REQ-0025/0026 delivery state |
+
+## Backlog coverage / intake check
+
+The current canonical dashboard covers hybrid cloud (REQ-0035), pair screening (REQ-0036), and averaging down (REQ-0037). The following discussed concept is **not yet registered as a separately numbered canonical requirement in the requirements index**:
+
+- AI event tracking: timestamped events linked to listed companies, post-announcement price/volume response, point-in-time-safe event-driven backtesting and trading costs. Route through BusinessAnalyst intake and the requirement template before assigning an ID or delivery status.
+
+Long-term/episodic agent memory is already represented by CS-HARNESS-007/008/013; observability by CS-ARCH-008 and CS-HARNESS-009/010. Avoid duplicate backlog IDs for the same intended outcome.
+
+## Next evidence required
+
+1. Confirm PR #25–#27 merge state and final R/S BB/VP focused and full-evaluation test results.
+2. Update the owning R/S requirement or add a distinct scoped defect/task if a regression remains; only then adjust dashboard statuses/counts.
+3. Reconcile weekly Movement scheduling and SmartMoney UI behavior against approved docs and tests.
+4. Route AI-event trading through BusinessAnalyst intake; do not count it as an approved canonical requirement yet.
+5. Keep the 40-item counts unchanged until authoritative item states or new approved canonical IDs change.
