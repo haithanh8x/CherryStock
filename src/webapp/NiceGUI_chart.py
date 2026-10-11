@@ -1941,7 +1941,7 @@ def rs_tab_content() -> None:
         with ui.card().classes(card_classes("p-4 xl:col-span-8")):
             card_header(
                 "Level Details",
-                "Zone cạnh Strength; bấm mở để xem timeframe, families và sources",
+                "Zone cạnh Strength; VP Score, chi tiết timeframe và sources",
                 icon="account_tree",
             )
             with ui.column().classes("w-full h-[620px] overflow-auto gap-2"):
@@ -1966,6 +1966,9 @@ def rs_tab_content() -> None:
                         </span>
                         <span>Strength <strong>{{ props.node.strength_label }}</strong></span>
                         <span>Zone <strong>{{ props.node.zone_label }}</strong></span>
+                        <span :style="{color: props.node.volume_high_confidence ? 'var(--cs-positive)' : 'var(--cs-muted)'}">
+                            {{ props.node.volume_label }}
+                        </span>
                     </div>
                     <span v-else class="text-sm whitespace-normal break-words">
                         {{ props.node.label }}

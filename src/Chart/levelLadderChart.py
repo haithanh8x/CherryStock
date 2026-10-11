@@ -56,6 +56,11 @@ def ladder_rows(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
                 ),
                 "distance_pct": round(level.distance_pct, 2),
                 "strength": round(level.strength_score, 1),
+                "volume_confirmation_score": level.volume_confirmation_score,
+                "volume_score_contribution": level.volume_score_contribution,
+                "volume_node_type": level.volume_node_type,
+                "volume_share_pct": level.volume_share_pct,
+                "volume_profile_source": level.volume_profile_source,
                 "source_count": level.source_count,
                 "source_family_count": level.source_family_count,
                 "families": ", ".join(sorted({source.source_family for source in level.sources})),
@@ -93,6 +98,16 @@ def ladder_tree_nodes(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
                 ("Source date", source.source_date.isoformat() if source.source_date else None),
                 ("Confirmed at", source.confirmed_at.isoformat() if source.confirmed_at else None),
             ]
+            if source.source_family == "VOLUME_STRUCTURE":
+                share = source.metadata.get("volume_share")
+                details.extend([
+                    ("Volume share", f"{float(share) * 100:.2f}%" if share is not None else None),
+                    ("Relative volume", source.metadata.get("relative_volume")),
+                    ("Profile resolution", source.metadata.get("profile_source", "EOD_APPROX")),
+                    ("Profile bars", source.metadata.get("profile_bars")),
+                    ("Eligible sessions", source.metadata.get("eligible_sessions")),
+                    ("Fallback reason", source.metadata.get("fallback_reason")),
+                ])
             source_nodes.append(
                 {
                     "id": source_id,
@@ -119,6 +134,13 @@ def ladder_tree_nodes(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
                 "price_label": _format_price(row["price"]),
                 "distance_label": f"{row['distance_pct']:+.2f}%",
                 "strength_label": f"{row['strength']:.1f}",
+                "volume_high_confidence": (row["volume_confirmation_score"] or 0) >= 75,
+                "volume_label": (
+                    f"VP {row['volume_node_type'] or 'NODE'} "
+                    f"{row['volume_confirmation_score']:.1f} "
+                    f"({row['volume_score_contribution']:+.2f} pts)"
+                    if row["volume_confirmation_score"] is not None else "VP —"
+                ),
                 "zone_label": row["zone"],
                 "children": [
                     {
@@ -130,6 +152,18 @@ def ladder_tree_nodes(ladder: "LevelLadderResult") -> list[dict[str, Any]]:
                         ),
                         "children": source_nodes,
                     },
+                    *([{
+                        "id": f"{node_id}-volume-profile",
+                        "label": (
+                            f"Volume Profile · {row['volume_node_type'] or 'NODE'} · "
+                            f"confirmation {row['volume_confirmation_score']:.1f}/100 · "
+                            f"Strength impact {row['volume_score_contribution']:+.2f} pts · "
+                            f"share {row['volume_share_pct']:.2f}% "
+                            if row["volume_share_pct"] is not None else
+                            f"Volume Profile · confirmation {row['volume_confirmation_score']:.1f}/100 · "
+                            f"Strength impact {row['volume_score_contribution']:+.2f} pts"
+                        ) + f" · {row['volume_profile_source'] or 'EOD_APPROX'}",
+                    }] if row["volume_confirmation_score"] is not None else []),
                 ],
             }
         )

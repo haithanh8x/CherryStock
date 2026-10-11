@@ -173,3 +173,8 @@ level, and no horizontal flat-row overflow remains. Refresh a different ticker/d
 and confirm nodes reset collapsed. Check an empty-filter result and invalid input
 show a message without stale nodes. Stop after these interactions; a live
 NiceGUI/browser check is required before an independent UI validation verdict.
+
+
+### R/S Volume Profile explainability follow-up (2026-10-11)
+
+The R/S Level Details tree additionally shows the domain-provided Volume Profile score, node type, volume share and signed Strength contribution. VP evidence is carried through `RankedLevel` rather than calculated in the presentation layer. Qualifying confirmation score ≥75 is visually emphasized; the existing Strength ≥80 level filter, nearest S1/R1 ordering and sources expansion are unchanged. Intraday-bar versus EOD-approximation lineage remains visible; the chart has no new query dependency.

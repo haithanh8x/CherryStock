@@ -129,3 +129,10 @@ tests/test_R_S_V2_2.md
 ```
 
 Production rollout is allowed only after the V2.2 runbook returns PASS.
+
+
+## 2026-10-11 extension — explicit opt-in intraday and challenger scoring
+
+This implementation extends, but does not replace, the accepted V2.2 contract. It adds a research-only intraday bar provider mode over the existing `raw_stock_intraday` and `raw_stock_eod` physical sources, with session-wise volume coverage validation; source resolution and explicit fallback reason are carried in provider metadata. The existing single-family cap, point-in-time contract, and EOD default are preserved. Intraday OHLC-bar profiles are more granular approximations, **not** tick-trade profiles.
+
+A `DISTANCE_AWARE` Volume Confirmation challenger reuses existing Strength scoring with one best node, distance decay and a conditional overlap discount. The default `LEGACY` formula is not changed pending V2.4 out-of-sample promotion evidence. See `docs/runbook/RS_Volume_Profile_P0_P2.md` for data-quality, test and deployment gates.
