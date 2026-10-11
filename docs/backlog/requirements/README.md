@@ -112,3 +112,7 @@ Validation:
     docs/runbook/ZigZag_Price_Movement_Reconciliation.md
     docs/runbook/Active_Ticker_Movement_Initload.md
     docs/runbook/Daily_Incremental_Movement_Pipeline.md
+
+## Daily R/S V2.4 incremental evaluation
+
+- [[REQ-0038-rs-v2-4-daily-incremental-source-effectiveness|REQ-0038 — R/S V2.4 Daily Incremental Source Effectiveness Evaluation]] — **DRAFT**; daily post-EOD maturity-aware, idempotent incremental processing with replay, full-run reconciliation and no automatic promotion. Awaiting BusinessAnalyst readiness confirmation.
