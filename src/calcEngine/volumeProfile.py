@@ -14,6 +14,10 @@ from typing import Sequence
 import pandas as pd
 
 
+class InsufficientVolumeProfileHistoryError(ValueError):
+    """Valid point-in-time OHLCV history is shorter than the configured minimum."""
+
+
 @dataclass(frozen=True)
 class VolumeProfileConfig:
     window_bars: int = 120
@@ -110,7 +114,7 @@ def build_volume_profile_from_history(
         frame = frame.iloc[-cfg.window_bars:]
 
     if len(frame) < cfg.min_records:
-        raise ValueError(
+        raise InsufficientVolumeProfileHistoryError(
             f"insufficient Volume Profile history: {len(frame)} < {cfg.min_records}"
         )
 
