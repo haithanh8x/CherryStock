@@ -172,6 +172,32 @@ def _comparable_rates(rows: pd.DataFrame, suffix: str, strong_only: bool = False
     return _rates(part.rename(columns={f"{outcome}_{suffix}": outcome for outcome in OUTCOMES}))
 
 
+def _hold_score_auc(rows: pd.DataFrame, suffix: str) -> float:
+    """AUC: can higher Strength discriminate future holds among touched levels?
+
+    AUC uses only point-in-time Strength scores and observed future labels.
+    Return NaN unless both held and failed outcomes exist. It is NOT a
+    calibrated probability and should be reviewed with the touched sample size.
+    """
+    touched = rows.loc[
+        rows[f"Touched_{suffix}"].eq(True)
+        & rows[f"Held_{suffix}"].isin([True, False])
+    ].copy()
+    if touched.empty:
+        return float("nan")
+    values = pd.to_numeric(touched[f"StrengthScore_{suffix}"], errors="coerce")
+    touched = touched.loc[values.notna()]
+    if touched.empty:
+        return float("nan")
+    held = touched[f"Held_{suffix}"].eq(True)
+    n_pos = int(held.sum())
+    n_neg = int((~held).sum())
+    if not n_pos or not n_neg:
+        return float("nan")
+    ranks = pd.to_numeric(touched[f"StrengthScore_{suffix}"]).rank(method="average")
+    return float((ranks.loc[held].sum() - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg))
+
+
 def _scope_report(
     joined: pd.DataFrame, scope: str, scope_key: str, split: str,
     baseline: pd.DataFrame, challenger: pd.DataFrame,
@@ -183,6 +209,8 @@ def _scope_report(
     c = _comparable_rates(pair, "candidate")
     strong_b = _comparable_rates(pair, "baseline", strong_only=True)
     strong_c = _comparable_rates(pair, "candidate", strong_only=True)
+    baseline_auc = _hold_score_auc(pair, "baseline")
+    challenger_auc = _hold_score_auc(pair, "candidate")
     all_baseline = baseline[["Ticker", "AsOfDate"]].drop_duplicates()
     all_candidate = challenger[["Ticker", "AsOfDate"]].drop_duplicates()
     snapshot_overlap = all_baseline.merge(all_candidate, on=["Ticker", "AsOfDate"], how="inner")
@@ -209,6 +237,9 @@ def _scope_report(
         "strong_cross_up": int(pair["strong_cross_up"].sum()),
         "strong_cross_down": int(pair["strong_cross_down"].sum()),
         "strong_threshold": strong_threshold,
+        "baseline_hold_strength_auc": baseline_auc,
+        "hold_strength_auc": challenger_auc,
+        "delta_hold_strength_auc": challenger_auc - baseline_auc,
         "baseline_strong_events": strong_b["events"],
         "candidate_strong_events": strong_c["events"],
         "baseline_strong_touches": strong_b["touches"],
@@ -349,7 +380,7 @@ def main() -> None:
         if row["score_changed_levels"] and not row["strong_cross_up"] and not row["strong_cross_down"]:
             print(f"INFO: {row['run_id']} {row['split']}: Strength changed but no "
                   "threshold-80 crossing; identical price-level outcome metrics are expected.")
-    print("Research-only: hold/break/retest is price-level outcome, not Strength calibration. "
+    print("Research-only: raw hold delta is price-level outcome; conditional AUC tests score discrimination. "
           "A positive threshold-conditioned result also needs independent OOS validation.")
 
 
