@@ -175,3 +175,25 @@ def test_invalid_profile_mode_is_rejected():
             intraday, as_of_date=AS_OF, daily_volume=daily,
             config=VolumeProfileConfig(source_mode="TICK"),
         )
+
+
+def test_intraday_latest_session_and_window_coverage_fail_closed():
+    intraday, daily = _intraday_fixture()
+    latest = intraday["DateTime"].dt.normalize().max()
+    stale = intraday.loc[intraday["DateTime"].dt.normalize() < latest]
+    with pytest.raises(ValueError, match="stale intraday profile"):
+        build_volume_profile_from_intraday_history(
+            stale, as_of_date=AS_OF, daily_volume=daily,
+            config=VolumeProfileConfig(source_mode="INTRADAY", window_bars=40),
+        )
+    # 25/40 valid dates is not a reliable profile, even if >= min_intraday_sessions
+    sparse_dates = pd.to_datetime(daily["Date"].tail(40).iloc[::2])
+    sparse = intraday.loc[intraday["DateTime"].dt.normalize().isin(sparse_dates)]
+    with pytest.raises(ValueError, match="insufficient volume-validated intraday sessions"):
+        build_volume_profile_from_intraday_history(
+            sparse, as_of_date=AS_OF, daily_volume=daily,
+            config=VolumeProfileConfig(
+                source_mode="INTRADAY", window_bars=40,
+                min_intraday_sessions=10,
+            ),
+        )
