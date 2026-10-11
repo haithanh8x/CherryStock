@@ -22,9 +22,17 @@ except ModuleNotFoundError:
     from src.calcEngine.rsSourceIdentity import filter_source_objects
 
 try:
-    from calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
+    from calcEngine.volumeProfile import (
+        InsufficientVolumeProfileHistoryError,
+        VolumeProfileConfig,
+        build_volume_profile_from_history,
+    )
 except ModuleNotFoundError:
-    from src.calcEngine.volumeProfile import VolumeProfileConfig, build_volume_profile_from_history
+    from src.calcEngine.volumeProfile import (
+        InsufficientVolumeProfileHistoryError,
+        VolumeProfileConfig,
+        build_volume_profile_from_history,
+    )
 
 try:
     from Ults.DuckLib import DuckDBManager
@@ -1247,11 +1255,24 @@ def load_volume_profile_bundle(
     )
     if "Volume" not in history.columns:
         raise ValueError("Volume Profile requires Volume in raw_stock_eod")
-    profile = build_volume_profile_from_history(
-        history,
-        as_of_date=as_of_date,
-        config=config,
-    )
+    try:
+        profile = build_volume_profile_from_history(
+            history,
+            as_of_date=as_of_date,
+            config=config,
+        )
+    except InsufficientVolumeProfileHistoryError as exc:
+        # A newly listed ticker can have enough full-window bars for evaluation,
+        # yet fewer than min_records at its first point-in-time snapshots.
+        # Omit only the unavailable VP evidence; do not fabricate VP levels or
+        # suppress unrelated configuration/data errors.
+        LOGGER.warning(
+            "Volume Profile unavailable | ticker=%s as_of=%s reason=%s",
+            ticker,
+            as_of_date,
+            exc,
+        )
+        return ProviderBundle()
 
     nodes = [profile.poc, *profile.hvn, *profile.lvn]
     candidates: list[LevelCandidate] = []
