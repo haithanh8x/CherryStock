@@ -128,7 +128,7 @@
 | REQ-0039 → QT-10 → QT-15 | News/entity/sentiment → event impact research → cited read-only AI knowledge agent; avoid duplicating ingestion. |
 | QT-06/07 → QT-08/09 → QT-12 → QT-11 | Regime/factors → strategies/ranking → governed model lifecycle → paper trading. |
 | CS-ARCH-001/002/003/004 + CS-HARNESS-004/005 | Layered runtime, provider interfaces, read/admin isolation and safe agent tools. |
-| CS-ARCH-010 | P0 repository hygiene/security remains urgent independent of Quant roadmap. |
+| Security prerequisite (CS-ARCH-010) | P0 repository hygiene/security remains urgent independent of Quant roadmap. |
 
 ## 4. Delivery Roadmap and Acceptance Gates
 
