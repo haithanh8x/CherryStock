@@ -37,10 +37,10 @@ def _run_all_steps(
     """Run the canonical daily write pipeline in one DuckDB transaction.
 
     The application service owns ordering, intraday/EOD synchronization,
-    stage-level data-quality validation, indicators and SmartMoney refresh.
+    stage-level data-quality validation.
     run.py owns only the transaction boundary and runtime dependencies.
     """
-    print("[daily] ▶ Sync + Data Quality + Indicators + SmartMoney")
+    print("[daily] ▶ Sync + Data Quality")
     started = perf_counter()
     summary = write_pipeline.run(
         days_diff=days_diff,
@@ -53,9 +53,9 @@ def _run_all_steps(
         smart_money_repository=None, # uow.smart_money
     )
     elapsed = perf_counter() - started
-    print("[daily] ✓ Sync + Data Quality + Indicators + SmartMoney")
+    print("[daily] ✓ Sync + Data Quality")
     print(
-        "⏱️   [Duration] 'sync_data_quality_indicators_smartmoney' "
+        "⏱️   [Duration] 'sync_data_quality' "
         f"total time: {elapsed:.1f} seconds"
     )
     return summary
@@ -112,8 +112,7 @@ def main():
     print(f"CherryStock Run All | from_last_day={days_diff}")
 
     # Daily Source of Truth:
-    # EOD + Intraday sync -> stage Data Quality -> Index/Trend/Indicators
-    # -> SmartMoneyScore -> SmartMoney Data Quality, all in one UnitOfWork.
+    # EOD + Intraday + Yahoo + FA + Tickers sync and Data Quality in one UnitOfWork.
     with DuckDBUnitOfWork(connection_factory) as uow:
         connection = uow.connection
         if connection is None:
