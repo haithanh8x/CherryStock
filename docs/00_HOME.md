@@ -93,6 +93,8 @@ Architecture/system/solution/data/integration/refactor work:
 
 ### Core architecture
 
+- [[architecture/Chart_Architecture|Frontend target: React + TypeScript + Vite on GitHub Pages; NiceGUI transitional]]
+
 - [[architecture/CherryStock_High_Level|CherryStock High-Level Architecture]]
 - [[architecture/Analytics_Calculation_Engines|Analytics & Calculation Engines]]
 - [[architecture/Data_Architecture|Data Architecture]]
