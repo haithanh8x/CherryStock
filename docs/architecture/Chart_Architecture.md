@@ -173,3 +173,26 @@ level, and no horizontal flat-row overflow remains. Refresh a different ticker/d
 and confirm nodes reset collapsed. Check an empty-filter result and invalid input
 show a message without stale nodes. Stop after these interactions; a live
 NiceGUI/browser check is required before an independent UI validation verdict.
+
+
+## Target application frontend (decision recorded 2026-10-13)
+
+CherryStock's **target application UI** is `frontend/`, implemented with React, TypeScript and Vite. The intended static hosting target is GitHub Pages, with deployment through GitHub Actions. This is a **target architecture and migration direction**, not evidence that the new frontend or deployment is production-ready.
+
+- `frontend/` owns pages, routing, interactive charts, tables, UI state and presentation only. It must not calculate trading signals or access DuckDB/MotherDuck directly.
+- A separately deployed Python API (FastAPI is the intended adapter) owns authenticated, versioned contracts and invokes existing domain/application services. Browser-to-API communication uses HTTPS; realtime, if required, uses authenticated WSS.
+- Existing Python engines, data ingestion, DuckDB, MotherDuck, R/S, SmartMoney and ZigZag contracts remain authoritative and unchanged by this frontend decision.
+- `src/webapp/` NiceGUI remains a **legacy transitional application** until each feature is migrated, regression-tested and accepted. Do not remove it or describe it as retired prematurely.
+- GitHub Pages hosts public static assets only. Never embed secrets or MotherDuck credentials in `VITE_*` variables or frontend bundles. All sensitive data and authorization checks remain server-side; API CORS must explicitly allow the deployed origin.
+- Vite `base` must match the GitHub Pages repository subpath (unless using a custom-domain root). Client-side routes require a compatible static-hosting fallback (e.g. hash routing).
+- Frontend build and deploy are separate from Python daily data jobs; no frontend deployment may implicitly trigger recalculation of indicators or change market-data pipelines.
+
+### Migration and acceptance gates
+
+1. Inventory existing NiceGUI routes, charts, user workflows and API/data dependencies.
+2. Define typed API request/response contracts with deterministic handling of ticker, timeframe, as-of date, missing data and errors.
+3. Migrate module by module (R/S Ladder first as a candidate), comparing output parity and interactive behavior against the current application.
+4. Verify authentication, authorization, CORS, static routing, production build, deployment and rollback before redirecting users.
+5. Retire NiceGUI only after explicit feature parity and acceptance; retain rollback capability until then.
+
+**Governance:** This document records the requested frontend direction. A formal cross-module approval still requires the Solution Architect's ADR and synchronized Archify source/generated artifact, per repository governance. Do not mark the design `APPROVED_FOR_IMPLEMENTATION` until those gates pass.
