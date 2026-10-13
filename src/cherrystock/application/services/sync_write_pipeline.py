@@ -180,23 +180,6 @@ class SyncWritePipelineService:
             raise_on_fail=True,
         )
 
-        self._calc_trend(
-            from_last_day=days_diff,
-            connection=connection,
-            repository=trend_repository,
-        )
-        self._validate_dated(
-            connection=connection,
-            table_name='"CherryMon"."main"."cal_Trends"',
-            pipeline_name="Moving Average Trend",
-            date_col="Date",
-            symbol_col="Ticker",
-            key_cols=["Ticker", "Date"],
-            required_cols=["Ticker", "Date", "Close"],
-            optional_null_rate_cols=["MA20", "MA50", "MA100", "MA200", "MA20_W", "MA50_W", "MA20_M", "MA50_M"],
-            raise_on_fail=True,
-        )
-
         indicator_summary = self._calc_indicators(
             from_last_day=days_diff,
             connection=connection,
