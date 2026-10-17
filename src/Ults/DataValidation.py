@@ -266,6 +266,7 @@ def validate_data_quality(
     max_null_rate: float = DEFAULT_MAX_NULL_RATE,
     history_window: int = DEFAULT_HISTORY_WINDOW,
     small_count_anomaly_warn_pct: float | None = None,
+    futures_expiry_symbol_warn: bool = False,
 ) -> dict[str, Any]:
     """Validate freshness, completeness, integrity, and anomalies for a DuckDB table.
 
@@ -277,6 +278,8 @@ def validate_data_quality(
         raise ValueError("connection is required; validate_data_quality does not open DuckDB itself")
     if not isinstance(check_count_anomalies, bool):
         raise TypeError("check_count_anomalies must be bool")
+    if not isinstance(futures_expiry_symbol_warn, bool):
+        raise TypeError("futures_expiry_symbol_warn must be bool")
     quoted_table = _quote_relation(table_name)
     max_row_change_pct = _validate_threshold("max_row_change_pct", max_row_change_pct)
     max_symbol_change_pct = _validate_threshold(
@@ -463,7 +466,7 @@ def validate_data_quality(
                     "Symbol count",
                     symbol_change_pct,
                     max_symbol_change_pct,
-                    errors,
+                    warnings if futures_expiry_symbol_warn else errors,
                     warnings,
                 )
         elif check_count_anomalies:
@@ -489,6 +492,8 @@ def validate_data_quality(
     metrics["historical_symbol_mean"] = historical_symbol_mean
     metrics["historical_symbol_std"] = historical_symbol_std
     metrics["symbol_count_zscore"] = symbol_count_zscore
+    # Futures contracts expire and roll: warn for symbol count anomalies only.
+    # This option must only be enabled after the data source contract lifecycle is confirmed.
     # Tiny count deviations can have large z-scores when daily coverage is stable.
     # Only downgrade count-based z-score failures for near-complete EOD data.
     small_shortfall = (
@@ -514,12 +519,12 @@ def validate_data_quality(
             and historical_symbol_mean is not None
             and current_symbol_count != historical_symbol_mean
         ):
-            zscore_errors.append(
+            (warnings if futures_expiry_symbol_warn else zscore_errors).append(
                 "Symbol count differs from a zero-variance historical baseline: "
                 f"current={current_symbol_count}, baseline={historical_symbol_mean:.2f}."
             )
         else:
-            _zscore_severity("Symbol count", symbol_count_zscore, zscore_errors, warnings)
+            _zscore_severity("Symbol count", symbol_count_zscore, warnings if futures_expiry_symbol_warn else zscore_errors, warnings)
 
     current_date_literal = current_date.isoformat()
     if previous_date is not None:
@@ -566,7 +571,7 @@ def validate_data_quality(
                 "Missing-symbol rate",
                 -missing_symbol_rate,
                 max_symbol_change_pct,
-                errors,
+                warnings if futures_expiry_symbol_warn else errors,
                 warnings,
             )
 
