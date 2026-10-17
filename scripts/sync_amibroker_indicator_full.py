@@ -385,6 +385,21 @@ def prepare_incremental_stage(
             f"Incremental APX exported only {date_count} distinct dates; "
             f"requested {days}. Set Range to at least {days} recent bars."
         )
+    # Incremental exports should not overwrite newer production dates with
+    # an older APX snapshot. Historical backfills require an explicit CSV
+    # replay and a separate review.
+    latest_existing = connection.execute(
+        f"SELECT MAX(Date) FROM {FACT}"
+    ).fetchone()[0]
+    if latest_existing is not None:
+        latest_export = connection.execute(
+            "SELECT MAX(Date) FROM _afl_stage"
+        ).fetchone()[0]
+        if latest_export < latest_existing:
+            raise ValueError(
+                f"Incremental export is stale: latest={latest_export}, "
+                f"existing={latest_existing}"
+            )
     connection.execute(
         """
         DELETE FROM _afl_stage
