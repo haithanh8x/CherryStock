@@ -185,12 +185,20 @@ def validate_apx(apx: Path, afl: Path) -> None:
         raise ValueError("APX missing General or BacktestSettings section.")
     settings_to_check = (
         (general.findtext("RangeType"), "0", "Range: All quotations"),
-        (general.findtext("ApplyTo"), "0", "Apply to: All symbols"),
         (backtest.findtext("Periodicity"), "0", "Periodicity: Daily"),
     )
     for actual, expected, name in settings_to_check:
         if (actual or "").strip() != expected:
             raise ValueError(f"APX must use {name}; got {actual!r}. Save the project in AmiBroker.")
+    # ApplyTo=2 is AmiBroker's saved "Filter" selection. The user's APX
+    # deliberately selects the intended ticker universe via that filter.
+    # Do not rewrite it to All symbols; CSV coverage checks protect the
+    # full-table replacement from an unexpectedly narrow filter.
+    apply_to = (general.findtext("ApplyTo") or "").strip()
+    if apply_to not in {"0", "2"}:
+        raise ValueError(
+            f"APX ApplyTo must be 0 (All symbols) or 2 (Filter); got {apply_to!r}."
+        )
     declared = (general.findtext("FormulaPath") or "").replace("\\", "/").lower()
     if not declared.endswith("/export_indicator.afl"):
         raise ValueError(f"Wrong APX formula: {declared!r}")
@@ -499,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
         ).run_explore_export(
             formula_path=args.afl,
             export_path=csv_path,
-            apply_to=0,
+            apply_to=2,  # Saved APX controls ApplyTo; adapter does not override it.
             range_mode=0,
             range_n=0,
             timeout_seconds=3600.0,
