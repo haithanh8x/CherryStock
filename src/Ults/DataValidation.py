@@ -265,6 +265,7 @@ def validate_data_quality(
     max_symbol_change_pct: float = DEFAULT_MAX_SYMBOL_CHANGE_PCT,
     max_null_rate: float = DEFAULT_MAX_NULL_RATE,
     history_window: int = DEFAULT_HISTORY_WINDOW,
+    small_count_anomaly_warn_pct: float | None = None,
 ) -> dict[str, Any]:
     """Validate freshness, completeness, integrity, and anomalies for a DuckDB table.
 
@@ -282,6 +283,10 @@ def validate_data_quality(
         "max_symbol_change_pct", max_symbol_change_pct
     )
     max_null_rate = _validate_threshold("max_null_rate", max_null_rate)
+    if small_count_anomaly_warn_pct is not None:
+        small_count_anomaly_warn_pct = _validate_threshold(
+            "small_count_anomaly_warn_pct", small_count_anomaly_warn_pct
+        )
     max_optional_null_rate = _validate_threshold(
         "max_optional_null_rate", max_optional_null_rate
     )
@@ -484,25 +489,37 @@ def validate_data_quality(
     metrics["historical_symbol_mean"] = historical_symbol_mean
     metrics["historical_symbol_std"] = historical_symbol_std
     metrics["symbol_count_zscore"] = symbol_count_zscore
+    # Tiny count deviations can have large z-scores when daily coverage is stable.
+    # Only downgrade count-based z-score failures for near-complete EOD data.
+    small_shortfall = (
+        small_count_anomaly_warn_pct is not None
+        and previous_row_count is not None
+        and previous_symbol_count is not None
+        and previous_row_count > 0
+        and previous_symbol_count > 0
+        and 0 <= previous_row_count - current_row_count <= previous_row_count * small_count_anomaly_warn_pct
+        and 0 <= previous_symbol_count - current_symbol_count <= previous_symbol_count * small_count_anomaly_warn_pct
+    )
+    zscore_errors = warnings if small_shortfall else errors
     if check_count_anomalies:
         if historical_row_std == 0 and historical_row_mean is not None and current_row_count != historical_row_mean:
-            errors.append(
+            zscore_errors.append(
                 "Row count differs from a zero-variance historical baseline: "
                 f"current={current_row_count}, baseline={historical_row_mean:.2f}."
             )
         else:
-            _zscore_severity("Row count", row_count_zscore, errors, warnings)
+            _zscore_severity("Row count", row_count_zscore, zscore_errors, warnings)
         if (
             historical_symbol_std == 0
             and historical_symbol_mean is not None
             and current_symbol_count != historical_symbol_mean
         ):
-            errors.append(
+            zscore_errors.append(
                 "Symbol count differs from a zero-variance historical baseline: "
                 f"current={current_symbol_count}, baseline={historical_symbol_mean:.2f}."
             )
         else:
-            _zscore_severity("Symbol count", symbol_count_zscore, errors, warnings)
+            _zscore_severity("Symbol count", symbol_count_zscore, zscore_errors, warnings)
 
     current_date_literal = current_date.isoformat()
     if previous_date is not None:
