@@ -366,3 +366,33 @@ def test_large_eod_shortfall_still_fails() -> None:
     )
     assert result["status"] == "FAIL"
     assert any("z-score" in message for message in result["errors"])
+
+
+def test_futures_expiry_symbol_drop_warns_but_strict_fails() -> None:
+    connection = duckdb.connect(":memory:")
+    _create_price_table(connection)
+    current_date = date(2026, 10, 16)
+    contracts = tuple(f"VN30F{i}" for i in range(8))
+    _insert_price_history(connection, current_date - timedelta(days=1), symbols=contracts)
+    connection.execute("DELETE FROM raw_stock_eod WHERE Date = ? AND Ticker = ?", [current_date - timedelta(days=2), contracts[-1]])
+    connection.executemany(
+        "INSERT INTO raw_stock_eod VALUES (?, ?, 10, 12, 9, 11, 1000)",
+        [(ticker, current_date) for ticker in contracts[:6]],
+    )
+    strict = validate_data_quality(connection, "raw_stock_eod", expected_date=current_date, max_row_change_pct=1.0, max_symbol_change_pct=0.25)
+    futures = validate_data_quality(connection, "raw_stock_eod", expected_date=current_date, max_row_change_pct=1.0, max_symbol_change_pct=0.25, futures_expiry_symbol_warn=True)
+    assert strict["status"] == "FAIL"
+    assert futures["status"] == "WARNING"
+    assert futures["metrics"]["missing_symbol_count"] == 2
+    assert any("Symbol count historical z-score" in warning for warning in futures["warnings"])
+
+
+def test_futures_expiry_mode_still_fails_on_duplicate() -> None:
+    connection = duckdb.connect(":memory:")
+    _create_price_table(connection)
+    current_date = date(2026, 10, 16)
+    _insert_price_history(connection, current_date)
+    connection.execute("INSERT INTO raw_stock_eod VALUES ('AAA', ?, 10, 12, 9, 11, 1000)", [current_date])
+    result = validate_data_quality(connection, "raw_stock_eod", expected_date=current_date, futures_expiry_symbol_warn=True)
+    assert result["status"] == "FAIL"
+    assert result["metrics"]["duplicate_count"] == 1
