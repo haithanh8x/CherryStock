@@ -93,3 +93,28 @@ EMA/OBV/AD and other long-lookback values; the APX limits only output rows.
 Weekly/monthly expandPoint cells can be sparse in a ten-day export; their
 values are upserted only where present. A later full reconciliation is
 recommended if historical adjustments or W/M period revisions occur.
+
+## Limit AmiBroker CSV output to 10 trading bars
+
+The AFL has **Export mode = FULL|INCREMENTAL** and **Incremental trading bars = 10**.
+In New Analysis, open the updated `Export_Indicator.afl`, choose
+`Export mode = INCREMENTAL`, `Incremental trading bars = 10`, keep
+`Apply to = Filter` (`ApplyTo=2`) and `Periodicity = Daily`.
+**Range can remain All quotations**: the AFL's `Filter` limits exported
+Exploration rows to the last ten bars for each ticker while indicator
+calculations retain the full available OHLCV history.
+
+**Save the APX** after changing Parameters, as AmiBroker saves an embedded
+formula copy. The Python incremental mode refuses APX files with an older
+embedded formula. For a full-history export, change `Export mode = FULL`
+and re-save the APX before running full mode.
+
+```powershell
+python scripts\sync_amibroker_indicator_full.py --mode incremental --days 10 --dry-run
+python scripts\sync_amibroker_indicator_full.py --mode incremental --days 10
+```
+
+`--days` selects the number of trading dates to UPSERT; set the matching
+AFL parameter to 10 to avoid exporting more than needed. On tickers missing
+the latest market sessions, the AFL exports their last ten available bars,
+and the importer retains the latest ten distinct dates globally.
