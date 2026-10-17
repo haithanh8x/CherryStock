@@ -114,6 +114,13 @@ def test_apx_enforces_all_quotes_daily_and_all_symbols(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     validate_apx(apx, afl)
+    # Filter mode is a valid, intentionally saved AmiBroker universe.
+    apx.write_text(apx.read_text().replace("<ApplyTo>0", "<ApplyTo>2"), encoding="utf-8")
+    validate_apx(apx, afl)
+    apx.write_text(apx.read_text().replace("<ApplyTo>2", "<ApplyTo>1"), encoding="utf-8")
+    with pytest.raises(ValueError, match="ApplyTo"):
+        validate_apx(apx, afl)
+    apx.write_text(apx.read_text().replace("<ApplyTo>1", "<ApplyTo>0"), encoding="utf-8")
     apx.write_text(apx.read_text().replace("<RangeType>0", "<RangeType>1"), encoding="utf-8")
     with pytest.raises(ValueError, match="All quotations"):
         validate_apx(apx, afl)
