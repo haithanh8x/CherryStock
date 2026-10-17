@@ -207,6 +207,11 @@ def validate_apx(apx: Path, afl: Path, *, incremental: bool = False) -> None:
     if not declared.endswith("/export_indicator.afl"):
         raise ValueError(f"Wrong APX formula: {declared!r}")
     embedded = general.findtext("FormulaContent") or ""
+    if incremental and "x_recentBars" not in embedded:
+        raise ValueError(
+            "APX embeds an old AFL without incremental output filtering. "
+            "Open updated Export_Indicator.afl in AmiBroker and re-save APX."
+        )
     if "CS_ExportIndicators" not in embedded:
         raise ValueError("APX has old/missing embedded indicator formula. Re-save current AFL in New Analysis.")
 
