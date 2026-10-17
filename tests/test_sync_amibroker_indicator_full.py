@@ -12,6 +12,8 @@ from scripts.sync_amibroker_indicator_full import (
     EXPECTED_COLUMNS,
     SPECS,
     prepare_stage,
+    prepare_incremental_stage,
+    upsert_incremental,
     replace_full_history,
     validate_apx,
 )
@@ -196,5 +198,38 @@ def test_partial_export_is_rejected_without_deletion(tmp_path: Path) -> None:
         path.write_text("\n".join(rows[:2]) + "\n", encoding="utf-8")
         with pytest.raises(ValueError, match="incomplete"):
             prepare_stage(con, path, min_dates=2, min_tickers=2)
+    finally:
+        con.close()
+
+def test_incremental_upsert_keeps_history_and_is_idempotent(tmp_path: Path) -> None:
+    con = _database()
+    try:
+        path = _csv(tmp_path / "incremental.csv", dates=("2025-01-02", "2025-01-03", "2025-01-06"))
+        summary = prepare_incremental_stage(con, path, days=2, min_tickers=2)
+        assert summary["distinct_dates"] == 2
+        assert summary["min_date"] == "2025-01-03"
+        assert upsert_incremental(con, summary)["upserted"] == summary["rows"]
+        con.execute(
+            "INSERT INTO CherryMon.main.cal_indicator_values "
+            "(Ticker, Date, ConfigId, ComponentCode, Value) "
+            "VALUES ('OLD', DATE '2024-01-01', 999, 'VALUE', 123)"
+        )
+        before = con.execute("SELECT COUNT(*) FROM CherryMon.main.cal_indicator_values").fetchone()[0]
+        upsert_incremental(con, summary)
+        after = con.execute("SELECT COUNT(*) FROM CherryMon.main.cal_indicator_values").fetchone()[0]
+        assert before == after
+        assert con.execute(
+            "SELECT Value FROM CherryMon.main.cal_indicator_values WHERE Ticker='OLD'"
+        ).fetchone()[0] == 123
+    finally:
+        con.close()
+
+
+def test_incremental_rejects_insufficient_dates(tmp_path: Path) -> None:
+    con = _database()
+    try:
+        path = _csv(tmp_path / "one-day.csv", dates=("2025-01-02",))
+        with pytest.raises(ValueError, match="only 1 distinct dates"):
+            prepare_incremental_stage(con, path, days=10, min_tickers=2)
     finally:
         con.close()
