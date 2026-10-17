@@ -9,3 +9,20 @@ MA,VALUE,MA Value,,1,true,true,PRICE_LEVEL,PRICE
 ATR,VALUE,Average True Range,,1,true,true,VOLATILITY_DISTANCE,PRICE
 OBV,VALUE,On-Balance Volume,,1,true,true,CUMULATIVE_FLOW,VOLUME
 AD,VALUE,Accumulation/Distribution Line,,1,true,true,CUMULATIVE_FLOW,VOLUME
+ADX,ADX,ADX,,1,true,true,,
+ADX,MINUS_DI,MINUS_DI,,1,false,true,,
+ADX,PLUS_DI,PLUS_DI,,1,false,true,,
+CMF,VALUE,VALUE,,1,true,true,,
+EMA,VALUE,VALUE,,1,true,true,PRICE_LEVEL,PRICE
+HIGH52W,VALUE,VALUE,,1,true,true,,
+LOW52W,VALUE,VALUE,,1,true,true,,
+MACD,HIST,HIST,,1,false,true,,
+MACD,LINE,LINE,,1,true,true,,
+MACD,SIGNAL,SIGNAL,,1,false,true,,
+MFI,VALUE,VALUE,,1,true,true,,
+ROC,VALUE,VALUE,,1,true,true,,
+STOCH,D,D,,1,false,true,,
+STOCH,K,K,,1,true,true,,
+VOL_MA,VALUE,VALUE,,1,true,true,,
+VOL_RATIO,VALUE,VALUE,,1,true,true,,
+VWAP,VALUE,VALUE,,1,true,true,,
