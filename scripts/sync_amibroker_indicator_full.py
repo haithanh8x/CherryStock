@@ -317,11 +317,26 @@ def prepare_stage(
         raise ValueError(f"Missing D/W/M values: actual={present}")
 
     previous = connection.execute(
-        f"SELECT COUNT(*), COUNT(DISTINCT Ticker) FROM {FACT}"
+        f"SELECT COUNT(*), COUNT(DISTINCT Ticker), MIN(Date), MAX(Date) FROM {FACT}"
     ).fetchone()
     if previous[1] >= 20 and tickers < 0.8 * previous[1]:
         raise ValueError(
             f"Ticker coverage decreased from {previous[1]} to {tickers}; "
+            "refusing full replacement."
+        )
+    if previous[2] is not None and date_min > previous[2]:
+        raise ValueError(
+            f"Oldest indicator Date regressed from {previous[2]} to {date_min}; "
+            "refusing partial historical overwrite."
+        )
+    if previous[3] is not None and date_max < previous[3]:
+        raise ValueError(
+            f"Latest indicator Date regressed from {previous[3]} to {date_max}; "
+            "refusing stale AFL export."
+        )
+    if previous[0] >= 10000 and total < 0.8 * previous[0]:
+        raise ValueError(
+            f"Row coverage collapsed from {previous[0]} to {total}; "
             "refusing full replacement."
         )
     return {
