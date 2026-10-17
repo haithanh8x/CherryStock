@@ -487,6 +487,7 @@ def main(argv: list[str] | None = None) -> int:
             apply_to=0,
             range_mode=0,
             range_n=0,
+            timeout_seconds=3600.0,
         )
     else:
         csv_path = args.csv.resolve()
