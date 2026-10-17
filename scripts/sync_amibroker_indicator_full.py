@@ -596,6 +596,8 @@ def main(argv: list[str] | None = None) -> int:
         "--csv", type=Path,
         help="Use an existing full-history CSV; bypass AmiBroker automation",
     )
+    parser.add_argument("--mode", choices=("full", "incremental"), default="full")
+    parser.add_argument("--days", type=int, default=10, help="Latest N trading dates for incremental mode")
     parser.add_argument("--dry-run", action="store_true", help="Stage/validate; no writes")
     parser.add_argument(
         "--min-tickers", type=int, default=100,
@@ -607,12 +609,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.min_dates < 1 or args.min_tickers < 1:
-        parser.error("--min-dates and --min-tickers must be >= 1")
+    if args.min_dates < 1 or args.min_tickers < 1 or args.days < 1:
+        parser.error("--min-dates, --min-tickers and --days must be >= 1")
 
     if args.csv is None:
-        validate_apx(args.afl.with_suffix(".apx"), args.afl)
-        csv_path = settings.data_dir / "tmp_Export_Indicator_full.csv"
+        validate_apx(
+            args.afl.with_suffix(".apx"), args.afl,
+            incremental=(args.mode == "incremental"),
+        )
+        csv_path = settings.data_dir / f"tmp_Export_Indicator_{args.mode}.csv"
         WindowsAmiBrokerAdapter(
             database_path=settings.amibroker_database_path
         ).run_explore_export(
@@ -629,15 +634,24 @@ def main(argv: list[str] | None = None) -> int:
     factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
     # Stage and validate before starting any write transaction.
     with factory.writer() as connection:
-        summary = prepare_stage(
-            connection, csv_path,
-            min_dates=args.min_dates, min_tickers=args.min_tickers,
-        )
+        if args.mode == "incremental":
+            summary = prepare_incremental_stage(
+                connection, csv_path, days=args.days, min_tickers=args.min_tickers,
+            )
+        else:
+            summary = prepare_stage(
+                connection, csv_path,
+                min_dates=args.min_dates, min_tickers=args.min_tickers,
+            )
         print("[AFL Indicators] STAGED", json.dumps(summary, ensure_ascii=False))
         if args.dry_run:
             print("[AFL Indicators] DRY RUN: cal_indicator_values unchanged")
             return 0
-        results = replace_full_history(connection, summary)
+        results = (
+            upsert_incremental(connection, summary)
+            if args.mode == "incremental"
+            else replace_full_history(connection, summary)
+        )
         print("[AFL Indicators] COMMITTED", json.dumps(results, ensure_ascii=False))
     return 0
 
