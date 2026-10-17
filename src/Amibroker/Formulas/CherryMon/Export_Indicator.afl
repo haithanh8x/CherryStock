@@ -31,9 +31,9 @@ SetBarsRequired( sbrAll, sbrAll );
 SetOption( "NoDefaultColumns", True );
 
 x_tfSelection = ParamList( "Timeframes", "ALL|D|W|M", 0 );
-x_onlyStocks = ParamToggle( "Symbol filter", "All symbols|Gia co phieu", 0 );
+x_onlyStocks = ParamToggle( "Symbol filter", "All symbols|Gia co phieu", 1 );
 
-// Full-history export defaults to ALL tickers; optional group filter remains.
+// Match the group's current FA export convention by default.
 // No lastbarinrange dependency: New Analysis Range controls exported rows.
 Filter = IIf( x_onlyStocks, GroupID(1) == "Gia co phieu", 1 );
 
