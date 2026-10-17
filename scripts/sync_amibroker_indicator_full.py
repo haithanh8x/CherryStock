@@ -30,14 +30,15 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
-from src.cherrystock.config.settings import settings  # noqa: E402
-from src.cherrystock.infrastructure.amibroker.windows_adapter import (  # noqa: E402
+from cherrystock.config.settings import settings  # noqa: E402
+from cherrystock.infrastructure.amibroker.windows_adapter import (  # noqa: E402
     WindowsAmiBrokerAdapter,
 )
-from src.cherrystock.infrastructure.database.connection import (  # noqa: E402
+from cherrystock.infrastructure.database.connection import (  # noqa: E402
     DuckDBConnectionFactory,
 )
 
@@ -121,7 +122,6 @@ EXPECTED_COLUMNS = {
     for component in components
     for tf in SUFFIXES
 }
-EXPECTED_TFS = {f"MA20_{tf}" for tf in SUFFIXES}
 
 
 @dataclass(frozen=True)
@@ -262,7 +262,10 @@ def prepare_stage(connection, csv_path: Path, *, min_dates: int) -> dict[str, ob
         CREATE TEMP TABLE _afl_stage AS
         SELECT
             UPPER(TRIM(CAST(u."Ticker" AS VARCHAR))) AS Ticker,
-            TRY_CAST(CAST(u.{_quote(date_column)} AS VARCHAR) AS DATE) AS Date,
+            COALESCE(
+                TRY_CAST(CAST(u.{_quote(date_column)} AS VARCHAR) AS DATE),
+                TRY_CAST(SUBSTR(CAST(u.{_quote(date_column)} AS VARCHAR), 1, 10) AS DATE)
+            ) AS Date,
             m.ConfigCode,
             m.IndicatorCode,
             m.Timeframe,
@@ -451,7 +454,6 @@ def replace_full_history(connection, stage_summary: dict[str, object]) -> dict[s
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apx", type=Path, default=DEFAULT_AFL.with_suffix(".apx"))
     parser.add_argument("--afl", type=Path, default=DEFAULT_AFL)
     parser.add_argument(
         "--csv", type=Path,
@@ -468,7 +470,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--min-dates must be >= 1")
 
     if args.csv is None:
-        validate_apx(args.apx, args.afl)
+        validate_apx(args.afl.with_suffix(".apx"), args.afl)
         csv_path = settings.data_dir / "tmp_Export_Indicator_full.csv"
         WindowsAmiBrokerAdapter(
             database_path=settings.amibroker_database_path
