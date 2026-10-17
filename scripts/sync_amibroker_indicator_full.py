@@ -326,8 +326,11 @@ def prepare_stage(
             "SELECT DISTINCT Timeframe FROM _afl_stage"
         ).fetchall()
     }
-    if present != set(SUFFIXES):
+    if compare_existing and present != set(SUFFIXES):
         raise ValueError(f"Missing D/W/M values: actual={present}")
+    if not compare_existing and "D" not in present:
+        raise ValueError(f"Incremental export contains no Daily values: actual={present}")
+
 
     previous = connection.execute(
         f"SELECT COUNT(*), COUNT(DISTINCT Ticker), MIN(Date), MAX(Date) FROM {FACT}"
