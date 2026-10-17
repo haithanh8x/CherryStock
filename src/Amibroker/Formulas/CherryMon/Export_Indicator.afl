@@ -32,17 +32,10 @@ SetOption( "NoDefaultColumns", True );
 
 x_tfSelection = ParamList( "Timeframes", "ALL|D|W|M", 0 );
 x_onlyStocks = ParamToggle( "Symbol filter", "All symbols|Gia co phieu", 1 );
-x_exportMode = ParamList( "Export mode", "FULL|INCREMENTAL", 0 );
-x_exportDays = Param( "Incremental trading bars", 10, 1, 365, 1 );
-
 
 // Match the group's current FA export convention by default.
 // No lastbarinrange dependency: New Analysis Range controls exported rows.
-x_universeFilter = IIf( x_onlyStocks, GroupID(1) == "Gia co phieu", 1 );
-// Calculate indicators on all available OHLCV history. Only Exploration
-// OUTPUT rows are restricted; OBV/AD and long-period MA/EMA keep their history.
-x_recentBars = BarIndex() >= Max( 0, BarCount - x_exportDays );
-Filter = x_universeFilter AND IIf( x_exportMode == "INCREMENTAL", x_recentBars, 1 );
+Filter = IIf( x_onlyStocks, GroupID(1) == "Gia co phieu", 1 );
 
 AddTextColumn( Name(), "Ticker" );
 AddColumn( DateTime(), "Date", formatDateTimeISO );
