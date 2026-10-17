@@ -157,7 +157,7 @@ def test_view_mismatch_rolls_back_old_data(tmp_path: Path) -> None:
         con.execute(
             "INSERT INTO CherryMon.main.cal_indicator_values "
             "(Ticker, Date, ConfigId, ComponentCode, Value) "
-            "VALUES ('OLD', DATE '2024-01-01', 999, 'VALUE', 123)"
+            "VALUES ('OLD', DATE '2025-01-02', 999, 'VALUE', 123)"
         )
         con.execute("DROP VIEW CherryMon.main.vw_Ticker_indicators")
         con.execute(
