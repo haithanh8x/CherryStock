@@ -33,7 +33,7 @@ SetOption( "NoDefaultColumns", True );
 x_tfSelection = ParamList( "Timeframes", "ALL|D|W|M", 0 );
 // Do not default to a named AmiBroker group: database group labels vary.
 x_onlyStocks = ParamToggle( "Symbol filter", "All symbols|Gia co phieu", 0 );
-x_exportMode = ParamList( "Export mode", "FULL|INCREMENTAL", 0 );
+x_exportMode = ParamList( "Export mode", "FULL|INCREMENTAL", 1 );
 x_exportDays = Param( "Incremental trading bars", 10, 1, 365, 1 );
 
 // The New Analysis Apply-to setting independently selects the ticker universe.
