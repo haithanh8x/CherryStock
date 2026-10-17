@@ -11,12 +11,16 @@ from src.cherrystock.application.services.movement_daily_pipeline import Movemen
 from src.cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiBrokerAdapter
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
+from src.calcEngine.industryIndex import refresh_industry_index
 
 # Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
 ENABLE_MOVEMENT_PIPELINE = False
 
 # Full-history AmiBroker AFL indicator refresh runs after the core EOD sync commits.
 ENABLE_AFL_INDICATOR_FULL_REFRESH = False
+
+# FFMC/EW industry indices run independently after the core data sync commits.
+ENABLE_INDUSTRY_INDEX_REFRESH = True
 
 
 def _resolve_days_diff(default_days: int = 15) -> int:
@@ -127,6 +131,21 @@ def main():
             connection=connection,
             days_diff=days_diff,
             uow=uow,
+        )
+
+    # New industry-index engine is independent of the legacy composite-index code.
+    # Keep a separate transaction: an index failure never rolls back core EOD sync.
+    if ENABLE_INDUSTRY_INDEX_REFRESH:
+        print("[daily] ▶ Industry Index FFMC + EW")
+        industry_started = perf_counter()
+        with DuckDBUnitOfWork(connection_factory) as industry_uow:
+            industry_summary = refresh_industry_index(
+                days=max(1, days_diff), connection=industry_uow.connection
+            )
+        print(f"[IndustryIndex] COMMITTED {industry_summary}")
+        print(
+            "⏱️   [Duration] 'industry_index_refresh' "
+            f"total time: {perf_counter() - industry_started:.1f} seconds"
         )
 
     # Full-history indicator calculation is owned by AmiBroker APX, not Python.
