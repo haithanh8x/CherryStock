@@ -15,6 +15,9 @@ from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWor
 # Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
 ENABLE_MOVEMENT_PIPELINE = False
 
+# Full-history AmiBroker AFL indicator refresh runs after the core EOD sync commits.
+ENABLE_AFL_INDICATOR_FULL_REFRESH = True
+
 
 def _resolve_days_diff(default_days: int = 15) -> int:
     """Resolve số ngày cần cập nhật từ checkpoint hiện tại."""
@@ -124,6 +127,20 @@ def main():
             connection=connection,
             days_diff=days_diff,
             uow=uow,
+        )
+
+    # Full-history indicator calculation is owned by AmiBroker APX, not Python.
+    # Its importer first validates the complete CSV, then replaces the fact in
+    # one dedicated transaction; an APX/export error leaves existing facts intact.
+    if ENABLE_AFL_INDICATOR_FULL_REFRESH:
+        from scripts.sync_amibroker_indicator_full import main as run_afl_indicator_refresh
+
+        print("[daily] ▶ Full-history AFL indicators → cal_indicator_values")
+        indicator_started = perf_counter()
+        run_afl_indicator_refresh([])
+        print(
+            "⏱️   [Duration] 'afl_indicator_full_refresh' "
+            f"total time: {perf_counter() - indicator_started:.1f} seconds"
         )
 
     # Movement runs after the canonical daily transaction commits when enabled.

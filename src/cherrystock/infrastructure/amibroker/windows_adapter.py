@@ -57,8 +57,8 @@ class WindowsAmiBrokerAdapter:
             return False
         try:
             with export_path.open("r", encoding="utf-8-sig", errors="ignore") as handle:
-                non_empty = [line for line in handle if line.strip()]
-            return len(non_empty) >= 2
+                non_empty = (line for line in handle if line.strip())
+                return next(non_empty, None) is not None and next(non_empty, None) is not None
         except Exception:
             return export_path.stat().st_size > 128
 
@@ -69,8 +69,9 @@ class WindowsAmiBrokerAdapter:
         apply_to: int = 0,
         range_mode: int = 2,
         range_n: int = 1,
+        timeout_seconds: float = 600.0,
     ) -> None:
-        """Run FA exploration using AmiBroker New Analysis and export CSV.
+        """Run AmiBroker New Analysis exploration and export CSV.
 
         Preferred source is an ``Export Shares.apx`` project next to the AFL. If
         it does not exist, the most recently opened New Analysis document is used.
@@ -165,7 +166,7 @@ class WindowsAmiBrokerAdapter:
 
             # If this document was already running, wait up to 10 minutes before
             # launching the FA exploration.
-            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=600.0)
+            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=timeout_seconds)
 
             started = int(analysis_doc.Run(1))  # 1 = Exploration
             if started != 1:
@@ -175,7 +176,7 @@ class WindowsAmiBrokerAdapter:
                 )
 
             # Large databases/plugin-backed scans can take several minutes.
-            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=600.0)
+            self._wait_analysis(analysis_doc, pythoncom, timeout_seconds=timeout_seconds)
 
             exported = int(analysis_doc.Export(str(export_path), 0))
             if exported != 1:
