@@ -12,7 +12,7 @@ The Python loader does not calculate any technical indicators and requires **no 
 ### One-time AmiBroker setup
 
 1. Open the latest \`Export_Indicator.afl\` in AmiBroker **New Analysis**, save the project as **\`Export_Indicator.apx\` next to that AFL**.
-2. Set **Apply to = All symbols**, **Range = All quotations**, **Periodicity = Daily**.
+2. Set **Apply to = Filter** (`ApplyTo=2`) to use your saved AmiBroker ticker universe (or **All symbols**, `ApplyTo=0`), **Range = All quotations**, **Periodicity = Daily**.
 3. In Analysis **Parameters**, set **Timeframes = ALL** and **Symbol filter = All symbols**.
 4. **Save the APX** after setting the options. The APX is currently a machine-local configuration file, not committed in this change.
 5. Run **Explore** manually once and confirm the full CSV has Ticker, Date, MA20_D, MA20_W, MA20_M, etc. If the APX's embedded FormulaContent is stale, reopen/re-save the latest AFL.
@@ -53,7 +53,7 @@ This \`--csv\` option is intended for diagnostics/recovery only. The normal dail
 ### Failure protection and scope
 
 - The CSV must have **all 108 indicator-value columns**, even if warmup results are NULL.
-- At least 100 tickers and 200 distinct dates must have values. \`--min-tickers\` and \`--min-dates\` are explicit troubleshooting overrides for small controlled environments.
+- At least 100 tickers and 200 distinct dates must have values; if using ApplyTo=2, the filter must cover the full intended production ticker universe. \`--min-tickers\` and \`--min-dates\` are explicit troubleshooting overrides for small controlled environments.
 - No invalid numbers/dates, duplicate \`Ticker+Date+ConfigCode+ComponentCode\`, or missing D/W/M values.
 - Historical minimum date, latest date, number of tickers and total rows cannot regress dangerously versus the existing fact.
 - Automatic minimal \`dim_indicator\`, \`dim_indicator_component\`, and \`dim_indicator_config\` inserts happen inside the same transaction as the fact replacement, only where absent; existing ConfigIds remain stable.
