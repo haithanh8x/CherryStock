@@ -377,6 +377,20 @@ Runbook:
 
 - `docs/runbook/SmartMoneyScore_V1.md`
 
+## Industry Index analytical proxy (V1)
+
+The independent `src/calcEngine/industryIndex.py` engine consumes `vw_Ticker_Active`
+(current `IndustryCode`, `FreeFloat` as float-share count) and
+`vw_Ticker_OHLC_D` (adjusted daily Close/Volume/TradingValue). It builds close-only
+FFMC and equal-weight industry indices in `cal_Industry_Index_D`, keeps constituent
+attribution in `cal_Industry_Index_Weights`, and exposes `vw_Industry_Index_D`.
+`days=None` rebuilds all history; positive N refreshes the last N trading dates
+and atomically replaces that window. It is a latest-snapshot historical proxy,
+not point-in-time data suitable for historical backtests.
+
+Detailed source and persistence contract: [[Industry_Index|Industry Index V1]].
+Runbook: [[../runbook/Industry_Index|Industry Index local operations]].
+
 ## Database access policy
 See [[../../.github/instructions/database.instructions|Database Instructions]].
 
