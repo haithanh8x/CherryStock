@@ -174,7 +174,7 @@ SPECS = _column_specs()
 assert {item.csv_column for item in SPECS} == EXPECTED_COLUMNS
 
 
-def validate_apx(apx: Path, afl: Path) -> None:
+def validate_apx(apx: Path, afl: Path, *, incremental: bool = False) -> None:
     """Refuse partial-range or unrelated APX projects before any destructive write."""
     if not apx.is_file() or not afl.is_file():
         raise FileNotFoundError(f"Missing AFL/APX: {afl} | {apx}")
@@ -187,6 +187,10 @@ def validate_apx(apx: Path, afl: Path) -> None:
         (general.findtext("RangeType"), "0", "Range: All quotations"),
         (backtest.findtext("Periodicity"), "0", "Periodicity: Daily"),
     )
+    if incremental:
+        # The saved APX may use N recent bars; the importer restricts the
+        # actual fact changes to the latest N distinct trading dates.
+        settings_to_check = settings_to_check[1:]
     for actual, expected, name in settings_to_check:
         if (actual or "").strip() != expected:
             raise ValueError(f"APX must use {name}; got {actual!r}. Save the project in AmiBroker.")
@@ -212,7 +216,8 @@ def _quote(name: str) -> str:
 
 
 def prepare_stage(
-    connection, csv_path: Path, *, min_dates: int, min_tickers: int = 100
+    connection, csv_path: Path, *, min_dates: int, min_tickers: int = 100,
+    compare_existing: bool = True,
 ) -> dict[str, object]:
     """Stage full CSV and reject missing columns, parse errors or duplicates."""
     if not csv_path.is_file() or csv_path.stat().st_size == 0:
@@ -321,28 +326,30 @@ def prepare_stage(
             "SELECT DISTINCT Timeframe FROM _afl_stage"
         ).fetchall()
     }
-    if present != set(SUFFIXES):
+    if compare_existing and present != set(SUFFIXES):
         raise ValueError(f"Missing D/W/M values: actual={present}")
+    if not compare_existing and "D" not in present:
+        raise ValueError(f"Incremental export contains no Daily values: actual={present}")
 
     previous = connection.execute(
         f"SELECT COUNT(*), COUNT(DISTINCT Ticker), MIN(Date), MAX(Date) FROM {FACT}"
     ).fetchone()
-    if previous[1] >= 20 and tickers < 0.8 * previous[1]:
+    if compare_existing and previous[1] >= 20 and tickers < 0.8 * previous[1]:
         raise ValueError(
             f"Ticker coverage decreased from {previous[1]} to {tickers}; "
             "refusing full replacement."
         )
-    if previous[2] is not None and date_min > previous[2]:
+    if compare_existing and previous[2] is not None and date_min > previous[2]:
         raise ValueError(
             f"Oldest indicator Date regressed from {previous[2]} to {date_min}; "
             "refusing partial historical overwrite."
         )
-    if previous[3] is not None and date_max < previous[3]:
+    if compare_existing and previous[3] is not None and date_max < previous[3]:
         raise ValueError(
             f"Latest indicator Date regressed from {previous[3]} to {date_max}; "
             "refusing stale AFL export."
         )
-    if previous[0] >= 10000 and total < 0.8 * previous[0]:
+    if compare_existing and previous[0] >= 10000 and total < 0.8 * previous[0]:
         raise ValueError(
             f"Row coverage collapsed from {previous[0]} to {total}; "
             "refusing full replacement."
@@ -356,6 +363,127 @@ def prepare_stage(
         "old_rows": int(previous[0]),
         "old_tickers": int(previous[1]),
     }
+
+
+def prepare_incremental_stage(
+    connection, csv_path: Path, *, days: int = 10, min_tickers: int = 100
+) -> dict[str, object]:
+    """Validate the APX export then retain only the latest N distinct trading dates.
+
+    Unlike full refresh, no historical min/max comparison is made against the
+    entire existing fact. No missing (null) component is used as a deletion
+    signal: incremental mode is strictly a key-based UPSERT.
+    """
+    if days < 1:
+        raise ValueError("days must be >= 1")
+    summary = prepare_stage_incremental(connection, csv_path, min_tickers=min_tickers)
+    date_count = connection.execute(
+        "SELECT COUNT(DISTINCT Date) FROM _afl_stage"
+    ).fetchone()[0]
+    if date_count < days:
+        raise ValueError(
+            f"Incremental APX exported only {date_count} distinct dates; "
+            f"requested {days}. Set Range to at least {days} recent bars."
+        )
+    # Incremental exports should not overwrite newer production dates with
+    # an older APX snapshot. Historical backfills require an explicit CSV
+    # replay and a separate review.
+    latest_existing = connection.execute(
+        f"SELECT MAX(Date) FROM {FACT}"
+    ).fetchone()[0]
+    if latest_existing is not None:
+        latest_export = connection.execute(
+            "SELECT MAX(Date) FROM _afl_stage"
+        ).fetchone()[0]
+        if latest_export < latest_existing:
+            raise ValueError(
+                f"Incremental export is stale: latest={latest_export}, "
+                f"existing={latest_existing}"
+            )
+    connection.execute(
+        """
+        DELETE FROM _afl_stage
+        WHERE Date NOT IN (
+            SELECT Date FROM (
+                SELECT DISTINCT Date FROM _afl_stage
+                ORDER BY Date DESC LIMIT ?
+            )
+        )
+        """,
+        [days],
+    )
+    dates = connection.execute(
+        "SELECT MIN(Date), MAX(Date), COUNT(DISTINCT Date), COUNT(*) FROM _afl_stage"
+    ).fetchone()
+    summary.update(
+        {"min_date": str(dates[0]), "max_date": str(dates[1]),
+         "distinct_dates": int(dates[2]), "rows": int(dates[3]), "mode": "incremental"}
+    )
+    return summary
+
+
+def prepare_stage_incremental(
+    connection, csv_path: Path, *, min_tickers: int = 100
+) -> dict[str, object]:
+    """Use the shared full CSV parser but bypass full-history comparison guards.
+
+    The previous fact is not deleted by this staging operation.
+    """
+    # Full staging validates all indicator columns and uniqueness, but its
+    # historical comparison is not applicable to incremental updates.
+    return prepare_stage(
+        connection, csv_path, min_dates=1, min_tickers=min_tickers,
+        compare_existing=False,
+    )
+
+
+def upsert_incremental(connection, stage_summary: dict[str, object]) -> dict[str, object]:
+    """Atomic key-based MERGE; never truncate or delete historical fact rows."""
+    connection.execute("BEGIN TRANSACTION")
+    try:
+        _ensure_metadata(connection)
+        connection.execute(
+            f"""
+            MERGE INTO {FACT} AS dst
+            USING (
+                SELECT s.Ticker, s.Date, c.ConfigId,
+                       s.ComponentCode, s.Value
+                FROM _afl_stage s
+                JOIN {CONFIGS} c ON c.ConfigCode = s.ConfigCode
+            ) AS src
+            ON dst.Ticker = src.Ticker
+               AND dst.Date = src.Date
+               AND dst.ConfigId = src.ConfigId
+               AND dst.ComponentCode = src.ComponentCode
+            WHEN MATCHED THEN
+                UPDATE SET Value = src.Value, CalculatedAt = CURRENT_TIMESTAMP
+            WHEN NOT MATCHED THEN
+                INSERT (Ticker, Date, ConfigId, ComponentCode, Value, CalculatedAt)
+                VALUES (src.Ticker, src.Date, src.ConfigId, src.ComponentCode,
+                        src.Value, CURRENT_TIMESTAMP)
+            """
+        )
+        affected = connection.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM _afl_stage s
+            JOIN {CONFIGS} c ON c.ConfigCode = s.ConfigCode
+            JOIN {FACT} v ON v.Ticker = s.Ticker
+                         AND v.Date = s.Date
+                         AND v.ConfigId = c.ConfigId
+                         AND v.ComponentCode = s.ComponentCode
+            """
+        ).fetchone()[0]
+        if affected != stage_summary["rows"]:
+            raise RuntimeError(
+                f"Incremental verification failed: staged={stage_summary['rows']} "
+                f"present={affected}"
+            )
+        connection.execute("COMMIT")
+    except BaseException:
+        connection.execute("ROLLBACK")
+        raise
+    return {"upserted": int(affected)}
 
 
 def _ensure_metadata(connection) -> None:
@@ -485,6 +613,8 @@ def main(argv: list[str] | None = None) -> int:
         "--csv", type=Path,
         help="Use an existing full-history CSV; bypass AmiBroker automation",
     )
+    parser.add_argument("--mode", choices=("full", "incremental"), default="full")
+    parser.add_argument("--days", type=int, default=10, help="Latest N trading dates for incremental mode")
     parser.add_argument("--dry-run", action="store_true", help="Stage/validate; no writes")
     parser.add_argument(
         "--min-tickers", type=int, default=100,
@@ -496,12 +626,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.min_dates < 1 or args.min_tickers < 1:
-        parser.error("--min-dates and --min-tickers must be >= 1")
+    if args.min_dates < 1 or args.min_tickers < 1 or args.days < 1:
+        parser.error("--min-dates, --min-tickers and --days must be >= 1")
 
     if args.csv is None:
-        validate_apx(args.afl.with_suffix(".apx"), args.afl)
-        csv_path = settings.data_dir / "tmp_Export_Indicator_full.csv"
+        validate_apx(
+            args.afl.with_suffix(".apx"), args.afl,
+            incremental=(args.mode == "incremental"),
+        )
+        csv_path = settings.data_dir / f"tmp_Export_Indicator_{args.mode}.csv"
         WindowsAmiBrokerAdapter(
             database_path=settings.amibroker_database_path
         ).run_explore_export(
@@ -518,15 +651,24 @@ def main(argv: list[str] | None = None) -> int:
     factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
     # Stage and validate before starting any write transaction.
     with factory.writer() as connection:
-        summary = prepare_stage(
-            connection, csv_path,
-            min_dates=args.min_dates, min_tickers=args.min_tickers,
-        )
+        if args.mode == "incremental":
+            summary = prepare_incremental_stage(
+                connection, csv_path, days=args.days, min_tickers=args.min_tickers,
+            )
+        else:
+            summary = prepare_stage(
+                connection, csv_path,
+                min_dates=args.min_dates, min_tickers=args.min_tickers,
+            )
         print("[AFL Indicators] STAGED", json.dumps(summary, ensure_ascii=False))
         if args.dry_run:
             print("[AFL Indicators] DRY RUN: cal_indicator_values unchanged")
             return 0
-        results = replace_full_history(connection, summary)
+        results = (
+            upsert_incremental(connection, summary)
+            if args.mode == "incremental"
+            else replace_full_history(connection, summary)
+        )
         print("[AFL Indicators] COMMITTED", json.dumps(results, ensure_ascii=False))
     return 0
 

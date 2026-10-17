@@ -68,3 +68,28 @@ python -m pytest tests\test_sync_amibroker_indicator_full.py -v
 \`\`\`
 
 AmiBroker syntax/runtime compilation, end-to-end COM performance and parity with the older Python indicator values must be validated on the Windows machine. Those tests cannot run in GitHub's Linux environment.
+
+## Incremental UPSERT (latest 10 trading dates)
+
+Save the AmiBroker APX with **ApplyTo=2 (Filter)**, **Periodicity=Daily**,
+**Timeframes=ALL**, and **Range = 10 recent bars** (or All quotations; the
+importer keeps only the latest 10 trading dates). Unlike the full mode, the
+incremental mode accepts a recent-bars APX and does not require 200 dates.
+
+```powershell
+python scripts\sync_amibroker_indicator_full.py --mode incremental --days 10 --dry-run
+python scripts\sync_amibroker_indicator_full.py --mode incremental --days 10
+```
+
+Incremental mode **never truncates or deletes historical rows**. It MERGEs by
+`Ticker + Date + ConfigId + ComponentCode`, updating existing values and
+inserting missing keys in one transaction. Only the latest 10 **distinct
+trading dates present in the export** are used. Re-running the same CSV does
+not create duplicates. Existing `run.py` remains on **full** mode until
+explicitly switched; this new incremental CLI is standalone.
+
+**Caveats:** AmiBroker must have the *full OHLCV history available to calculate*
+EMA/OBV/AD and other long-lookback values; the APX limits only output rows.
+Weekly/monthly expandPoint cells can be sparse in a ten-day export; their
+values are upserted only where present. A later full reconciliation is
+recommended if historical adjustments or W/M period revisions occur.
