@@ -6,6 +6,20 @@
 - **Transaction owner:** `DuckDBUnitOfWork`
 - **Last aligned with runtime:** 2026-09-22
 
+## Current post-sync extension — Industry Index
+
+`run.py` now independently refreshes industry FFMC and Equal-Weighted daily
+indices after the core market-data sync commits, using
+`refresh_industry_index(days=max(1, days_diff), connection=...)` in a new
+`DuckDBUnitOfWork`. This additive job does not call the legacy
+`calculate_composite_index()` and does not alter `cal_Indexes`. It upserts by
+transactional window replacement and automatically bootstraps full history on
+an empty target. To run the job standalone, see
+[Industry Index Runbook](Industry_Index.md).
+
+The remainder of this document contains earlier daily stages and is not a
+claim that all legacy optional analytics stages are currently enabled.
+
 ## Purpose
 
 This document is the canonical operational description of the CherryStock daily
