@@ -128,6 +128,7 @@ class SyncWritePipelineService:
                 ],
                 max_row_change_pct=1.0,
                 max_symbol_change_pct=0.25,
+                futures_expiry_symbol_warn=(pipeline_name == "AmiBroker Intraday Futures"),
                 raise_on_fail=True,
             )
 
