@@ -313,3 +313,56 @@ def test_validate_data_quality_missing_optional_column_warns_not_fails() -> None
 
     assert result["status"] == "WARNING"
     assert any("MA50_M" in warning for warning in result["warnings"])
+
+
+def test_tiny_eod_shortfall_downgrades_zscore_only() -> None:
+    connection = duckdb.connect(":memory:")
+    _create_price_table(connection)
+    current_date = date(2026, 10, 16)
+    symbols = tuple(f"S{i:04d}" for i in range(1000))
+    _insert_price_history(connection, current_date - timedelta(days=1), symbols=symbols)
+    # Build nonzero historical variance (999 vs 1000) so the latest
+    # 995 symbols produce a z-score well beyond the failure threshold.
+    connection.execute(
+        "DELETE FROM raw_stock_eod WHERE Date = ? AND Ticker = 'S0999'",
+        [current_date - timedelta(days=2)],
+    )
+    connection.executemany(
+        "INSERT INTO raw_stock_eod VALUES (?, ?, 10, 12, 9, 11, 1000)",
+        [(symbol, current_date) for symbol in symbols[:995]],
+    )
+
+    strict = validate_data_quality(
+        connection, "raw_stock_eod", expected_date=current_date
+    )
+    relaxed = validate_data_quality(
+        connection, "raw_stock_eod", expected_date=current_date,
+        small_count_anomaly_warn_pct=0.005,
+    )
+    assert strict["status"] == "FAIL"
+    assert relaxed["status"] == "WARNING"
+    assert relaxed["errors"] == []
+    assert any("z-score" in message for message in relaxed["warnings"])
+    assert relaxed["metrics"]["missing_symbol_count"] == 5
+
+
+def test_large_eod_shortfall_still_fails() -> None:
+    connection = duckdb.connect(":memory:")
+    _create_price_table(connection)
+    current_date = date(2026, 10, 16)
+    symbols = tuple(f"S{i:04d}" for i in range(1000))
+    _insert_price_history(connection, current_date - timedelta(days=1), symbols=symbols)
+    connection.execute(
+        "DELETE FROM raw_stock_eod WHERE Date = ? AND Ticker = 'S0999'",
+        [current_date - timedelta(days=2)],
+    )
+    connection.executemany(
+        "INSERT INTO raw_stock_eod VALUES (?, ?, 10, 12, 9, 11, 1000)",
+        [(symbol, current_date) for symbol in symbols[:980]],
+    )
+    result = validate_data_quality(
+        connection, "raw_stock_eod", expected_date=current_date,
+        small_count_anomaly_warn_pct=0.005,
+    )
+    assert result["status"] == "FAIL"
+    assert any("z-score" in message for message in result["errors"])

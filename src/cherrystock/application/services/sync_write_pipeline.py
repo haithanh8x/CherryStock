@@ -96,6 +96,7 @@ class SyncWritePipelineService:
             symbol_col="Ticker",
             key_cols=["Ticker", "Date"],
             required_cols=["Ticker", "Date", "Open", "High", "Low", "Close", "Volume"],
+            small_count_anomaly_warn_pct=0.005,
             raise_on_fail=True,
         )
 
