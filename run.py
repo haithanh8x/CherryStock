@@ -16,7 +16,7 @@ from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWor
 ENABLE_MOVEMENT_PIPELINE = False
 
 # Full-history AmiBroker AFL indicator refresh runs after the core EOD sync commits.
-ENABLE_AFL_INDICATOR_FULL_REFRESH = True
+ENABLE_AFL_INDICATOR_FULL_REFRESH = False
 
 
 def _resolve_days_diff(default_days: int = 15) -> int:
