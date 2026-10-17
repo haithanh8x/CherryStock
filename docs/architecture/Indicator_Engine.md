@@ -4,6 +4,36 @@
 
 Canonical architecture entry point for CherryStock technical indicators. This document owns **how the Indicator Engine is structured**. Mandatory execution constraints live in `.github/instructions/indicators.instructions.md`; the repeatable lifecycle procedure lives in `.github/skills/indicator-onboarding/SKILL.md`.
 
+## Active full-history AFL producer (October 2026)
+
+The canonical **daily calculation path** now runs AmiBroker's saved
+`Export_Indicator.apx` and its `Export_Indicator.afl` (D/W/M) after the core
+EOD source-sync transaction commits. Python handles COM export, wide CSV staging,
+quality checks and atomic full replacement of `cal_indicator_values`. All
+indicators are calculated by AFL, not `pandas-ta-classic` in the daily path.
+
+The daily operator needs only to maintain the AmiBroker AFL/APX and execute
+`run.py` (or `scripts/sync_amibroker_indicator_full.py`). The existing
+three `dim_indicator*` tables **remain physically present**, because the
+current `cal_indicator_values` schema uses a numeric `ConfigId` and
+R/S, SmartMoney and public views still join metadata. The loader now
+populates any missing indicator/config/component rows automatically,
+preserving existing ConfigIds and downstream queries. Manual metadata
+onboarding is no longer required for columns already present in the AFL contract.
+
+The previous `refresh_technical_indicators()` Python engine is retained
+for historical/test compatibility but is not the daily producer. Its
+incremental backfill and metadata-driven calculations are the **legacy path**.
+Do not run both producers concurrently.
+
+The full history is imported in a dedicated transaction: after validation,
+DELETE all rows and INSERT the complete new set. Any failed check rolls back
+the old fact and metadata changes. Source AFL CSV is a wide intermediate
+format; persistence stays long-format.
+
+See `docs/runbook/AFL_Indicator_Full_Refresh.md` for setup, D/W/M semantics,
+safety gates and daily commands.
+
 ## Core flow
 
 ```text
