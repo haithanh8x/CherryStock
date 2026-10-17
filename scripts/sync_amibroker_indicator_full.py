@@ -414,21 +414,6 @@ def prepare_stage_incremental(
     """
     # Full staging validates all indicator columns and uniqueness, but its
     # historical comparison is not applicable to incremental updates.
-    connection.execute("CREATE TEMP TABLE _afl_old_fact AS SELECT * FROM " + FACT + " LIMIT 0")
-    try:
-        # Temporarily supply a zero-row compatibility relation to the shared
-        # parser's old-coverage query, without touching production data.
-        return _prepare_incremental_from_full_parser(
-            connection, csv_path, min_tickers=min_tickers
-        )
-    finally:
-        connection.execute("DROP TABLE IF EXISTS _afl_old_fact")
-
-
-def _prepare_incremental_from_full_parser(
-    connection, csv_path: Path, *, min_tickers: int
-) -> dict[str, object]:
-    """Incremental parser with old-fact guards disabled through an explicit flag."""
     return prepare_stage(
         connection, csv_path, min_dates=1, min_tickers=min_tickers,
         compare_existing=False,
