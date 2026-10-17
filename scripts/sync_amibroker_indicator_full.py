@@ -203,7 +203,9 @@ def _quote(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
-def prepare_stage(connection, csv_path: Path, *, min_dates: int) -> dict[str, object]:
+def prepare_stage(
+    connection, csv_path: Path, *, min_dates: int, min_tickers: int = 100
+) -> dict[str, object]:
     """Stage full CSV and reject missing columns, parse errors or duplicates."""
     if not csv_path.is_file() or csv_path.stat().st_size == 0:
         raise FileNotFoundError(f"Missing/empty full exploration CSV: {csv_path}")
@@ -290,10 +292,11 @@ def prepare_stage(connection, csv_path: Path, *, min_dates: int) -> dict[str, ob
     total, tickers, dates, date_min, date_max, invalid = counts
     if invalid:
         raise ValueError(f"AFL CSV contains {invalid} invalid ticker/date/numeric values")
-    if not total or not tickers or dates < min_dates:
+    if not total or tickers < min_tickers or dates < min_dates:
         raise ValueError(
             f"Full historical export appears incomplete: rows={total} "
-            f"tickers={tickers} distinct_dates={dates} (minimum {min_dates})"
+            f"tickers={tickers} (minimum {min_tickers}), "
+            f"distinct_dates={dates} (minimum {min_dates})"
         )
     repeated = connection.execute(
         """
@@ -461,13 +464,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--dry-run", action="store_true", help="Stage/validate; no writes")
     parser.add_argument(
+        "--min-tickers", type=int, default=100,
+        help="Minimum distinct tickers for full-universe export (default 100)",
+    )
+    parser.add_argument(
         "--min-dates", type=int, default=200,
         help="Minimum distinct source dates proving All quotations export (default 200)",
     )
     args = parser.parse_args(argv)
 
-    if args.min_dates < 1:
-        parser.error("--min-dates must be >= 1")
+    if args.min_dates < 1 or args.min_tickers < 1:
+        parser.error("--min-dates and --min-tickers must be >= 1")
 
     if args.csv is None:
         validate_apx(args.afl.with_suffix(".apx"), args.afl)
@@ -487,7 +494,10 @@ def main(argv: list[str] | None = None) -> int:
     factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
     # Stage and validate before starting any write transaction.
     with factory.writer() as connection:
-        summary = prepare_stage(connection, csv_path, min_dates=args.min_dates)
+        summary = prepare_stage(
+            connection, csv_path,
+            min_dates=args.min_dates, min_tickers=args.min_tickers,
+        )
         print("[AFL Indicators] STAGED", json.dumps(summary, ensure_ascii=False))
         if args.dry_run:
             print("[AFL Indicators] DRY RUN: cal_indicator_values unchanged")
