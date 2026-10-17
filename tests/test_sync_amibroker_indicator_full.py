@@ -116,6 +116,16 @@ def test_apx_enforces_all_quotes_daily_and_all_symbols(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     validate_apx(apx, afl)
+    with pytest.raises(ValueError, match="old AFL"):
+        validate_apx(apx, afl, incremental=True)
+    apx.write_text(
+        apx.read_text().replace(
+            "CS_ExportIndicators();",
+            "CS_ExportIndicators(); x_recentBars = BarIndex() >= BarCount - 10;",
+        ),
+        encoding="utf-8",
+    )
+    validate_apx(apx, afl, incremental=True)
     # Filter mode is a valid, intentionally saved AmiBroker universe.
     apx.write_text(apx.read_text().replace("<ApplyTo>0", "<ApplyTo>2"), encoding="utf-8")
     validate_apx(apx, afl)
