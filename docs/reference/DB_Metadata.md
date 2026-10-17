@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-10-13T16:39:52.516625+00:00
+- Generated at: 2026-10-17T09:39:39.816613+00:00
 - Database file: `C:\OneDrive\Working\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
