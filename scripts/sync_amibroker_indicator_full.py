@@ -330,6 +330,25 @@ def prepare_stage(
         raise ValueError(f"Missing D/W/M values: actual={present}")
     if not compare_existing and "D" not in present:
         raise ValueError(f"Incremental export contains no Daily values: actual={present}")
+    if not compare_existing:
+        # Guard against partial ticker coverage within a date range. At least
+        # 80% of the observed ticker universe should have Daily indicator
+        # values on every exported date (holidays excluded).
+        daily_coverage = connection.execute(
+            """
+            SELECT MIN(n) FROM (
+                SELECT Date, COUNT(DISTINCT Ticker) AS n
+                FROM _afl_stage WHERE Timeframe = 'D'
+                GROUP BY Date
+            )
+            """
+        ).fetchone()[0]
+        if daily_coverage is None or daily_coverage < 0.8 * tickers:
+            raise ValueError(
+                f"Incremental daily ticker coverage incomplete: "
+                f"minimum={daily_coverage}, universe={tickers}"
+            )
+
 
 
     previous = connection.execute(
