@@ -1,0 +1,184 @@
+// CherryStock - Export_Indicator.afl
+// Multi-timeframe OHLCV indicator Exploration (D / W / M).
+//
+// IMPORTANT
+// - New Analysis -> Periodicity = DAILY, Apply To = All Symbols.
+// - Range in Analysis controls exported daily rows (All quotations for backfill).
+// - Timeframes parameter: ALL, D, W, or M. ALL emits suffixed columns for
+//   all three timeframes on each daily row; W/M values appear only on the
+//   last observed daily bar of each period (expandPoint), never future-filled.
+// - Current, unfinished W/M periods may be provisional. The importer must
+//   decide whether to accept them; this AFL does not promise period closure.
+// - Output is a WIDE, intermediate CSV (not cal_indicator_values). Python must
+//   validate/unpivot and resolve ConfigCode/ComponentCode/ConfigId before upsert.
+// - No changes to existing DuckDB tables, views, or consumers.
+// - Calculations use AmiBroker's OHLCV, which must match CherryStock source.
+// - OBV and AD are cumulative; start from the full available source history.
+// - VWAP20 here is a 20-bar rolling typical-price-volume weighted proxy, NOT
+//   session/transaction VWAP (daily OHLCV cannot reconstruct that).
+//
+// Default parameters align with known CherryStock configs (MA 20/50/100/200,
+// BB 20/2, ATR14, RSI14, OBV, AD) and conventional defaults for the rest.
+// AFL vs pandas-ta-classic numeric parity MUST be checked before production.
+//
+// Intended output names: {ConfigCode}_{ComponentCode} where appropriate,
+// suffixed _D, _W, _M. Existing codes are exactly MA20_D, BB20_2_D, etc;
+// parser must map multi-component prefixes, not assume every column equals
+// an active database ConfigCode.
+
+// Full source history is essential for cumulative OBV/AD (no QuickAFL truncation).
+SetBarsRequired( sbrAll, sbrAll );
+SetOption( "NoDefaultColumns", True );
+
+x_tfSelection = ParamList( "Timeframes", "ALL|D|W|M", 0 );
+x_onlyStocks = ParamToggle( "Symbol filter", "All symbols|Gia co phieu", 1 );
+
+// Match the group's current FA export convention by default.
+// No lastbarinrange dependency: New Analysis Range controls exported rows.
+Filter = IIf( x_onlyStocks, GroupID(1) == "Gia co phieu", 1 );
+
+AddTextColumn( Name(), "Ticker" );
+AddColumn( DateTime(), "Date", formatDateTimeISO );
+
+function CS_ExpandPoint( src, tf )
+{
+    if( tf == inDaily )
+        return src;
+
+    // Higher timeframe arrays are compressed; restore the daily base first.
+    return TimeFrameExpand( src, tf, expandPoint );
+}
+
+procedure CS_ExportIndicators( tf, suffix, yearBars )
+{
+    // Requires DAILY base periodicity in New Analysis.
+    if( tf != inDaily )
+        TimeFrameSet( tf );
+
+    // 1. Moving averages: CherryStock's known MA20/50/100/200 configs.
+    x_ma20  = MA( C, 20 );
+    x_ma50  = MA( C, 50 );
+    x_ma100 = MA( C, 100 );
+    x_ma200 = MA( C, 200 );
+
+    // 2. Bollinger Bands (20, 2): same five component semantics as CherryStock.
+    x_bbMiddle  = x_ma20;
+    x_bbUpper   = BBandTop( C, 20, 2 );
+    x_bbLower   = BBandBot( C, 20, 2 );
+    x_bbSpread  = x_bbUpper - x_bbLower;
+    x_bbWidth   = IIf( x_bbMiddle != 0, 100 * x_bbSpread / x_bbMiddle, Null );
+    x_bbPercent = IIf( x_bbSpread != 0, ( C - x_bbLower ) / x_bbSpread, Null );
+
+    // 3. Volatility and momentum.
+    x_atr14 = ATR( 14 );
+    x_rsi14 = RSI( 14 );
+    x_obv   = OBV();
+    x_ad    = AccDist();
+
+    x_macdLine   = MACD( 12, 26 );
+    x_macdSignal = Signal( 12, 26, 9 );
+    x_macdHist   = x_macdLine - x_macdSignal;
+
+    // 4. Additional trend measures.
+    x_ema9   = EMA( C, 9 );
+    x_ema21  = EMA( C, 21 );
+    x_ema50  = EMA( C, 50 );
+    x_ema200 = EMA( C, 200 );
+    x_adx14  = ADX( 14 );
+    x_pdi14  = PDI( 14 );
+    x_mdi14  = MDI( 14 );
+
+    // 5. Rate of Change (percent).
+    x_roc5  = ROC( C, 5 );
+    x_roc10 = ROC( C, 10 );
+    x_roc20 = ROC( C, 20 );
+
+    // 6. Volume moving averages and relative volume ratio.
+    x_volMa20    = MA( V, 20 );
+    x_volMa50    = MA( V, 50 );
+    x_volRatio20 = IIf( x_volMa20 > 0, V / Max( x_volMa20, 0.00000001 ), Null );
+
+    // 7. Approximately 52-week price extremes using bars of this timeframe.
+    // D = 252 trading days, W = 52 weeks, M = 12 months.
+    x_high52w = HHV( H, yearBars );
+    x_low52w  = LLV( L, yearBars );
+
+    // 8. Slow Stochastic (14,3,3); %K already includes 3-bar smoothing.
+    x_stochK = StochK( 14, 3 );
+    x_stochD = StochD( 14, 3, 3 );
+
+    // 9. Money Flow Index, Chaikin Money Flow.
+    x_mfi14     = MFI( 14 );
+    x_hlRange   = H - L;
+    x_mfMult    = IIf( x_hlRange > 0, ( 2 * C - H - L ) / Max( x_hlRange, 0.00000001 ), 0 );
+    x_volSum20  = Sum( V, 20 );
+    x_cmf20     = IIf( x_volSum20 > 0, Sum( x_mfMult * V, 20 ) / Max( x_volSum20, 0.00000001 ), Null );
+
+    // 10. Rolling VWAP20 approximation from typical price and bar volume.
+    // NOT intraday session-anchored VWAP.
+    x_typical = ( H + L + C ) / 3;
+    x_vwap20  = IIf( x_volSum20 > 0, Sum( x_typical * V, 20 ) / Max( x_volSum20, 0.00000001 ), Null );
+
+    if( tf != inDaily )
+        TimeFrameRestore();
+
+    // Export after restoring base daily periodicity. The expandPoint mode
+    // leaves W/M cells empty except on their period's final OBSERVED bar.
+    AddColumn( CS_ExpandPoint( x_ma20, tf ),         "MA20_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_ma50, tf ),         "MA50_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_ma100, tf ),        "MA100_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_ma200, tf ),        "MA200_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_bbLower, tf ),      "BB20_2_LOWER_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_bbMiddle, tf ),     "BB20_2_MIDDLE_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_bbUpper, tf ),      "BB20_2_UPPER_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_bbWidth, tf ),      "BB20_2_WIDTH_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_bbPercent, tf ),    "BB20_2_PERCENT_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_atr14, tf ),        "ATR14_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_rsi14, tf ),        "RSI14_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_obv, tf ),          "OBV_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_ad, tf ),           "AD_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_macdLine, tf ),     "MACD12_26_9_LINE_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_macdSignal, tf ),   "MACD12_26_9_SIGNAL_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_macdHist, tf ),     "MACD12_26_9_HIST_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_ema9, tf ),         "EMA9_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_ema21, tf ),        "EMA21_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_ema50, tf ),        "EMA50_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_ema200, tf ),       "EMA200_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_adx14, tf ),        "ADX14_ADX_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_pdi14, tf ),        "ADX14_PLUS_DI_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_mdi14, tf ),        "ADX14_MINUS_DI_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_roc5, tf ),         "ROC5_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_roc10, tf ),        "ROC10_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_roc20, tf ),        "ROC20_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_volMa20, tf ),      "VOL_MA20_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_volMa50, tf ),      "VOL_MA50_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_volRatio20, tf ),   "VOL_RATIO20_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_high52w, tf ),      "HIGH52W_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_low52w, tf ),       "LOW52W_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_stochK, tf ),       "STOCH14_3_3_K_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_stochD, tf ),       "STOCH14_3_3_D_" + suffix, 1.6 );
+
+    AddColumn( CS_ExpandPoint( x_mfi14, tf ),        "MFI14_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_cmf20, tf ),        "CMF20_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( x_vwap20, tf ),       "VWAP20_" + suffix, 1.6 );
+}
+
+// One AFL; select ALL for 3 timeframes, or D/W/M for lighter exports.
+// These are all derived from the same Daily AmiBroker OHLCV source.
+if( x_tfSelection == "ALL" OR x_tfSelection == "D" )
+    CS_ExportIndicators( inDaily, "D", 252 );
+
+if( x_tfSelection == "ALL" OR x_tfSelection == "W" )
+    CS_ExportIndicators( inWeekly, "W", 52 );
+
+if( x_tfSelection == "ALL" OR x_tfSelection == "M" )
+    CS_ExportIndicators( inMonthly, "M", 12 );
