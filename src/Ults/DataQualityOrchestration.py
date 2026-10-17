@@ -103,6 +103,7 @@ def validate_and_persist_data_quality(
     max_null_rate: float = DEFAULT_MAX_NULL_RATE,
     history_window: int = DEFAULT_HISTORY_WINDOW,
     small_count_anomaly_warn_pct: float | None = None,
+    futures_expiry_symbol_warn: bool = False,
     filters: Mapping[str, Any] | None = None,
     audit_table: str = DEFAULT_AUDIT_TABLE,
     validation_id: str | None = None,
@@ -148,6 +149,7 @@ def validate_and_persist_data_quality(
             max_null_rate=max_null_rate,
             history_window=history_window,
             small_count_anomaly_warn_pct=small_count_anomaly_warn_pct,
+            futures_expiry_symbol_warn=futures_expiry_symbol_warn,
         )
 
         validation_result["table"] = table_name
