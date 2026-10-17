@@ -42,11 +42,13 @@ AddColumn( DateTime(), "Date", formatDateTimeISO );
 
 function CS_ExpandPoint( src, tf )
 {
+    // AFL requires the return statement at the very end of the function.
     if( tf == inDaily )
-        return src;
+        x_expanded = src;
+    else
+        x_expanded = TimeFrameExpand( src, tf, expandPoint );
 
-    // Higher timeframe arrays are compressed; restore the daily base first.
-    return TimeFrameExpand( src, tf, expandPoint );
+    return x_expanded;
 }
 
 procedure CS_ExportIndicators( tf, suffix, yearBars )
