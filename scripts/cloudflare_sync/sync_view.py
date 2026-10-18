@@ -32,7 +32,8 @@ def sync(*, dry_run: bool = False) -> dict[str, object]:
             count = con.execute(f"SELECT COUNT(*) FROM {SOURCE}").fetchone()[0]
             if count <= 0:
                 raise ValueError(f"Refusing to publish empty view: {SOURCE}")
-            con.execute(f"COPY (SELECT * FROM {SOURCE}) TO ? (FORMAT PARQUET, COMPRESSION ZSTD)", [str(output)])
+            output_sql = str(output).replace("'", "''")
+            con.execute(f"COPY (SELECT * FROM {SOURCE}) TO '{output_sql}' (FORMAT PARQUET, COMPRESSION ZSTD)")
         digest = hashlib.sha256(output.read_bytes()).hexdigest()
         result = {
             "source": SOURCE, "bucket": BUCKET, "key": KEY,
