@@ -163,9 +163,9 @@ def _run_aggregate_data(
     if ENABLE_AFL_INDICATOR_FULL_REFRESH:
         from scripts.sync_amibroker_indicator_full import main as run_afl_indicator_refresh
 
-        print("[AGGREGATE] START | AFL Indicators incremental (10 days)")
+        print(f"[AGGREGATE] START | AFL Indicators incremental (days={max(1, days_diff)})")
         step_started = perf_counter()
-        result = run_afl_indicator_refresh(["--mode", "incremental", "--days", "10"])
+        result = run_afl_indicator_refresh(["--mode", "incremental", "--days", str(max(1, days_diff))])
         if result not in (None, 0):
             raise RuntimeError(f"AFL indicator refresh failed with exit code {result}")
         print(f"⏱️   [Duration] 'afl_indicator_incremental_refresh' total time: {perf_counter() - step_started:.1f} seconds")
