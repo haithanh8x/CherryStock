@@ -20,15 +20,29 @@ KEY = f"{VIEW}.parquet"
 SOURCE = f'"CherryMon"."main"."{VIEW}"'
 
 
-def sync(*, dry_run: bool = False) -> dict[str, object]:
+def sync(*, dry_run: bool = False, db_path_override: str | None = None) -> dict[str, object]:
     load_dotenv(PROJECT_ROOT / ".env")
-    db_path = settings.local_db_path
+    db_path = Path(db_path_override).expanduser() if db_path_override else settings.local_db_path
     if not db_path.is_file():
         raise FileNotFoundError(f"DuckDB database not found: {db_path}")
 
     with tempfile.TemporaryDirectory(prefix="cherrystock-r2-") as tmp:
         output = Path(tmp) / KEY
-        with duckdb.connect(str(db_path), read_only=True) as con:
+        try:
+            con = duckdb.connect(str(db_path), read_only=True)
+        except (duckdb.Error, OSError) as exc:
+            wal_path = Path(str(db_path) + ".wal")
+            raise RuntimeError(
+                f"Cannot open DuckDB read-only: {db_path}. "
+                f"WAL present: {wal_path.exists()}. "
+                "Close active DuckDB writers and allow a clean checkpoint/close; "
+                "then retry. If this persists, have the owning process create "
+                "a consistent DuckDB snapshot using EXPORT DATABASE, and pass "
+                "--db-path to a properly restored standalone database. "
+                "Do NOT delete/copy the .wal or force a checkpoint while writers are active. "
+                f"Original error: {exc}"
+            ) from exc
+        with con:
             count = con.execute(f"SELECT COUNT(*) FROM {SOURCE}").fetchone()[0]
             if count <= 0:
                 raise ValueError(f"Refusing to publish empty view: {SOURCE}")
@@ -88,8 +102,9 @@ def sync(*, dry_run: bool = False) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sync vw_Ticker_Active to R2 cherrystock")
     parser.add_argument("--dry-run", action="store_true", help="Export and validate without uploading")
+    parser.add_argument("--db-path", help="Path to a standalone consistent DuckDB database snapshot")
     args = parser.parse_args()
-    print(json.dumps(sync(dry_run=args.dry_run), ensure_ascii=False, indent=2, default=str))
+    print(json.dumps(sync(dry_run=args.dry_run, db_path_override=args.db_path), ensure_ascii=False, indent=2, default=str))
 
 
 if __name__ == "__main__":
