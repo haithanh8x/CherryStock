@@ -1,7 +1,7 @@
 """Compare stored MA values vs user's expected reference values for MWG."""
 import duckdb
 
-DB_PATH = r"c:\onedrive\working\datafile\cherrymon.duckdb"
+DB_PATH = r"C:/Datafile/CherryMon.duckdb"
 
 with duckdb.connect(DB_PATH, read_only=True) as con:
     # MA50 daily: 50 phiên gần nhất tính TOI ĐÚNG ngày 2026-08-24 (đã xác nhận = 74.7006)
