@@ -41,10 +41,10 @@ def update(db_path: Path, *, dry_run: bool = False) -> None:
 
         # Wrap the original view definition without changing its existing columns.
         original_sql = view_info[0].strip().rstrip(";")
-        marker = original_sql.upper().find(" AS ")
-        if marker < 0:
+        match = re.search(r"\\bAS\\s+(?=SELECT\\b|WITH\\b|\\()", original_sql, re.IGNORECASE)
+        if match is None:
             raise RuntimeError("Could not parse CREATE VIEW statement from duckdb_views()")
-        original_query = original_sql[marker + 4:]
+        original_query = original_sql[match.end():]
         projection = (
             "CASE "
             "WHEN TRY_CAST(\"MarketCap\" AS DOUBLE) IS NULL "
