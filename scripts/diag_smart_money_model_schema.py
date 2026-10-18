@@ -1,7 +1,7 @@
 """Inspect existing dim_smart_money_model schema (read-only)."""
 import duckdb
 
-con = duckdb.connect(r"c:\onedrive\working\datafile\cherrymon.duckdb", read_only=True)
+con = duckdb.connect(r"C:/Datafile/CherryMon.duckdb", read_only=True)
 rows = con.execute(
     "SELECT column_name, data_type FROM information_schema.columns "
     "WHERE lower(table_name) = 'dim_smart_money_model' ORDER BY ordinal_position"
