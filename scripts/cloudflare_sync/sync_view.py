@@ -9,10 +9,10 @@ from pathlib import Path
 import tempfile
 from uuid import uuid4
 
-import duckdb
 from dotenv import load_dotenv
 
 from src.cherrystock.config.settings import PROJECT_ROOT, settings
+from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 
 VIEW = "vw_Ticker_Active"
 BUCKET = "cherrystock"
@@ -23,14 +23,15 @@ SOURCE = f'"CherryMon"."main"."{VIEW}"'
 def sync(*, dry_run: bool = False, db_path_override: str | None = None) -> dict[str, object]:
     load_dotenv(PROJECT_ROOT / ".env")
     db_path = Path(db_path_override).expanduser() if db_path_override else settings.local_db_path
+    factory = DuckDBConnectionFactory(db_path=db_path, duckdb_env="local")
     if not db_path.is_file():
         raise FileNotFoundError(f"DuckDB database not found: {db_path}")
 
     with tempfile.TemporaryDirectory(prefix="cherrystock-r2-") as tmp:
         output = Path(tmp) / KEY
         try:
-            con = duckdb.connect(str(db_path), read_only=True)
-        except (duckdb.Error, OSError) as exc:
+            con = factory.create_reader()
+        except Exception as exc:
             wal_path = Path(str(db_path) + ".wal")
             raise RuntimeError(
                 f"Cannot open DuckDB read-only: {db_path}. "
