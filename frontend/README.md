@@ -47,7 +47,7 @@ with CORS allowing the GitHub Pages origin). It must **never** access the
 authenticated S3 API from a browser or include access keys in Vite variables.
 For private buckets, implement a server-side proxy / signed delivery instead.
 `VITE_*` values are public and compiled into the site; the published GitHub
-Pages build needs matching values configured in its GitHub Actions job.
+Pages build reads these **GitHub Actions repository variables**:\n\n- \`CHERRYSTOCK_MARKET_DATA_SOURCE\`: \`mock\` (default) or \`r2\`.\n- \`CHERRYSTOCK_R2_PUBLIC_BASE_URL\`: public HTTPS origin for the R2 bucket.\n\nSet them under **Settings → Secrets and variables → Actions → Variables**.\nAfter changing variables, manually rerun **Deploy CherryStock Frontend**\nusing **Actions → Run workflow**, because variable changes alone do not\ntrigger a new build.
 
 Required objects under the configured public base URL:
 

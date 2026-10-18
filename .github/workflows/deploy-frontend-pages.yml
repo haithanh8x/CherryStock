@@ -29,6 +29,9 @@ jobs:
         run: npm install
       - name: Build
         working-directory: frontend
+        env:
+          VITE_MARKET_DATA_SOURCE: ${{ vars.CHERRYSTOCK_MARKET_DATA_SOURCE || 'mock' }}
+          VITE_R2_PUBLIC_BASE_URL: ${{ vars.CHERRYSTOCK_R2_PUBLIC_BASE_URL }}
         run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
