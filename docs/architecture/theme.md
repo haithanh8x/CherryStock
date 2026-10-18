@@ -456,3 +456,20 @@ tooltip_background/text/border, 1px border, 4px radius, 10px padding, 14px text,
 bold title, wrapped explanation and separate illustrative example. They open on
 hover/focus and close on blur/Escape. R/S point hints use the same HTML layout.
 TradingView's internal tooltips remain vendor-owned.
+
+---
+
+## 13. React frontend migration boundary (2026-10-18)
+
+Market Overview now has a standalone React/Vite static frontend. The
+**frontend-only** design token SSOT is `frontend/src/theme/theme.ts`, consumed
+through CSS variables by all React views, SVG charts and future React pages.
+Dark/light mode selection is browser-local and updates the whole React app.
+
+`src/Presentation/theme.py` remains the authoritative source **for the legacy
+NiceGUI runtime** and is deliberately not imported by the browser. During the
+transition, the two runtimes have separate registries. A future unification
+across Python and TypeScript would require a shared JSON/semantic token source;
+this iteration avoids a misleading claim of cross-runtime synchronization.
+
+See `docs/architecture/Frontend_Market_Overview.md` and `frontend/README.md`.
