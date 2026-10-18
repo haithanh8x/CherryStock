@@ -17,7 +17,7 @@ from src.calcEngine.industryIndex import refresh_industry_index
 ENABLE_MOVEMENT_PIPELINE = False
 
 # Full-history AmiBroker AFL indicator refresh runs after the core EOD sync commits.
-ENABLE_AFL_INDICATOR_FULL_REFRESH = True
+ENABLE_AFL_INDICATOR_FULL_REFRESH = False
 
 # FFMC/EW industry indices run independently after the core data sync commits.
 ENABLE_INDUSTRY_INDEX_REFRESH = True
@@ -33,7 +33,7 @@ def _resolve_days_diff(default_days: int = 15) -> int:
     return int(days_diff_raw)
 
 
-def _run_all_steps(
+def _run_ingest_steps(
     *,
     write_pipeline: SyncWritePipelineService,
     amibroker_adapter: WindowsAmiBrokerAdapter,
@@ -47,7 +47,7 @@ def _run_all_steps(
     stage-level data-quality validation.
     run.py owns only the transaction boundary and runtime dependencies.
     """
-    print("[daily] ▶ Sync + Data Quality")
+    print("[INGEST] START | Source sync + Data Quality")
     started = perf_counter()
     summary = write_pipeline.run(
         days_diff=days_diff,
@@ -60,7 +60,7 @@ def _run_all_steps(
         smart_money_repository=None, # uow.smart_money
     )
     elapsed = perf_counter() - started
-    print("[daily] ✓ Sync + Data Quality")
+    print("[INGEST] DONE | Source sync + Data Quality")
     print(
         "⏱️   [Duration] 'sync_data_quality' "
         f"total time: {elapsed:.1f} seconds"
@@ -106,80 +106,110 @@ def _run_movement_steps(
     return summary
 
 
-# --- HÀM MAIN ---
-@timeit
-def main():
-    amibroker_adapter = WindowsAmiBrokerAdapter(
-        database_path=settings.amibroker_database_path
-    )
-    write_pipeline = SyncWritePipelineService()
-    connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
-    days_diff = _resolve_days_diff()
+def _run_ingest_data(
+    *,
+    connection_factory: DuckDBConnectionFactory,
+    amibroker_adapter: WindowsAmiBrokerAdapter,
+    days_diff: int,
+) -> None:
+    """PHẦN 1 — INGEST DATA: đồng bộ nguồn và kiểm tra Data Quality.
 
-    print(f"CherryStock Run All | from_last_day={days_diff}")
-
-    # Daily Source of Truth:
-    # EOD + Intraday + Yahoo + FA + Tickers sync and Data Quality in one UnitOfWork.
+    EOD, Intraday, Yahoo, FA và Ticker Master chạy trong một UnitOfWork.
+    Không đưa các phép tổng hợp hậu xử lý vào transaction này.
+    """
+    print("\n========== [1/2] INGEST DATA ==========")
+    started = perf_counter()
     with DuckDBUnitOfWork(connection_factory) as uow:
-        connection = uow.connection
-        if connection is None:
+        if uow.connection is None:
             raise RuntimeError("UnitOfWork did not initialize a writer connection.")
-
-        _run_all_steps(
-            write_pipeline=write_pipeline,
+        _run_ingest_steps(
+            write_pipeline=SyncWritePipelineService(),
             amibroker_adapter=amibroker_adapter,
-            connection=connection,
+            connection=uow.connection,
             days_diff=days_diff,
             uow=uow,
         )
+    print(f"[INGEST] COMMITTED | duration={perf_counter() - started:.1f}s")
 
-    # New industry-index engine is independent of the legacy composite-index code.
-    # Keep a separate transaction: an index failure never rolls back core EOD sync.
+
+def _run_aggregate_data(
+    *,
+    connection_factory: DuckDBConnectionFactory,
+    days_diff: int,
+) -> None:
+    """PHẦN 2 — AGGREGATE DATA: tổng hợp sau khi ingest đã commit.
+
+    Mỗi engine có transaction riêng; lỗi tổng hợp không rollback ingest.
+    """
+    print("\n========== [2/2] AGGREGATE DATA ==========")
+    started = perf_counter()
+
+    # 2.1 Industry Index — FFMC / Equal Weight
     if ENABLE_INDUSTRY_INDEX_REFRESH:
-        print("[daily] ▶ Industry Index FFMC + EW")
-        industry_started = perf_counter()
-        with DuckDBUnitOfWork(connection_factory) as industry_uow:
-            industry_summary = refresh_industry_index(
-                days=max(1, days_diff), connection=industry_uow.connection
+        print("[AGGREGATE] START | Industry Index FFMC + EW")
+        step_started = perf_counter()
+        with DuckDBUnitOfWork(connection_factory) as uow:
+            if uow.connection is None:
+                raise RuntimeError("UnitOfWork did not initialize an industry-index connection.")
+            summary = refresh_industry_index(
+                days=max(1, days_diff), connection=uow.connection
             )
-        print(f"[IndustryIndex] COMMITTED {industry_summary}")
-        print(
-            "⏱️   [Duration] 'industry_index_refresh' "
-            f"total time: {perf_counter() - industry_started:.1f} seconds"
-        )
+        print(f"[AGGREGATE] COMMITTED | Industry Index | {summary}")
+        print(f"⏱️   [Duration] 'industry_index_refresh' total time: {perf_counter() - step_started:.1f} seconds")
+    else:
+        print("[AGGREGATE] SKIP | Industry Index")
 
-    # AFL indicator calculation is owned by AmiBroker APX, not Python.
-    # Its importer first validates the complete CSV, then replaces the fact in
-    # one dedicated transaction; an APX/export error leaves existing facts intact.
+    # 2.2 AFL Indicators — disabled until incremental export is verified
     if ENABLE_AFL_INDICATOR_FULL_REFRESH:
         from scripts.sync_amibroker_indicator_full import main as run_afl_indicator_refresh
 
-        print("[daily] ▶ Incremental AFL indicators (10 days) → cal_indicator_values")
-        indicator_started = perf_counter()
-        run_afl_indicator_refresh(["--mode", "incremental", "--days", "10"])
-        print(
-            "⏱️   [Duration] 'afl_indicator_full_refresh' "
-            f"total time: {perf_counter() - indicator_started:.1f} seconds"
-        )
-
-    # Movement runs after the canonical daily transaction commits when enabled.
-    if ENABLE_MOVEMENT_PIPELINE:
-        movement_pipeline = MovementDailyPipelineService(
-            connection_factory=connection_factory
-        )
-        _run_movement_steps(movement_pipeline=movement_pipeline)
+        print("[AGGREGATE] START | AFL Indicators incremental (10 days)")
+        step_started = perf_counter()
+        result = run_afl_indicator_refresh(["--mode", "incremental", "--days", "10"])
+        if result not in (None, 0):
+            raise RuntimeError(f"AFL indicator refresh failed with exit code {result}")
+        print(f"⏱️   [Duration] 'afl_indicator_incremental_refresh' total time: {perf_counter() - step_started:.1f} seconds")
     else:
-        print("[daily] ⏭ ZigZag + Price Movement tạm thời bỏ qua")
+        print("[AGGREGATE] SKIP | AFL Indicators (temporarily disabled)")
 
-    # Export metadata sau core daily và Movement (nếu được bật).
-    metadata_started = perf_counter()
+    # 2.3 ZigZag + Price Movement
+    if ENABLE_MOVEMENT_PIPELINE:
+        _run_movement_steps(
+            movement_pipeline=MovementDailyPipelineService(
+                connection_factory=connection_factory
+            )
+        )
+    else:
+        print("[AGGREGATE] SKIP | ZigZag + Price Movement")
+
+    # 2.4 Metadata export — after all enabled calculations
+    step_started = perf_counter()
+    print("[AGGREGATE] START | DuckDB Metadata")
     DuckLib.exportDuckDB_metadata()
-    metadata_elapsed = perf_counter() - metadata_started
-    print(
-        "⏱️   [Duration] 'exportDuckDB_metadata' "
-        f"total time: {metadata_elapsed:.1f} seconds"
+    print(f"⏱️   [Duration] 'exportDuckDB_metadata' total time: {perf_counter() - step_started:.1f} seconds")
+    print(f"[AGGREGATE] DONE | duration={perf_counter() - started:.1f}s")
+
+
+@timeit
+def main() -> None:
+    """CherryStock daily orchestration: INGEST DATA → AGGREGATE DATA."""
+    days_diff = _resolve_days_diff()
+    connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
+    amibroker_adapter = WindowsAmiBrokerAdapter(
+        database_path=settings.amibroker_database_path
     )
-    print("✓ Run All hoàn tất. DuckDB metadata đã được export.")
+
+    print(f"CherryStock Run All | from_last_day={days_diff}")
+    _run_ingest_data(
+        connection_factory=connection_factory,
+        amibroker_adapter=amibroker_adapter,
+        days_diff=days_diff,
+    )
+    _run_aggregate_data(
+        connection_factory=connection_factory,
+        days_diff=days_diff,
+    )
+    print("\n✓ CherryStock Run All completed: Ingest + Aggregate.")
 
 
 if __name__ == "__main__":
