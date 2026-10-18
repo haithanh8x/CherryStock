@@ -1,7 +1,7 @@
 """Verify MA20_W/MA50_W/MA20_M/MA50_M columns in cal_Trends."""
 import duckdb
 
-DB_PATH = r"c:\onedrive\working\datafile\cherrymon.duckdb"
+DB_PATH = r"C:/Datafile/CherryMon.duckdb"
 TABLE = '"CherryMon"."main"."cal_Trends"'
 
 with duckdb.connect(DB_PATH, read_only=True) as con:

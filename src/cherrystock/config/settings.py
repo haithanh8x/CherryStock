@@ -67,7 +67,7 @@ def load_settings() -> Settings:
     data_dir = _default_data_dir()
 
     local_db_env = _as_optional_str(os.getenv("LOCAL_DB_PATH"))
-    local_db_path = Path(local_db_env).expanduser() if local_db_env else data_dir / "CherryMon.duckdb"
+    local_db_path = Path(local_db_env).expanduser() if local_db_env else Path("C:/Datafile/CherryMon.duckdb")
 
     agent_env = _as_optional_str(os.getenv("AGENT_PATH"))
     agent_path = Path(agent_env).expanduser() if agent_env else PROJECT_ROOT / ".github" / "agents"

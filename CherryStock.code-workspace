@@ -20,7 +20,7 @@
 			{
 				"alias": "CherryMon",
 				"type": "file",
-				"path": "../../OneDrive/Working/Datafile/CherryMon.duckdb",
+				"path": "../..C:/Datafile/CherryMon.duckdb",
 				"readOnly": true,
 				"attached": false
 			}
