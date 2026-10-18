@@ -17,7 +17,7 @@ from src.calcEngine.industryIndex import refresh_industry_index
 ENABLE_MOVEMENT_PIPELINE = False
 
 # Full-history AmiBroker AFL indicator refresh runs after the core EOD sync commits.
-ENABLE_AFL_INDICATOR_FULL_REFRESH = False
+ENABLE_AFL_INDICATOR_FULL_REFRESH = True
 
 # FFMC/EW industry indices run independently after the core data sync commits.
 ENABLE_INDUSTRY_INDEX_REFRESH = True
@@ -148,15 +148,15 @@ def main():
             f"total time: {perf_counter() - industry_started:.1f} seconds"
         )
 
-    # Full-history indicator calculation is owned by AmiBroker APX, not Python.
+    # AFL indicator calculation is owned by AmiBroker APX, not Python.
     # Its importer first validates the complete CSV, then replaces the fact in
     # one dedicated transaction; an APX/export error leaves existing facts intact.
     if ENABLE_AFL_INDICATOR_FULL_REFRESH:
         from scripts.sync_amibroker_indicator_full import main as run_afl_indicator_refresh
 
-        print("[daily] ▶ Full-history AFL indicators → cal_indicator_values")
+        print("[daily] ▶ Incremental AFL indicators (10 days) → cal_indicator_values")
         indicator_started = perf_counter()
-        run_afl_indicator_refresh([])
+        run_afl_indicator_refresh(["--mode", "incremental", "--days", "10"])
         print(
             "⏱️   [Duration] 'afl_indicator_full_refresh' "
             f"total time: {perf_counter() - indicator_started:.1f} seconds"
