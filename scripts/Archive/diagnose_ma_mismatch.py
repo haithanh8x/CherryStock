@@ -1,7 +1,7 @@
 """Diagnose MA mismatch for MWG between raw_stock_eod and cal_Trends."""
 import duckdb
 
-DB_PATH = r"c:\onedrive\working\datafile\cherrymon.duckdb"
+DB_PATH = r"C:/Datafile/CherryMon.duckdb"
 
 with duckdb.connect(DB_PATH, read_only=True) as con:
     # 1. raw_lstTicker có bị trùng Ticker không? (join có thể nhân bản dòng)
