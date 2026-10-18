@@ -1,7 +1,7 @@
 """Check whether user's reference values match a different data source (e.g. adjusted close)."""
 import duckdb
 
-DB_PATH = r"c:\onedrive\working\datafile\cherrymon.duckdb"
+DB_PATH = r"C:/Datafile/CherryMon.duckdb"
 
 with duckdb.connect(DB_PATH, read_only=True) as con:
     print("=== raw_stock_eod schema ===")
