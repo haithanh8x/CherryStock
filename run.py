@@ -1,5 +1,6 @@
 import sys
 import io
+import os
 from time import perf_counter
 
 from src.Ults import DuckLib
@@ -12,6 +13,7 @@ from src.cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiB
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
 from src.calcEngine.industryIndex import refresh_industry_index
+from scripts.cloudflare_sync.sync_view import sync as sync_view_to_r2
 
 # Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
 ENABLE_MOVEMENT_PIPELINE = False
@@ -21,6 +23,10 @@ ENABLE_AFL_INDICATOR_FULL_REFRESH = False
 
 # FFMC/EW industry indices run independently after the core data sync commits.
 ENABLE_INDUSTRY_INDEX_REFRESH = True
+
+# Publish the latest committed view to Cloudflare R2 after ingest and aggregate.
+# Set CHERRYSTOCK_R2_SYNC_ENABLED=false to disable daily publication.
+ENABLE_CLOUDFLARE_R2_SYNC = os.getenv("CHERRYSTOCK_R2_SYNC_ENABLED", "true").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _resolve_days_diff(default_days: int = 15) -> int:
@@ -190,9 +196,21 @@ def _run_aggregate_data(
     print(f"[AGGREGATE] DONE | duration={perf_counter() - started:.1f}s")
 
 
+def _run_cloudflare_r2_sync() -> None:
+    """Publish the committed vw_Ticker_Active snapshot to R2 once daily run succeeds."""
+    if not ENABLE_CLOUDFLARE_R2_SYNC:
+        print("[CLOUDFLARE R2] SKIP | disabled by CHERRYSTOCK_R2_SYNC_ENABLED")
+        return
+    print("[CLOUDFLARE R2] START | vw_Ticker_Active")
+    started = perf_counter()
+    result = sync_view_to_r2()
+    print(f"[CLOUDFLARE R2] DONE | bucket={result['bucket']} key={result['key']} rows={result['rows']} bytes={result['bytes']}")
+    print(f"⏱️   [Duration] 'cloudflare_r2_sync' total time: {perf_counter() - started:.1f} seconds")
+
+
 @timeit
 def main() -> None:
-    """CherryStock daily orchestration: INGEST DATA → AGGREGATE DATA."""
+    """CherryStock daily orchestration: INGEST → AGGREGATE → R2 sync."""
     days_diff = _resolve_days_diff()
     connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
     amibroker_adapter = WindowsAmiBrokerAdapter(
@@ -209,7 +227,8 @@ def main() -> None:
         connection_factory=connection_factory,
         days_diff=days_diff,
     )
-    print("\n✓ CherryStock Run All completed: Ingest + Aggregate.")
+    _run_cloudflare_r2_sync()
+    print("\n✓ CherryStock Run All completed: Ingest + Aggregate + Cloudflare R2.")
 
 
 if __name__ == "__main__":
