@@ -123,7 +123,7 @@ def refresh_marketcap_index(*, connection, days: int | None = None) -> dict:
     connection.execute(f"""
         CREATE OR REPLACE TEMP TABLE _mc_results AS
         WITH anchors AS (
-          SELECT "MarketCap_Group" grp,"Index_Method" method,
+          SELECT "MarketCap_Group" AS grp,"Index_Method" AS method,
             ARG_MAX("Close","Date") anchor
           FROM {TARGET} WHERE "Date"<? {anchor_filter}
           GROUP BY 1,2
