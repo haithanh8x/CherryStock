@@ -13,6 +13,7 @@ from src.cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiB
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
 from src.calcEngine.industryIndex import refresh_industry_index
+from src.calcEngine.marketCapIndex import refresh_marketcap_index
 from scripts.cloudflare_sync.sync_view import sync as sync_view_to_r2
 
 # Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
@@ -165,7 +166,19 @@ def _run_aggregate_data(
     else:
         print("[AGGREGATE] SKIP | Industry Index")
 
-    # 2.2 AFL Indicators — disabled until incremental export is verified
+    # 2.2 MarketCap group indices — full bootstrap, then incremental daily
+    print("[AGGREGATE] START | MarketCap Group Index EW + FFMC")
+    step_started = perf_counter()
+    with DuckDBUnitOfWork(connection_factory) as uow:
+        if uow.connection is None:
+            raise RuntimeError("UnitOfWork did not initialize a MarketCap-index connection.")
+        mc_summary = refresh_marketcap_index(
+            days=max(1, days_diff), connection=uow.connection
+        )
+    print(f"[AGGREGATE] COMMITTED | MarketCap Group Index | {mc_summary}")
+    print(f"⏱️   [Duration] 'marketcap_index_refresh' total time: {perf_counter() - step_started:.1f} seconds")
+
+    # 2.3 AFL Indicators — disabled until incremental export is verified
     if ENABLE_AFL_INDICATOR_FULL_REFRESH:
         from scripts.sync_amibroker_indicator_full import main as run_afl_indicator_refresh
 
