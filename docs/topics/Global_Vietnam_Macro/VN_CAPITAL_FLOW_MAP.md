@@ -88,6 +88,85 @@ flowchart TB
 
 **Lưu ý kỹ thuật:** Mũi tên từ giao dịch thứ cấp về kênh sơ cấp là **tác động gián tiếp thông qua giá, định giá, thanh khoản**, không phải dòng tiền tự động chảy vào doanh nghiệp. Một số dòng vốn quốc tế có thể đi thẳng tới doanh nghiệp, không bắt buộc qua VIFC. Các mũi tên vào VIFC chỉ biểu thị **kênh có thể được hỗ trợ**, không hàm ý tất cả FDI/FII/ODA thực tế phải đi qua trung tâm này.
 
+## 2A. Hiện trạng định lượng theo từng box — chốt dữ liệu đến 30/09/2026 (nguồn công bố đến 24/10/2026)
+
+**Quy ước:** `FLOW` = phát sinh trong 9 tháng; `STOCK` = số dư tại một ngày; `MARKET_VALUE` = giá trị định giá; `TURNOVER` = doanh số giao dịch; `REGISTERED` = đăng ký, chưa phải giải ngân; `PROXY` = đại diện không trùng hoàn toàn với box. Đơn vị giữ nguyên như nguồn. `N/A` nghĩa là chưa tìm được dữ liệu quốc gia đủ tin cậy/cùng phạm vi, **không phải 0**.
+
+### A. Nguồn vốn quốc tế
+
+| Box trong sơ đồ | Số liệu mới nhất và kỳ | Phân loại / mức độ phù hợp | Nguồn |
+|---|---|---|---|
+| FDI | **21,07 tỷ USD thực hiện 9T/2026** (+12,1% YoY); **50,36 tỷ USD đăng ký** (+76,4% YoY): cấp mới 29,24; điều chỉnh 14,15; góp vốn/mua cổ phần 6,97 tỷ USD | FLOW thực hiện vs REGISTERED; **không cộng hai số** | [Cục Thống kê, 03/10/2026](https://www.nso.gov.vn/du-lieu-va-so-lieu-thong-ke/2026/10/thong-cao-bao-chi-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/) |
+| FII | Khối ngoại **bán ròng khoảng 4.775–4.830 tỷ đồng trên HOSE trong tháng 9/2026** (hai nguồn/phương pháp); chưa có tổng FII xuyên biên giới 9T bao gồm cổ phiếu, trái phiếu, sơ cấp và thứ cấp | PROXY **giao dịch cổ phiếu HOSE**, không phải tổng FII/BOP | [HOSE qua FNS](https://funan.com.vn/vi/thanh-khoan-hose-sut-giam-khoi-ngoai-ban-rong-hon-47-ngan-ty-dong-trong-thang-9.1500131), [VnEconomy](https://vneconomy.vn/dong-von-ngoai-kho-dao-chieu-trong-ngan-han-do-lai-suat-toan-cau-duy-tri-cao-lau-hon.htm) |
+| Vay quốc tế / tài trợ thương mại / ODA | **N/A** cho tổng giải ngân ròng 9T/2026 trên cùng phạm vi; vốn nước ngoài trong kế hoạch đầu tư công trung ương được giao **17.664,1 tỷ đồng** là **kế hoạch**, không phải vay nước ngoài thực nhận | MISSING / PLAN, không cộng vào FDI | [Bộ Tài chính, báo cáo 818/BC-BTC](https://baochinhphu.vn/giai-ngan-von-dau-tu-cong-9-thang-nam-2026-mot-so-bo-nganh-dia-phuong-con-cham-102261003011740764.htm) |
+| Kiều hối | **Gần 6,9 tỷ USD về TP.HCM trong 9T/2026**, giảm 13,8% YoY; quý III hơn 2,83 tỷ USD | FLOW **chỉ TP.HCM**, không phải toàn quốc; không suy rộng | [NHNN Khu vực 2, 19/10/2026](https://tphcm.baochinhphu.vn/kieu-hoi-chuyen-ve-tphcm-dat-gan-69-ty-usd-101261019212322544.htm) |
+| VIFC | Chưa có số vốn huy động/giải ngân thực tế được kiểm chứng và tách biệt đến Q3/2026 | **ENABLER, KHÔNG PHẢI SOURCE**; theo dõi sản phẩm, tổ chức, phát hành thực qua IFC khi có | [Video thảo luận VIFC](https://www.youtube.com/watch?v=_egJXqDKL-U) — nguồn ý tưởng, không phải số liệu chính thức |
+
+**Phân bổ FDI đăng ký cấp mới theo ngành:** chế biến chế tạo **13,38 tỷ USD (45,8%)**, vận tải kho bãi **5,14 tỷ USD (17,6%)**; đây là cơ cấu **vốn đăng ký mới**, **không phải cơ cấu giải ngân FDI**. [Nguồn Cục Thống kê qua Báo Chính phủ](https://baochinhphu.vn/von-fdi-thuc-hien-9-thang-dat-hon-21-ti-usd-cao-nhat-cung-ky-5-nam-qua-102261003103902217.htm).
+
+### B. Nguồn và định chế trong nước
+
+| Box | Số liệu / kỳ | Loại và cảnh báo | Nguồn |
+|---|---|---|---|
+| Tiết kiệm hộ gia đình / tiền gửi | **Huy động vốn TCTD tăng 9,78%** đến 28/9/2026 so với cuối năm trước; **không có số dư tiền gửi hộ gia đình riêng** trong nguồn đã tra | Tăng trưởng, không phải số tiền tuyệt đối; huy động TCTD ≠ riêng tiết kiệm dân cư | [Cục Thống kê](https://www.nso.gov.vn/du-lieu-va-so-lieu-thong-ke/2026/10/thong-cao-bao-chi-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/) |
+| Lợi nhuận giữ lại / vốn chủ doanh nghiệp | **N/A** tổng quốc gia 9T/2026; cần dữ liệu BCTC theo doanh nghiệp, vốn chủ và dòng tiền tự tài trợ | MISSING, không lấy vốn hóa làm vốn chủ |
+| Thuế/phí/thu NSNN | **Tổng thu NSNN 2.187,3 nghìn tỷ đồng 9T/2026** (+12,1% YoY); thu nội địa **1.880,3 nghìn tỷ** | FLOW; thu nội địa không đồng nghĩa toàn bộ thuế TNDN | [Cục Thống kê](https://www.nso.gov.vn/du-lieu-va-so-lieu-thong-ke/2026/10/thong-cao-bao-chi-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/) |
+| Ngân hàng/TCTD | **Dư nợ tín dụng 20,75 triệu tỷ đồng ngày 30/9/2026**, +11,59% từ đầu năm, +16,69% YoY (nguồn NHNN qua Bảo hiểm tiền gửi VN) | STOCK; **có nguồn báo Chính phủ ghi 27,5 triệu tỷ đồng trong thân bài nhưng tiêu đề 20,75**, cần đối soát trước ETL | [Bảo hiểm tiền gửi VN dẫn NHNN](https://www.div.gov.vn/ngan-hang-nha-nuoc-hop-bao-ve-ket-qua-dieu-hanh-chinh-sach-tien-te-va-hoat-dong-ngan-hang-9-thang-thuc-day-ngan-hang-so-bao-dam-quyen-loi-hop-phap-cua-nguoi-gui-tien), [bản có mâu thuẫn](https://cms.baochinhphu.vn/nhnn-toc-do-tang-lai-suat-dang-cham-lai-102261007182510571.htm) |
+| Quỹ / bảo hiểm / chứng khoán | **AUM ngành quản lý quỹ hơn 834 nghìn tỷ đồng tại 30/6/2026**, NAV quỹ đầu tư trên **93 nghìn tỷ**; phí bảo hiểm **175,8 nghìn tỷ đồng 9T/2026** | AUM/NAV = STOCK, phí bảo hiểm = FLOW; **NAV có thể nằm trong AUM, không cộng** | [Bộ Tài chính / UBCK](https://mof.gov.vn/quan-ly-gia-1/dien-dan-trao-doi/ubcknn-trien-khai-5-nhom-giai-phap-phat-trien-thi-truong-von-trong-giai-doan-moi), [Cục Thống kê](https://www.nso.gov.vn/du-lieu-va-so-lieu-thong-ke/2026/10/thong-cao-bao-chi-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/) |
+| Ngân sách / đầu tư công | **Chi NSNN 1.873,7 nghìn tỷ đồng 9T/2026**; **giải ngân vốn đầu tư công 642.961,6 tỷ đồng đến 30/9**, đạt 62,9% kế hoạch TTg giao, hoặc 64,8% khi loại trừ khoản tiết kiệm 5% theo phương pháp báo cáo | Hai chỉ tiêu **khác phạm vi**, giải ngân ĐTC là thành phần chi/đầu tư công, **không cộng** | [Cục Thống kê](https://www.nso.gov.vn/du-lieu-va-so-lieu-thong-ke/2026/10/thong-cao-bao-chi-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/), [Bộ Tài chính](https://www2.en.baochinhphu.vn/giai-ngan-von-dau-tu-cong-9-thang-nam-2026-mot-so-bo-nganh-dia-phuong-con-cham-102261003011740764.htm) |
+
+### C. Kênh huy động sơ cấp
+
+| Box | Số liệu / kỳ | Loại và giới hạn | Nguồn |
+|---|---|---|---|
+| Cho vay DN/hộ gia đình/thế chấp | Tổng dư nợ tín dụng **20,75 triệu tỷ** 30/9; tín dụng BĐS **5,21 triệu tỷ đồng tại 31/8**, tương đương **25,39% tổng dư nợ** theo báo cáo NHNN; trong đó kinh doanh BĐS 2,59 triệu tỷ và tiêu dùng/tự sử dụng BĐS 2,61 triệu tỷ | STOCK; hai số phân ngành có làm tròn; **không lấy tỷ lệ 25,39% nhân với tổng dư nợ 30/9** do lệch ngày | [NHNN công bố tín dụng BĐS](https://dangcongsan.vn/nganhangnhanuoc/tin-tuc-hoat-dong/phien-hop-thu-nhat-cua-ban-chi-dao-trung-uong-ve-chinh-sach-nha-o-va-thi-truong-bat-dong-san.html) |
+| Trái phiếu DN phát hành mới | **436.827 tỷ đồng phát hành lũy kế 2026** theo bài tổng hợp tháng 10, gồm riêng lẻ 378.872 và ra công chúng 57.955 tỷ; **233.521 tỷ đồng mua lại trước hạn lũy kế** theo cùng bài | FLOW phát hành **gộp**, không phải vốn ròng; **CẦN ĐỐI SOÁT** với bảng VBMA theo tháng có mức khác đáng kể trước khi đưa vào dashboard | [Thông tấn xã Việt Nam](https://baotintuc.vn/thi-truong-trai-phieu-doanh-nghiep-von-dai-han-chiu-suc-ep-chi-phi-post1394403.html), [bảng tháng theo VBMA](https://dulieukinhte.com/du-lieu-dong/tong-gia-tri-phat-hanh-tpdn-36754) |
+| IPO/phát hành thêm cổ phiếu | **Chưa tách được 9T/2026** từ số huy động thị trường chung; tổng huy động qua **thị trường chứng khoán 731,6 nghìn tỷ đồng** theo Cục Thống kê **không được coi là phát hành cổ phiếu riêng** | AGGREGATE / MISSING breakdown | [Báo cáo kinh tế 9T](https://xaydungchinhsach.chinhphu.vn/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026-119261003092649531.htm) |
+| Trái phiếu chính phủ | Kho bạc **huy động qua đấu thầu 299.060,5 tỷ đồng 9T/2026**; tháng 9 huy động **70.139,2 tỷ** | FLOW phát hành **gộp**, không phải vay ròng sau đáo hạn | [HNX qua UBCKNN, 09/10/2026](https://ssc.gov.vn/webcenter/portal/ubck/pages_r/l/chitit?dDocName=APPSSCGOVVN1620172814) |
+
+**Cảnh báo dữ liệu TPDN:** Nguồn tổng hợp 436.827 tỷ và chuỗi phát hành tháng của bên thứ ba dựa trên VBMA **không khớp khi cộng các tháng 1–9**; khác biệt có thể do phạm vi/cập nhật/phân loại. **Không sử dụng 436.827 tỷ làm số liệu chuẩn ETL** cho đến khi đối chiếu báo cáo VBMA gốc, ngày chốt, phát hành quốc tế và giao dịch công chúng. Tương tự, số dư tín dụng **20,75 so với 27,5 triệu tỷ** là một mâu thuẫn nguồn cần gắn `Data_Status=CONFLICT`.
+
+### D. Nơi sử dụng vốn cuối cùng
+
+**Tổng đầu tư thực hiện toàn xã hội 9T/2026: 3.109,6 nghìn tỷ đồng (+15,1% YoY)**, chia theo **khu vực sở hữu vốn** như sau (đây là phân bổ 100% có cùng mẫu số, không phải phân bổ theo ngành đích):
+
+| Khu vực vốn | Giá trị (nghìn tỷ VND) | Tỷ trọng |
+|---|---:|---:|
+| Ngoài nhà nước | **1.649,2** | **53,0%** |
+| Nhà nước | **931,0** | **30,0%** |
+| Khu vực FDI | **529,4** | **17,0%** |
+| **Tổng** | **3.109,6** | **100%** |
+
+[Nguồn Cục Thống kê](https://www.nso.gov.vn/du-lieu-va-so-lieu-thong-ke/2026/10/thong-cao-bao-chi-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/). **Không cộng 529,4 nghìn tỷ với 21,07 tỷ USD FDI thực hiện**: đây là các chỉ tiêu cùng khu vực nhưng khác phương pháp, đơn vị và phạm vi thống kê.
+
+| Box sử dụng vốn | Proxy tìm được | Khoảng trống |
+|---|---|---|
+| Sản xuất, xuất khẩu, công nghệ, logistics | FDI đăng ký cấp mới chế biến/chế tạo **13,38 tỷ USD**, vận tải/kho bãi **5,14 tỷ USD**; tín dụng xuất khẩu tăng **33,32%** theo NHNN | Chưa có phân bổ vốn đầu tư thực hiện 9T theo đầy đủ ngành sử dụng vốn |
+| Dự án BĐS, xây dựng, nhà ở | Dư nợ BĐS **5,21 triệu tỷ đồng 31/8**; chia kinh doanh **2,59** và tiêu dùng/tự sử dụng **2,61** triệu tỷ | Dư nợ là STOCK, **không phải** vốn đầu tư BĐS mới 9T |
+| Hạ tầng, năng lượng, giao thông | Giải ngân đầu tư công **642.961,6 tỷ đồng 9T** | Đầu tư công còn gồm nhiều mục, không phải toàn bộ vào hạ tầng; cần bóc dự án |
+| Tiêu dùng và hộ gia đình | Dư nợ BĐS tiêu dùng/tự sử dụng **2,61 triệu tỷ** tại 31/8 | Không đại diện toàn bộ tín dụng tiêu dùng; cần thêm số liệu chi tiêu hộ |
+
+### E. Thị trường thứ cấp
+
+| Box | Số liệu / kỳ | Phân loại |
+|---|---|---|
+| Cổ phiếu niêm yết | Vốn hóa toàn thị trường cổ phiếu **10.306,94 nghìn tỷ đồng 30/9/2026** (+3,3% từ cuối 2025); VN-Index **1.768,62 điểm** | MARKET_VALUE, **không phải dòng tiền vào cổ phiếu** |
+| Trái phiếu lưu hành/giao dịch | TPCP niêm yết **2.813.935 tỷ đồng cuối 9/2026**, giao dịch thứ cấp bình quân **21.776 tỷ đồng/phiên** trong tháng 9 | STOCK niêm yết và TURNOVER; không bao gồm đầy đủ TPDN |
+| BĐS hiện hữu | **N/A** tổng giá trị giao dịch thứ cấp toàn quốc 9T/2026 theo cùng định nghĩa | MISSING; không thay bằng dư nợ tín dụng BĐS |
+
+Nguồn: [Cục Thống kê](https://www.nso.gov.vn/du-lieu-va-so-lieu-thong-ke/2026/10/thong-cao-bao-chi-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/), [HNX/UBCKNN](https://ssc.gov.vn/webcenter/portal/ubck/pages_r/l/chitit?dDocName=APPSSCGOVVN1620172814).
+
+### F. Danh mục dữ liệu cần hoàn thiện trước khi dựng Sankey tỷ trọng
+
+1. **Ưu tiên P0 — đối soát xung đột:** dư nợ tín dụng 20,75 vs 27,5 triệu tỷ; TPDN lũy kế vs chuỗi VBMA tháng; phương pháp 62,9% vs 64,8% đầu tư công (khác mẫu số, không hẳn mâu thuẫn).
+2. **P0 — dữ liệu dòng vốn ròng:** phát hành TPDN trừ đáo hạn/mua lại, phát hành TPCP ròng, phát hành cổ phiếu sơ cấp tách riêng, tín dụng giải ngân ròng theo ngành.
+3. **P1 — nguồn quốc tế:** FII/BOP, vay nước ngoài giải ngân/trả nợ, ODA giải ngân, kiều hối toàn quốc; không suy từ giao dịch HOSE/kiều hối TP.HCM.
+4. **P1 — sử dụng vốn:** vốn đầu tư thực hiện theo ngành đích, vốn BĐS sơ cấp, dự án hạ tầng, doanh nghiệp sản xuất; tránh suy từ vốn hóa, giao dịch và dư nợ.
+5. **P2 — VIFC:** số lượng tổ chức hoạt động, quy mô phát hành/huy động thực qua VIFC, sản phẩm, giấy phép, sandbox và tình trạng vận hành; chống đếm trùng với các kênh hiện hữu.
+
+**Chốt phân tích:** Có thể hiển thị **giá trị của từng box** ngay với nhãn `FLOW/STOCK/PROXY`, nhưng **chưa đủ cơ sở vẽ độ rộng các cạnh Sankey** (ví dụ “bao nhiêu % FDI qua ngân hàng rồi vào BĐS”) vì thiếu dữ liệu giao dịch nguồn–đích được đối soát.
+
+
 ## 3. Bốn vòng tuần hoàn vốn quan trọng
 
 ### A. Vòng tín dụng ngân hàng
