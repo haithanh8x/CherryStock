@@ -17,7 +17,7 @@
 flowchart TB
   subgraph G["NGUỒN VỐN QUỐC TẾ"]
     FDI["FDI: vốn góp / dự án / M&A<br/>Thực hiện 9T/2026: <b>21,07 tỷ USD</b><br/>Đăng ký: <b>50,36 tỷ USD</b> (KHÔNG cộng)"]
-    FII["FII: cổ phiếu / trái phiếu / quỹ<br/>Toàn quốc 9T: N/A<br/>Proxy HOSE T9: bán ròng <b>~0.00 tỷ USD</b>"]
+    FII["FII: cổ phiếu / trái phiếu / quỹ<br/>Toàn quốc 9T: N/A<br/>Proxy HOSE T9: bán ròng <b>~0,185 tỷ USD</b>"]
     LOAN["Vay quốc tế / tài trợ thương mại / ODA<br/>Giải ngân ròng toàn quốc 9T: N/A"]
     REMIT["Kiều hối / thu nhập / thanh toán quốc tế<br/>Kiều hối TP.HCM 9T: <b>~6,9 tỷ USD</b><br/>Toàn quốc & các dòng còn lại: N/A"]
   end
@@ -25,26 +25,26 @@ flowchart TB
   subgraph D["NGUỒN VÀ ĐỊNH CHẾ TRONG NƯỚC"]
     SAVE["Tiền gửi / tiết kiệm<br/>Huy động TCTD đến 28/9: <b>+9,78% YTD</b><br/>Số dư riêng hộ gia đình: N/A"]
     RETAIN["Lợi nhuận giữ lại / vốn chủ DN<br/>Tổng toàn quốc 9T: N/A"]
-    TAX["Thu NSNN 9T: <b>0.08 tỷ USD</b><br/>Trong đó thu nội địa: <b>0.07 tỷ USD</b>"]
-    BANK["Ngân hàng / tổ chức tín dụng<br/>Dư nợ tín dụng 30/9: <b>0.80 tỷ USD</b><br/>+11,59% YTD (cần đối soát nguồn)"]
-    FUNDS["Quỹ / bảo hiểm / chứng khoán<br/>AUM quản lý quỹ 30/6: >0.03 tỷ USD<br/>Phí bảo hiểm 9T: 0.01 tỷ USD (FLOW)"]
-    STATE["NSNN / đầu tư công<br/>Chi NSNN 9T: <b>0.07 tỷ USD</b><br/>Giải ngân ĐTC: <b>0.02 tỷ USD</b> (nằm trong phạm vi liên quan)"]
+    TAX["Thu NSNN 9T: <b>84,26 tỷ USD</b><br/>Trong đó thu nội địa: <b>72,43 tỷ USD</b>"]
+    BANK["Ngân hàng / tổ chức tín dụng<br/>Dư nợ tín dụng 30/9: <b>799,31 tỷ USD</b><br/>+11,59% YTD (cần đối soát nguồn)"]
+    FUNDS["Quỹ / bảo hiểm / chứng khoán<br/>AUM quản lý quỹ 30/6: >32,13 tỷ USD<br/>Phí bảo hiểm 9T: 6,77 tỷ USD (FLOW)"]
+    STATE["NSNN / đầu tư công<br/>Chi NSNN 9T: <b>72,43 tỷ USD</b><br/>Giải ngân ĐTC: <b>24,77 tỷ USD</b> (nằm trong phạm vi liên quan)"]
   end
   subgraph P["KÊNH HUY ĐỘNG SƠ CẤP"]
-    CREDIT["Tín dụng DN / hộ gia đình / thế chấp<br/>Tổng dư nợ 30/9: <b>0.80 tỷ USD</b><br/>Trong đó BĐS 31/8: <b>0.20 tỷ USD</b>"]
-    BOND["TPDN phát hành sơ cấp<br/>Lũy kế công bố: <b>0.02 tỷ USD</b><br/>SỐ LIỆU ĐANG ĐỐI SOÁT, chưa dùng ETL"]
+    CREDIT["Tín dụng DN / hộ gia đình / thế chấp<br/>Tổng dư nợ 30/9: <b>799,31 tỷ USD</b><br/>Trong đó BĐS 31/8: <b>200,69 tỷ USD</b>"]
+    BOND["TPDN phát hành sơ cấp<br/>Lũy kế công bố: <b>16,83 tỷ USD</b><br/>SỐ LIỆU ĐANG ĐỐI SOÁT, chưa dùng ETL"]
     EQUITY["IPO / phát hành thêm / góp vốn<br/>Giá trị riêng 9T: N/A<br/>Không thay bằng huy động TTCK tổng hợp"]
-    GOVB["TPCP phát hành đấu thầu 9T<br/><b>0.01 tỷ USD</b> (GROSS)"]
+    GOVB["TPCP phát hành đấu thầu 9T<br/><b>11,52 tỷ USD</b> (GROSS)"]
   end
   subgraph U["NƠI SỬ DỤNG VỐN CUỐI CÙNG"]
     PROD["Sản xuất / xuất khẩu / công nghệ / logistics<br/>FDI đăng ký mới: chế tạo <b>13,38 tỷ USD</b><br/>Vận tải-kho bãi <b>5,14 tỷ USD</b> (PROXY)"]
-    RE["Dự án BĐS / xây dựng / nhà ở<br/>Dư nợ kinh doanh BĐS 31/8: <b>0.10 tỷ USD</b><br/>Vốn đầu tư mới theo ngành: N/A"]
-    INFRA["Hạ tầng / năng lượng / giao thông<br/>Proxy giải ngân ĐTC 9T: <b>0.02 tỷ USD</b> VND<br/>KHÔNG phải toàn bộ vốn hạ tầng"]
-    HOUSE["Tiêu dùng / mua nhà / hộ gia đình<br/>Dư nợ BĐS tiêu dùng-tự sử dụng 31/8:<br/><b>0.10 tỷ USD</b> (PROXY)"]
+    RE["Dự án BĐS / xây dựng / nhà ở<br/>Dư nợ kinh doanh BĐS 31/8: <b>99,77 tỷ USD</b><br/>Vốn đầu tư mới theo ngành: N/A"]
+    INFRA["Hạ tầng / năng lượng / giao thông<br/>Proxy giải ngân ĐTC 9T: <b>24,77 tỷ USD</b><br/>KHÔNG phải toàn bộ vốn hạ tầng"]
+    HOUSE["Tiêu dùng / mua nhà / hộ gia đình<br/>Dư nợ BĐS tiêu dùng-tự sử dụng 31/8:<br/><b>99,77 tỷ USD</b> (PROXY)"]
   end
   subgraph S["THỊ TRƯỜNG THỨ CẤP — CHUYỂN NHƯỢNG TÀI SẢN"]
-    STOCK["Cổ phiếu niêm yết (thứ cấp)<br/>Vốn hóa 30/9: <b>0.40 tỷ USD</b><br/>MARKET VALUE, không phải dòng tiền"]
-    TBOND["Trái phiếu thứ cấp<br/>TPCP niêm yết cuối T9: <b>0.11 tỷ USD</b><br/>Giao dịch T9: <b>0.00 tỷ USD/phiên</b>"]
+    STOCK["Cổ phiếu niêm yết (thứ cấp)<br/>Vốn hóa 30/9: <b>397,03 tỷ USD</b><br/>MARKET VALUE, không phải dòng tiền"]
+    TBOND["Trái phiếu thứ cấp<br/>TPCP niêm yết cuối T9: <b>108,40 tỷ USD</b><br/>Giao dịch T9: <b>0,839 tỷ USD/phiên</b>"]
     PROP["BĐS thứ cấp<br/>Tổng giá trị giao dịch 9T toàn quốc: N/A"]
   end
   FDI --> IFC
@@ -93,7 +93,9 @@ flowchart TB
   class LOAN,IFC,RETAIN,EQUITY,PROP missing
 ```
 
-<b>Chú giải số liệu trên sơ đồ:</b> 9T = 9 tháng đầu 2026; T9 = tháng 9/2026; YTD = từ đầu năm; N/A = chưa có số liệu cùng phạm vi; PROXY = số liệu đại diện không hoàn toàn đúng box; GROSS = phát hành gộp; AUM = tài sản quản lý. <b>Đơn vị và thời điểm khác nhau, tuyệt đối không cộng số trong các box</b>. Số FDI đăng ký và thực hiện khác bản chất; số dư tín dụng, vốn hóa và AUM là stock/market value; số kiều hối chỉ của TP.HCM. Nguồn và cảnh báo chi tiết ở <b>mục 2A</b>.\n\n<b>Lưu ý kỹ thuật:</b> Mũi tên từ giao dịch thứ cấp về kênh sơ cấp là <b>tác động gián tiếp thông qua giá, định giá, thanh khoản</b>, không phải dòng tiền tự động chảy vào doanh nghiệp. Một số dòng vốn quốc tế có thể đi thẳng tới doanh nghiệp, không bắt buộc qua VIFC. Các mũi tên vào VIFC chỉ biểu thị <b>kênh có thể được hỗ trợ</b>, không hàm ý tất cả FDI/FII/ODA thực tế phải đi qua trung tâm này.
+**Quy đổi USD:** Tất cả giá trị tiền tệ trên sơ đồ dùng USD, theo tỷ giá liên ngân hàng chốt phiên **30/09/2026: 1 USD = 25.960 VND** ([Thời báo Ngân hàng](https://thoibaonganhang.vn/diem-lai-thong-tin-kinh-te-ngay-309-188323-188323.html)). Số quy đổi chỉ để so sánh quy mô, không phải số USD giao dịch thực tế. Các số gốc và nguồn ở mục 2A.
+
+**Chú giải số liệu trên sơ đồ:** 9T = 9 tháng đầu 2026; T9 = tháng 9/2026; YTD = từ đầu năm; N/A = chưa có số liệu cùng phạm vi; PROXY = số liệu đại diện không hoàn toàn đúng box; GROSS = phát hành gộp; AUM = tài sản quản lý. <b>Đơn vị và thời điểm khác nhau, tuyệt đối không cộng số trong các box**. Số FDI đăng ký và thực hiện khác bản chất; số dư tín dụng, vốn hóa và AUM là stock/market value; số kiều hối chỉ của TP.HCM. Nguồn và cảnh báo chi tiết ở **mục 2A**.\n\n**Lưu ý kỹ thuật:** Mũi tên từ giao dịch thứ cấp về kênh sơ cấp là **tác động gián tiếp thông qua giá, định giá, thanh khoản**, không phải dòng tiền tự động chảy vào doanh nghiệp. Một số dòng vốn quốc tế có thể đi thẳng tới doanh nghiệp, không bắt buộc qua VIFC. Các mũi tên vào VIFC chỉ biểu thị **kênh có thể được hỗ trợ**, không hàm ý tất cả FDI/FII/ODA thực tế phải đi qua trung tâm này.
 
 ## 2A. Hiện trạng định lượng theo từng box — chốt dữ liệu đến 30/09/2026 (nguồn công bố đến 24/10/2026)
 
