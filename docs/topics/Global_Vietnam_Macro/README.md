@@ -8,6 +8,7 @@ Theo dõi diễn biến kinh tế và địa chính trị thế giới, các kê
 ## Mục lục
 - [Dòng thời gian theo quý năm 2026](2026.md)
 - [Mẫu cập nhật cho từng quý](QUARTER_TEMPLATE.md)
+- [Dự báo và kịch bản từ năm 2027 trở đi](DU_BAO_2027_TRO_DI.md)
 - Nghiên cứu liên quan: [QT-17 — Nhận diện trạng thái kinh tế vĩ mô Việt Nam](../../backlog/Backlog_Status.md#10-qt-17--vietnam-macro-regime-detection)
 
 ## Quy ước theo dõi
