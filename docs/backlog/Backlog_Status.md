@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-10-24 (QT-16 research intake; existing canonical statuses not revalidated)
+- **Last reviewed:** 2026-10-24 (QT-17 macro research intake; existing canonical statuses not revalidated)
 - **Purpose:** One topic-oriented dashboard grouped by target Quant Trading architecture.
 - **Status authority:** Canonical requirement/architecture/harness files remain authoritative. This summary does not prove runtime acceptance.
 - **Organization:** Each backlog ID appears once in its primary domain; dependencies are cross-referenced separately.
@@ -13,9 +13,9 @@
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
 | **Canonical total** | **42** | **10 DONE · 3 IN_PROGRESS · 5 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO · 2 DRAFT** |
-| **Quant proposals (excluded)** | **16** | 5 P0 · 7 P1 · 4 P2; all PROPOSED_FOR_BA_REVIEW |
+| **Quant proposals (excluded)** | **17** | 5 P0 · 8 P1 · 4 P2; all PROPOSED_FOR_BA_REVIEW |
 
-**Canonical priorities:** P0 4 · P1 28 · P2 7 · P3 3. Proposed QT priorities are separate. The 16 QT aliases are not approved REQ IDs and must not be counted as delivery backlog until BusinessAnalyst intake.
+**Canonical priorities:** P0 4 · P1 28 · P2 7 · P3 3. Proposed QT priorities are separate. The 17 QT aliases are not approved REQ IDs and must not be counted as delivery backlog until BusinessAnalyst intake.
 
 **Status authority:** [Requirements](requirements/README.md) · [Architecture](Architecture_Backlog.md) · [Agent Harness](Harness_Backlog.md). Preserve the original status in the owner file, including IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE; do not map engineering and BA workflows into invented equivalent states.
 
@@ -50,6 +50,7 @@
 | REQ-0038 | R/S V2.4 Daily Incremental Source Effectiveness Evaluation | P1 | **DRAFT** | BusinessAnalyst | [[requirements/REQ-0038-rs-v2-4-daily-incremental-source-effectiveness | REQ-0038]] |
 | REQ-0039 | Market News Collection, Entity Linking and Sentiment Intelligence | P1 | **DRAFT** | BusinessAnalyst | [[requirements/REQ-0039-news-collection-sentiment-intelligence | REQ-0039]] |
 | **QT-06** | Market Regime, Breadth & Sector Rotation Engine | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
+| **QT-17** | Vietnam Macro Regime Detection & Economic Cycle Analysis | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | Macro regime + sector rotation research; see §10 | Proposal; [study](#10-qt-17--vietnam-macro-regime-detection) |
 | **QT-07** | Multi-Factor Alpha & Fundamental Feature Store | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
 | **QT-10** | Event Impact & News Alpha Research | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
 
@@ -127,7 +128,7 @@
 | REQ-0036 → QT-13 | Pair discovery is screening; QT-13 is trade entry/exit/risk, constrained by Vietnam short-selling feasibility. |
 | REQ-0037 → QT-02/03/04/05 | R/S averaging down must reuse shared backtest, cost and risk contracts. |
 | REQ-0039 → QT-10 → QT-15 | News/entity/sentiment → event impact research → cited read-only AI knowledge agent; avoid duplicating ingestion. |
-| QT-06/07 → QT-08/09 → QT-12 → QT-11 | Regime/factors → strategies/ranking → governed model lifecycle → paper trading. |
+| QT-17 → QT-06/07 → QT-08/09 → QT-12 → QT-11 | Regime/factors → strategies/ranking → governed model lifecycle → paper trading. |
 | REQ-0025/0026 + QT-08/02/03/04/12 → QT-16 → QT-11 (conditional) | Research Jev as a typed probabilistic **advisory** overlay on SmartMoney/signals; compare to deterministic and ML baselines on point-in-time data. Shadow/paper only after evidence and separate approval; no duplicate strategy or execution engine. |
 | CS-ARCH-001/002/003/004 + CS-HARNESS-004/005 | Layered runtime, provider interfaces, read/admin isolation and safe agent tools. |
 | Security prerequisite (CS-ARCH-010) | P0 repository hygiene/security remains urgent independent of Quant roadmap. |
@@ -188,7 +189,7 @@ Preprints are hypotheses, not validated Vietnam stock alpha. July is retained as
 1. Update authoritative requirement/architecture/harness owner first, then synchronize this dashboard.
 2. Each ID has one primary architectural domain; add dependency links instead of duplicate rows.
 3. Mark DONE only after implementation, independent TestEngineer validation and required documentation/visual acceptance.
-4. For QT-01–QT-16, BA checks overlap, objective, constraints, source licenses, measurable acceptance, dependencies and compute budget before creating an REQ or extending an existing one using [Requirement Template](requirements/REQUIREMENT_TEMPLATE.md).
+4. For QT-01–QT-17, BA checks overlap, objective, constraints, source licenses, measurable acceptance, dependencies and compute budget before creating an REQ or extending an existing one using [Requirement Template](requirements/REQUIREMENT_TEMPLATE.md).
 5. Add approved requirements to [Requirements README](requirements/README.md); maintain QT→REQ mapping and recalculate canonical counts without double counting.
 6. Preserve Requirement → Architecture/ADR → Implementation/PR → Test evidence → DONE traceability.
 7. This dashboard does not authorize broker orders, privileged agent writes or production model promotion.
@@ -253,3 +254,33 @@ Preprints are hypotheses, not validated Vietnam stock alpha. July is retained as
 - **NO-GO / defer** if Jev has no incremental uplift, calibration is poor, data are insufficient, latency exceeds the signal horizon, or dependence on a remote API is operationally unacceptable. No automatic promotion to QT-08/REQ-0026 or live execution.
 
 **Research references:** [Article / architecture](https://medium.com/coding-nexus/how-to-use-jev-to-build-a-market-making-engine-from-scratch-a-complete-guide-fa5920e7bdb2) (2026-09-26); [full technical thread](https://threadnavigator.com/thread/2102774731606991003/); [independent reproduction with negative trading results](https://github.com/Siim/jev-claim-vs-measured) (different instruments and tested use case; not conclusive for VN equities). The research must independently test the specific CherryStock task rather than assume claims generalize.
+
+## 10. QT-17 — Vietnam Macro Regime Detection
+
+| Field | Proposed scope |
+|---|---|
+| Priority / status | **P1 (proposed)** / **PROPOSED_FOR_BA_REVIEW**; not a canonical REQ |
+| Domain | §2.2 Analytics, Indicators & Alternative Data; complements QT-06 rather than duplicating market breadth/sector rotation |
+| Objective | Identify Vietnam economic regimes and test whether macro indicators predict VNINDEX, industry-index and market-cap-index relative performance after realistic costs |
+| Hypothesis | Credit/deposit growth, rates, USD/VND, FDI disbursement, public investment, PMI, CPI, GDP and exports may explain regime transitions and sector leadership; podcast forecasts are unverified hypotheses |
+| Source | [Vietnam Innovators — Michael Kokalari, October 2026](https://www.youtube.com/watch?v=hqqfCqRdfxA) |
+
+### Work packages
+
+1. **MACRO-01 Data:** inventory official/public sources and licenses for GDP, CPI, PMI, FDI **registered versus disbursed**, credit, deposits, interest rates, FX, trade and public investment. Store release timestamps, vintages/revisions, frequency, units, missingness and source provenance. Implement idempotent initload/incremental ingestion into DuckDB.
+2. **MACRO-02 Regime engine:** start with interpretable rules and four labels **Expansion / Slowdown / Contraction / Recovery**; compare HMM or ML only after baseline. Preserve as-of cutoff and confidence, including ambiguous/unknown states.
+3. **MACRO-03 Lag study:** analyze lead/lag and regime-conditional returns for `vw_Market_Index_D`, `cal_Industry_Index_D`, `cal_MarketCap_Index_D`; adjust for frequency mismatch and multiple testing.
+4. **MACRO-04 Transition forecasts:** walk-forward, calibrated transition probabilities, uncertainty and drift; no claims of prediction from in-sample fit.
+5. **MACRO-05 Sector rotation:** reuse QT-06 breadth/sector framework; test conditional relative strength, risk-adjusted returns and turnover across industries and cap buckets.
+6. **MACRO-06 Portfolio research:** benchmark regime-based cash/equity/sector allocations against buy-and-hold using QT-01/02/03/04/05 for point-in-time history, execution rules, transaction costs and risk metrics.
+7. **MACRO-07 Dashboard:** Macro Overview in React/TypeScript/Vite, with R2 JSON/Parquet snapshots, indicator freshness, current regime, history, transition uncertainty and sector heatmap; no direct client-side DuckDB access.
+
+### Acceptance gates
+
+- Document data provenance, revisions and publication delays; **never** backfill revised data into historical decision dates.
+- Report regime stability, class balance, transition confusion/calibration and out-of-sample walk-forward results including negative findings.
+- Compare against simple rules, buy-and-hold and QT-06 without duplicate sector-rotation logic; include Vietnam fees/tax/slippage, drawdown and sensitivity analysis.
+- Rerunnable incremental ingestion with stale/missing-data fallback and run logs; dashboard clearly distinguishes observed metrics from scenarios.
+- Deliver BA scope, research report, reproducible artifacts and Go/No-Go; no automatic trading or production signal promotion.
+
+**Research scenarios, not model outputs:** 2027 slowdown possibility; 2028–2031 investment/industrial expansion; 2032–2035 productivity and demographic constraints. Explicitly evaluate counterexamples such as FX stress, inefficient USD borrowing, FDI non-disbursement and weak household demand. Do not treat the podcast's growth-rate or timing estimates as verified forecasts.
