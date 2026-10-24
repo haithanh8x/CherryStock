@@ -1,35 +1,36 @@
-# Global & Vietnam Macro Outlook — Quarterly Timeline
+# Triển vọng kinh tế thế giới và Việt Nam — Dòng thời gian theo quý
 
-**Established:** 2026-10-24 | **Owner:** CherryStock macro research | **Cadence:** quarterly, with event-driven updates | **Status:** Research tracker (not investment advice)
+**Ngày tạo:** 2026-10-24 | **Phụ trách:** Nghiên cứu kinh tế vĩ mô CherryStock | **Tần suất:** Hàng quý, bổ sung khi có sự kiện quan trọng | **Trạng thái:** Theo dõi nghiên cứu, không phải khuyến nghị đầu tư.
 
-## Purpose
-Track global economic and geopolitical developments, Vietnam macro transmission channels, published forecasts, forecast outcomes, and implications for CherryStock sector/market research. **Do not confuse a speaker's scenario with confirmed data.**
+## Mục tiêu
+Theo dõi diễn biến kinh tế và địa chính trị thế giới, các kênh tác động đến kinh tế vĩ mô Việt Nam, dự báo được công bố, kết quả kiểm chứng dự báo và ý nghĩa đối với nghiên cứu thị trường, nhóm ngành của CherryStock. **Không đánh đồng kịch bản của người phát biểu với dữ liệu thực tế đã xác minh.**
 
-## Navigation
-- [2026 quarterly timeline](2026.md)
-- [Reusable quarterly update template](QUARTER_TEMPLATE.md)
-- Related research proposal: [QT-17 Macro Regime Detection](../../backlog/Backlog_Status.md#10-qt-17--vietnam-macro-regime-detection)
+## Mục lục
+- [Dòng thời gian theo quý năm 2026](2026.md)
+- [Mẫu cập nhật cho từng quý](QUARTER_TEMPLATE.md)
+- Nghiên cứu liên quan: [QT-17 — Nhận diện trạng thái kinh tế vĩ mô Việt Nam](../../backlog/Backlog_Status.md#10-qt-17--vietnam-macro-regime-detection)
 
-## Timeline conventions
-- Organize by calendar year **Q1 Jan–Mar, Q2 Apr–Jun, Q3 Jul–Sep, Q4 Oct–Dec**.
-- Append dated event/forecast entries to the relevant quarter. Do not rewrite earlier forecasts when new information emerges; add a follow-up assessment and link to original.
-- Every substantive entry includes **as-of date**, **event/claim**, **geography**, **source URL and publication date**, **status** (OBSERVED / REPORTED_UNVERIFIED / FORECAST / SCENARIO / ASSESSMENT), **time horizon**, **transmission to Vietnam**, **affected metrics/sectors**, **confidence/evidence**, and **review date**.
-- Record **forecast owner, forecast vintage, target date, baseline assumptions, quantitative range when supplied, realized outcome, verdict** (PENDING / SUPPORTED / PARTIALLY_SUPPORTED / NOT_SUPPORTED / UNRESOLVED). Never fabricate a probability or numerical estimate.
-- Separate **global effects** (growth, inflation, energy, USD, interest rates, trade, supply chains) from **Vietnam effects** (GDP, CPI, USD/VND, credit, rates, FDI disbursement, exports, public investment, VNINDEX, industry/cap indexes).
-- Distinguish primary-source releases (GSO/NSO, SBV, customs, ministries, IMF, World Bank, ADB, central banks) from interviews, media commentary, and CherryStock inference.
-- For every dataset, preserve publication/revision timestamps and units, and flag unavailable or unverified numbers. A quarter with no verified coverage is **NOT YET RESEARCHED**, not evidence of no change.
+## Quy ước theo dõi
+- Chia theo năm dương lịch: **Quý I (tháng 1–3), Quý II (tháng 4–6), Quý III (tháng 7–9), Quý IV (tháng 10–12)**.
+- Bổ sung sự kiện và dự báo vào quý tương ứng, ghi rõ ngày. Không sửa ngược nội dung dự báo cũ khi xuất hiện thông tin mới; bổ sung đánh giá tiếp theo và dẫn lại bản gốc.
+- Mỗi mục quan trọng cần có **ngày ghi nhận, sự kiện/nhận định, phạm vi địa lý, nguồn và ngày công bố, loại thông tin, thời hạn dự báo, kênh tác động đến Việt Nam, chỉ báo/ngành liên quan, mức độ tin cậy và ngày rà soát**.
+- Phân loại thông tin: **ĐÃ QUAN SÁT / TIN CHƯA XÁC MINH / DỰ BÁO / KỊCH BẢN / ĐÁNH GIÁ**.
+- Lưu **người/tổ chức dự báo, thời điểm phát hành, mốc dự báo, giả định nền, khoảng giá trị nếu nguồn có cung cấp, kết quả thực tế và kết luận**. Trạng thái kiểm chứng: **CHỜ KIỂM CHỨNG / PHÙ HỢP / PHÙ HỢP MỘT PHẦN / KHÔNG PHÙ HỢP / CHƯA THỂ KẾT LUẬN**. Không tự tạo xác suất hoặc số liệu.
+- Tách riêng **tác động toàn cầu** (tăng trưởng, lạm phát, năng lượng, USD, lãi suất, thương mại, chuỗi cung ứng) và **tác động đến Việt Nam** (GDP, CPI, USD/VND, tín dụng, lãi suất, giải ngân FDI, xuất khẩu, đầu tư công, VNINDEX, chỉ số ngành và nhóm vốn hóa).
+- Phân biệt nguồn số liệu chính thức (Cơ quan Thống kê Quốc gia, Ngân hàng Nhà nước, hải quan, bộ ngành, IMF, Ngân hàng Thế giới, ADB, ngân hàng trung ương) với phỏng vấn, bình luận truyền thông và suy luận của CherryStock.
+- Giữ ngày công bố, ngày điều chỉnh và đơn vị đo của dữ liệu; đánh dấu số liệu còn thiếu hoặc chưa xác minh. Quý chưa có dữ liệu phải ghi **CHƯA NGHIÊN CỨU**, không được suy diễn là không có biến động.
 
-## Update workflow
-1. Capture new dated events and original source URLs in the corresponding year/quarter.
-2. Verify material claims against primary sources where feasible; mark conflicts and uncertainty.
-3. Write **global macro → Vietnam macro → sectors/markets** transmission and competing scenarios.
-4. Add forecast to the forecast ledger with an immutable as-of snapshot and check date.
-5. Compare forecasts to observed outcomes at the review date; record revisions as new rows.
-6. Identify candidate research variables for QT-17; only promote signals after point-in-time OOS validation.
+## Quy trình cập nhật
+1. Ghi nhận sự kiện mới và đường dẫn nguồn gốc theo đúng năm, quý và ngày.
+2. Đối chiếu thông tin quan trọng với nguồn chính thức nếu có; ghi rõ mâu thuẫn và độ bất định.
+3. Phân tích chuỗi tác động **kinh tế thế giới → kinh tế Việt Nam → nhóm ngành/thị trường**, kèm kịch bản đối lập.
+4. Đưa dự báo vào sổ theo dõi, lưu nguyên nội dung tại thời điểm ghi nhận và ngày cần kiểm chứng.
+5. Đối chiếu với kết quả thực tế khi đến hạn; ghi kết quả thành mục mới thay vì sửa dự báo ban đầu.
+6. Đề xuất biến số nghiên cứu cho QT-17; chỉ xem xét dùng làm tín hiệu giao dịch sau khi kiểm định ngoài mẫu theo dữ liệu đúng thời điểm.
 
-## Standard monitoring domains
-| Global | Vietnam | Market / quant |
+## Nhóm chỉ báo theo dõi
+| Kinh tế thế giới | Kinh tế Việt Nam | Thị trường và nghiên cứu định lượng |
 |---|---|---|
-| US/EU/China growth, policy rates, US yields, DXY, commodities, geopolitics, supply chains | GDP, CPI, PMI, exports/imports, FDI registered/disbursed, credit/deposits, FX, interest rates, public investment | VNINDEX, foreign flows, industry indexes, cap indexes, breadth, valuation, sector relative strength |
+| Tăng trưởng Mỹ/EU/Trung Quốc, lãi suất điều hành, lợi suất trái phiếu Mỹ, DXY, hàng hóa, địa chính trị, chuỗi cung ứng | GDP, CPI, PMI, xuất nhập khẩu, FDI đăng ký/giải ngân, tín dụng/tiền gửi, tỷ giá, lãi suất, đầu tư công | VNINDEX, giao dịch khối ngoại, chỉ số ngành, chỉ số nhóm vốn hóa, độ rộng thị trường, định giá, sức mạnh tương đối nhóm ngành |
 
-**Governance:** This is an evidence timeline and hypothesis log, not a production trading signal or verified macro dataset. Cite sources and retain negative results.
+**Nguyên tắc quản trị:** Đây là nhật ký bằng chứng và giả thuyết nghiên cứu, không phải dữ liệu vĩ mô đã kiểm chứng hoàn toàn hay tín hiệu giao dịch đang vận hành. Luôn dẫn nguồn và lưu cả kết quả không ủng hộ giả thuyết.
