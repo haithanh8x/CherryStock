@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-10-12
+- **Last reviewed:** 2026-10-24 (QT-16 research intake; existing canonical statuses not revalidated)
 - **Purpose:** One topic-oriented dashboard grouped by target Quant Trading architecture.
 - **Status authority:** Canonical requirement/architecture/harness files remain authoritative. This summary does not prove runtime acceptance.
 - **Organization:** Each backlog ID appears once in its primary domain; dependencies are cross-referenced separately.
@@ -13,9 +13,9 @@
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
 | **Canonical total** | **42** | **10 DONE · 3 IN_PROGRESS · 5 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO · 2 DRAFT** |
-| **Quant proposals (excluded)** | **15** | 5 P0 · 7 P1 · 3 P2; all PROPOSED_FOR_BA_REVIEW |
+| **Quant proposals (excluded)** | **16** | 5 P0 · 7 P1 · 4 P2; all PROPOSED_FOR_BA_REVIEW |
 
-**Canonical priorities:** P0 4 · P1 28 · P2 7 · P3 3. Proposed QT priorities are separate. The 15 QT aliases are not approved REQ IDs and must not be counted as delivery backlog until BusinessAnalyst intake.
+**Canonical priorities:** P0 4 · P1 28 · P2 7 · P3 3. Proposed QT priorities are separate. The 16 QT aliases are not approved REQ IDs and must not be counted as delivery backlog until BusinessAnalyst intake.
 
 **Status authority:** [Requirements](requirements/README.md) · [Architecture](Architecture_Backlog.md) · [Agent Harness](Harness_Backlog.md). Preserve the original status in the owner file, including IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE; do not map engineering and BA workflows into invented equivalent states.
 
@@ -62,6 +62,7 @@
 | **QT-04** | Quant Research Validation & Alpha Audit | P0 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
 | **QT-09** | ML Cross-Sectional Stock Ranking | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
 | **QT-12** | Quant Model Registry, Drift & Retraining Governance | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
+| **QT-16** | Jev AI Typed-Decision Research for Microstructure, SmartMoney & Trading Signals | P2 (proposed) | **PROPOSED_FOR_BA_REVIEW** | Research only; no live market making or broker orders; see §9 | Proposal; [study](#9-qt-16--jev-ai-typed-decision-research) |
 
 ### 2.4 Signal & Strategy Engine
 
@@ -127,6 +128,7 @@
 | REQ-0037 → QT-02/03/04/05 | R/S averaging down must reuse shared backtest, cost and risk contracts. |
 | REQ-0039 → QT-10 → QT-15 | News/entity/sentiment → event impact research → cited read-only AI knowledge agent; avoid duplicating ingestion. |
 | QT-06/07 → QT-08/09 → QT-12 → QT-11 | Regime/factors → strategies/ranking → governed model lifecycle → paper trading. |
+| REQ-0025/0026 + QT-08/02/03/04/12 → QT-16 → QT-11 (conditional) | Research Jev as a typed probabilistic **advisory** overlay on SmartMoney/signals; compare to deterministic and ML baselines on point-in-time data. Shadow/paper only after evidence and separate approval; no duplicate strategy or execution engine. |
 | CS-ARCH-001/002/003/004 + CS-HARNESS-004/005 | Layered runtime, provider interfaces, read/admin isolation and safe agent tools. |
 | Security prerequisite (CS-ARCH-010) | P0 repository hygiene/security remains urgent independent of Quant roadmap. |
 
@@ -137,7 +139,7 @@
 | **1 — Quant Foundation** | QT-01/02/03/04/05; REQ-0026 validation; CS-ARCH-010 | Point-in-time/survivorship audit, reproducible signal/order/fill/cash ledger, Vietnam costs, portfolio risk reconciliation, TestEngineer PASS. |
 | **2 — Rule-Based Alpha** | QT-06/07/08; REQ-0037; R/S REQ-0023/0024/0038 | Net-of-cost OOS/walk-forward, regime stability, turnover/drawdown and non-repainting tests. |
 | **3 — ML & Alternative Data** | REQ-0039; QT-09/10/12 | News provenance and entity accuracy, feature as-of, incremental OOS improvement over simpler baselines, model lineage. |
-| **4 — Portfolio Intelligence** | QT-11/13/14/15; optional RL/LLM research | Stable paper portfolio, risk caps, model drift/rollback, citation-backed read-only agent. |
+| **4 — Portfolio Intelligence** | QT-11/13/14/15; QT-16 feasibility research (conditional, not delivery commitment); optional RL/LLM research | Stable paper portfolio, risk caps, model drift/rollback, citation-backed read-only agent; QT-16 Go/No-Go memo before any shadow integration. |
 
 **Recommended near-term queue:** CS-ARCH-010; REQ-0023/0024; REQ-0026 independent validation; CS-HARNESS-003; CS-ARCH-001/002; BA scoping of QT-01–05; REQ-0035/0036/0037 design; REQ-0038/0039 BA clarification. This does not change canonical status.
 
@@ -177,6 +179,7 @@ Monthly arXiv q-fin discovery corpus: [Jan](https://arxiv.org/list/q-fin/2026-01
 | Regime / ML | [Uncertainty-Adjusted Sorting 2601.00593](https://arxiv.org/abs/2601.00593), [Regime-Adaptive Learning 2606.00143](https://arxiv.org/abs/2606.00143), [LLM Forecasting 2609.36914](https://arxiv.org/abs/2609.36914) | QT-06/07/09/12: baseline, calibrated rank and drift. |
 | Portfolio | [Deep RL Portfolio 2605.17307](https://arxiv.org/abs/2605.17307), [CAST 2609.14205](https://arxiv.org/abs/2609.14205), [Robust CVaR 2610.09246](https://arxiv.org/abs/2610.09246) | QT-05/14: risk-first evaluation. |
 | Signals / AI graph | [Cross-Stock Semantic Networks 2604.19476](https://arxiv.org/abs/2604.19476), [Buying at Support 2610.04990](https://arxiv.org/abs/2610.04990) | QT-08/13/15: relations and support-entry tests. |
+| Typed AI decisions / market microstructure | [Jev market-making architecture](https://medium.com/coding-nexus/how-to-use-jev-to-build-a-market-making-engine-from-scratch-a-complete-guide-fa5920e7bdb2), [independent Jev measurements](https://github.com/Siim/jev-claim-vs-measured) | QT-16: evaluate actual latency, probability calibration, and net-of-cost signal uplift; article claims do not establish alpha. |
 
 Preprints are hypotheses, not validated Vietnam stock alpha. July is retained as an archive for later curation. RL, continual learning and financial LLMs are non-counted research tracks until a cost-adjusted OOS case is established.
 
@@ -185,7 +188,45 @@ Preprints are hypotheses, not validated Vietnam stock alpha. July is retained as
 1. Update authoritative requirement/architecture/harness owner first, then synchronize this dashboard.
 2. Each ID has one primary architectural domain; add dependency links instead of duplicate rows.
 3. Mark DONE only after implementation, independent TestEngineer validation and required documentation/visual acceptance.
-4. For QT-01–QT-15, BA checks overlap, objective, constraints, source licenses, measurable acceptance, dependencies and compute budget before creating an REQ or extending an existing one using [Requirement Template](requirements/REQUIREMENT_TEMPLATE.md).
+4. For QT-01–QT-16, BA checks overlap, objective, constraints, source licenses, measurable acceptance, dependencies and compute budget before creating an REQ or extending an existing one using [Requirement Template](requirements/REQUIREMENT_TEMPLATE.md).
 5. Add approved requirements to [Requirements README](requirements/README.md); maintain QT→REQ mapping and recalculate canonical counts without double counting.
 6. Preserve Requirement → Architecture/ADR → Implementation/PR → Test evidence → DONE traceability.
 7. This dashboard does not authorize broker orders, privileged agent writes or production model promotion.
+
+## 9. QT-16 — Jev AI Typed-Decision Research
+
+| Field | Proposed scope |
+|---|---|
+| ID / title | **QT-16 — Jev AI Typed-Decision Research for Microstructure, SmartMoney & Trading Signals** |
+| Priority / status | **P2 (proposed)** / **PROPOSED_FOR_BA_REVIEW**; **not** a canonical REQ or an approved implementation |
+| Primary domain | §2.3 Quant Research, Backtesting & ML (one owner row only) |
+| Goal | Falsify or support the hypothesis that structured probabilistic decisions from Jev add **incremental**, reproducible trading value to existing CherryStock rule/ML signals, net of costs and latency |
+| Initial applicability | SmartMoney signal filtering / risk-off decisions, confidence-aware BUY/HOLD/SELL overlays, R/S breakout or breakdown context. Market-making quote/spread/inventory is **literature study only** without suitable L2 book, order/fill data, and venue permissions |
+| Dependencies | REQ-0025 (SmartMoneyScore), REQ-0026 (strategy action), QT-08 (unified signals), QT-01/02/03/04 (point-in-time data, backtest, VN costs, validation), QT-12 (model governance); QT-11 only after independent research approval |
+| Owner / output | BusinessAnalyst intake → Quant Research PoC → independent validation; research memo + reproducible benchmark + Go/No-Go recommendation |
+
+### 9.1 Research questions
+
+1. **Provider feasibility:** Verify Jev / TypeSafe API availability, typed `Choice`, `Score`, binary judgment interfaces, data-retention/licensing, stable output contracts, versioning, call costs, quotas, rate limits, determinism and real **p50/p95/p99** latency from the CherryStock deployment environment. Marketing latency and calibrated-probability claims are **unverified** until measured.
+2. **Data feasibility:** Inventory AmiBroker EOD/intraday and DuckDB features: market/session regime, relative volume, realized volatility, price momentum, time-of-day, SmartMoneyScore, R/S distance/strength and quote proxies. Explicitly identify unavailable **L2 bid/ask depth, order cancellations, trade aggressor direction, queue position and actual fill** history. Do **not** label OHLCV-only heuristics as observed informed flow or simulate executable market-making profits without those inputs.
+3. **Decision-schema experiment:** Evaluate (a) `ACT / HOLD / STEP_BACK` signal-risk gating, (b) `BUY / HOLD / SELL` signal ranking/confirmation, and (c) `HIGH / LOW` adverse-flow risk **only if defensible order-flow inputs exist**. Output schema must contain action, model/provider version, probability/score, as-of timestamp and explicit abstain/fallback reason. The Jev output is advice, never an executable broker instruction.
+4. **Ablation and baselines:** Compare with current SmartMoney/R/S rules, simple volatility/volume thresholds, logistic regression or another small locally run model and the same features without Jev. Test whether relative/rolling-normalized features help; keep data cutoff, label horizon and transaction costs identical across variants.
+5. **Evaluation and safety:** Pre-register label definitions, train/validation/test splits, rolling walk-forward OOS and minimum sample sizes. Evaluate Brier score, reliability diagram/ECE, confusion matrix and class imbalance, ablation uplift, regime robustness, turnover, slippage/fees/tax, max drawdown, net expectancy, p50/p95/p99 response time, timeout rate and total API cost. Avoid look-ahead leakage, data snooping and treating semantic-confidence scores as calibrated market probabilities.
+6. **Failure behavior:** On stale features, insufficient confidence, API error, timeout, invalid schema or risk breach, deterministically **abstain / HOLD / STEP_BACK** as appropriate. Log source timestamps, features/labels (subject to data policy), model version, decision, latency and fallback. Enforce risk veto separately from the AI provider.
+
+### 9.2 Proposed milestones (research only)
+
+| Milestone | Deliverable / stop condition |
+|---|---|
+| M1 — Feasibility and data-gap audit | One-page API/licensing/latency feasibility note, available-feature matrix, explicit L2 gaps; stop if required data/rights or response times are infeasible |
+| M2 — Offline typed-decision PoC | Replayable Jev adapter + schema contract and rule-based fallback on a bounded historical sample; **no live orders** |
+| M3 — Independent OOS benchmark | Same-universe, same-cutoff, net-of-cost comparison with baseline; calibration, stability, latency and cost report including negative results |
+| M4 — Go/No-Go | BA/Quant decision with evidence and any proposed successor REQ; only consider QT-11 shadow/paper mode after authorization; production/market making outside this backlog |
+
+### 9.3 Acceptance and decision gate
+
+- **Research DONE** only when the feasibility matrix, documented typed schemas, replay artifacts, OOS results (including negative results), measured API p50/p95/p99, probability calibration, transaction-cost assumptions, and Go/No-Go memo are published and independently reviewed.
+- **GO to a new, separately approved requirement** only on repeatable, economically meaningful **net-of-cost OOS uplift** versus simpler baselines, compatible latency/cost, credible probability calibration or an explicitly non-probabilistic use of scores, and safe fallback behavior. Pre-register thresholds before inspecting test results.
+- **NO-GO / defer** if Jev has no incremental uplift, calibration is poor, data are insufficient, latency exceeds the signal horizon, or dependence on a remote API is operationally unacceptable. No automatic promotion to QT-08/REQ-0026 or live execution.
+
+**Research references:** [Article / architecture](https://medium.com/coding-nexus/how-to-use-jev-to-build-a-market-making-engine-from-scratch-a-complete-guide-fa5920e7bdb2) (2026-09-26); [full technical thread](https://threadnavigator.com/thread/2102774731606991003/); [independent reproduction with negative trading results](https://github.com/Siim/jev-claim-vs-measured) (different instruments and tested use case; not conclusive for VN equities). The research must independently test the specific CherryStock task rather than assume claims generalize.
