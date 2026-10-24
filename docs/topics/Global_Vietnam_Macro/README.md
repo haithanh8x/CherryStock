@@ -37,3 +37,5 @@ Theo dõi diễn biến kinh tế và địa chính trị thế giới, các kê
 | Tăng trưởng Mỹ/EU/Trung Quốc, lãi suất điều hành, lợi suất trái phiếu Mỹ, DXY, hàng hóa, địa chính trị, chuỗi cung ứng | GDP, CPI, PMI, xuất nhập khẩu, FDI đăng ký/giải ngân, tín dụng/tiền gửi, tỷ giá, lãi suất, đầu tư công | VNINDEX, giao dịch khối ngoại, chỉ số ngành, chỉ số nhóm vốn hóa, độ rộng thị trường, định giá, sức mạnh tương đối nhóm ngành |
 
 **Nguyên tắc quản trị:** Đây là nhật ký bằng chứng và giả thuyết nghiên cứu, không phải dữ liệu vĩ mô đã kiểm chứng hoàn toàn hay tín hiệu giao dịch đang vận hành. Luôn dẫn nguồn và lưu cả kết quả không ủng hộ giả thuyết.
+
+- [Việt Nam – Cơ hội phát triển AI & chuỗi giá trị bán dẫn](VN_AI_SEMICONDUCTOR_OPPORTUNITY.md): bản đồ Mermaid, MSR/Núi Pháo, FPT, Viettel, FDI OSAT, AI compute, hiện trạng 10/2026 và watchlist.
