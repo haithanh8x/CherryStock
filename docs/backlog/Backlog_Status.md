@@ -1,6 +1,6 @@
 # CherryStock Backlog Status
 
-- **Last reviewed:** 2026-10-24 (QT-17 macro research intake; existing canonical statuses not revalidated)
+- **Last reviewed:** 2026-10-25 (QT-18 margin liquidation research intake; existing canonical statuses not revalidated)
 - **Purpose:** One topic-oriented dashboard grouped by target Quant Trading architecture.
 - **Status authority:** Canonical requirement/architecture/harness files remain authoritative. This summary does not prove runtime acceptance.
 - **Organization:** Each backlog ID appears once in its primary domain; dependencies are cross-referenced separately.
@@ -13,9 +13,9 @@
 | Architecture | 10 | 2 DONE · 3 IN_PROGRESS · 5 TODO |
 | Agent Harness | 14 | 2 DONE · 12 TODO |
 | **Canonical total** | **42** | **10 DONE · 3 IN_PROGRESS · 5 READY_FOR_DESIGN · 4 IMPLEMENTED_PENDING_VALIDATION · 1 IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE · 17 TODO · 2 DRAFT** |
-| **Quant proposals (excluded)** | **17** | 5 P0 · 8 P1 · 4 P2; all PROPOSED_FOR_BA_REVIEW |
+| **Quant proposals (excluded)** | **18** | 5 P0 · 9 P1 · 4 P2; all PROPOSED_FOR_BA_REVIEW |
 
-**Canonical priorities:** P0 4 · P1 28 · P2 7 · P3 3. Proposed QT priorities are separate. The 17 QT aliases are not approved REQ IDs and must not be counted as delivery backlog until BusinessAnalyst intake.
+**Canonical priorities:** P0 4 · P1 28 · P2 7 · P3 3. Proposed QT priorities are separate. The 18 QT aliases are not approved REQ IDs and must not be counted as delivery backlog until BusinessAnalyst intake.
 
 **Status authority:** [Requirements](requirements/README.md) · [Architecture](Architecture_Backlog.md) · [Agent Harness](Harness_Backlog.md). Preserve the original status in the owner file, including IMPLEMENTED_PENDING_VISUAL_ACCEPTANCE; do not map engineering and BA workflows into invented equivalent states.
 
@@ -83,6 +83,7 @@
 | **QT-05** | Portfolio, Position & Risk Management Engine | P0 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
 | **QT-11** | Paper Trading & Shadow Portfolio | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
 | **QT-14** | Robust Portfolio Optimization & Tail-Risk Models | P2 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
+| **QT-18** | Margin Liquidation Risk — Equity Pledge & Forced-Selling Pressure | P1 (proposed) | **PROPOSED_FOR_BA_REVIEW** | Risk research; no claim to observe broker deal margin; see §12 | Proposal; [study](#12-qt-18--margin-liquidation-risk) |
 
 ### 2.6 UI, Research API & AI Agents
 
@@ -129,6 +130,7 @@
 | QT-01 → QT-02/03 → QT-04/05 | Point-in-time correctness, event-driven fills, Vietnam execution rules, OOS audit, common portfolio/risk ledger. |
 | REQ-0036 → QT-13 | Pair discovery is screening; QT-13 is trade entry/exit/risk, constrained by Vietnam short-selling feasibility. |
 | REQ-0037 → QT-02/03/04/05 | R/S averaging down must reuse shared backtest, cost and risk contracts. |
+| QT-18 → QT-01/02/03/04/05 + QT-06 | Liquidation-pressure proxies reuse point-in-time data, conservative liquidity/execution simulation, risk ledger and market-regime context; never infer undisclosed deal-margin balances as facts. |
 | REQ-0039 → QT-10 → QT-15 | News/entity/sentiment → event impact research → cited read-only AI knowledge agent; avoid duplicating ingestion. |
 | QT-17 → QT-06/07 → QT-08/09 → QT-12 → QT-11 | Regime/factors → strategies/ranking → governed model lifecycle → paper trading. |
 | REQ-0025/0026 + QT-08/02/03/04/12 → QT-16 → QT-11 (conditional) | Research Jev as a typed probabilistic **advisory** overlay on SmartMoney/signals; compare to deterministic and ML baselines on point-in-time data. Shadow/paper only after evidence and separate approval; no duplicate strategy or execution engine. |
@@ -191,7 +193,7 @@ Preprints are hypotheses, not validated Vietnam stock alpha. July is retained as
 1. Update authoritative requirement/architecture/harness owner first, then synchronize this dashboard.
 2. Each ID has one primary architectural domain; add dependency links instead of duplicate rows.
 3. Mark DONE only after implementation, independent TestEngineer validation and required documentation/visual acceptance.
-4. For QT-01–QT-17, BA checks overlap, objective, constraints, source licenses, measurable acceptance, dependencies and compute budget before creating an REQ or extending an existing one using [Requirement Template](requirements/REQUIREMENT_TEMPLATE.md).
+4. For QT-01–QT-18, BA checks overlap, objective, constraints, source licenses, measurable acceptance, dependencies and compute budget before creating an REQ or extending an existing one using [Requirement Template](requirements/REQUIREMENT_TEMPLATE.md).
 5. Add approved requirements to [Requirements README](requirements/README.md); maintain QT→REQ mapping and recalculate canonical counts without double counting.
 6. Preserve Requirement → Architecture/ADR → Implementation/PR → Test evidence → DONE traceability.
 7. This dashboard does not authorize broker orders, privileged agent writes or production model promotion.
@@ -328,3 +330,50 @@ cherrystock/
 **Dependencies:** Existing Cloudflare R2 bucket `cherrystock`, local DuckDB pipeline and React frontend. Coordinate with REQ-0035 architecture without silently changing its canonical scope/status.
 
 **Done gate:** Representative Market Overview and one ticker page load correct, version-consistent snapshots; interrupted sync safely leaves last good manifest readable; repeated sync is idempotent; measured size/requests and rollback documented. Independent acceptance required before DONE.
+
+
+## 12. QT-18 — Margin Liquidation Risk
+
+| Field | Proposed scope |
+|---|---|
+| ID / title | **QT-18 — Margin Liquidation Risk: Equity Pledge & Forced-Selling Pressure** |
+| Created | 2026-10-25 |
+| Priority / status | **P1 (proposed)** / **PROPOSED_FOR_BA_REVIEW**; not a canonical REQ or approved implementation |
+| Primary domain | §2.5 Portfolio, Risk & Execution (one owner row only) |
+| Objective | Research an **explainable, point-in-time warning score** for the vulnerability of a Vietnamese listed ticker to forced sales / cascading margin calls in a thin order book. Distinguish observed public pledges and announced forced sales from estimated risk proxies. |
+| Motivation | Equity-backed private borrowing can amplify downside through collateral revaluation, liquidation of concentrated blocks, lower liquidity and cross-ticker contagion. System-wide broker margin debt cannot establish ticker-level pledge balances. |
+| Consumers | Market Overview, ticker Risk panel / Watchlist / Screener, quant research and portfolio risk overlays; research-only until validated |
+| Owner / output | BusinessAnalyst intake → Data feasibility & Quant Research → SolutionArchitect design → independent TestEngineer validation; reproducible research memo, data dictionary, prototype risk table, UI mock and Go/No-Go |
+
+### 12.1 Research questions and data availability
+
+1. **Available in CherryStock:** Investigate `vw_Ticker_Active` (Ticker, FreeFloat, MarketCap, Shares Outstanding, ownership metadata where available), `vw_Ticker_OHLC_D` / AmiBroker EOD and intraday volume, R/S V2.4, SmartMoney, ZigZag, industry/market-cap indexes and `vw_Market_Index_D`. Confirm actual columns, data quality and historical availability before implementing.
+2. **External, evidence-backed:** Inventory sources for disclosed share pledges, major shareholder/insider filings, margin-eligibility lists, announced forced sales, trading suspensions, exchange price-limit conditions and any legally/publicly available broker margin aggregates. Store source URL, document date, publish/first-seen timestamp, effective date, ticker, related party, announced shares and confidence. Treat missing disclosure as **UNKNOWN**, not zero pledges.
+3. **Not observable by default:** Exact private `margin deal` principal, counterparties, loan-to-value, maintenance triggers, cross-broker aggregation, ultimate use of proceeds and actual broker forced-sale queues. No method may manufacture these values or claim to identify a named borrower's margin call without evidence.
+4. **Corporate versus shareholder borrowing:** Separate **issuer-group secured debt** on MWG/other issuers' audited financial statements from **personal/holding-company share-pledge loans**; do not conflate company borrowings, pledged subsidiaries, ordinary securities margin and shareholders' undisclosed debts.
+5. **Microstructure feasibility:** OHLCV and daily volume are indirect; without market depth/order-book data, estimate capacity/scenarios with broad uncertainty rather than a precise forced-sale fill price.
+
+### 12.2 Proposed research work packages
+
+1. **MLR-01 Disclosure inventory & lineage:** Establish a point-in-time source registry (exchange releases, issuer reports, lender collateral notices if public, reliable news). Deduplicate events and mark observed, reported, inferred, unverified and missing attributes.
+2. **MLR-02 Free-float liquidity capacity:** Compute value traded / effective free-float, 20/60-day median turnover, Amihud-type illiquidity, gap risk, volatility, drawdown, declining-volume breadth and concentration proxies, with adjustment for Vietnamese price bands, suspensions and thin trading.
+3. **MLR-03 Pledge/insider exposure:** Where verifiable, calculate disclosed pledged shares / total shares and / free-float, concentration of connected holders, announcements of pledge/unpledge or forced sale; explicitly separate *public coverage* from estimated exposures.
+4. **MLR-04 Forced-sale stress scenarios:** Hypothesize liquidation supply as 1%, 3%, 5% or 10% of free-float (scenario inputs, **not** observed pledge amounts). Measure liquidation days at capped shares of recent market volume, with adverse volume/spread/price-limit assumptions. Do not equate all volume with executable demand.
+5. **MLR-05 Risk score prototype:** Evaluate transparent sub-scores for illiquidity, price stress, ownership/pledge evidence and correlated industry/system risk, plus a **separate data-confidence/coverage score**. Do not present the combined heuristic as a calibrated probability of margin calls.
+6. **MLR-06 Contagion and backtest:** Study public forced-sale episodes as event cases; assess spillovers into same holding group, sector and index under point-in-time availability. Compare simple liquidity/drawdown baselines, apply walk-forward OOS and report precision/recall, alert lead time, false positives and negative findings. No hindsight leakage.
+7. **MLR-07 Dashboard/read-only alerting:** Propose `Margin Liquidation Risk` in React/Vite Market Overview + ticker detail: traffic-light *risk bands only if validated*, driver explanations, latest public evidence, freshness, scenario stress and uncertainty. Publish via R2 `cherrystock` JSON/Parquet using the approved data-serving layer; no automated trading or broker margin decisions.
+
+### 12.3 Acceptance and governance gates
+
+- BusinessAnalyst must first assess source licensing, legal terminology, comparability, update cadence, scope and measurable acceptance criteria; create a canonical REQ only after intake.
+- Produce a feature inventory mapping every score input to **observed / third-party reported / inferred / hypothetical / unavailable** with as-of dates and provenance. Missing pledge data must **never** be interpreted as absence of pledging.
+- Reproducible daily or manually rerunnable point-in-time features with deterministic outputs, missing-data handling, idempotent incremental publish and no arbitrary scheduled 09:00 job.
+- Backtest against at least one transparent volume/drawdown baseline using stress episodes plus quiet controls; compare OOS alert precision, lead time, coverage, false positives and stability by capitalization/liquidity cohorts. Explicitly report when signal is inconclusive.
+- UI must avoid factual claims such as *this shareholder is in margin call*, exact broker exposure or certain next-day crash without verified disclosures.
+- No change to `run.py`, database DDL, R2 live objects, production R/S/SmartMoney scores or trading system from this backlog addition alone.
+
+**Dependencies:** `vw_Ticker_Active`, `vw_Ticker_OHLC_D`, AmiBroker local OHLCV, ownership/free-float data coverage, QT-01 (point-in-time integrity), QT-02/03/04 (event simulation, Vietnam execution and OOS validation), QT-05 (risk framework), QT-06 (market regime), and INFRA-R2-01 (future publish contract).
+
+**Initial research catalyst:** 2026-10-25 commentary on concentrated securities-backed lending and forced selling. Claims about the fraction of aggregate margin represented by deal loans require independent data, not inference from aggregate debt and daily exchange turnover.
+
+**Out of scope:** inferring confidential credit contracts, claiming access to individual accounts or dealer ledgers, making live broker calls, forced selling, buy/sell advice based solely on proxy risk, and replacing regulator-led disclosure.
