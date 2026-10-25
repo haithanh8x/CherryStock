@@ -5,7 +5,10 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/deploy-frontend-pages.yml"
+      - "scripts/export_intermarket_yahoo.py"
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
 permissions:
   contents: read
   pages: write
@@ -21,6 +24,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Export Yahoo Finance 1Y OHLC
+        run: |
+          python -m pip install 'yfinance>=0.2.60,<1.0' pandas
+          python scripts/export_intermarket_yahoo.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22

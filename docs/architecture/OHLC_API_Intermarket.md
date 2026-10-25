@@ -54,3 +54,26 @@ Implement provider-specific handlers behind the exact same `OhlcHistory` respons
 - React client `frontend/src/data/ohlc.ts`; Intermarket component in `frontend/src/App.tsx`.
 - Frontend deploy workflow automatically runs on a merge to main touching `frontend/**`.
 - Check Yahoo responses and actual browser cross-origin requests after deploy. The Workers script upload/enable operations themselves are not proof that Yahoo returns valid candles.
+
+## Live availability incident (2026-10-25)
+
+- Confirmed by GitHub Actions probe: the Worker `/health` returned HTTP 200;
+  its Yahoo `^GSPC` request returned HTTP 503 because Yahoo upstream returned **429**.
+  The direct Yahoo Chart API probe from GitHub runner also returned 429.
+- However `yfinance` successfully downloaded one-year EOD for seven assets on the
+  same GitHub runner: ^GSPC (251), ^NDX (251), BTC-USD (365), GC=F (250),
+  CL=F (250), DX-Y.NYB (250), VND=X (260).
+- Yahoo `^VNINDEX.VN` returned only **one** EOD candle (2026-10-23).
+  Other tested Yahoo aliases `^VNINDEX`, `VNINDEX.VN`, `VN30.VN`,
+  `^VN30.VN` returned zero bars. No replacement proxy/index is used.
+- GitHub Pages deployment now uses `scripts/export_intermarket_yahoo.py`
+  to materialize `public/data/intermarket-1y.json` before the Vite build.
+  This is actual Yahoo 1Y OHLC, not mock data. The frontend first calls
+  the live Worker; if some calls fail, it falls back to the dated Yahoo
+  snapshot asset-by-asset. UI identifies the source and missing assets.
+- Daily schedule 02:00 UTC; page deployment fails closed if less than five
+  of eight Yahoo assets have valid history; it does not publish synthetic
+  OHLC. A failed daily refresh retains the previously deployed site.
+- Follow-up: publish VNINDEX OHLC to R2 from local DuckDB's `raw_index_eod`
+  or integrate an approved Vietnam-index data feed; do not fabricate
+  VNINDEX history from a synthetic index or unrelated ETF.
