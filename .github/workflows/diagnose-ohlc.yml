@@ -1,0 +1,19 @@
+name: Diagnose CherryStock OHLC
+on:
+  push:
+    paths: [".github/workflows/diagnose-ohlc.yml"]
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe deployed Cloudflare Worker and Yahoo chart
+        shell: bash
+        run: |
+          set +e
+          API="https://cherrystock-ohlc.cherrystock-haithanh8x.workers.dev"
+          for url in "$API/health" "$API/api/v1/ohlc?provider=yahoo&symbol=%5EGSPC&range=1y&interval=1d" "$API/api/v1/ohlc?provider=yahoo&symbol=BTC-USD&range=1y&interval=1d" "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=1y&interval=1d"; do
+            echo "=== $url ==="
+            curl -sS --max-time 20 -L -w '\nHTTP %{http_code} ip %{remote_ip}\n' "$url" | head -c 1600
+            echo
+          done
