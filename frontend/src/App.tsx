@@ -148,6 +148,24 @@ function IndexCard({ label, value, change, changePct, history }: {
     <div className={`index-change ${signClass(changePct)}`}><Icon name={isPositive?"arrow":"arrowdown"} size={13}/> {signed(change)} <span>({pct(changePct)})</span></div>
   </div>;
 }
+// Combine last known close per asset in each week/month; assets have different calendars.
+function resampleIntermarket(rows:IntermarketRow[],timeframe:Timeframe):IntermarketRow[] {
+  if(timeframe==="daily") return rows;
+  const map=new Map<string,IntermarketRow>();
+  for(const row of rows) {
+    const d=new Date(row.date+"T00:00:00Z");
+    if(timeframe==="weekly") d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));
+    const key=timeframe==="weekly"?d.toISOString().slice(0,10):row.date.slice(0,7);
+    const prior=map.get(key)??{date:row.date};
+    prior.date=row.date;
+    for(const asset of intermarketSeries) {
+      const value=row[asset.key as keyof IntermarketRow];
+      if(typeof value==="number"&&Number.isFinite(value)) prior[asset.key as keyof IntermarketRow]=value;
+    }
+    map.set(key,prior);
+  }
+  return [...map.values()];
+}
 function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
   const [timeframe,setTimeframe]=useState<Timeframe>("daily");
   const [selected,setSelected]=useState<string[]>(["vnindex","spx","ndx","gold"]);
@@ -155,6 +173,8 @@ function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
   const [failed,setFailed]=useState<string[]>([]);
   const [error,setError]=useState<string|null>(null);
   const [asOf,setAsOf]=useState("");
+  const [liveSource,setLiveSource]=useState("");
+  const [diagnostics,setDiagnostics]=useState<string[]>([]);
   const [reload,setReload]=useState(0);
   useEffect(()=>{
     const controller=new AbortController();
@@ -162,6 +182,7 @@ function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
     loadIntermarket(controller.signal).then(result=>{
       if(!controller.signal.aborted){
         setRows(result.rows);setFailed(result.failed);setAsOf(result.asOf);
+        setLiveSource(result.source);setDiagnostics(result.diagnostics);
       }
     }).catch(err=>{
       if(!controller.signal.aborted) setError(err instanceof Error?err.message:String(err));
@@ -169,7 +190,7 @@ function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
     return ()=>controller.abort();
   },[reload]);
   // Keep the full year for daily, and every period within that year for weekly/monthly.
-  const sample=useMemo(()=>sampleByTimeframe(rows,timeframe,400),[rows,timeframe]);
+  const sample=useMemo(()=>resampleIntermarket(rows,timeframe),[rows,timeframe]);
   const normalized=useMemo(()=>{
     const baseline:Record<string,number>={};
     return sample.map(row=>{
@@ -196,8 +217,9 @@ function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
     {error && <div className="error-state" role="alert">{error} <button type="button" onClick={()=>setReload(x=>x+1)}>Thử lại</button></div>}
     {!rows.length && !error && <div className="loading-state">Đang tải OHLC 1 năm từ Yahoo Finance…</div>}
     {rows.length>0 && <LineChart data={normalized} series={visible} percent height={304}/>}
+    {diagnostics.length>0 && <details className="chart-foot"><summary>Chi tiết kết nối Yahoo ({diagnostics.length})</summary><p>{diagnostics.join(" | ")}</p></details>}
     <div className="chart-foot">
-      <span><span className="foot-dot"/> Source: Yahoo Finance (OHLC 1D, 1Y) · EOD: {asOf || "—"} · Không điền dữ liệu giả</span>
+      <span><span className="foot-dot"/> Source: {liveSource||"Yahoo Finance"} (OHLC 1D, 1Y) · EOD: {asOf || "—"} · Không điền dữ liệu giả</span>
       <span>{failed.length ? "Thiếu: "+failed.join(", ") : "8/8 tài sản"} · Khung {timeframe==="daily"?"ngày":timeframe==="weekly"?"tuần":"tháng"}</span>
     </div>
   </Panel>;
