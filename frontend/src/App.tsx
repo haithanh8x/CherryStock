@@ -363,13 +363,13 @@ export default function App() {
         </div>
         <div className={source==="mock"?"mode-banner demo":"mode-banner"}><Icon name="info" size={17}/>
           {source==="mock"?
-            <span><strong>DEMO / MOCK DATA</strong> — Toàn bộ số liệu hiển thị là dữ liệu giả lập, không dùng để ra quyết định giao dịch. Chưa kết nối Cloudflare R2.</span>:
-            <span><strong>R2 SNAPSHOT</strong> — Dữ liệu được nạp qua public HTTPS endpoint của Cloudflare R2; không phải luồng realtime.</span>}
+            <span><strong>DEMO / MOCK DATA</strong> — Các panel khác dùng dữ liệu giả lập; riêng Intermarket lấy dữ liệu từ Yahoo Finance qua Cloudflare API. Chưa kết nối snapshot Cloudflare R2.</span>:
+            <span><strong>R2 SNAPSHOT</strong> — Các panel khác lấy snapshot từ Cloudflare R2; Intermarket lấy Yahoo Finance qua Cloudflare API. Không phải luồng realtime.</span>}
         </div>
         {loading && !data && <div className="loading-state">Đang tải dữ liệu Market Overview...</div>}
         {error && <div className="error-state" role="alert"><strong>Không tải được dữ liệu thị trường</strong><p>{error}</p><button type="button" onClick={()=>setRevision(x=>x+1)}>Thử lại</button></div>}
         {data && <><Dashboard data={data}/>{loading&&<div className="inline-loading">Đang làm mới snapshot…</div>}</>}
-        <footer className="page-footer"><span>© 2026 CherryStock · Market Overview</span><span>Source: {source==="mock"?"Synthetic demo data":"Cloudflare R2 snapshot"} · {data?.asOf ?? "n/a"}</span></footer>
+        <footer className="page-footer"><span>© 2026 CherryStock · Market Overview</span><span>Source: Intermarket Yahoo Finance API · Other panels: {source==="mock"?"Synthetic demo data":"Cloudflare R2 snapshot"} · {data?.asOf ?? "n/a"}</span></footer>
       </div>
     </main>
   </div>;
