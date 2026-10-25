@@ -7,8 +7,6 @@ on:
       - ".github/workflows/deploy-frontend-pages.yml"
       - "scripts/export_intermarket_yahoo.py"
   workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * *"
 permissions:
   contents: read
   pages: write
