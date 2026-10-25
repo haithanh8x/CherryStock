@@ -160,7 +160,7 @@ function resampleIntermarket(rows:IntermarketRow[],timeframe:Timeframe):Intermar
     prior.date=row.date;
     for(const asset of intermarketSeries) {
       const value=row[asset.key as keyof IntermarketRow];
-      if(typeof value==="number"&&Number.isFinite(value)) prior[asset.key as keyof IntermarketRow]=value;
+      if(typeof value==="number"&&Number.isFinite(value)) (prior as Record<string,number|string>)[asset.key]=value;
     }
     map.set(key,prior);
   }
