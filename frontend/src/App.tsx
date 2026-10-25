@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createMarketDataDriver } from "./data/driver";
+import { loadIntermarket } from "./data/ohlc";
+import type { IntermarketRow } from "./data/ohlc";
 import type {
   MarketOverviewSnapshot, MarketSource, Timeframe, IntermarketPoint,
   InvestorFlowPoint,
@@ -90,7 +92,9 @@ function LineChart<T extends DatePoint>({ data, series, percent = false, height 
   const y = (v: number) => top + (max - v) / (max - min) * plotH;
   const path = (key: string) => data.map((row, i) => {
     const v = val(row, key);
-    return `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(Number.isFinite(v) ? v : min).toFixed(1)}`;
+    if (!Number.isFinite(v)) return "";
+    const prior = i > 0 ? val(data[i-1], key) : NaN;
+    return `${Number.isFinite(prior) ? "L" : "M"} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
   }).join(" ");
   return <div className="plot">
     <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Biểu đồ chuỗi thời gian: ${series.map(s=>s.label).join(", ")}`}>
@@ -101,7 +105,7 @@ function LineChart<T extends DatePoint>({ data, series, percent = false, height 
       })}
       {series.map(s => <g key={s.key}>
         <path d={path(s.key)} fill="none" stroke={s.color} strokeWidth={s.key === "vnindex" || s.key === "ma20" ? 2.7 : 1.9} strokeLinejoin="round" strokeLinecap="round"/>
-        <circle cx={x(data.length-1)} cy={y(val(data[data.length-1],s.key))} r="3" fill={s.color} stroke="var(--surface)" strokeWidth="1.5"/>
+        {Number.isFinite(val(data[data.length-1],s.key)) && <circle cx={x(data.length-1)} cy={y(val(data[data.length-1],s.key))} r="3" fill={s.color} stroke="var(--surface)" strokeWidth="1.5"/>}
       </g>)}
       <text x={l} y={h-8} className="chart-label">{data[0].date.slice(5)}</text>
       <text x={w-r} y={h-8} textAnchor="end" className="chart-label">{data[data.length-1].date.slice(5)}</text>
@@ -144,18 +148,42 @@ function IndexCard({ label, value, change, changePct, history }: {
     <div className={`index-change ${signClass(changePct)}`}><Icon name={isPositive?"arrow":"arrowdown"} size={13}/> {signed(change)} <span>({pct(changePct)})</span></div>
   </div>;
 }
-function Intermarket({ rows }: {rows: IntermarketPoint[]}) {
+function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
   const [timeframe,setTimeframe]=useState<Timeframe>("daily");
   const [selected,setSelected]=useState<string[]>(["vnindex","spx","ndx","gold"]);
-  const sample=useMemo(()=>sampleByTimeframe(rows,timeframe,48),[rows,timeframe]);
-  const normalized=useMemo(()=>sample.map((row,_,all)=>{
-    const n:Record<string, number|string>={date:row.date};
-    for(const s of intermarketSeries) {
-      const baseline=all[0][s.key as keyof IntermarketPoint] as number;
-      n[s.key]=baseline ? ((row[s.key as keyof IntermarketPoint] as number)/baseline-1)*100 : 0;
-    }
-    return n as {date:string;[key:string]:number|string};
-  }),[sample]);
+  const [rows,setRows]=useState<IntermarketRow[]>([]);
+  const [failed,setFailed]=useState<string[]>([]);
+  const [error,setError]=useState<string|null>(null);
+  const [asOf,setAsOf]=useState("");
+  const [reload,setReload]=useState(0);
+  useEffect(()=>{
+    const controller=new AbortController();
+    setError(null);
+    loadIntermarket(controller.signal).then(result=>{
+      if(!controller.signal.aborted){
+        setRows(result.rows);setFailed(result.failed);setAsOf(result.asOf);
+      }
+    }).catch(err=>{
+      if(!controller.signal.aborted) setError(err instanceof Error?err.message:String(err));
+    });
+    return ()=>controller.abort();
+  },[reload]);
+  // Keep the full year for daily, and every period within that year for weekly/monthly.
+  const sample=useMemo(()=>sampleByTimeframe(rows,timeframe,400),[rows,timeframe]);
+  const normalized=useMemo(()=>{
+    const baseline:Record<string,number>={};
+    return sample.map(row=>{
+      const n:Record<string,number|string>={date:row.date};
+      for(const s of intermarketSeries) {
+        const close=row[s.key as keyof IntermarketRow];
+        if(typeof close==="number" && Number.isFinite(close) && close>0) {
+          if(!baseline[s.key]) baseline[s.key]=close;
+          n[s.key]=(close/baseline[s.key]-1)*100;
+        }
+      }
+      return n as {date:string;[key:string]:number|string};
+    });
+  },[sample]);
   const visible=intermarketSeries.filter(s=>selected.includes(s.key));
   const toggle=(key:string)=>setSelected(old=>old.includes(key)?(old.length>1?old.filter(k=>k!==key):old):[...old,key]);
   return <Panel title="Intermarket Analysis" subtitle="So sánh hiệu suất tương đối · chuẩn hóa 0% tại đầu kỳ" icon="globe" className="intermarket-panel"
@@ -165,8 +193,13 @@ function Intermarket({ rows }: {rows: IntermarketPoint[]}) {
         onClick={()=>toggle(s.key)} aria-pressed={selected.includes(s.key)}>
         <i style={{background:s.color}}/>{s.label}</button>)}
     </div>
-    <LineChart data={normalized} series={visible} percent height={304}/>
-    <div className="chart-foot"><span><span className="foot-dot"/> Relative performance, không phải mức giá tuyệt đối</span><span>Khung {timeframe==="daily"?"ngày":timeframe==="weekly"?"tuần":"tháng"}</span></div>
+    {error && <div className="error-state" role="alert">{error} <button type="button" onClick={()=>setReload(x=>x+1)}>Thử lại</button></div>}
+    {!rows.length && !error && <div className="loading-state">Đang tải OHLC 1 năm từ Yahoo Finance…</div>}
+    {rows.length>0 && <LineChart data={normalized} series={visible} percent height={304}/>}
+    <div className="chart-foot">
+      <span><span className="foot-dot"/> Source: Yahoo Finance (OHLC 1D, 1Y) · EOD: {asOf || "—"} · Không điền dữ liệu giả</span>
+      <span>{failed.length ? "Thiếu: "+failed.join(", ") : "8/8 tài sản"} · Khung {timeframe==="daily"?"ngày":timeframe==="weekly"?"tuần":"tháng"}</span>
+    </div>
   </Panel>;
 }
 function Breadth({ rows }: {rows: MarketOverviewSnapshot["breadth"]}) {
