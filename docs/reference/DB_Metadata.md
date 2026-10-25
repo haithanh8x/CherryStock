@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-10-19T14:50:13.143887+00:00
+- Generated at: 2026-10-23T15:25:47.052773+00:00
 - Database file: `C:\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 81
+- Table/view count: 83
 
 ## Schemas
 
@@ -86,7 +86,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`t` (BASE TABLE)
 - `main`.`vw_ACCCNNTD` (VIEW)
 - `main`.`vw_ACCCNNTD_Price` (VIEW)
+- `main`.`vw_Index` (VIEW)
 - `main`.`vw_Indicator_config` (VIEW)
+- `main`.`vw_Industry` (VIEW)
 - `main`.`vw_Industry_Index_D` (VIEW)
 - `main`.`vw_MarketCap_Index_D` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
@@ -1243,6 +1245,23 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `TD_NetVal` | `DOUBLE` | `YES` | `` |
 | `CC_NetVal` | `DOUBLE` | `YES` | `` |
 
+### main.vw_Index (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Source` | `VARCHAR` | `YES` | `` |
+| `Ticker` | `VARCHAR` | `YES` | `` |
+| `Date` | `DATE` | `YES` | `` |
+| `Open` | `DOUBLE` | `YES` | `` |
+| `High` | `DOUBLE` | `YES` | `` |
+| `Low` | `DOUBLE` | `YES` | `` |
+| `Close` | `DOUBLE` | `YES` | `` |
+| `Volume` | `BIGINT` | `YES` | `` |
+| `Daily_Return` | `DOUBLE` | `YES` | `` |
+| `Pct_Change` | `DOUBLE` | `YES` | `` |
+| `Index_Method` | `VARCHAR` | `YES` | `` |
+| `Ticker_Count` | `INTEGER` | `YES` | `` |
+
 ### main.vw_Indicator_config (VIEW)
 
 | Column | Type | Nullable | Default |
@@ -1275,6 +1294,20 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Unit` | `VARCHAR` | `YES` | `` |
 | `IsPrimary` | `BOOLEAN` | `YES` | `` |
 | `ComponentIsActive` | `BOOLEAN` | `YES` | `` |
+
+### main.vw_Industry (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Industry` | `VARCHAR` | `YES` | `` |
+| `IndustryCode` | `VARCHAR` | `YES` | `` |
+| `MarketCap` | `HUGEINT` | `YES` | `` |
+| `count` | `BIGINT` | `YES` | `` |
+| `EPS` | `DOUBLE` | `YES` | `` |
+| `PE` | `DOUBLE` | `YES` | `` |
+| `Book Value` | `DOUBLE` | `YES` | `` |
+| `ROA` | `DOUBLE` | `YES` | `` |
+| `ROE` | `DOUBLE` | `YES` | `` |
 
 ### main.vw_Industry_Index_D (VIEW)
 
