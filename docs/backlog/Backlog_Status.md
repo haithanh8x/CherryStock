@@ -32,6 +32,8 @@
 | REQ-0035 | Hybrid Cloud Deployment — Railway + MotherDuck with Local AmiBroker Pipeline | P1 | **READY_FOR_DESIGN** | SolutionArchitect | [[requirements/REQ-0035-hybrid-cloud-railway-motherduck | REQ-0035]] |
 | **QT-01** | Point-in-Time Data & Survivorship-Safe Universe | P0 (proposed) | **PROPOSED_FOR_BA_REVIEW** | BusinessAnalyst intake; not canonical | Proposal |
 
+| **INFRA-R2-01** | R2 Data Layout by Access Pattern (JSON snapshots + partitioned Parquet) | P1 (proposed) | **PROPOSED_FOR_DESIGN** | Local DuckDB/AmiBroker → R2 `cherrystock` → React; details §11 | Proposal; [scope](#11-infra-r2-01--r2-data-layout-by-access-pattern) |
+
 ### 2.2 Analytics, Indicators & Alternative Data
 
 | ID | Feature / backlog | Priority | Status | Owner / note | Source |
@@ -284,3 +286,45 @@ Preprints are hypotheses, not validated Vietnam stock alpha. July is retained as
 - Deliver BA scope, research report, reproducible artifacts and Go/No-Go; no automatic trading or production signal promotion.
 
 **Research scenarios, not model outputs:** 2027 slowdown possibility; 2028–2031 investment/industrial expansion; 2032–2035 productivity and demographic constraints. Explicitly evaluate counterexamples such as FX stress, inefficient USD borrowing, FDI non-disbursement and weak household demand. Do not treat the podcast's growth-rate or timing estimates as verified forecasts.
+
+
+## 11. INFRA-R2-01 — R2 Data Layout by Access Pattern
+
+- **Created:** 2026-10-25
+- **Priority / status:** P1 (proposed) / PROPOSED_FOR_DESIGN; architecture proposal, not a canonical REQ or implemented feature.
+- **Primary domain:** §2.1 Data Platform & Market Data Quality. Do not change canonical totals.
+- **Goal:** Organize the existing Cloudflare R2 bucket `cherrystock` around frontend access patterns: small JSON for latest dashboards and chart slices, compressed partitioned Parquet for historical/bulk analytics; reduce transfer, object operations, latency and operational costs.
+- **Architecture:** Local AmiBroker + DuckDB + Python computes and publishes → R2 object storage → React/TypeScript/Vite on GitHub Pages. Public immutable JSON may be fetched directly via configured R2 custom domain/CORS; a Worker API is optional only for authentication, aggregation or dynamic transformations. No mandatory D1/VPS/MotherDuck migration.
+
+### Proposed object layout (illustrative, not yet deployed)
+
+```text
+cherrystock/
+  manifest.json
+  market/
+    overview/latest.json
+    intermarket/latest.json
+    industry/latest.json
+  stocks/
+    MWG/ohlc_1y.json
+    MWG/rs_latest.json
+    FPT/ohlc_1y.json
+  historical/
+    ohlc/year=2026/month=10/data.parquet
+```
+
+### Scope and acceptance criteria
+
+1. **Inventory and mapping:** Map current DuckDB views/tables (including `vw_Ticker_Active`, OHLC, industry/market-cap indexes, R/S, SmartMoney and intermarket data) to UI consumers, freshness, cardinality and desired file format. Do not blindly export every view or expose sensitive data.
+2. **JSON serving contracts:** Define schema version, as-of trading date, generated-at timestamp, timezone, source, units, null handling, ticker keys, stable file paths and frontend types. Optimize dashboard payload size; use lazy ticker-level requests and compression.
+3. **Parquet history:** Partition by dataset/date (and ticker only where query patterns justify it), avoid excessive tiny objects, and document retention, compaction and replay. Parquet is for bulk/history; do not require browser-side full dataset download to draw one chart.
+4. **Incremental and safe publish:** Detect changed source partitions/rows, generate immutable versioned objects, validate count/schema/date/checksum, then atomically switch the small `manifest.json` pointer **last**. Ensure idempotent reruns, partial-failure recovery and rollback to prior manifest. Note R2 object update atomicity does not create a multi-object transaction; manifest-last is the publication boundary.
+5. **Cache and frontend:** Immutable versioned objects get long cache TTL; mutable manifest gets short TTL/revalidation. Configure R2 domain, CORS and allowed origins. Avoid unnecessary Workers for public static JSON; abstract drivers for future FireAnt/Yahoo/other sources.
+6. **Cost controls:** Measure R2 GB-month, Class A/B operations, cache hit ratio, frontend bytes/load and optional Worker requests/CPU; set budgets/alerts and request guardrails. Verify current official free-tier limits before deployment; free egress does not imply unlimited free R2 operations.
+7. **Documentation:** Publish architecture, object naming/schema conventions, local-to-R2 sync runbook, rollback procedure and UI integration guide. No fixed daily 09:00 scheduling; pipeline trigger remains a separate decision.
+
+**Out of scope:** Replacing the local quant engine, implementing R/S/SmartMoney calculations inside Workers, mandatory D1 adoption, live brokerage execution and an automatic refresh schedule.
+
+**Dependencies:** Existing Cloudflare R2 bucket `cherrystock`, local DuckDB pipeline and React frontend. Coordinate with REQ-0035 architecture without silently changing its canonical scope/status.
+
+**Done gate:** Representative Market Overview and one ticker page load correct, version-consistent snapshots; interrupted sync safely leaves last good manifest readable; repeated sync is idempotent; measured size/requests and rollback documented. Independent acceptance required before DONE.
