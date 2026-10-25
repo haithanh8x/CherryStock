@@ -21,3 +21,14 @@ jobs:
       - name: Typecheck and build
         working-directory: frontend
         run: npm run build
+      - name: Probe Worker and Yahoo public availability (diagnostic)
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          for url in             "https://cherrystock-ohlc.cherrystock-haithanh8x.workers.dev/health"             "https://cherrystock-ohlc.cherrystock-haithanh8x.workers.dev/api/v1/ohlc?provider=yahoo&symbol=%5EGSPC&range=1y&interval=1d"             "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=1y&interval=1d"; do
+            echo "PROBE URL: $url"
+            curl -sS --max-time 20 -o /tmp/ohlc-probe-body -w 'STATUS: %{http_code}\n' "$url"
+            head -c 400 /tmp/ohlc-probe-body
+            echo
+          done
