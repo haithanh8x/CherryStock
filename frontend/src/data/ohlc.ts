@@ -5,7 +5,7 @@ export interface OhlcCandle { date:string; open:number; high:number; low:number;
 export interface OhlcHistory { schemaVersion:1; provider:OhlcProvider; symbol:string; asOf:string; candles:OhlcCandle[] }
 export type IntermarketRow = {date:string} & Partial<Record<AssetKey, number>>;
 export const ASSET_SYMBOLS: Record<AssetKey, string> = {
-  vnindex:"^VNINDEX", spx:"^GSPC", ndx:"^NDX", btc:"BTC-USD",
+  vnindex:"^VNINDEX.VN", spx:"^GSPC", ndx:"^NDX", btc:"BTC-USD",
   gold:"GC=F", oil:"CL=F", dxy:"DX-Y.NYB", usdvnd:"VND=X",
 };
 const API_BASE = (import.meta.env.VITE_OHLC_API_BASE_URL || "https://cherrystock-ohlc.cherrystock-haithanh8x.workers.dev").replace(/\/$/,"");
