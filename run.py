@@ -15,6 +15,7 @@ from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWor
 from src.calcEngine.industryIndex import refresh_industry_index
 from src.calcEngine.marketCapIndex import refresh_marketcap_index
 from scripts.cloudflare_sync.sync_view import sync as sync_view_to_r2
+from scripts.sync_yahoo_ticker_info import sync_ticker_info
 
 # Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
 ENABLE_MOVEMENT_PIPELINE = False
@@ -231,6 +232,8 @@ def main() -> None:
     )
 
     print(f"CherryStock Run All | from_last_day={days_diff}")
+    print("[YAHOO INFO] Refresh ticker metadata registry")
+    print(f"[YAHOO INFO] {sync_ticker_info()}")
     _run_ingest_data(
         connection_factory=connection_factory,
         amibroker_adapter=amibroker_adapter,
