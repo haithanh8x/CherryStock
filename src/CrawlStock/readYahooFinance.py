@@ -121,7 +121,15 @@ def syncYahooFinance_EOD(
     Historical/backfill mode uses ``start_date`` and optional ``end_date``.
     yfinance treats ``end`` as exclusive.
     """
-    ticker_list = [t.strip() for t in YAHOO_OTHER_TICKERS if str(t).strip()]
+    from scripts.sync_yahoo_ticker_info import ensure_table, TABLE
+    if connection is not None:
+        ensure_table(connection)
+        rows = connection.execute(f"SELECT Ticker FROM {TABLE} WHERE Status = 'Y' ORDER BY Ticker").fetchall()
+    else:
+        with DuckDBManager() as registry_con:
+            ensure_table(registry_con)
+            rows = registry_con.execute(f"SELECT Ticker FROM {TABLE} WHERE Status = 'Y' ORDER BY Ticker").fetchall()
+    ticker_list = [row[0] for row in rows]
     if not ticker_list:
         print("Không có ticker hợp lệ để đồng bộ Yahoo Finance.")
         return
