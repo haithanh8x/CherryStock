@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-10-23T15:25:47.052773+00:00
+- Generated at: 2026-10-27T15:17:25.415343+00:00
 - Database file: `C:\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 83
+- Table/view count: 84
 
 ## Schemas
 
@@ -80,6 +80,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`raw_tblBCTC` (BASE TABLE)
 - `main`.`raw_warrant_eod` (BASE TABLE)
 - `main`.`raw_warrant_intraday` (BASE TABLE)
+- `main`.`raw_yahoo_ticker_info` (BASE TABLE)
 - `main`.`sys_data_quality_audit` (BASE TABLE)
 - `main`.`sys_rs_model_promotion_audit` (BASE TABLE)
 - `main`.`sys_rs_source_promotion_audit` (BASE TABLE)
@@ -1137,6 +1138,26 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Close` | `DOUBLE` | `YES` | `` |
 | `Volume` | `BIGINT` | `YES` | `` |
 | `OpenInt` | `DOUBLE` | `YES` | `` |
+
+### main.raw_yahoo_ticker_info (BASE TABLE)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Ticker` | `VARCHAR` | `NO` | `` |
+| `Name` | `VARCHAR` | `YES` | `` |
+| `ShortName` | `VARCHAR` | `YES` | `` |
+| `Description` | `VARCHAR` | `YES` | `` |
+| `AssetType` | `VARCHAR` | `YES` | `` |
+| `Exchange` | `VARCHAR` | `YES` | `` |
+| `ExchangeName` | `VARCHAR` | `YES` | `` |
+| `Currency` | `VARCHAR` | `YES` | `` |
+| `Timezone` | `VARCHAR` | `YES` | `` |
+| `Sector` | `VARCHAR` | `YES` | `` |
+| `Industry` | `VARCHAR` | `YES` | `` |
+| `MarketCap` | `DOUBLE` | `YES` | `` |
+| `Status` | `VARCHAR` | `NO` | `'Y'` |
+| `UpdatedAt` | `TIMESTAMP WITH TIME ZONE` | `YES` | `` |
+| `LastError` | `VARCHAR` | `YES` | `` |
 
 ### main.sys_data_quality_audit (BASE TABLE)
 
