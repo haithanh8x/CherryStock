@@ -107,7 +107,8 @@ def refresh_industry_index(*, days: int | None = None, connection) -> dict[str, 
         SELECT
             o."Date", m."IndustryCode", m."Industry", m."Ticker",
             CAST(o."Close" AS DOUBLE) AS "Close",
-            o."Volume", o."TradingValue", o."TradingValue_IsProxy",
+            o."Volume", CAST(NULL AS HUGEINT) AS "TradingValue",
+            CAST(NULL AS BOOLEAN) AS "TradingValue_IsProxy",
             m."FloatShares",
             FALSE AS "IsSeed"
         FROM {OHLC_VIEW} AS o
@@ -154,7 +155,7 @@ def refresh_industry_index(*, days: int | None = None, connection) -> dict[str, 
     """)
     if duplicated_prices:
         raise RuntimeError(
-            f"vw_Ticker_OHLC_D has {duplicated_prices} duplicate ticker/date group(s)"
+            f"vw_Ticker_OHLC has {duplicated_prices} duplicate ticker/date group(s)"
         )
 
     connection.execute("""
