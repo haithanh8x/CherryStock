@@ -200,6 +200,8 @@ def stage_csv(connection, csv_path: Path, *, days: int | None, min_tickers: int)
                MIN(Date), MAX(Date)
         FROM _indicator_stage
     """).fetchone()
+    if summary[3] == 0:
+        raise ValueError("AFL export contains no Daily indicator values")
     return dict(zip(
         ("rows", "tickers", "dates", "daily_values", "weekly_values",
          "monthly_values", "min_date", "max_date"),
