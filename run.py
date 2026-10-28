@@ -21,7 +21,7 @@ from scripts.sync_yahoo_ticker_info import sync_ticker_info
 ENABLE_MOVEMENT_PIPELINE = False
 
 # AFL indicator D/W/M refresh runs incrementally after source commit.
-ENABLE_AFL_INDICATOR_FULL_REFRESH = True
+ENABLE_AFL_INDICATOR_INCREMENTAL_REFRESH = True
 
 # FFMC/EW industry indices run independently after the core data sync commits.
 ENABLE_INDUSTRY_INDEX_REFRESH = True
@@ -155,7 +155,7 @@ def _run_aggregate_data(
     # 2.0 AmiBroker AFL Indicators — daily incremental after committed INGEST.
     # >=35 recent trading sessions retain the last month/week boundary values,
     # while days_diff + overlap repairs short ingestion gaps.
-    if ENABLE_AFL_INDICATOR_FULL_REFRESH:
+    if ENABLE_AFL_INDICATOR_INCREMENTAL_REFRESH:
         from scripts.sync_amibroker_indicator_full import main as run_afl_indicator_refresh
 
         indicator_days = max(35, days_diff + 3)
