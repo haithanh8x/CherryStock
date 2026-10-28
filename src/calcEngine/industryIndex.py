@@ -11,7 +11,7 @@ from pathlib import Path
 INDEX_TABLE = '"CherryMon"."main"."cal_Industry_Index_D"'
 WEIGHT_TABLE = '"CherryMon"."main"."cal_Industry_Index_Weights"'
 MEMBERS_VIEW = '"CherryMon"."main"."vw_Ticker_Info"'
-OHLC_VIEW = '"CherryMon"."main"."vw_Ticker_OHLC_D"'
+OHLC_VIEW = '"CherryMon"."main"."vw_Ticker_OHLC"'
 SCHEMA_FILE = Path(__file__).resolve().parents[1] / "DuckDB" / "sql" / "industry_index_v1_schema.sql"
 BASE_INDEX = 1000.0
 CALCULATION_MODE = "HISTORICAL_PROXY_LATEST_FLOAT"
@@ -113,7 +113,8 @@ def refresh_industry_index(*, days: int | None = None, connection) -> dict[str, 
         FROM {OHLC_VIEW} AS o
         INNER JOIN _industry_members AS m
           ON UPPER(TRIM(CAST(o."Ticker" AS VARCHAR))) = m."Ticker"
-        WHERE o."Date" >= ?
+        WHERE o."AssetType" = 'STOCK'
+          AND o."Date" >= ?
           AND o."Close" > 0 AND isfinite(o."Close")
     """, [cutoff])
 
