@@ -60,7 +60,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Initial-load ZigZag then Price Movement for "
-            'CherryMon.main.vw_Ticker_Active.'
+            'CherryMon.main.vw_Ticker_Info.'
         )
     )
     parser.add_argument(
