@@ -1,3 +1,12 @@
+> **Indicator storage V2 (2026-10-28):** Production AFL indicators now use
+> `cal_indicator_values(Ticker,Date,IndicatorName,Timeframe,Value,UpdatedAt)`
+> for completed data and `cal_indicator_current` for developing W/M.
+> `vw_Ticker_indicators` continues to expose legacy ConfigId/ComponentCode
+> compatibility projections. For local migration and daily orchestration use
+> [AFL Indicator Daily V2](../runbook/AFL_Indicator_Daily_V2.md).
+> The pre-existing config-driven Python engine described below is retained as
+> historical architecture reference, not the active daily write path.
+
 # Indicator Engine Architecture
 
 ## Purpose
