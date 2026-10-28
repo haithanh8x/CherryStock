@@ -71,7 +71,7 @@ def sync_ticker_info(tickers=None, connection=None):
                 [*values, datetime.now(timezone.utc), ticker],
             )
             results["updated"] += 1
-            print(f"[Yahoo INFO] OK {ticker}")
+            # Keep successful ticker updates quiet; run.py prints the aggregate summary.
         except Exception as exc:
             con.execute(f"UPDATE {TABLE} SET LastError = ? WHERE Ticker = ?", [str(exc)[:1000], ticker])
             results["failed"] += 1
