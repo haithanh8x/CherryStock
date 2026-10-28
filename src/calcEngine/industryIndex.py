@@ -44,7 +44,8 @@ def refresh_industry_index(*, days: int | None = None, connection) -> dict[str, 
             TRY_CAST("FreeFloat" AS DOUBLE) AS "FloatShares",
             TRY_CAST("Shares Outstanding" AS DOUBLE) AS "OutstandingShares"
         FROM {MEMBERS_VIEW}
-        WHERE "Ticker" IS NOT NULL
+        WHERE "AssetType" = 'STOCK'
+          AND "Ticker" IS NOT NULL
           AND TRIM(CAST("Ticker" AS VARCHAR)) <> ''
           AND "IndustryCode" IS NOT NULL
           AND TRIM(CAST("IndustryCode" AS VARCHAR)) <> ''
