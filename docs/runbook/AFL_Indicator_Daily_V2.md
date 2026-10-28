@@ -70,15 +70,17 @@ component key.
    python -m scripts.migrate_indicator_storage_v2
    ```
 
-   The script renames the old table to
-   `CherryMon.main.cal_indicator_values_legacy_backup` (no destructive
-   truncate), creates the new history/current tables, translates legacy
+   The script copies all old rows into
+   `CherryMon.main.cal_indicator_values_legacy_backup` and verifies its row
+   count before atomically replacing the original physical table (no
+   destructive loss of the legacy data), then creates history/current
+   tables and translates legacy
    config/component keys into the new `IndicatorName/Timeframe` keys and
    replaces `vw_Ticker_indicators` with a compatibility projection.
    Everything is committed in one transaction; failure rolls back.
 
-   The migration may take substantial local storage/time because there can
-   be tens of millions of historical indicator values. Do not run two DuckDB
+   The migration needs enough free space for the complete legacy backup **and**
+   the new indicator fact/index because there can be tens of millions of rows. Do not run two DuckDB
    writers simultaneously. If a dependent custom DuckDB VIEW blocks the
    atomic rename/replacement, stop; preserve backup; inspect its SQL and
    update its dependency to the new contract before retrying. Never force
