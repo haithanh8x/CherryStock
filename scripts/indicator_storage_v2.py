@@ -240,6 +240,7 @@ def commit_stage(con, summary: dict) -> dict:
             INSERT INTO {FACT} (Ticker,Date,IndicatorName,Timeframe,Value,UpdatedAt)
             SELECT Ticker,Date,IndicatorName,Timeframe,Value,CURRENT_TIMESTAMP
             FROM _indicator_history
+            WHERE TRUE
             ON CONFLICT (Ticker,Date,IndicatorName,Timeframe)
             DO UPDATE SET Value=EXCLUDED.Value,UpdatedAt=EXCLUDED.UpdatedAt
         """)
@@ -255,6 +256,7 @@ def commit_stage(con, summary: dict) -> dict:
             INSERT INTO {CURRENT} (Ticker,Date,IndicatorName,Timeframe,Value,UpdatedAt)
             SELECT Ticker,Date,IndicatorName,Timeframe,Value,CURRENT_TIMESTAMP
             FROM _indicator_current
+            WHERE TRUE
             ON CONFLICT (Ticker,IndicatorName,Timeframe)
             DO UPDATE SET Date=EXCLUDED.Date,Value=EXCLUDED.Value,
                           UpdatedAt=EXCLUDED.UpdatedAt
