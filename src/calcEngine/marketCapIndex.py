@@ -8,7 +8,7 @@ from pathlib import Path
 SCHEMA = Path(__file__).resolve().parents[1] / "DuckDB" / "sql" / "marketcap_index_schema.sql"
 TARGET = '"CherryMon"."main"."cal_MarketCap_Index_D"'
 MEMBERS = '"CherryMon"."main"."vw_Ticker_Info"'
-OHLC = '"CherryMon"."main"."vw_Ticker_OHLC_D"'
+OHLC = '"CherryMon"."main"."vw_Ticker_OHLC"'
 GROUPS = ("Large Cap", "Mid Cap", "Small Cap", "Micro Cap")
 
 
@@ -71,7 +71,7 @@ def refresh_marketcap_index(*, connection, days: int | None = None) -> dict:
           m.float_shares, FALSE AS seed
         FROM {OHLC} o JOIN _mc_members m
           ON UPPER(TRIM(CAST(o."Ticker" AS VARCHAR)))=m.ticker
-        WHERE o."Date">=? AND o."Close">0 AND isfinite(o."Close")
+        WHERE o."AssetType"='STOCK' AND o."Date">=? AND o."Close">0 AND isfinite(o."Close")
     """, [cutoff])
     duplicates = connection.execute("""
         SELECT COUNT(*) FROM (SELECT dt,ticker FROM _mc_prices
