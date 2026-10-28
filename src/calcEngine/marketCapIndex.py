@@ -8,7 +8,7 @@ from pathlib import Path
 SCHEMA = Path(__file__).resolve().parents[1] / "DuckDB" / "sql" / "marketcap_index_schema.sql"
 TARGET = '"CherryMon"."main"."cal_MarketCap_Index_D"'
 MEMBERS = '"CherryMon"."main"."vw_Ticker_Info"'
-OHLC = '"CherryMon"."main"."vw_Ticker_OHLC"'
+OHLC = "(SELECT * FROM \"CherryMon\".\"main\".\"vw_Ticker_OHLC\" WHERE \"AssetType\" = 'STOCK')"
 GROUPS = ("Large Cap", "Mid Cap", "Small Cap", "Micro Cap")
 
 
