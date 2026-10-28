@@ -3,7 +3,7 @@
 Use on the local DuckDB after a filesystem backup:
     python -m scripts.migrate_indicator_storage_v2
 
-The original table is preserved as cal_indicator_values_legacy_backup.
+A complete pre-migration copy is preserved as cal_indicator_values_legacy_backup.
 Existing public vw_Ticker_indicators consumers retain their ConfigId/ComponentCode
 projection via a compatibility VIEW, while v2 facts have only a logical name.
 """
@@ -107,10 +107,18 @@ def migrate(con) -> dict[str, int | str]:
     try:
         legacy_rows = 0
         if "ConfigId" in columns:
-            # A table rename preserves the original historical data without
-            # the extra full-sized copy incurred by CREATE TABLE AS SELECT.
-            con.execute(f'ALTER TABLE {FACT} RENAME TO cal_indicator_values_legacy_backup')
+            # DuckDB generally disallows ALTER TABLE RENAME on indexed/PK
+            # tables. Preserve the original as a physical CTAS backup before
+            # dropping the legacy fact and creating the new PK contract.
+            con.execute(f"CREATE TABLE {LEGACY} AS SELECT * FROM {FACT}")
             legacy_rows = int(con.execute(f"SELECT COUNT(*) FROM {LEGACY}").fetchone()[0])
+            original_count = int(con.execute(f"SELECT COUNT(*) FROM {FACT}").fetchone()[0])
+            if legacy_rows != original_count:
+                raise RuntimeError("Legacy backup row count differs from source; aborting migration")
+            # A view that still depends on the old fact may block DROP TABLE.
+            # The transaction will roll back; never use DROP CASCADE.
+            con.execute(f"DROP VIEW IF EXISTS {PUBLIC}")
+            con.execute(f"DROP TABLE {FACT}")
         _create_fact(con)
         _create_current(con)
 
