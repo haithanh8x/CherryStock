@@ -12,12 +12,12 @@ from calcEngine.zigzag import refresh_zigzag_ticker
 from cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWork
 
 
-ACTIVE_TICKER_VIEW = '"CherryMon"."main"."vw_Ticker_Active"'
+ACTIVE_TICKER_VIEW = '"CherryMon"."main"."vw_Ticker_Info"'
 ZIGZAG_CONFIG_CODE = "ZZ_D_5_MVP"
 
 
 def load_active_tickers(connection) -> list[str]:
-    """Load the canonical initial-load universe from vw_Ticker_Active."""
+    """Load the canonical initial-load universe from vw_Ticker_Info."""
 
     try:
         rows = connection.execute(
@@ -32,7 +32,7 @@ def load_active_tickers(connection) -> list[str]:
     except Exception as exc:
         raise RuntimeError(
             'Active ticker universe requires '
-            '"CherryMon"."main"."vw_Ticker_Active" with a Ticker column.'
+            '"CherryMon"."main"."vw_Ticker_Info" with a Ticker column.'
         ) from exc
 
     return [str(row[0]) for row in rows]
@@ -83,7 +83,7 @@ def _resolve_universe(
         inactive = sorted(requested.difference(active))
         if inactive:
             raise ValueError(
-                "Requested ticker(s) are not present in vw_Ticker_Active: "
+                "Requested ticker(s) are not present in vw_Ticker_Info: "
                 + ", ".join(inactive)
             )
         selected = [ticker for ticker in active if ticker in requested]
