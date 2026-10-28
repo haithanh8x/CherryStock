@@ -1,4 +1,4 @@
-"""Add MarketCap_Group to CherryMon.main.vw_Ticker_Active (idempotent)."""
+"""Add MarketCap_Group to CherryMon.main.vw_Ticker_Info (idempotent)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from src.cherrystock.config.settings import settings
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 
-VIEW = '"CherryMon"."main"."vw_Ticker_Active"'
+VIEW = '"CherryMon"."main"."vw_Ticker_Info"'
 COLUMN = "MarketCap_Group"
 
 # MarketCap is expected to be in VND. Thresholds are VND, not billions.
@@ -24,17 +24,17 @@ def update(db_path: Path, *, dry_run: bool = False) -> None:
         matches = con.execute(
             """
             SELECT database_name, sql FROM duckdb_views()
-            WHERE schema_name = 'main' AND view_name = 'vw_Ticker_Active'
+            WHERE schema_name = 'main' AND view_name = 'vw_Ticker_Info'
               AND NOT internal
             """
         ).fetchall()
         if len(matches) != 1:
             raise RuntimeError(
-                f"Expected one vw_Ticker_Active view; found {len(matches)}. "
+                f"Expected one vw_Ticker_Info view; found {len(matches)}. "
                 f"Candidates: {[row[0] for row in matches]}"
             )
         catalog, original_sql = matches[0]
-        resolved_view = f'"{catalog.replace(chr(34), chr(34) * 2)}"."main"."vw_Ticker_Active"'
+        resolved_view = f'"{catalog.replace(chr(34), chr(34) * 2)}"."main"."vw_Ticker_Info"'
         cols = [row[0] for row in con.execute(
             f"DESCRIBE SELECT * FROM {resolved_view}"
         ).fetchall()]

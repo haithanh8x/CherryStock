@@ -64,7 +64,7 @@ class MovementDailyPipelineService:
                 WITH active AS (
                     SELECT DISTINCT
                         UPPER(TRIM(CAST(Ticker AS VARCHAR))) AS Ticker
-                    FROM "CherryMon"."main"."vw_Ticker_Active"
+                    FROM "CherryMon"."main"."vw_Ticker_Info"
                     WHERE Ticker IS NOT NULL
                       AND TRIM(CAST(Ticker AS VARCHAR)) <> ''
                 ),
@@ -157,7 +157,7 @@ class MovementDailyPipelineService:
             inactive = sorted(requested.difference(available))
             if inactive:
                 raise ValueError(
-                    "Requested ticker(s) are not present in vw_Ticker_Active: "
+                    "Requested ticker(s) are not present in vw_Ticker_Info: "
                     + ", ".join(inactive)
                 )
 

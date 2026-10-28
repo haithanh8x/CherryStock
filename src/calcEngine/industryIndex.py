@@ -10,7 +10,7 @@ from pathlib import Path
 
 INDEX_TABLE = '"CherryMon"."main"."cal_Industry_Index_D"'
 WEIGHT_TABLE = '"CherryMon"."main"."cal_Industry_Index_Weights"'
-MEMBERS_VIEW = '"CherryMon"."main"."vw_Ticker_Active"'
+MEMBERS_VIEW = '"CherryMon"."main"."vw_Ticker_Info"'
 OHLC_VIEW = '"CherryMon"."main"."vw_Ticker_OHLC_D"'
 SCHEMA_FILE = Path(__file__).resolve().parents[1] / "DuckDB" / "sql" / "industry_index_v1_schema.sql"
 BASE_INDEX = 1000.0
@@ -56,7 +56,7 @@ def refresh_industry_index(*, days: int | None = None, connection) -> dict[str, 
         ) AS duplicated
     """)
     if duplicates:
-        raise RuntimeError(f"vw_Ticker_Active has {duplicates} duplicate ticker(s)")
+        raise RuntimeError(f"vw_Ticker_Info has {duplicates} duplicate ticker(s)")
     if not _scalar(connection, "SELECT COUNT(*) FROM _industry_members"):
         raise RuntimeError("No active stock with IndustryCode; industry index not refreshed")
 

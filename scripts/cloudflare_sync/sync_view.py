@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from src.cherrystock.config.settings import PROJECT_ROOT, settings
 from src.cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
 
-VIEW = "vw_Ticker_Active"
+VIEW = "vw_Ticker_Info"
 BUCKET = "cherrystock"
 KEY = f"{VIEW}.parquet"
 SOURCE = f'"CherryMon"."main"."{VIEW}"'
@@ -101,7 +101,7 @@ def sync(*, dry_run: bool = False, db_path_override: str | None = None) -> dict[
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Sync vw_Ticker_Active to R2 cherrystock")
+    parser = argparse.ArgumentParser(description="Sync vw_Ticker_Info to R2 cherrystock")
     parser.add_argument("--dry-run", action="store_true", help="Export and validate without uploading")
     parser.add_argument("--db-path", help="Path to a standalone consistent DuckDB database snapshot")
     args = parser.parse_args()

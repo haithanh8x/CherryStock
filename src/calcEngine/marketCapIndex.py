@@ -1,4 +1,4 @@
-"""Four market-cap indices from latest vw_Ticker_Active membership and daily OHLC.
+"""Four market-cap indices from latest vw_Ticker_Info membership and daily OHLC.
 
 Caller owns DuckDB transaction. Full bootstrap; bounded daily refresh is idempotent.
 Historical classification and float are latest-snapshot proxies, NOT point-in-time.
@@ -7,7 +7,7 @@ from pathlib import Path
 
 SCHEMA = Path(__file__).resolve().parents[1] / "DuckDB" / "sql" / "marketcap_index_schema.sql"
 TARGET = '"CherryMon"."main"."cal_MarketCap_Index_D"'
-MEMBERS = '"CherryMon"."main"."vw_Ticker_Active"'
+MEMBERS = '"CherryMon"."main"."vw_Ticker_Info"'
 OHLC = '"CherryMon"."main"."vw_Ticker_OHLC_D"'
 GROUPS = ("Large Cap", "Mid Cap", "Small Cap", "Micro Cap")
 

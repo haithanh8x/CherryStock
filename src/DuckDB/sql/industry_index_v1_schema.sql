@@ -62,7 +62,7 @@ FROM "CherryMon"."main"."cal_Industry_Index_D";
 -- Idempotent metadata comments; supported by DuckDB COMMENT ON.
 COMMENT ON TABLE "CherryMon"."main"."cal_Industry_Index_D" IS 'Mỗi dòng là chỉ số ngành theo ngày và phương pháp tính; dữ liệu lịch sử sử dụng danh sách cổ phiếu và FreeFloat mới nhất, không phải dữ liệu point-in-time.';
 COMMENT ON COLUMN "CherryMon"."main"."cal_Industry_Index_D"."Date" IS 'Ngày giao dịch của chỉ số ngành.';
-COMMENT ON COLUMN "CherryMon"."main"."cal_Industry_Index_D"."IndustryCode" IS 'Mã ngành lấy từ vw_Ticker_Active, dùng làm khóa phân nhóm.';
+COMMENT ON COLUMN "CherryMon"."main"."cal_Industry_Index_D"."IndustryCode" IS 'Mã ngành lấy từ vw_Ticker_Info, dùng làm khóa phân nhóm.';
 COMMENT ON COLUMN "CherryMon"."main"."cal_Industry_Index_D"."Industry" IS 'Tên ngành dùng để hiển thị, lấy từ danh mục cổ phiếu hiện tại.';
 COMMENT ON COLUMN "CherryMon"."main"."cal_Industry_Index_D"."Index_Method" IS 'Phương pháp tính: FFMC theo vốn hóa free-float; EW theo trọng số bằng nhau.';
 COMMENT ON COLUMN "CherryMon"."main"."cal_Industry_Index_D"."Close" IS 'Điểm chỉ số ngành cuối phiên, mốc cơ sở 1000; không phải giá cổ phiếu hay số tiền.';
@@ -87,7 +87,7 @@ COMMENT ON COLUMN "CherryMon"."main"."cal_Industry_Index_D"."Calculated_At" IS '
 -- Reapply after CREATE OR REPLACE VIEW, because view metadata is independent.
 COMMENT ON VIEW "CherryMon"."main"."vw_Industry_Index_D" IS 'Mỗi dòng là chỉ số ngành theo ngày và phương pháp tính; dữ liệu lịch sử sử dụng danh sách cổ phiếu và FreeFloat mới nhất, không phải dữ liệu point-in-time.';
 COMMENT ON COLUMN "CherryMon"."main"."vw_Industry_Index_D"."Date" IS 'Ngày giao dịch của chỉ số ngành.';
-COMMENT ON COLUMN "CherryMon"."main"."vw_Industry_Index_D"."IndustryCode" IS 'Mã ngành lấy từ vw_Ticker_Active, dùng làm khóa phân nhóm.';
+COMMENT ON COLUMN "CherryMon"."main"."vw_Industry_Index_D"."IndustryCode" IS 'Mã ngành lấy từ vw_Ticker_Info, dùng làm khóa phân nhóm.';
 COMMENT ON COLUMN "CherryMon"."main"."vw_Industry_Index_D"."Industry" IS 'Tên ngành dùng để hiển thị, lấy từ danh mục cổ phiếu hiện tại.';
 COMMENT ON COLUMN "CherryMon"."main"."vw_Industry_Index_D"."Index_Method" IS 'Phương pháp tính: FFMC theo vốn hóa free-float; EW theo trọng số bằng nhau.';
 COMMENT ON COLUMN "CherryMon"."main"."vw_Industry_Index_D"."Close" IS 'Điểm chỉ số ngành cuối phiên, mốc cơ sở 1000; không phải giá cổ phiếu hay số tiền.';
