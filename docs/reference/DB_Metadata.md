@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-10-27T15:17:25.415343+00:00
+- Generated at: 2026-10-28T15:59:20.948791+00:00
 - Database file: `C:\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -94,10 +94,10 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`vw_MarketCap_Index_D` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
-- `main`.`vw_Ticker_Active` (VIEW)
+- `main`.`vw_Ticker_Info` (VIEW)
 - `main`.`vw_Ticker_Movement_Context` (VIEW)
 - `main`.`vw_Ticker_Movement_Profile` (VIEW)
-- `main`.`vw_Ticker_OHLC_D` (VIEW)
+- `main`.`vw_Ticker_OHLC` (VIEW)
 - `main`.`vw_Ticker_Price_Movement_Swings` (VIEW)
 - `main`.`vw_Ticker_SmartMoney` (VIEW)
 - `main`.`vw_Ticker_ZigZag_Current` (VIEW)
@@ -1424,7 +1424,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
 
-### main.vw_Ticker_Active (VIEW)
+### main.vw_Ticker_Info (VIEW)
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
@@ -1442,6 +1442,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Book Value` | `DOUBLE` | `YES` | `` |
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
+| `AssetType` | `VARCHAR` | `YES` | `` |
 | `MarketCap_Group` | `VARCHAR` | `YES` | `` |
 
 ### main.vw_Ticker_Movement_Context (VIEW)
@@ -1525,7 +1526,7 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `MovementCharacter` | `VARCHAR` | `YES` | `` |
 | `CalculatedAt` | `TIMESTAMP` | `YES` | `` |
 
-### main.vw_Ticker_OHLC_D (VIEW)
+### main.vw_Ticker_OHLC (VIEW)
 
 | Column | Type | Nullable | Default |
 | --- | --- | --- | --- |
@@ -1536,17 +1537,8 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `Low` | `DOUBLE` | `YES` | `` |
 | `Close` | `DOUBLE` | `YES` | `` |
 | `Volume` | `BIGINT` | `YES` | `` |
-| `TradingValue` | `BIGINT` | `YES` | `` |
-| `TradingValue_Source` | `VARCHAR` | `YES` | `` |
-| `TradingValue_IsProxy` | `BOOLEAN` | `YES` | `` |
-| `BuyUp_Val` | `BIGINT` | `YES` | `` |
-| `BuyUp_Vol` | `BIGINT` | `YES` | `` |
-| `SellDown_Val` | `BIGINT` | `YES` | `` |
-| `SellDown_Vol` | `BIGINT` | `YES` | `` |
-| `ATO_Val` | `BIGINT` | `YES` | `` |
-| `ATO_Vol` | `BIGINT` | `YES` | `` |
-| `ATC_Val` | `BIGINT` | `YES` | `` |
-| `ATC_Vol` | `BIGINT` | `YES` | `` |
+| `OpenInt` | `DOUBLE` | `YES` | `` |
+| `AssetType` | `VARCHAR` | `YES` | `` |
 
 ### main.vw_Ticker_Price_Movement_Swings (VIEW)
 
