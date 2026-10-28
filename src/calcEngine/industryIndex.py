@@ -11,7 +11,7 @@ from pathlib import Path
 INDEX_TABLE = '"CherryMon"."main"."cal_Industry_Index_D"'
 WEIGHT_TABLE = '"CherryMon"."main"."cal_Industry_Index_Weights"'
 MEMBERS_VIEW = '"CherryMon"."main"."vw_Ticker_Info"'
-OHLC_VIEW = '"CherryMon"."main"."vw_Ticker_OHLC"'
+OHLC_VIEW = "(SELECT * FROM \"CherryMon\".\"main\".\"vw_Ticker_OHLC\" WHERE \"AssetType\" = 'STOCK')"
 SCHEMA_FILE = Path(__file__).resolve().parents[1] / "DuckDB" / "sql" / "industry_index_v1_schema.sql"
 BASE_INDEX = 1000.0
 CALCULATION_MODE = "HISTORICAL_PROXY_LATEST_FLOAT"
