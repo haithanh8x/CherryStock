@@ -1,3 +1,10 @@
+> **DEPRECATED (2026-10-28):** The physical indicator fact contract has moved to
+> `Ticker, Date, IndicatorName, Timeframe, Value, UpdatedAt`, with developing
+> W/M values in `cal_indicator_current`. Follow the current local agent runbook:
+> [AFL_Indicator_Daily_V2.md](AFL_Indicator_Daily_V2.md).
+> The old ConfigId/ComponentCode full-history replacement instructions below
+> are retained for historical reference only. Do not execute them on v2.
+
 # Full-history AFL Indicator Refresh (CherryStock)
 
 ## Operational contract
