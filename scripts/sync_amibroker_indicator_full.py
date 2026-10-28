@@ -678,5 +678,13 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+# Public CLI delegates to the new simple-name D/W/M storage pipeline.
+# Retain the former helper functions for metadata mapping and legacy reference,
+# but prevent accidental writes using the old ConfigId-based fact schema.
+def main(argv: list[str] | None = None) -> int:
+    from scripts.indicator_storage_v2 import main as main_v2
+    return main_v2(argv)
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
