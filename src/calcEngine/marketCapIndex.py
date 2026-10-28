@@ -27,7 +27,8 @@ def refresh_marketcap_index(*, connection, days: int | None = None) -> dict:
           END AS grp,
           TRY_CAST("FreeFloat" AS DOUBLE) AS float_shares
         FROM {MEMBERS}
-        WHERE "Ticker" IS NOT NULL
+        WHERE "AssetType" = 'STOCK'
+          AND "Ticker" IS NOT NULL
     """)
     invalid = connection.execute("""
         SELECT COUNT(*) FROM _mc_members WHERE grp IS NULL
