@@ -123,6 +123,16 @@ def migrate(con) -> dict[str, int | str]:
         _create_current(con)
 
         if legacy_rows:
+            orphan_configs = int(con.execute(f"""
+                SELECT COUNT(*) FROM {LEGACY} v
+                LEFT JOIN {CONFIGS} cfg ON cfg.ConfigId = v.ConfigId
+                WHERE cfg.ConfigId IS NULL
+            """).fetchone()[0])
+            if orphan_configs:
+                raise RuntimeError(
+                    f"{orphan_configs} legacy indicator rows have no dim_indicator_config; "
+                    "cannot migrate without losing their logical indicator names"
+                )
             # Map legacy ConfigId + ComponentCode to a human-readable AFL name.
             # Rows for open W/M periods are developing and belong to CURRENT.
             source = f"""
