@@ -100,7 +100,7 @@ def validate(*, evidence_dir: Path | None = None) -> int:
         )
 
     if not active:
-        failures.append("vw_Ticker_Active returned no tickers")
+        failures.append("vw_Ticker_Info returned no tickers")
 
     coverage = active_frame.copy()
     for frame, column in (
