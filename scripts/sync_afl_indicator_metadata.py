@@ -30,11 +30,14 @@ def sync(connection, afl_path: Path, *, dry_run: bool = False) -> dict:
         r'AddColumn\s*\([^;]*?\,\s*"([A-Za-z0-9_]+)"\s*\+\s*suffix\s*,',
         source, flags=re.DOTALL,
     ))
+    # OHLC price columns are exported for context, not indicator metadata.
+    price_columns = {"OPEN_", "HIGH_", "LOW_", "CLOSE_"}
+    indicator_columns = declared - price_columns
     expected = {spec.csv_column.rsplit("_", 1)[0] + "_" for spec in SPECS}
-    if declared != expected:
+    if indicator_columns != expected:
         raise ValueError(
-            f"AFL export metadata mismatch: missing={sorted(expected-declared)}, "
-            f"unexpected={sorted(declared-expected)}"
+            f"AFL export metadata mismatch: missing={sorted(expected-indicator_columns)}, "
+            f"unexpected={sorted(indicator_columns-expected)}"
         )
     for tf, token in (("D", "inDaily"), ("W", "inWeekly"), ("M", "inMonthly")):
         if not re.search(rf'CS_ExportIndicators\s*\(\s*{token}\s*,\s*"{tf}"', source):
@@ -44,6 +47,7 @@ def sync(connection, afl_path: Path, *, dry_run: bool = False) -> dict:
     result = {
         "afl": str(afl_path),
         "export_columns": len(SPECS),
+        "price_columns_excluded": sorted(declared & price_columns),
         "configs": len(configs),
         "components": len(components),
         "dry_run": dry_run,
