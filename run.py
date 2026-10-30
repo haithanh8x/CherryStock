@@ -20,9 +20,6 @@ from scripts.sync_yahoo_ticker_info import sync_ticker_info
 # Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
 ENABLE_MOVEMENT_PIPELINE = False
 
-# AFL indicator D/W/M refresh runs incrementally after source commit.
-ENABLE_AFL_INDICATOR_INCREMENTAL_REFRESH = True
-
 # FFMC/EW industry indices run independently after the core data sync commits.
 ENABLE_INDUSTRY_INDEX_REFRESH = True
 
@@ -152,23 +149,7 @@ def _run_aggregate_data(
     print("\n========== [2/2] AGGREGATE DATA ==========")
     started = perf_counter()
 
-    # 2.0 AmiBroker AFL Indicators — daily incremental after committed INGEST.
-    # >=35 recent trading sessions retain the last month/week boundary values,
-    # while days_diff + overlap repairs short ingestion gaps.
-    if ENABLE_AFL_INDICATOR_INCREMENTAL_REFRESH:
-        from scripts.sync_amibroker_indicator_full import main as run_afl_indicator_refresh
-
-        indicator_days = max(35, days_diff + 3)
-        print(f"[AGGREGATE] START | AFL Indicators D/W/M (days={indicator_days})")
-        step_started = perf_counter()
-        result = run_afl_indicator_refresh(["--mode", "incremental", "--days", str(indicator_days)])
-        if result not in (None, 0):
-            raise RuntimeError(f"AFL indicator refresh failed with exit code {result}")
-        print(f"[AGGREGATE] COMMITTED | AFL Indicators | duration={perf_counter() - step_started:.1f}s")
-    else:
-        print("[AGGREGATE] SKIP | AFL Indicators")
-
-    # 2.1 Industry Index — FFMC / Equal Weight
+    # 2.0 Industry Index — FFMC / Equal Weight
     if ENABLE_INDUSTRY_INDEX_REFRESH:
         print("[AGGREGATE] START | Industry Index FFMC + EW")
         step_started = perf_counter()
@@ -183,7 +164,7 @@ def _run_aggregate_data(
     else:
         print("[AGGREGATE] SKIP | Industry Index")
 
-    # 2.2 MarketCap group indices — full bootstrap, then incremental daily
+    # 2.1 MarketCap group indices — full bootstrap, then incremental daily
     print("[AGGREGATE] START | MarketCap Group Index EW + FFMC")
     step_started = perf_counter()
     with DuckDBUnitOfWork(connection_factory) as uow:
@@ -195,7 +176,7 @@ def _run_aggregate_data(
     print(f"[AGGREGATE] COMMITTED | MarketCap Group Index | {mc_summary}")
     print(f"⏱️   [Duration] 'marketcap_index_refresh' total time: {perf_counter() - step_started:.1f} seconds")
 
-    # 2.3 ZigZag + Price Movement
+    # 2.2 ZigZag + Price Movement
     if ENABLE_MOVEMENT_PIPELINE:
         _run_movement_steps(
             movement_pipeline=MovementDailyPipelineService(
@@ -205,7 +186,7 @@ def _run_aggregate_data(
     else:
         print("[AGGREGATE] SKIP | ZigZag + Price Movement")
 
-    # 2.4 Metadata export — after all enabled calculations
+    # 2.3 Metadata export — after all enabled calculations
     step_started = perf_counter()
     print("[AGGREGATE] START | DuckDB Metadata")
     DuckLib.exportDuckDB_metadata()
