@@ -32,7 +32,7 @@ if str(ROOT / "src") not in sys.path:
 from cherrystock.config.settings import settings
 from cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiBrokerAdapter
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
-from scripts.migrate_indicator_storage_v2 import CURRENT, _columns, _create_current
+from scripts.migrate_indicator_storage_v2 import CURRENT, _create_current
 from scripts.sync_amibroker_indicator_full import DEFAULT_AFL, SPECS
 
 WM_SPECS = [s for s in SPECS if s.timeframe in ("W", "M")]
@@ -249,7 +249,12 @@ def replace_current(con, *, latest_date: date, expected_rows: int) -> dict:
         if kind and kind[0] != "BASE TABLE":
             raise RuntimeError("cal_indicator_current exists but is not a table")
         _create_current(con)
-        columns = _columns(con, "cal_indicator_current")
+        # DuckDB may not expose a newly-created table in information_schema
+        # within the same transaction (and catalog names can differ by setup).
+        # Inspect the actual fully-qualified relation instead of relying on
+        # an information_schema lookup that can incorrectly return [].
+        con.execute(f"SELECT * FROM {CURRENT} LIMIT 0")
+        columns = {item[0] for item in con.description}
         if not CURRENT_COLUMNS.issubset(columns):
             raise RuntimeError(
                 f"cal_indicator_current schema is incompatible: {sorted(columns)}"
