@@ -4,7 +4,7 @@ Uses Export_Indicator.apx exactly as saved: ApplyTo=2, Daily periodicity,
 Range=1 recent bar. Calculations run inside AmiBroker, not Python.
 
 Validates the CSV BEFORE any persistent write. Then in one DuckDB transaction:
-    CREATE TABLE IF NOT EXISTS cal_indicator_current;
+    VERIFY cal_indicator_current EXISTS;
     DELETE FROM cal_indicator_current;
     INSERT the validated latest-day W/M indicators.
 
@@ -32,7 +32,7 @@ if str(ROOT / "src") not in sys.path:
 from cherrystock.config.settings import settings
 from cherrystock.infrastructure.amibroker.windows_adapter import WindowsAmiBrokerAdapter
 from cherrystock.infrastructure.database.connection import DuckDBConnectionFactory
-from scripts.migrate_indicator_storage_v2 import CURRENT, _create_current
+from scripts.migrate_indicator_storage_v2 import CURRENT
 from scripts.sync_amibroker_indicator_full import DEFAULT_AFL, SPECS
 
 WM_SPECS = [s for s in SPECS if s.timeframe in ("W", "M")]
@@ -248,12 +248,15 @@ def replace_current(con, *, latest_date: date, expected_rows: int) -> dict:
         """).fetchone()
         if kind and kind[0] != "BASE TABLE":
             raise RuntimeError("cal_indicator_current exists but is not a table")
-        _create_current(con)
-        # DuckDB may not expose a newly-created table in information_schema
-        # within the same transaction (and catalog names can differ by setup).
-        # Inspect the actual fully-qualified relation instead of relying on
-        # an information_schema lookup that can incorrectly return [].
-        con.execute(f"SELECT * FROM {CURRENT} LIMIT 0")
+        # The table must exist. Schema creation is managed separately.
+        try:
+            con.execute(f"SELECT * FROM {CURRENT} LIMIT 0")
+        except Exception as exc:
+            raise RuntimeError(
+                "Missing or inaccessible CherryMon.main.cal_indicator_current. "
+                "Create it separately before running this script. "
+                "No current indicator data has been deleted."
+            ) from exc
         columns = {item[0] for item in con.description}
         if not CURRENT_COLUMNS.issubset(columns):
             raise RuntimeError(
