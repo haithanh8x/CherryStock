@@ -131,6 +131,11 @@ procedure CS_ExportIndicators( tf, suffix, yearBars )
 
     // Export after restoring base daily periodicity. The expandPoint mode
     // leaves W/M cells empty except on their period's final OBSERVED bar.
+    AddColumn( CS_ExpandPoint( Open, tf ),         "OPEN_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( Close, tf ),         "CLOSE_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( Low, tf ),        "LOW_" + suffix, 1.6 );
+    AddColumn( CS_ExpandPoint( High, tf ),        "HIGH_" + suffix, 1.6 );
+        
     AddColumn( CS_ExpandPoint( x_ma20, tf ),         "MA20_" + suffix, 1.6 );
     AddColumn( CS_ExpandPoint( x_ma50, tf ),         "MA50_" + suffix, 1.6 );
     AddColumn( CS_ExpandPoint( x_ma100, tf ),        "MA100_" + suffix, 1.6 );

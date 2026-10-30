@@ -1,6 +1,6 @@
 # DuckDB Metadata
 
-- Generated at: 2026-10-28T15:59:20.948791+00:00
+- Generated at: 2026-10-30T14:58:09.642091+00:00
 - Database file: `C:\Datafile\CherryMon.duckdb`
 - Output file: `C:\Github\CherryStock\docs\reference\DB_Metadata.md`
 
@@ -17,7 +17,7 @@ Use this generated reference set in the following order:
 The CSV files are data snapshots generated from the same DuckDB export run. Do not infer current configuration values from the Markdown schema alone.
 
 - Schema count: 1
-- Table/view count: 84
+- Table/view count: 86
 
 ## Schemas
 
@@ -90,7 +90,9 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 - `main`.`vw_Index` (VIEW)
 - `main`.`vw_Indicator_config` (VIEW)
 - `main`.`vw_Industry` (VIEW)
+- `main`.`vw_Industry_Index` (VIEW)
 - `main`.`vw_Industry_Index_D` (VIEW)
+- `main`.`vw_MarketCap_Index` (VIEW)
 - `main`.`vw_MarketCap_Index_D` (VIEW)
 - `main`.`vw_RS_Source_Effectiveness` (VIEW)
 - `main`.`vw_Ticker` (VIEW)
@@ -1330,6 +1332,32 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `ROA` | `DOUBLE` | `YES` | `` |
 | `ROE` | `DOUBLE` | `YES` | `` |
 
+### main.vw_Industry_Index (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Date` | `DATE` | `YES` | `` |
+| `IndustryCode` | `VARCHAR` | `YES` | `` |
+| `Industry` | `VARCHAR` | `YES` | `` |
+| `Index_Method` | `VARCHAR` | `YES` | `` |
+| `Close` | `DOUBLE` | `YES` | `` |
+| `Daily_Return` | `DOUBLE` | `YES` | `` |
+| `Pct_Change` | `DOUBLE` | `YES` | `` |
+| `Volume` | `BIGINT` | `YES` | `` |
+| `TradingValue` | `HUGEINT` | `YES` | `` |
+| `TradingValue_Known_Count` | `INTEGER` | `YES` | `` |
+| `TradingValue_Proxy_Count` | `INTEGER` | `YES` | `` |
+| `Ticker_Count` | `INTEGER` | `YES` | `` |
+| `Advancers` | `INTEGER` | `YES` | `` |
+| `Decliners` | `INTEGER` | `YES` | `` |
+| `Unchanged` | `INTEGER` | `YES` | `` |
+| `FloatMarketCap_ThousandVND` | `DOUBLE` | `YES` | `` |
+| `Max_Weight` | `DOUBLE` | `YES` | `` |
+| `Top3_Weight` | `DOUBLE` | `YES` | `` |
+| `Calculation_Mode` | `VARCHAR` | `YES` | `` |
+| `Snapshot_Date` | `DATE` | `YES` | `` |
+| `Calculated_At` | `TIMESTAMP` | `YES` | `` |
+
 ### main.vw_Industry_Index_D (VIEW)
 
 | Column | Type | Nullable | Default |
@@ -1352,6 +1380,22 @@ The CSV files are data snapshots generated from the same DuckDB export run. Do n
 | `FloatMarketCap_ThousandVND` | `DOUBLE` | `YES` | `` |
 | `Max_Weight` | `DOUBLE` | `YES` | `` |
 | `Top3_Weight` | `DOUBLE` | `YES` | `` |
+| `Calculation_Mode` | `VARCHAR` | `YES` | `` |
+| `Snapshot_Date` | `DATE` | `YES` | `` |
+| `Calculated_At` | `TIMESTAMP` | `YES` | `` |
+
+### main.vw_MarketCap_Index (VIEW)
+
+| Column | Type | Nullable | Default |
+| --- | --- | --- | --- |
+| `Date` | `DATE` | `YES` | `` |
+| `MarketCap_Group` | `VARCHAR` | `YES` | `` |
+| `Index_Method` | `VARCHAR` | `YES` | `` |
+| `Close` | `DOUBLE` | `YES` | `` |
+| `Daily_Return` | `DOUBLE` | `YES` | `` |
+| `Pct_Change` | `DOUBLE` | `YES` | `` |
+| `Ticker_Count` | `INTEGER` | `YES` | `` |
+| `Volume` | `BIGINT` | `YES` | `` |
 | `Calculation_Mode` | `VARCHAR` | `YES` | `` |
 | `Snapshot_Date` | `DATE` | `YES` | `` |
 | `Calculated_At` | `TIMESTAMP` | `YES` | `` |
