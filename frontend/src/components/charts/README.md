@@ -9,7 +9,7 @@ Production usage: `../BreadthInteractiveChart.tsx` (Market Overview).
 - TradingView Lightweight Charts v5 (React + TypeScript), responsive light/dark themes.
 - Native X-axis zoom, Y-axis scaling, chart dragging/pan, crosshair, mobile touch/pinch, keyboard date inspection.
 - A fixed date/value inspector ABOVE the plotting canvas (no floating popup covering line series).
-- Multi-select series chips: show one or multiple lines; never hide the final remaining series.
+- Multi-select series chips with colored dots and active/inactive styling, without checkmarks: show one or multiple lines; never hide the final remaining series.
 - Date window shortcuts: last 3 months, 6 months, 1 year, or all available data.
 - **No Time Range Navigator** / mini-chart / range brush; no mouse-wheel zoom.
 - Visible TradingView attribution and link remain mandatory.

@@ -281,7 +281,6 @@ export function MultiSeriesLineChartTemplate({
           aria-pressed={enabled} aria-label={line.label}
           onClick={() => toggleLine(line.key)}
           title={enabled && visibleKeys.length === 1 ? "Giữ ít nhất một đường" : undefined}>
-          <span className="breadth-series-check" aria-hidden="true">{enabled ? "✓" : ""}</span>
           <i style={{ background: line.color }} aria-hidden="true"/>
           {line.label}
         </button>;
