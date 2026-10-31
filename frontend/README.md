@@ -113,33 +113,31 @@ timeframe's native D/W/M indicator values over the most recent two years.
 - Toggle the MA20/MA50/MA100/MA200 chips independently to compare one or
   multiple series, keeping at least one visible.
 - Use the **3T / 6T / 1N / 2N** controls for a recent-window shortcut.
-- Drag the left/right grips in the mini overview to resize the selected
-  interval; drag its center to pan through history; click outside the window
-  to reposition it.
+- The separate Time Range Navigator / mini chart is intentionally removed.
+- Zoom X by dragging the native time axis, zoom Y by dragging the percentage
+  axis, or move the time window by dragging the main plotting area.
 - Keyboard: focus the plot and press arrow keys to inspect neighboring dates.
-  Focus a brush grip and use arrow or PageUp/PageDown to resize the interval.
-- On touch devices, tap the chart for the point details and drag the overview
-  grips to adjust time.
+- On touch devices, tap the plot for details or pinch to zoom.
 
 Interactive component: `src/components/BreadthInteractiveChart.tsx`.
-CSS: `src/components/BreadthInteractiveChart.css`.
+Reusable template: `src/components/charts/MultiSeriesLineChartTemplate.tsx`.
+Template styles: `src/components/charts/MultiSeriesLineChartTemplate.css`.
+Usage and example: `src/components/charts/README.md`.
 R2 daily publication and historical backfill notes:
 `scripts/cloudflare_sync/INDICATORS_RUNBOOK.md`.
 
 ## TradingView Lightweight Charts (market breadth)
 
 The market-breadth plot now uses `lightweight-charts` v5 (MIT) rather than
-drawing the main series with custom SVG. The mini overview remains SVG.
+drawing the main series with custom SVG. The separate mini overview has been removed.
 
 - Drag the **bottom date/time axis** horizontally to zoom X. Mouse-wheel zoom
-  is disabled; use the time axis, presets or mini navigator instead.
+  is disabled; use the time axis or preset buttons instead.
 - Drag the **right percentage axis** vertically to scale Y; double-click the
   corresponding axis to restore its scale.
 - Drag the central plot to pan through dates; pinch on touch devices.
 - Hover/tap to inspect the exact trading date and percentages of only the
   selected MA series. The inspector never overlays the chart.
-- The mini overview still supports dragging either grip and moving its range.
-  Its selection tracks zoom and pan performed on the main chart.
 - The chart recolors when switching CherryStock's dark/light theme.
 
 The required TradingView attribution and link are visible below the chart.
