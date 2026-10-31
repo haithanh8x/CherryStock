@@ -127,6 +127,26 @@ def _breadth(con, window_start):
                AND ma100 IS NOT NULL AND ma200 IS NOT NULL
             ORDER BY Date
         """, [tf, window_start]).fetchall()
+        if tf in ("W", "M"):
+            # Sparse off-cycle AFL/legacy rows can represent just one symbol.
+            # A sample of 1 ticker yielded four fake 0% values on 2026-06-26
+            # (M), even though the true 2026-06-30 month end covers 338.
+            # Require a meaningful share of the daily trading universe.
+            from statistics import median
+            daily_sample = median(item["coverage"] for item in series["D"])
+            min_coverage = max(25, int(0.30 * daily_sample))
+            valid = [r for r in records if r[5] >= min_coverage]
+
+            # One observation per ISO week or calendar month, selecting
+            # the last sufficiently covered session of that period.
+            # Unfinished current W/M periods may still be provisional.
+            by_period = {}
+            for r in valid:
+                date = r[0]
+                period = date.isocalendar()[:2] if tf == "W" else (date.year, date.month)
+                if period not in by_period or date > by_period[period][0]:
+                    by_period[period] = r
+            records = sorted(by_period.values(), key=lambda r: r[0])
         series[tf] = [
             {"date": str(r[0]), "ma20": float(r[1]), "ma50": float(r[2]),
              "ma100": float(r[3]), "ma200": float(r[4]), "coverage": int(r[5])}

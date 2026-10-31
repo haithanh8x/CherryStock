@@ -123,3 +123,21 @@ Interactive component: `src/components/BreadthInteractiveChart.tsx`.
 CSS: `src/components/BreadthInteractiveChart.css`.
 R2 daily publication and historical backfill notes:
 `scripts/cloudflare_sync/INDICATORS_RUNBOOK.md`.
+
+## TradingView Lightweight Charts (market breadth)
+
+The market-breadth plot now uses `lightweight-charts` v5 (MIT) rather than
+drawing the main series with custom SVG. The mini overview remains SVG.
+
+- Drag the **bottom date/time axis** horizontally to zoom X; mouse wheel zooms time.
+- Drag the **right percentage axis** vertically to scale Y; double-click the
+  corresponding axis to restore its scale.
+- Drag the central plot to pan through dates; pinch on touch devices.
+- Hover/tap to inspect the exact trading date and all four MA percentages.
+  Coverage is shown in the tooltip to reveal small sample sizes.
+- The mini overview still supports dragging either grip and moving its range.
+  Its selection tracks zoom and pan performed on the main chart.
+- The chart recolors when switching CherryStock's dark/light theme.
+
+The required TradingView attribution and link are visible below the chart.
+For library usage and license, see https://tradingview.github.io/lightweight-charts/.

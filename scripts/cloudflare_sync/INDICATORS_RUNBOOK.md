@@ -46,3 +46,20 @@ python -m scripts.cloudflare_sync.sync_indicators
 ```
 
 Do not silently plot a partial two-year chart: the R2 publisher rejects an insufficiently populated history window.
+
+## Breadth quality guard: sparse W/M dates
+
+Timeframes W and M can contain off-cycle rows for one or two tickers whose
+last available quotation occurred before the main weekly/monthly session close.
+These must NOT appear as full-market 0% or 100% readings. In the previous data,
+2026-06-26 had a **Monthly** MA sample size of 1 and produced four incorrect
+0% readings, whereas 2026-06-30 has coverage 338 and the actual month-end
+breadth values.
+
+The publisher therefore requires at least 30% of the typical daily MA20
+coverage (and never fewer than 25 symbols) for W and M observations, then
+selects the latest sufficiently covered date in each ISO week / calendar month.
+Daily observations are unaffected. Do not fill invalid dates with 0%;
+invalid sparse dates are excluded before publishing JSON.
+
+Regression test: `python -m pytest -q tests/test_breadth_history_quality.py`.
