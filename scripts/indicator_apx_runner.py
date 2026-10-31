@@ -32,7 +32,7 @@ def export_incremental(csv_path: Path, bars: int) -> None:
         general.find("FormulaPath").text = str(afl)
         general.find("FormulaContent").text = source
         general.find("RangeAmount").text = str(bars)
-        root.write(apx, encoding="utf-8", xml_declaration=True)
+        ET.ElementTree(root).write(apx, encoding="utf-8", xml_declaration=True)
         WindowsAmiBrokerAdapter(database_path=settings.amibroker_database_path).run_explore_export(
             formula_path=afl, export_path=csv_path, apply_to=2,
             range_mode=2, range_n=bars, timeout_seconds=3600.0)
