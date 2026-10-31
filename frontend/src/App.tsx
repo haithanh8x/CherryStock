@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createMarketDataDriver } from "./data/driver";
+import { loadBreadth } from "./data/breadth";
+import type { BreadthSnapshot } from "./data/breadth";
 import { loadIntermarket } from "./data/ohlc";
 import type { IntermarketRow } from "./data/ohlc";
 import type {
@@ -224,13 +226,23 @@ function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
     </div>
   </Panel>;
 }
-function Breadth({ rows }: {rows: MarketOverviewSnapshot["breadth"]}) {
+function Breadth({ rows, loading, error, asOf, frames }: {
+  rows: MarketOverviewSnapshot["breadth"];
+  loading: boolean;
+  error: string | null;
+  asOf: string;
+  frames: BreadthSnapshot["timeframes"] | null;
+}) {
   const [timeframe,setTimeframe]=useState<Timeframe>("daily");
-  const sample=sampleByTimeframe(rows,timeframe,48);
+  const series = frames?.[timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"] ?? [];
+  const sample=series.slice(-48);
   const latest=sample[sample.length-1];
   return <Panel title="Độ rộng thị trường" subtitle="Tỷ lệ cổ phiếu đang giao dịch trên đường MA" icon="activity" className="breadth-panel"
     action={<FrameToggle value={timeframe} onChange={setTimeframe}/>}>
-    <div className="breadth-stats">{breadthSeries.map(s=><div className="breadth-stat" key={s.key}><span>{s.label}</span><strong>{latest?number(Number((latest as unknown as Record<string,number>)[s.key]),1):"—"}%</strong></div>)}</div>
+    {loading && <div className="loading-state">Đang tải độ rộng thị trường từ Cloudflare R2...</div>}
+    {error && <div className="error-state" role="alert">Không tải được độ rộng thật: {error}</div>}
+    {asOf && <p className="tiny-label">Nguồn: cal_indicator_history ({timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"}) + raw_stock_eod · EOD {asOf}</p>}
+    <div className="breadth-stats">{breadthSeries.map(s=><div className="breadth-stat" key={s.key}><span>{s.label}</span><strong>{latest?number(Number((latest as unknown as Record<string,number>)[s.key]),1)+"%":"—"}</strong></div>)}</div>
     <LineChart data={sample} series={breadthSeries} percent height={260}/>
     <Legend series={breadthSeries}/>
   </Panel>;
@@ -312,19 +324,27 @@ function Watchlist({ rows, query, onQuery }: {rows:MarketOverviewSnapshot["watch
     <div className="watch-bottom"><span><span className="foot-dot"/> Dữ liệu từ snapshot</span><span>{filtered.length} mã</span></div>
   </Panel>;
 }
-function Dashboard({ data }: {data:MarketOverviewSnapshot}) {
+function Dashboard({ data, breadth, breadthLoading, breadthError }: {
+  data: MarketOverviewSnapshot;
+  breadth: BreadthSnapshot | null;
+  breadthLoading: boolean;
+  breadthError: string | null;
+}) {
   const [query,setQuery]=useState("");
   const summary=data.summary;
-  const breadthTotal=summary.advancers+summary.decliners+summary.unchanged;
+  const marketMoves = breadth?.summary;
+  const breadthTotal = marketMoves
+    ? Math.max(1,marketMoves.advancers+marketMoves.decliners+marketMoves.unchanged)
+    : 1;
   return <>
     <div className="indices-grid">{data.indices.map(i=><IndexCard key={i.symbol} {...i}/>)}</div>
     <div className="market-strip">
       <div className="strip-item"><span className="strip-icon"><Icon name="wallet"/></span><div><small>GTGD toàn thị trường</small><strong>{number(summary.turnoverBn/1000,2)} <em>nghìn tỷ</em></strong><span className={signClass(summary.turnoverVs20Pct)}>{pct(summary.turnoverVs20Pct)} so với TB20</span></div></div>
-      <div className="strip-item"><span className="strip-icon"><Icon name="users"/></span><div><small>Độ rộng thị trường</small><strong><span className="positive">{summary.advancers}</span> / <span className="negative">{summary.decliners}</span></strong><div className="breadth-bar" aria-label={`Tăng ${summary.advancers}, giảm ${summary.decliners}, đứng giá ${summary.unchanged}`}><i style={{width:`${summary.advancers/breadthTotal*100}%`}}/><i style={{width:`${summary.unchanged/breadthTotal*100}%`}}/><i style={{width:`${summary.decliners/breadthTotal*100}%`}}/></div></div></div>
+      <div className="strip-item"><span className="strip-icon"><Icon name="users"/></span><div><small>Độ rộng thị trường</small><strong><span className="positive">{marketMoves?.advancers ?? "?"}</span> / <span className="negative">{marketMoves?.decliners ?? "?"}</span></strong><div className="breadth-bar" aria-label={`Tăng ${summary.advancers}, giảm ${summary.decliners}, đứng giá ${summary.unchanged}`}><i style={{width:`${(marketMoves?.advancers ?? 0)/breadthTotal*100}%`}}/><i style={{width:`${(marketMoves?.unchanged ?? 0)/breadthTotal*100}%`}}/><i style={{width:`${(marketMoves?.decliners ?? 0)/breadthTotal*100}%`}}/></div></div></div>
       <div className="strip-item"><span className="strip-icon"><Icon name="globe"/></span><div><small>Khối ngoại</small><strong className={signClass(summary.foreignNetBn)}>{signed(summary.foreignNetBn,0)} <em>tỷ</em></strong><span className="strip-muted">Giá trị mua / bán ròng</span></div></div>
       <div className="strip-item"><span className="strip-icon"><Icon name="bolt"/></span><div><small>Tự doanh</small><strong className={signClass(summary.proprietaryNetBn)}>{signed(summary.proprietaryNetBn,0)} <em>tỷ</em></strong><span className="strip-muted">Giá trị mua / bán ròng</span></div></div>
     </div>
-    <div className="dashboard-grid"><Intermarket rows={data.intermarket}/><Watchlist rows={data.watchlist} query={query} onQuery={setQuery}/><Breadth rows={data.breadth}/><Sectors rows={data.industries}/><CashFlow rows={data.flows}/></div>
+    <div className="dashboard-grid"><Intermarket rows={data.intermarket}/><Watchlist rows={data.watchlist} query={query} onQuery={setQuery}/><Breadth rows={breadth?.breadth ?? []} frames={breadth?.timeframes ?? null} loading={breadthLoading} error={breadthError} asOf={breadth?.asOf ?? ""}/><Sectors rows={data.industries}/><CashFlow rows={data.flows}/></div>
   </>;
 }
 export default function App() {
@@ -335,6 +355,9 @@ export default function App() {
   const [error,setError]=useState<string|null>(null);
   const [source,setSource]=useState<MarketSource>("mock");
   const [loading,setLoading]=useState(true);
+  const [breadth,setBreadth]=useState<BreadthSnapshot|null>(null);
+  const [breadthError,setBreadthError]=useState<string|null>(null);
+  const [breadthLoading,setBreadthLoading]=useState(true);
   const [revision,setRevision]=useState(0);
   useEffect(()=>{
     applyTheme(theme);
@@ -354,6 +377,20 @@ export default function App() {
     }catch(err){setError(err instanceof Error?err.message:String(err));setLoading(false);}
     return ()=>controller.abort();
   },[revision]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setBreadthLoading(true); setBreadthError(null);
+    loadBreadth(controller.signal).then(snapshot => {
+      if (!controller.signal.aborted) { setBreadth(snapshot); setBreadthLoading(false); }
+    }).catch(err => {
+      if (!controller.signal.aborted) {
+        setBreadth(null);
+        setBreadthError(err instanceof Error ? err.message : String(err));
+        setBreadthLoading(false);
+      }
+    });
+    return () => controller.abort();
+  }, [revision]);
   return <div className="app-shell">
     <aside className="sidebar">
       <a className="brand" href={import.meta.env.BASE_URL} aria-label="CherryStock Home">
@@ -390,7 +427,7 @@ export default function App() {
         </div>
         {loading && !data && <div className="loading-state">Đang tải dữ liệu Market Overview...</div>}
         {error && <div className="error-state" role="alert"><strong>Không tải được dữ liệu thị trường</strong><p>{error}</p><button type="button" onClick={()=>setRevision(x=>x+1)}>Thử lại</button></div>}
-        {data && <><Dashboard data={data}/>{loading&&<div className="inline-loading">Đang làm mới snapshot…</div>}</>}
+        {data && <><Dashboard data={data} breadth={breadth} breadthLoading={breadthLoading} breadthError={breadthError}/>{loading&&<div className="inline-loading">Đang làm mới snapshot…</div>}</>}
         <footer className="page-footer"><span>© 2026 CherryStock · Market Overview</span><span>Source: Intermarket Yahoo Finance API · Other panels: {source==="mock"?"Synthetic demo data":"Cloudflare R2 snapshot"} · {data?.asOf ?? "n/a"}</span></footer>
       </div>
     </main>

@@ -1,0 +1,8 @@
+name = "cherrystock-breadth"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "CHERRYSTOCK_R2"
+bucket_name = "cherrystock"

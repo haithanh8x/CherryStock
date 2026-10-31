@@ -15,6 +15,9 @@ from src.cherrystock.infrastructure.database.unit_of_work import DuckDBUnitOfWor
 from src.calcEngine.industryIndex import refresh_industry_index
 from src.calcEngine.marketCapIndex import refresh_marketcap_index
 from scripts.cloudflare_sync.sync_view import sync as sync_view_to_r2
+from scripts.cloudflare_sync.sync_indicators import sync as sync_indicators_to_r2
+from scripts.sync_amibroker_indicator_current import main as sync_indicator_current
+from scripts.indicator_history_common import main as sync_indicator_history
 from scripts.sync_yahoo_ticker_info import sync_ticker_info
 
 # Tạm thời bỏ daily ZigZag + Price Movement; đổi thành True để chạy lại.
@@ -26,6 +29,7 @@ ENABLE_INDUSTRY_INDEX_REFRESH = True
 # Publish the latest committed view to Cloudflare R2 after ingest and aggregate.
 # Set CHERRYSTOCK_R2_SYNC_ENABLED=false to disable daily publication.
 ENABLE_CLOUDFLARE_R2_SYNC = os.getenv("CHERRYSTOCK_R2_SYNC_ENABLED", "true").strip().lower() in ("1", "true", "yes", "on")
+ENABLE_DAILY_INDICATORS = os.getenv("CHERRYSTOCK_INDICATOR_SYNC_ENABLED", "true").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _resolve_days_diff(default_days: int = 15) -> int:
@@ -194,6 +198,24 @@ def _run_aggregate_data(
     print(f"[AGGREGATE] DONE | duration={perf_counter() - started:.1f}s")
 
 
+def _run_daily_indicators() -> None:
+    """Refresh the committed current snapshot (1 bar) and history (10 bars).
+
+    These are separate DuckDB transactions after ingest has committed.
+    Never publish a partial indicator refresh to R2.
+    """
+    if not ENABLE_DAILY_INDICATORS:
+        print("[INDICATOR] SKIP | disabled by CHERRYSTOCK_INDICATOR_SYNC_ENABLED")
+        return
+    started = perf_counter()
+    print("[INDICATOR] START | current 1 bar", flush=True)
+    sync_indicator_current([])
+    print("[INDICATOR] COMMITTED | current 1 bar", flush=True)
+    print("[INDICATOR] START | history upsert 10 bars", flush=True)
+    sync_indicator_history("upsert", [])
+    print(f"[INDICATOR] COMMITTED | history 10 bars | duration={perf_counter()-started:.1f}s", flush=True)
+
+
 def _run_cloudflare_r2_sync() -> None:
     """Publish the committed vw_Ticker_Active snapshot to R2 once daily run succeeds."""
     if not ENABLE_CLOUDFLARE_R2_SYNC:
@@ -203,6 +225,10 @@ def _run_cloudflare_r2_sync() -> None:
     started = perf_counter()
     result = sync_view_to_r2()
     print(f"[CLOUDFLARE R2] DONE | bucket={result['bucket']} key={result['key']} rows={result['rows']} bytes={result['bytes']}")
+    print("[CLOUDFLARE R2] START | cal_indicator_current + cal_indicator_history + breadth")
+    indicator_result = sync_indicators_to_r2()
+    print(f"[CLOUDFLARE R2] DONE | indicator current={indicator_result['current_rows']} "
+          f"months={indicator_result['months_to_sync']} breadth_days={indicator_result['breadth_days']}")
     print(f"⏱️   [Duration] 'cloudflare_r2_sync' total time: {perf_counter() - started:.1f} seconds")
 
 
@@ -223,6 +249,7 @@ def main() -> None:
         amibroker_adapter=amibroker_adapter,
         days_diff=days_diff,
     )
+    _run_daily_indicators()
     _run_aggregate_data(
         connection_factory=connection_factory,
         days_diff=days_diff,
