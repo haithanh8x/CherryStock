@@ -73,17 +73,8 @@ def validate_saved_apx(apx: Path) -> None:
 
 
 def run_apx(csv_path: Path) -> None:
-    validate_saved_apx(DEFAULT_AFL.with_suffix(".apx"))
-    WindowsAmiBrokerAdapter(
-        database_path=settings.amibroker_database_path
-    ).run_explore_export(
-        formula_path=DEFAULT_AFL,
-        export_path=csv_path,
-        apply_to=2,
-        range_mode=2,
-        range_n=1,
-        timeout_seconds=3600.0,
-    )
+    from scripts.indicator_apx_runner import export_incremental
+    export_incremental(csv_path, 1)
 
 
 def stage_current(con, csv_path: Path, *, today: date, min_tickers: int,
