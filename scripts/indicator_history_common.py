@@ -76,6 +76,12 @@ def main(mode: str, argv=None):
                 existing = con.execute(f"SELECT COUNT(*) FROM {HISTORY}").fetchone()[0]
                 if existing:
                     raise RuntimeError(f"History already has {existing} rows; initial load refused")
+            # Older installations may have created the history table without a key.
+            # Require the same primary key as the current history contract.
+            has_pk = con.execute("""SELECT COUNT(*) FROM duckdb_constraints()
+                WHERE table_name='cal_indicator_history' AND constraint_type='PRIMARY KEY'""").fetchone()[0]
+            if not has_pk:
+                con.execute(f"ALTER TABLE {HISTORY} ADD PRIMARY KEY (Ticker,Date,IndicatorName,Timeframe)")
             con.execute(f"""INSERT INTO {HISTORY}
                 (Ticker,Date,IndicatorName,Timeframe,Value,UpdatedAt)
                 SELECT Ticker,Date,IndicatorName,Timeframe,Value,CURRENT_TIMESTAMP
