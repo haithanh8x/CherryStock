@@ -235,13 +235,13 @@ function Breadth({ rows, loading, error, asOf, frames }: {
 }) {
   const [timeframe,setTimeframe]=useState<Timeframe>("daily");
   const series = frames?.[timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"] ?? [];
-  const sample=series.slice(-48);
+  const sample=series; // Full two-year D/W/M window supplied by the R2 snapshot.
   const latest=sample[sample.length-1];
-  return <Panel title="Độ rộng thị trường" subtitle="Tỷ lệ cổ phiếu đang giao dịch trên đường MA" icon="activity" className="breadth-panel"
+  return <Panel title="Độ rộng thị trường" subtitle="Tỷ lệ cổ phiếu trên MA20/50/100/200 · 2 năm gần nhất" icon="activity" className="breadth-panel"
     action={<FrameToggle value={timeframe} onChange={setTimeframe}/>}>
     {loading && <div className="loading-state">Đang tải độ rộng thị trường từ Cloudflare R2...</div>}
     {error && <div className="error-state" role="alert">Không tải được độ rộng thật: {error}</div>}
-    {asOf && <p className="tiny-label">Nguồn: cal_indicator_history ({timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"}) + raw_stock_eod · EOD {asOf}</p>}
+    {asOf && <p className="tiny-label">Nguồn: cal_indicator_history ({timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"}) + raw_stock_eod · {sample[0]?.date ?? "—"} đến {asOf} · {sample.length} điểm</p>}
     <div className="breadth-stats">{breadthSeries.map(s=><div className="breadth-stat" key={s.key}><span>{s.label}</span><strong>{latest?number(Number((latest as unknown as Record<string,number>)[s.key]),1)+"%":"—"}</strong></div>)}</div>
     <LineChart data={sample} series={breadthSeries} percent height={260}/>
     <Legend series={breadthSeries}/>

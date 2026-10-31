@@ -30,3 +30,19 @@ Environment flags:
 - VITE_BREADTH_API_BASE_URL: optional frontend Worker endpoint override
 
 Important: DuckDB must permit a read-only connection. Close any other application's conflicting DuckDB connection before publishing. Do not bypass active database locks.
+
+## Two-year market breadth
+
+The market-breadth chart covers the previous **two calendar years** relative to the last available indicator date (for the 2026-10-30 EOD this starts 2024-10-30). It displays every observed D, W or M point rather than truncating to 48 points. The chart's JSON includes `windowYears: 2` and `windowStart` for auditability.
+
+The R2 indicator-history Parquet retention remains **600 calendar days** as previously configured; the breadth JSON is computed from the broader **local** history before publication, independently of the R2 Parquet window.
+
+If an existing AmiBroker history begins after the required two-year start, backfill only the MA20/MA50/MA100/MA200 D/W/M inputs for the missing dates from the existing `cal_indicator_values` and `dim_indicator_config` tables. This is a historical legacy-data bridge, not a recomputation in AFL; the values may differ slightly from AmiBroker calculations. Rows already present in `cal_indicator_history` are never overwritten.
+
+```powershell
+python -m scripts.backfill_market_breadth_ma_history --dry-run
+python -m scripts.backfill_market_breadth_ma_history
+python -m scripts.cloudflare_sync.sync_indicators
+```
+
+Do not silently plot a partial two-year chart: the R2 publisher rejects an insufficiently populated history window.

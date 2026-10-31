@@ -28,7 +28,8 @@ EOD = f'{SCHEMA}."raw_stock_eod"'
 CHECKPOINT = "cal_indicator_history/checkpoint.json"
 CURRENT_KEY = "cal_indicator_current.parquet"
 BREADTH_KEY = "market-breadth/v1/latest.json"
-DAYS = 600
+DAYS = 600  # R2 history retention unchanged
+BREADTH_YEARS = 2
 
 
 def _client():
@@ -154,7 +155,8 @@ def _breadth(con, window_start):
     return {
         "schemaVersion": 1,
         "source": "cal_indicator_history + raw_stock_eod",
-        "asOf": latest, "windowDays": DAYS,
+        "asOf": latest, "windowYears": BREADTH_YEARS,
+        "windowStart": str(window_start),
         "summary": {"advancers": int(moves[0]), "decliners": int(moves[1]), "unchanged": int(moves[2])},
         "method": "100 * count(Close > MA) / count(valid Close and MA), per native D/W/M timeframe, Volume>0",
         "breadth": series["D"],
@@ -202,12 +204,24 @@ def sync(*, dry_run=False, db_path_override=None):
                 selected = sorted(set(selected) | {months[0], months[-1]})
         else:
             selected = months
-        breadth = _breadth(con, start)
+        breadth_start = con.execute(
+            "SELECT CAST(?::DATE - INTERVAL '2 years' AS DATE)", [last]
+        ).fetchone()[0]
+        breadth = _breadth(con, breadth_start)
+        first_breadth = breadth["breadth"][0]["date"]
+        if first_breadth > str(breadth_start + timedelta(days=7)):
+            raise ValueError(
+                f"Two-year breadth requires MA history from {breadth_start}; "
+                f"first available breadth date is {first_breadth}. "
+                "Run scripts.backfill_market_breadth_ma_history first."
+            )
         result = {
             "bucket": BUCKET, "history_total_rows": count,
             "history_start": str(start), "history_last": str(last),
             "months_in_window": len(months), "months_to_sync": len(selected),
-            "current_rows": total_current, "breadth_days": len(breadth["breadth"]),
+            "current_rows": total_current,
+            "breadth_window_start": str(breadth_start),
+            "breadth_days": len(breadth["breadth"]),
             "breadth_as_of": breadth["asOf"], "dry_run": dry_run,
         }
         if dry_run:
