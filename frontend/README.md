@@ -13,8 +13,9 @@ watchlist search; MA20/50/100/200 breadth; industry performance; and
 institutional/individual/foreign/proprietary flow charts.
 Other NiceGUI tabs are displayed as disabled placeholders and **are not yet migrated**.
 
-**All default numbers are synthetic mock values.** The UI clearly marks DEMO
-mode and does not claim real market data.
+The dashboard defaults to demo values for panels without a live data feed.
+Market breadth is an exception: it loads real MA statistics from the
+Cloudflare R2 breadth API independently of the dashboard mock setting.
 
 ## Setup
 
@@ -100,3 +101,25 @@ to GitHub Pages on pushes to `main` affecting `frontend/**`.
 A working Pages URL requires repository Pages to use the **GitHub Actions**
 source, and successful deployment permissions/environment. Check the latest
 `Deploy CherryStock Frontend` run before claiming live deployment.
+
+## Interactive market-breadth chart
+
+The breadth chart is backed by the real `cal_indicator_history` series, served
+via the read-only Cloudflare Worker `cherrystock-breadth`. It uses each
+timeframe's native D/W/M indicator values over the most recent two years.
+
+- Hover or tap the plot to snap to a reporting date. A crosshair and tooltip
+  show that date and all four percentages (>MA20/50/100/200).
+- Use the **3T / 6T / 1N / 2N** controls for a recent-window shortcut.
+- Drag the left/right grips in the mini overview to resize the selected
+  interval; drag its center to pan through history; click outside the window
+  to reposition it.
+- Keyboard: focus the plot and press arrow keys to inspect neighboring dates.
+  Focus a brush grip and use arrow or PageUp/PageDown to resize the interval.
+- On touch devices, tap the chart for the point details and drag the overview
+  grips to adjust time.
+
+Interactive component: `src/components/BreadthInteractiveChart.tsx`.
+CSS: `src/components/BreadthInteractiveChart.css`.
+R2 daily publication and historical backfill notes:
+`scripts/cloudflare_sync/INDICATORS_RUNBOOK.md`.

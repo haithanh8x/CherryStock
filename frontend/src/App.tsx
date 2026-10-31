@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createMarketDataDriver } from "./data/driver";
 import { loadBreadth } from "./data/breadth";
+import { BreadthInteractiveChart } from "./components/BreadthInteractiveChart";
 import type { BreadthSnapshot } from "./data/breadth";
 import { loadIntermarket } from "./data/ohlc";
 import type { IntermarketRow } from "./data/ohlc";
@@ -243,7 +244,7 @@ function Breadth({ rows, loading, error, asOf, frames }: {
     {error && <div className="error-state" role="alert">Không tải được độ rộng thật: {error}</div>}
     {asOf && <p className="tiny-label">Nguồn: cal_indicator_history ({timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"}) + raw_stock_eod · {sample[0]?.date ?? "—"} đến {asOf} · {sample.length} điểm</p>}
     <div className="breadth-stats">{breadthSeries.map(s=><div className="breadth-stat" key={s.key}><span>{s.label}</span><strong>{latest?number(Number((latest as unknown as Record<string,number>)[s.key]),1)+"%":"—"}</strong></div>)}</div>
-    <LineChart data={sample} series={breadthSeries} percent height={260}/>
+    <BreadthInteractiveChart key={timeframe} data={sample} series={breadthSeries}/>
     <Legend series={breadthSeries}/>
   </Panel>;
 }
