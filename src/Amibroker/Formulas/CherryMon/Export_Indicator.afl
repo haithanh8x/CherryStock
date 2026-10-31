@@ -31,14 +31,15 @@ SetBarsRequired( sbrAll, sbrAll );
 SetOption( "NoDefaultColumns", True );
 
 x_tfSelection = ParamList( "Timeframes", "ALL|D|W|M", 0 );
-// Do not default to a named AmiBroker group: database group labels vary.
-x_onlyStocks = ParamToggle( "Symbol filter", "All symbols|Gia co phieu", 0 );
+// Restrict exported symbols to the AmiBroker Watchlist named Ticker.
+x_onlyStocks = ParamToggle( "Symbol filter", "All symbols|Ticker Watchlist", 1 );
+x_watchlistID = CategoryFind( "Ticker", categoryWatchlist );
 x_exportMode = ParamList( "Export mode", "FULL|INCREMENTAL", 1 );
-x_exportDays = Param( "Incremental trading bars", 10, 1, 365, 1 );
+x_exportDays = Param( "Incremental trading bars", 10, 1, 10000, 1 );
 
 // The New Analysis Apply-to setting independently selects the ticker universe.
 // Here we only restrict OUTPUT rows, keeping all history for indicators.
-x_universeFilter = IIf( x_onlyStocks, GroupID(1) == "Gia co phieu", 1 );
+x_universeFilter = IIf( x_onlyStocks, x_watchlistID >= 0 AND InWatchList( x_watchlistID ), 1 );
 x_recentBars = BarIndex() >= Max( 0, BarCount - x_exportDays );
 Filter = x_universeFilter AND IIf( x_exportMode == "INCREMENTAL", x_recentBars, 1 );
 
