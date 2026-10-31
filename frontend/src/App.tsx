@@ -132,9 +132,6 @@ const breadthSeries: SeriesDef[] = [
   {key:"ma100",label:"> MA100",color:"var(--chart-ma100)"},
   {key:"ma200",label:"> MA200",color:"var(--chart-ma200)"},
 ];
-function Legend({ series }: {series: SeriesDef[]}) {
-  return <div className="chart-legend">{series.map(s => <span key={s.key}><i style={{background:s.color}}/>{s.label}</span>)}</div>;
-}
 function Sparkline({ values, positive }: { values: number[]; positive: boolean }) {
   if (values.length < 2) return null;
   const min = Math.min(...values), max = Math.max(...values), span = max-min||1;
@@ -227,25 +224,18 @@ function Intermarket({ rows: _snapshotRows }: {rows: IntermarketPoint[]}) {
     </div>
   </Panel>;
 }
-function Breadth({ rows, loading, error, asOf, frames }: {
-  rows: MarketOverviewSnapshot["breadth"];
+function Breadth({ loading, error, frames }: {
   loading: boolean;
   error: string | null;
-  asOf: string;
   frames: BreadthSnapshot["timeframes"] | null;
 }) {
   const [timeframe,setTimeframe]=useState<Timeframe>("daily");
-  const series = frames?.[timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"] ?? [];
-  const sample=series; // Full two-year D/W/M window supplied by the R2 snapshot.
-  const latest=sample[sample.length-1];
+  const sample = frames?.[timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"] ?? [];
   return <Panel title="Độ rộng thị trường" subtitle="Tỷ lệ cổ phiếu trên MA20/50/100/200 · 2 năm gần nhất" icon="activity" className="breadth-panel"
     action={<FrameToggle value={timeframe} onChange={setTimeframe}/>}>
     {loading && <div className="loading-state">Đang tải độ rộng thị trường từ Cloudflare R2...</div>}
     {error && <div className="error-state" role="alert">Không tải được độ rộng thật: {error}</div>}
-    {asOf && <p className="tiny-label">Nguồn: cal_indicator_history ({timeframe==="daily"?"D":timeframe==="weekly"?"W":"M"}) + raw_stock_eod · {sample[0]?.date ?? "—"} đến {asOf} · {sample.length} điểm</p>}
-    <div className="breadth-stats">{breadthSeries.map(s=><div className="breadth-stat" key={s.key}><span>{s.label}</span><strong>{latest?number(Number((latest as unknown as Record<string,number>)[s.key]),1)+"%":"—"}</strong></div>)}</div>
-    <BreadthInteractiveChart key={timeframe} data={sample} series={breadthSeries}/>
-    <Legend series={breadthSeries}/>
+    <BreadthInteractiveChart data={sample} series={breadthSeries}/>
   </Panel>;
 }
 function Sectors({ rows }: {rows: MarketOverviewSnapshot["industries"]}) {
@@ -345,7 +335,7 @@ function Dashboard({ data, breadth, breadthLoading, breadthError }: {
       <div className="strip-item"><span className="strip-icon"><Icon name="globe"/></span><div><small>Khối ngoại</small><strong className={signClass(summary.foreignNetBn)}>{signed(summary.foreignNetBn,0)} <em>tỷ</em></strong><span className="strip-muted">Giá trị mua / bán ròng</span></div></div>
       <div className="strip-item"><span className="strip-icon"><Icon name="bolt"/></span><div><small>Tự doanh</small><strong className={signClass(summary.proprietaryNetBn)}>{signed(summary.proprietaryNetBn,0)} <em>tỷ</em></strong><span className="strip-muted">Giá trị mua / bán ròng</span></div></div>
     </div>
-    <div className="dashboard-grid"><Intermarket rows={data.intermarket}/><Watchlist rows={data.watchlist} query={query} onQuery={setQuery}/><Breadth rows={breadth?.breadth ?? []} frames={breadth?.timeframes ?? null} loading={breadthLoading} error={breadthError} asOf={breadth?.asOf ?? ""}/><Sectors rows={data.industries}/><CashFlow rows={data.flows}/></div>
+    <div className="dashboard-grid"><Intermarket rows={data.intermarket}/><Watchlist rows={data.watchlist} query={query} onQuery={setQuery}/><Breadth frames={breadth?.timeframes ?? null} loading={breadthLoading} error={breadthError}/><Sectors rows={data.industries}/><CashFlow rows={data.flows}/></div>
   </>;
 }
 export default function App() {

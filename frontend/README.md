@@ -108,8 +108,10 @@ The breadth chart is backed by the real `cal_indicator_history` series, served
 via the read-only Cloudflare Worker `cherrystock-breadth`. It uses each
 timeframe's native D/W/M indicator values over the most recent two years.
 
-- Hover or tap the plot to snap to a reporting date. A crosshair and tooltip
-  show that date and all four percentages (>MA20/50/100/200).
+- Hover or tap the plot to show the exact date and selected MA values in
+  a fixed information strip above the drawing area (no popup covers the lines).
+- Toggle the MA20/MA50/MA100/MA200 chips independently to compare one or
+  multiple series, keeping at least one visible.
 - Use the **3T / 6T / 1N / 2N** controls for a recent-window shortcut.
 - Drag the left/right grips in the mini overview to resize the selected
   interval; drag its center to pan through history; click outside the window
@@ -129,12 +131,13 @@ R2 daily publication and historical backfill notes:
 The market-breadth plot now uses `lightweight-charts` v5 (MIT) rather than
 drawing the main series with custom SVG. The mini overview remains SVG.
 
-- Drag the **bottom date/time axis** horizontally to zoom X; mouse wheel zooms time.
+- Drag the **bottom date/time axis** horizontally to zoom X. Mouse-wheel zoom
+  is disabled; use the time axis, presets or mini navigator instead.
 - Drag the **right percentage axis** vertically to scale Y; double-click the
   corresponding axis to restore its scale.
 - Drag the central plot to pan through dates; pinch on touch devices.
-- Hover/tap to inspect the exact trading date and all four MA percentages.
-  Coverage is shown in the tooltip to reveal small sample sizes.
+- Hover/tap to inspect the exact trading date and percentages of only the
+  selected MA series. The inspector never overlays the chart.
 - The mini overview still supports dragging either grip and moving its range.
   Its selection tracks zoom and pan performed on the main chart.
 - The chart recolors when switching CherryStock's dark/light theme.

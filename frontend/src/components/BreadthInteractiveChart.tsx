@@ -11,7 +11,7 @@ import "./BreadthInteractiveChart.css";
 type LineDef = { key: string; label: string; color: string };
 type DragMode = "start" | "end" | "move";
 type WindowRange = [number, number];
-type HoverPoint = { date: string; x: number; row: BreadthPoint };
+type HoverPoint = { date: string; row: BreadthPoint };
 const OVERVIEW_HEIGHT = 64;
 const OVERVIEW_WIDTH = 840;
 
@@ -43,17 +43,27 @@ export function BreadthInteractiveChart({
 }) {
   const chartContainer = useRef<HTMLDivElement>(null);
   const chartApi = useRef<IChartApi | null>(null);
-  const firstSeries = useRef<ISeriesApi<"Line", Time> | null>(null);
+  const lineApiByKey = useRef<Map<string, ISeriesApi<"Line", Time>>>(new Map());
   const overview = useRef<HTMLDivElement>(null);
   const drag = useRef<{ mode: DragMode; anchor: number; initial: WindowRange } | null>(null);
   const [selected, setSelected] = useState<WindowRange>([0, Math.max(0, data.length - 1)]);
   const [hover, setHover] = useState<HoverPoint | null>(null);
-  const [chartReady, setChartReady] = useState(false);
+  const [visibleKeys, setVisibleKeys] = useState<string[]>(() => series.map(line => line.key));
 
   const last = Math.max(0, data.length - 1);
   const from = clamp(selected[0], 0, last);
   const to = clamp(selected[1], from, last);
   const minimumSpan = Math.min(5, last);
+  const visibleLines = series.filter(line => visibleKeys.includes(line.key));
+  const toggleLine = (key: string) => {
+    setVisibleKeys(previous => {
+      if (previous.includes(key)) {
+        return previous.length > 1 ? previous.filter(item => item !== key) : previous;
+      }
+      return [...previous, key];
+    });
+    setHover(null);
+  };
 
   // The chart library owns zoom/pan/price-scale gestures. The overview is only
   // a second input to the same chart's visible logical range.
@@ -101,7 +111,7 @@ export function BreadthInteractiveChart({
         horzLine: { labelVisible: true, color: theme.text, width: 1 },
       },
       handleScale: {
-        mouseWheel: true,
+        mouseWheel: false,
         pinch: true,
         axisPressedMouseMove: { time: true, price: true },
         axisDoubleClickReset: { time: true, price: true },
@@ -115,6 +125,7 @@ export function BreadthInteractiveChart({
     });
 
     const lineApis: ISeriesApi<"Line", Time>[] = [];
+    const byKey = new Map<string, ISeriesApi<"Line", Time>>();
     for (const line of series) {
       const color = line.color.startsWith("var(")
         ? cssValue(line.color.slice(4, -1)) : line.color;
@@ -124,6 +135,7 @@ export function BreadthInteractiveChart({
         priceLineVisible: false,
         lastValueVisible: true,
         crosshairMarkerVisible: true,
+        visible: visibleKeys.includes(line.key),
         priceFormat: {
           type: "custom",
           formatter: (v: number) => `${v.toFixed(1)}%`,
@@ -135,9 +147,10 @@ export function BreadthInteractiveChart({
         value: seriesValue(row, line.key),
       })));
       lineApis.push(api);
+      byKey.set(line.key, api);
     }
     chartApi.current = chart;
-    firstSeries.current = lineApis[0] ?? null;
+    lineApiByKey.current = byKey;
 
     const byDate = new Map(data.map(row => [row.date, row] as const));
     const updateHover = (param: MouseEventParams<Time>) => {
@@ -147,7 +160,7 @@ export function BreadthInteractiveChart({
         setHover(null);
         return;
       }
-      setHover({ date: iso!, row, x: param.point.x });
+      setHover({ date: iso!, row });
     };
     chart.subscribeCrosshairMove(updateHover);
     chart.subscribeClick(updateHover);
@@ -159,7 +172,6 @@ export function BreadthInteractiveChart({
     };
     chart.timeScale().subscribeVisibleLogicalRangeChange(onLogicalRange);
     chart.timeScale().setVisibleLogicalRange({ from: 0, to: last });
-    setChartReady(true);
 
     const observer = new MutationObserver(() => {
       const next = colors();
@@ -192,9 +204,18 @@ export function BreadthInteractiveChart({
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onLogicalRange);
       chart.remove();
       chartApi.current = null;
-      firstSeries.current = null;
+      lineApiByKey.current.clear();
     };
   }, [data, series, last]);
+
+  // Toggle actual Lightweight Charts series without losing X/Y zoom.
+  useEffect(() => {
+    for (const line of series) {
+      lineApiByKey.current.get(line.key)?.applyOptions({
+        visible: visibleKeys.includes(line.key),
+      });
+    }
+  }, [series, visibleKeys]);
 
   function showWindow(start: number, end: number) {
     if (!data.length) return;
@@ -265,7 +286,9 @@ export function BreadthInteractiveChart({
     else showWindow(from, clamp(to + delta, from + minimumSpan, last));
   }
   function chartKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (!data.length || !firstSeries.current) return;
+    const primaryKey = visibleLines[0]?.key;
+    const primarySeries = primaryKey ? lineApiByKey.current.get(primaryKey) : undefined;
+    if (!data.length || !primarySeries) return;
     if (e.key === "Escape") {
       setHover(null);
       chartApi.current?.clearCrosshairPosition();
@@ -279,7 +302,7 @@ export function BreadthInteractiveChart({
       clamp(old + (e.key === "ArrowLeft" ? -1 : 1), from, to);
     const row = data[index];
     chartApi.current?.setCrosshairPosition(
-      seriesValue(row, series[0].key), row.date as Time, firstSeries.current,
+      seriesValue(row, primaryKey), row.date as Time, primarySeries,
     );
   }
   const overviewX = (idx: number) => last === 0 ? 0 : idx * OVERVIEW_WIDTH / last;
@@ -294,7 +317,6 @@ export function BreadthInteractiveChart({
     }).join(" ");
 
   if (!data.length) return <div className="empty-plot">Chưa có dữ liệu độ rộng thị trường</div>;
-  const hoverPct = hover?.x ?? 0;
 
   return <div className="breadth-interactive">
     <div className="breadth-range-tools">
@@ -313,36 +335,46 @@ export function BreadthInteractiveChart({
       </span>
     </div>
 
+    <div className="breadth-series-filters" role="group" aria-label="Chọn các đường MA hiển thị">
+      {series.map(line => {
+        const enabled = visibleKeys.includes(line.key);
+        return <button type="button" key={line.key}
+          className={enabled ? "breadth-series-toggle active" : "breadth-series-toggle"}
+          aria-pressed={enabled} aria-label={line.label}
+          onClick={() => toggleLine(line.key)}
+          title={enabled && visibleKeys.length === 1 ? "Giữ ít nhất một đường" : undefined}>
+          <span className="breadth-series-check" aria-hidden="true">{enabled ? "✓" : ""}</span>
+          <i style={{ background: line.color }} aria-hidden="true"/>
+          {line.label}
+        </button>;
+      })}
+    </div>
+    <div className="breadth-inspector" role="status" aria-live="off">
+      <div className="breadth-inspector-date">
+        <small>{hover ? "Ngày đang trỏ" : "Ngày cuối khoảng chọn"}</small>
+        <strong>{displayDate((hover?.row ?? data[to]).date)}</strong>
+      </div>
+      <div className="breadth-inspector-values">
+        {visibleLines.map(line => <span key={line.key} className="breadth-inspector-value">
+          <i style={{ background: line.color }} aria-hidden="true"/>
+          <span>{line.label}</span>
+          <b>{seriesValue(hover?.row ?? data[to], line.key).toFixed(1)}%</b>
+        </span>)}
+      </div>
+    </div>
     <div className="breadth-chart-stage">
       <div className="breadth-lightweight-chart" ref={chartContainer} role="img"
         tabIndex={0} onKeyDown={chartKey}
-        aria-label="Biểu đồ tỷ lệ MA. Kéo trục thời gian ở dưới để co giãn X, kéo thang phần trăm bên phải để co giãn Y. Kéo biểu đồ để dịch chuyển; dùng con lăn để zoom."/>
-      {hover && <div className="breadth-tooltip" role="status" aria-live="off"
-        style={{ left: `clamp(112px, ${hoverPct}px, calc(100% - 112px))` }}>
-        <strong>{displayDate(hover.date)}</strong>
-        <div className="breadth-tooltip-values">
-          {series.map(line => <span key={line.key}>
-            <i style={{ background: line.color }}/>
-            <span>{line.label}</span>
-            <b>{seriesValue(hover.row, line.key).toFixed(1)}%</b>
-          </span>)}
-        </div>
-        {"coverage" in hover.row && <small className="breadth-coverage">
-          Mẫu MA20: {String((hover.row as unknown as { coverage: number }).coverage)} mã
-        </small>}
-      </div>}
+        aria-label="Biểu đồ tỷ lệ MA. Kéo trục thời gian ở dưới để co giãn X, kéo thang phần trăm bên phải để co giãn Y. Kéo biểu đồ để dịch chuyển; "/>
     </div>
-    <div className="breadth-navigator-title">
-      <span>{chartReady ? "X: kéo trục ngày · Y: kéo trục % bên phải" : "Đang tải biểu đồ..."}</span>
-      <span>Con lăn: zoom · Kéo đồ thị: dịch chuyển · Nhấn đúp trục: đặt lại</span>
-    </div>
+    <div className="breadth-navigator-title"><span>Chọn khoảng thời gian</span></div>
     <div className="breadth-overview" ref={overview}
       onPointerDown={brushDown} onPointerMove={brushMove}
       onPointerUp={brushEnd} onPointerCancel={brushEnd}
       onLostPointerCapture={() => { drag.current = null; }}>
       <svg viewBox={`0 0 ${OVERVIEW_WIDTH} ${OVERVIEW_HEIGHT}`} aria-hidden="true"
         preserveAspectRatio="none">
-        {series.map(line => <path key={line.key} d={overviewPath(line.key)}
+        {visibleLines.map(line => <path key={line.key} d={overviewPath(line.key)}
           fill="none" stroke={line.color} strokeWidth={1.5} opacity={0.8}/>)}
       </svg>
       <div className="breadth-viewport" data-brush-action="move"
