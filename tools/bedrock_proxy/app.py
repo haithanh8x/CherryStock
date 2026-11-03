@@ -174,23 +174,11 @@ def make_payload(req: ChatRequest) -> tuple[str, dict, dict]:
     payload: dict[str, Any] = {"modelId": model_config["model_id"], "messages": messages}
     if system:
         payload["system"] = system
+    # Keep the Converse payload portable across every configured model.
+    # Copilot may send temperature/top_p automatically, but Bedrock model
+    # support differs by model/version and unsupported fields cause 502 errors.
+    # Omit both sampling controls globally; Bedrock applies each model's defaults.
     inference: dict[str, Any] = {"maxTokens": req.max_tokens}
-    # These models reject sampling parameters through Bedrock Converse,
-    # even when values are explicitly set to defaults. Copilot may send them
-    # automatically, so omit both temperature and topP for these model families.
-    model_id = model_config["model_id"]
-    sampling_unsupported = (
-        "claude-haiku-5-5" in model_id
-        or model_id.startswith(("global.openai.gpt-6-", "us.openai.gpt-6-"))
-    )
-    sampling_supported = not sampling_unsupported
-    if sampling_supported:
-        # Claude Sonnet 4.5 rejects requests that specify both temperature and
-        # topP. Prefer temperature when present and otherwise fall back to topP.
-        if req.temperature is not None:
-            inference["temperature"] = req.temperature
-        elif req.top_p is not None:
-            inference["topP"] = req.top_p
     payload["inferenceConfig"] = inference
     tools = convert_tools(req.tools)
     if tools and req.tool_choice != "none":
