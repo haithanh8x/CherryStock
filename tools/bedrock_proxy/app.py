@@ -146,9 +146,12 @@ def make_payload(req: ChatRequest) -> tuple[str, dict]:
     if system:
         payload["system"] = system
     inference: dict[str, Any] = {"maxTokens": req.max_tokens}
+    # Claude Sonnet 4.5 on Bedrock rejects requests that specify both
+    # temperature and topP. VS Code Copilot Chat may send both, so prefer
+    # temperature when present and only fall back to topP.
     if req.temperature is not None:
         inference["temperature"] = req.temperature
-    if req.top_p is not None:
+    elif req.top_p is not None:
         inference["topP"] = req.top_p
     payload["inferenceConfig"] = inference
     tools = convert_tools(req.tools)
