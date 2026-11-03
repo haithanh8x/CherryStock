@@ -63,6 +63,13 @@ ai = [
     "openrouter",
 ]
 
+# Local Amazon Bedrock proxy for VS Code agents
+bedrock-proxy = [
+    "boto3>=1.40",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+]
+
 # Model Context Protocol server
 mcp = [
     "mcp[cli]>=1.27,<3",

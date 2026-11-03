@@ -1,0 +1,14 @@
+{
+  "claude-sonnet-4.5": {
+    "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "provider": "bedrock_converse"
+  },
+  "claude-opus-4.6": {
+    "model_id": "global.anthropic.claude-opus-4-6-v1",
+    "provider": "bedrock_converse"
+  },
+  "nova-2-lite": {
+    "model_id": "global.amazon.nova-2-lite-v1:0",
+    "provider": "bedrock_converse"
+  }
+}
