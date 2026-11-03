@@ -175,10 +175,15 @@ def make_payload(req: ChatRequest) -> tuple[str, dict, dict]:
     if system:
         payload["system"] = system
     inference: dict[str, Any] = {"maxTokens": req.max_tokens}
-    # Claude Haiku 5.5 no longer accepts sampling parameters through Converse.
-    # VS Code Copilot Chat may send temperature/top_p by default, so omit both
-    # for this model while preserving the settings for other compatible models.
-    sampling_supported = "claude-haiku-5-5" not in model_config["model_id"]
+    # These models reject sampling parameters through Bedrock Converse,
+    # even when values are explicitly set to defaults. Copilot may send them
+    # automatically, so omit both temperature and topP for these model families.
+    model_id = model_config["model_id"]
+    sampling_unsupported = (
+        "claude-haiku-5-5" in model_id
+        or model_id.startswith(("global.openai.gpt-6-", "us.openai.gpt-6-"))
+    )
+    sampling_supported = not sampling_unsupported
     if sampling_supported:
         # Claude Sonnet 4.5 rejects requests that specify both temperature and
         # topP. Prefer temperature when present and otherwise fall back to topP.
