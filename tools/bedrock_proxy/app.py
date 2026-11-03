@@ -60,7 +60,7 @@ class ChatRequest(BaseModel):
     temperature: float | None = Field(default=None, ge=0, le=1)
     top_p: float | None = Field(default=None, gt=0, le=1)
     max_tokens: int = Field(default=4096, ge=1, le=32768)
-    stream: bool = False
+    stream: bool = True
     tools: list[dict[str, Any]] | None = None
     tool_choice: Any = "auto"
 
@@ -168,20 +168,24 @@ def convert_tools(tools: list[dict[str, Any]] | None) -> list[dict] | None:
     return result or None
 
 
-def make_payload(req: ChatRequest) -> tuple[str, dict]:
+def make_payload(req: ChatRequest) -> tuple[str, dict, dict]:
     system, messages = convert_messages(req.messages)
     model_config = resolve_model(req.model)
     payload: dict[str, Any] = {"modelId": model_config["model_id"], "messages": messages}
     if system:
         payload["system"] = system
     inference: dict[str, Any] = {"maxTokens": req.max_tokens}
-    # Claude Sonnet 4.5 on Bedrock rejects requests that specify both
-    # temperature and topP. VS Code Copilot Chat may send both, so prefer
-    # temperature when present and only fall back to topP.
-    if req.temperature is not None:
-        inference["temperature"] = req.temperature
-    elif req.top_p is not None:
-        inference["topP"] = req.top_p
+    # Claude Haiku 5.5 no longer accepts sampling parameters through Converse.
+    # VS Code Copilot Chat may send temperature/top_p by default, so omit both
+    # for this model while preserving the settings for other compatible models.
+    sampling_supported = "claude-haiku-5-5" not in model_config["model_id"]
+    if sampling_supported:
+        # Claude Sonnet 4.5 rejects requests that specify both temperature and
+        # topP. Prefer temperature when present and otherwise fall back to topP.
+        if req.temperature is not None:
+            inference["temperature"] = req.temperature
+        elif req.top_p is not None:
+            inference["topP"] = req.top_p
     payload["inferenceConfig"] = inference
     tools = convert_tools(req.tools)
     if tools and req.tool_choice != "none":
