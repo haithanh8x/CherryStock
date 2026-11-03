@@ -5,6 +5,7 @@ import os
 import secrets
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -16,17 +17,38 @@ from pydantic import BaseModel, ConfigDict, Field
 APP_NAME = "CherryStock Bedrock Proxy"
 AWS_PROFILE = os.getenv("AWS_PROFILE", "cherrystock-bedrock")
 AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-1")
-DEFAULT_MODEL = os.getenv(
-    "BEDROCK_DEFAULT_MODEL",
-    "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-)
+DEFAULT_MODEL = os.getenv("BEDROCK_DEFAULT_MODEL", "claude-sonnet-4.5")
+MODEL_REGISTRY_PATH = Path(os.getenv(
+    "BEDROCK_MODEL_REGISTRY", str(Path(__file__).with_name("models.json"))
+))
 PROXY_API_KEY = os.getenv("BEDROCK_PROXY_API_KEY", "")
 
-MODEL_ALIASES = {
-    "claude-sonnet-4.5": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    "claude-opus-4.6": "global.anthropic.claude-opus-4-6-v1",
-    "nova-2-lite": "global.amazon.nova-2-lite-v1:0",
-}
+def load_model_registry() -> dict[str, dict[str, str]]:
+    """Load public model aliases and provider routing from models.json."""
+    try:
+        raw = json.loads(MODEL_REGISTRY_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Cannot load model registry: {MODEL_REGISTRY_PATH}: {exc}") from exc
+    if not isinstance(raw, dict) or not raw:
+        raise RuntimeError("Model registry must be a non-empty JSON object.")
+    registry: dict[str, dict[str, str]] = {}
+    for alias, config in raw.items():
+        if not isinstance(alias, str) or not alias or not isinstance(config, dict):
+            raise RuntimeError(f"Invalid model registry entry: {alias!r}")
+        model_id = config.get("model_id")
+        provider = config.get("provider", "bedrock_converse")
+        if not isinstance(model_id, str) or not model_id:
+            raise RuntimeError(f"Model {alias!r} must define a non-empty model_id.")
+        if provider not in {"bedrock_converse"}:
+            raise RuntimeError(
+                f"Model {alias!r} uses unsupported provider {provider!r}. "
+                "Add a provider adapter before enabling it."
+            )
+        registry[alias] = {"model_id": model_id, "provider": provider}
+    return registry
+
+
+MODEL_REGISTRY = load_model_registry()
 
 app = FastAPI(title=APP_NAME, version="0.1.0")
 
@@ -59,8 +81,14 @@ def authorize(authorization: str | None) -> None:
         raise HTTPException(status_code=401, detail="Invalid or missing bearer token.")
 
 
-def resolve_model(name: str) -> str:
-    return MODEL_ALIASES.get(name, name)
+def resolve_model(name: str) -> dict[str, str]:
+    config = MODEL_REGISTRY.get(name)
+    if config:
+        return config
+    # Keep support for callers that pass a complete Bedrock model/inference-profile ID.
+    if name and "." in name:
+        return {"model_id": name, "provider": "bedrock_converse"}
+    raise HTTPException(status_code=400, detail=f"Unknown model alias: {name}")
 
 
 def convert_messages(messages: list[dict[str, Any]]) -> tuple[list[dict], list[dict]]:
@@ -142,7 +170,8 @@ def convert_tools(tools: list[dict[str, Any]] | None) -> list[dict] | None:
 
 def make_payload(req: ChatRequest) -> tuple[str, dict]:
     system, messages = convert_messages(req.messages)
-    payload: dict[str, Any] = {"modelId": resolve_model(req.model), "messages": messages}
+    model_config = resolve_model(req.model)
+    payload: dict[str, Any] = {"modelId": model_config["model_id"], "messages": messages}
     if system:
         payload["system"] = system
     inference: dict[str, Any] = {"maxTokens": req.max_tokens}
@@ -157,7 +186,7 @@ def make_payload(req: ChatRequest) -> tuple[str, dict]:
     tools = convert_tools(req.tools)
     if tools and req.tool_choice != "none":
         payload["toolConfig"] = {"tools": tools}
-    return resolve_model(req.model), payload
+    return req.model, payload, model_config
 
 
 def to_openai_response(result: dict, model: str, started: float) -> dict:
@@ -208,7 +237,7 @@ def health():
 @app.get("/v1/models")
 def models(authorization: str | None = Header(default=None)):
     authorize(authorization)
-    names = list(MODEL_ALIASES) + [DEFAULT_MODEL]
+    names = list(MODEL_REGISTRY) + [DEFAULT_MODEL]
     return {
         "object": "list",
         "data": [{"id": name, "object": "model", "created": 0, "owned_by": "amazon-bedrock"} for name in dict.fromkeys(names)],
@@ -218,7 +247,9 @@ def models(authorization: str | None = Header(default=None)):
 @app.post("/v1/chat/completions")
 def chat_completions(req: ChatRequest, authorization: str | None = Header(default=None)):
     authorize(authorization)
-    model, payload = make_payload(req)
+    model, payload, model_config = make_payload(req)
+    if model_config["provider"] != "bedrock_converse":
+        raise HTTPException(status_code=400, detail="Unsupported provider: " + model_config["provider"])
     client = bedrock_client()
     started = time.monotonic()
     try:
