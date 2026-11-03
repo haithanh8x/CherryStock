@@ -17,7 +17,11 @@ python -m pip install -e ".[bedrock-proxy]"
 $env:AWS_PROFILE = "cherrystock-bedrock"
 $env:AWS_REGION = "ap-southeast-1"
 $env:BEDROCK_DEFAULT_MODEL = "claude-sonnet-4.5"
-$env:BEDROCK_PROXY_API_KEY = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+$bytes = New-Object byte[] 32
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$env:BEDROCK_PROXY_API_KEY = [Convert]::ToBase64String($bytes)
+$rng.Dispose()
 python -m uvicorn tools.bedrock_proxy.app:app --host 127.0.0.1 --port 8787
 ```
 
@@ -59,7 +63,24 @@ Model aliases:
 - `claude-opus-4.6` — global Claude Opus 4.6
 - `nova-2-lite` — global Amazon Nova 2 Lite
 
-You can also pass a full Bedrock inference profile ID as `model`.
+### Add or change a model
+
+Edit `tools/bedrock_proxy/models.json` and add one entry:
+
+```json
+{
+  "my-model-alias": {
+    "model_id": "the-exact-bedrock-model-or-inference-profile-id",
+    "provider": "bedrock_converse"
+  }
+}
+```
+
+The alias becomes available automatically through `GET /v1/models` after restarting the proxy. Use the exact model/inference-profile ID from your Bedrock account. Do not put display names or guessed IDs in this file.
+
+Current adapter: `bedrock_converse` (Claude/Nova models supported by the Converse API). A model that requires Bedrock Mantle or another provider API needs a dedicated adapter in `app.py`; adding a registry row alone does not make a different API protocol compatible.
+
+You can also pass a full Bedrock inference profile ID directly as `model`.
 
 ## VS Code agent settings
 
@@ -76,5 +97,5 @@ Exact setting names vary by extension. Do not put the API key in a committed `.v
 - The server binds only to loopback (`127.0.0.1`); do not change this to `0.0.0.0` unless you add a proper network security design.
 - The proxy requires a non-empty bearer key and compares it in constant time.
 - AWS credentials are resolved by Boto3 from the configured AWS profile. The proxy never reads SSO cache files directly.
-- The first version maps text messages and function tool definitions to Bedrock Converse. Streaming forwards text deltas; streamed tool-call deltas and multimodal image/audio payloads are not yet exposed in OpenAI format.
+- The current provider adapter maps text messages and function tool definitions to Bedrock Converse. Model aliases and Bedrock IDs are separated in `models.json` for easier maintenance. Streaming forwards text deltas; streamed tool-call deltas and multimodal image/audio payloads are not yet exposed in OpenAI format.
 - This service is intended for a trusted local development machine, not internet-facing deployment.
