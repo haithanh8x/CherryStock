@@ -111,15 +111,15 @@ If sampling controls are reintroduced later, implement model-specific capability
 - SDK operation: `bedrock-runtime.converse(**payload)`.
 - Bedrock returns after generation completes.
 - `to_openai_response()` converts the assistant message, tool-use blocks, and usage counts to a single OpenAI-compatible `chat.completion` JSON object.
-- Selected only when the request explicitly includes `"stream": false`.
+- Selected when `"stream"` is omitted or explicitly `false`, matching the OpenAI API default.
 
 ### ConverseStream (streaming)
 
 - SDK operation: `bedrock-runtime.converse_stream(**payload)`.
 - Bedrock emits events while generating.
-- `stream_response()` reads text deltas from `contentBlockDelta` events and converts them to SSE `chat.completion.chunk` messages.
-- A stop event produces a finish chunk; the stream ends with `data: [DONE]`.
-- Selected when `"stream": true` or when `stream` is omitted. The Pydantic default is `True`.
+- `stream_response()` converts Bedrock stream events to SSE `chat.completion.chunk` messages: text deltas become `delta.content`, `toolUse` blocks become `delta.tool_calls`, and stop reasons are mapped to OpenAI finish reasons.
+- A stop event produces a finish chunk; the stream ends with `data: [DONE]`. When the client requests `stream_options.include_usage`, a final usage-only chunk is emitted.
+- Selected when `"stream": true`. The Pydantic default is `False`.
 
 Streaming improves time-to-first-token for interactive coding assistants. It does not change the underlying model or guarantee a faster total generation time.
 
@@ -136,15 +136,17 @@ Streaming response includes:
 
 - `object: chat.completion.chunk`.
 - Text in `choices[0].delta.content`.
-- `finish_reason: stop` on the final chunk.
+- Tool calls in `choices[0].delta.tool_calls`, with the tool `id`/`name` in the first chunk and argument fragments afterwards, all sharing the same `index`.
+- A mapped `finish_reason` (`stop`, `length`, `tool_calls`, or `content_filter`) on the final chunk.
+- An optional usage-only chunk (`choices: []`) when the request includes `stream_options.include_usage`.
 - `data: [DONE]` terminator.
 
 ## 7. Current scope and known limitations
 
 - Only the `bedrock_converse` provider is implemented.
 - Only text message content is converted. Image, audio, video, and other multimodal payloads are not mapped.
-- Non-streaming response conversion includes tool-use blocks, but streaming currently forwards text deltas only; streamed tool-use deltas are not converted into OpenAI tool-call chunks.
-- The current stream converter emits a generic `stop` finish reason and does not yet map all Bedrock stop reasons or detailed streaming usage metadata.
+- Non-streaming response conversion includes tool-use blocks, and streaming now converts `toolUse` deltas into OpenAI tool-call chunks.
+- The stream converter maps the main Bedrock stop reasons and emits usage metadata only when the client opts in with `stream_options.include_usage`. Extended-thinking/reasoning deltas are not converted.
 - The proxy does not implement retries, request cancellation propagation, rate limiting, per-user quotas, or production-grade observability.
 - The model registry is static for the lifetime of the process and has no hot reload.
 - The proxy does not validate model availability/access in advance; Bedrock validates the model ID, region, permissions, and request fields at invocation time.

@@ -102,7 +102,7 @@ $body = @{
 Invoke-RestMethod http://127.0.0.1:8787/v1/chat/completions -Method Post -Headers $headers -ContentType "application/json" -Body $body
 ```
 
-For streaming, omit `stream` or set it to `true`. The default is `true`; the response is Server-Sent Events (SSE). Use an SSE-capable client such as `curl.exe -N` to observe chunks.
+For streaming, set `"stream": true`. The default is `false` (a single JSON response, matching the OpenAI API), so the response is Server-Sent Events (SSE) only when requested. Use an SSE-capable client such as `curl.exe -N` to observe chunks.
 
 ## 5. HTTP API
 
@@ -135,8 +135,10 @@ The endpoint chooses the Bedrock operation from the OpenAI request's `stream` fl
 
 | Incoming request | Bedrock operation | Proxy response |
 |---|---|---|
-| `stream` omitted (default) or `true` | `ConverseStream` | SSE chunks in OpenAI chat-completion-chunk format, followed by `data: [DONE]` |
-| `stream: false` | `Converse` | One JSON OpenAI chat-completion response |
+| `stream` omitted (default) or `false` | `Converse` | One JSON OpenAI chat-completion response |
+| `stream: true` | `ConverseStream` | SSE chunks in OpenAI chat-completion-chunk format, followed by `data: [DONE]` |
+
+Streaming must be requested explicitly, matching the OpenAI API default. Clients such as draw.io's AI dialog, which send no `stream` field and expect one JSON response, rely on this.
 
 ### Converse
 
@@ -144,7 +146,13 @@ The endpoint chooses the Bedrock operation from the OpenAI request's `stream` fl
 
 ### ConverseStream
 
-`ConverseStream` returns an event stream while the model is generating. The proxy reads Bedrock stream events, forwards text deltas as SSE chunks, sends a finish chunk, and terminates with `[DONE]`. This is the default because interactive coding assistants benefit from incremental output.
+`ConverseStream` returns an event stream while the model is generating. The proxy reads Bedrock stream events, forwards text deltas as SSE chunks, converts `toolUse` blocks into OpenAI `delta.tool_calls` chunks, sends a finish chunk, and terminates with `[DONE]`. This is the default because interactive coding assistants benefit from incremental output.
+
+Streaming behavior details:
+
+- `contentBlockStart` with a `toolUse` payload emits the first tool-call chunk (`id`, `type: "function"`, `name`, empty `arguments`); each following `contentBlockDelta` appends an `arguments` fragment to the same `index`.
+- `messageStop.stopReason` maps to an OpenAI `finish_reason`: `end_turn`/`stop_sequence` → `stop`, `max_tokens` → `length`, `tool_use` → `tool_calls`, `guardrail_intervened`/`content_filtered` → `content_filter`, anything else → `stop`.
+- When the request includes `"stream_options": {"include_usage": true}`, the proxy ends with one usage-only chunk (`choices: []`) carrying `prompt_tokens`, `completion_tokens`, `total_tokens`. Absent that option, no usage chunk is sent.
 
 ### Shared request conversion
 

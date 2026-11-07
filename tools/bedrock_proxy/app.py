@@ -60,7 +60,11 @@ class ChatRequest(BaseModel):
     temperature: float | None = Field(default=None, ge=0, le=1)
     top_p: float | None = Field(default=None, gt=0, le=1)
     max_tokens: int = Field(default=4096, ge=1, le=32768)
-    stream: bool = True
+    # OpenAI-compatible clients default to a single JSON response when they
+    # omit `stream`. draw.io's AI dialog relies on that, so streaming must be
+    # requested explicitly with "stream": true.
+    stream: bool = False
+    stream_options: dict[str, Any] | None = None
     tools: list[dict[str, Any]] | None = None
     tool_choice: Any = "auto"
 
@@ -186,6 +190,14 @@ def make_payload(req: ChatRequest) -> tuple[str, dict, dict]:
     return req.model, payload, model_config
 
 
+def to_openai_usage(usage: dict[str, Any]) -> dict[str, int]:
+    return {
+        "prompt_tokens": usage.get("inputTokens", 0),
+        "completion_tokens": usage.get("outputTokens", 0),
+        "total_tokens": usage.get("totalTokens", 0),
+    }
+
+
 def to_openai_response(result: dict, model: str, started: float) -> dict:
     output = result.get("output", {}).get("message", {})
     text_parts = []
@@ -217,11 +229,7 @@ def to_openai_response(result: dict, model: str, started: float) -> dict:
             "message": message,
             "finish_reason": "tool_calls" if tool_calls else "stop",
         }],
-        "usage": {
-            "prompt_tokens": usage.get("inputTokens", 0),
-            "completion_tokens": usage.get("outputTokens", 0),
-            "total_tokens": usage.get("totalTokens", 0),
-        },
+        "usage": to_openai_usage(usage),
         "system_fingerprint": f"bedrock-{int((time.monotonic() - started) * 1000)}ms",
     }
 
@@ -252,7 +260,11 @@ def chat_completions(req: ChatRequest, authorization: str | None = Header(defaul
     try:
         if req.stream:
             response = client.converse_stream(**payload)
-            return StreamingResponse(stream_response(response, model), media_type="text/event-stream")
+            include_usage = bool((req.stream_options or {}).get("include_usage"))
+            return StreamingResponse(
+                stream_response(response, model, include_usage),
+                media_type="text/event-stream",
+            )
         result = client.converse(**payload)
         return JSONResponse(to_openai_response(result, model, started))
     except (ClientError, BotoCoreError, NoCredentialsError) as exc:
@@ -264,28 +276,103 @@ def chat_completions(req: ChatRequest, authorization: str | None = Header(defaul
         raise HTTPException(status_code=502, detail={"code": code, "message": message}) from exc
 
 
-def stream_response(response: dict, model: str):
+STOP_REASON_MAP = {
+    "end_turn": "stop",
+    "stop_sequence": "stop",
+    "max_tokens": "length",
+    "tool_use": "tool_calls",
+    "guardrail_intervened": "content_filter",
+    "content_filtered": "content_filter",
+}
+
+
+def sse_chunk(
+    completion_id: str,
+    created: int,
+    model: str,
+    *,
+    delta: dict[str, Any] | None = None,
+    finish_reason: str | None = None,
+    usage: dict[str, int] | None = None,
+) -> str:
+    """Encode one OpenAI chat-completion chunk as an SSE frame.
+
+    Usage-only chunks carry an empty ``choices`` list, as OpenAI clients expect.
+    """
+    chunk: dict[str, Any] = {
+        "id": completion_id,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+    }
+    if delta is None:
+        chunk["choices"] = []
+    else:
+        chunk["choices"] = [{"index": 0, "delta": delta, "finish_reason": finish_reason}]
+    if usage is not None:
+        chunk["usage"] = usage
+    return f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+
+
+def stream_response(response: dict, model: str, include_usage: bool = False):
     completion_id = f"chatcmpl-{uuid.uuid4().hex}"
     created = int(time.time())
+    # Bedrock reports tool blocks by contentBlockIndex; OpenAI expects a
+    # zero-based tool_calls index per assistant message.
+    tool_indexes: dict[int, int] = {}
+    finish_reason = "stop"
+    usage: dict[str, int] | None = None
     try:
         for event in response.get("stream", []):
-            delta = event.get("contentBlockDelta", {}).get("delta", {})
-            text = delta.get("text")
-            if text:
-                chunk = {
-                    "id": completion_id, "object": "chat.completion.chunk",
-                    "created": created, "model": model,
-                    "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}],
-                }
-                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
-            stop = event.get("messageStop", {})
+            block_start = event.get("contentBlockStart")
+            if block_start:
+                tool = block_start.get("start", {}).get("toolUse")
+                if tool:
+                    index = len(tool_indexes)
+                    tool_indexes[block_start.get("contentBlockIndex", 0)] = index
+                    yield sse_chunk(
+                        completion_id, created, model,
+                        delta={"tool_calls": [{
+                            "index": index,
+                            "id": tool.get("toolUseId") or f"call_{uuid.uuid4().hex[:12]}",
+                            "type": "function",
+                            "function": {"name": tool.get("name", ""), "arguments": ""},
+                        }]},
+                    )
+                continue
+
+            block_delta = event.get("contentBlockDelta")
+            if block_delta:
+                delta = block_delta.get("delta", {})
+                text = delta.get("text")
+                if text:
+                    yield sse_chunk(
+                        completion_id, created, model, delta={"content": text},
+                    )
+                tool_input = delta.get("toolUse", {}).get("input")
+                if tool_input:
+                    index = tool_indexes.get(block_delta.get("contentBlockIndex", 0), 0)
+                    yield sse_chunk(
+                        completion_id, created, model,
+                        delta={"tool_calls": [{
+                            "index": index,
+                            "function": {"arguments": tool_input},
+                        }]},
+                    )
+                continue
+
+            stop = event.get("messageStop")
             if stop:
-                chunk = {
-                    "id": completion_id, "object": "chat.completion.chunk",
-                    "created": created, "model": model,
-                    "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-                }
-                yield f"data: {json.dumps(chunk)}\n\n"
+                finish_reason = STOP_REASON_MAP.get(stop.get("stopReason", ""), "stop")
+                continue
+
+            metadata = event.get("metadata")
+            if metadata and metadata.get("usage"):
+                usage = to_openai_usage(metadata["usage"])
+
+        yield sse_chunk(completion_id, created, model, delta={}, finish_reason=finish_reason)
+        if include_usage and usage is not None:
+            yield sse_chunk(completion_id, created, model, usage=usage)
         yield "data: [DONE]\n\n"
     except (ClientError, BotoCoreError):
         error = {"error": {"message": "Bedrock streaming request failed", "type": "bedrock_error"}}
