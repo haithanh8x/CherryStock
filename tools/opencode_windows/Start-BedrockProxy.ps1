@@ -9,7 +9,7 @@ $source = Join-Path $PSScriptRoot "snapshot\src\llm\bedrock_http_proxy.py"
 if (-not (Test-Path -LiteralPath $source)) {
     # In a checkout, run the repository source instead of the kit snapshot.
     $source = Join-Path $PSScriptRoot "..\..\src\llm\bedrock_http_proxy.py"
-    $python = (Get-Command python -CommandType Application -ErrorAction Stop).Source
+    $python = @(Get-Command python -CommandType Application -ErrorAction Stop)[0].Source
 } elseif (-not (Test-Path -LiteralPath $python)) {
     throw "Run Install.ps1 first."
 }
