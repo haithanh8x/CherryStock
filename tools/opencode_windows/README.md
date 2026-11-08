@@ -148,3 +148,24 @@ python3 scripts/package_opencode_windows.py --output docs/reference/data/opencod
 Review the manifest before copying; it hashes integrity, not trust/authenticity.
 Keep this kit private: while credentials are excluded, it contains project docs
 and AWS profile/model names. Do not commit/push this generated bundle without review.
+
+## Start and stop the Windows SSH server
+
+This script controls an already installed Windows OpenSSH Server (`sshd`). Run
+it in PowerShell on Cherry-Win, from the repository root:
+
+```powershell
+.\tools\opencode_windows\SSHServer.ps1 --start
+.\tools\opencode_windows\SSHServer.ps1 --stop
+```
+
+If PowerShell is not elevated, the script requests administrator access via a
+Windows UAC prompt. Approve it, or run PowerShell as Administrator. UAC requires
+an interactive desktop and administrator credentials when prompted; it cannot
+automatically elevate an unattended SSH session.
+
+Stopping `sshd` may disconnect active SSH sessions. The script does not install
+OpenSSH, change firewall rules or alter its startup type. If `sshd` is configured
+to start automatically, stopping it does not prevent it from starting at the next
+boot. Check the service with `Get-Service sshd`; allow network access only from
+trusted networks.
