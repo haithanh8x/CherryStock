@@ -60,7 +60,6 @@ The Lambda event contract:
 Requires: boto3. Log in first:  python3 scripts/aws-login.py --profile data-app-sit
 """
 
-import openssl_conf  # noqa: F401 — MUST be first import, before boto3 (sets OPENSSL_CONF + CA bundle)
 
 import json
 import os
@@ -300,9 +299,8 @@ class LLMClient:
         # Passing the bundle path keeps full verification using the right CA.
         verify_arg: object = verify_ssl
         if verify_ssl:
-            import openssl_conf  # noqa: F401 — ensures OPENSSL_CONF/CA are set
-            ca_bundle = openssl_conf.CA_BUNDLE_PATH
-            if os.path.exists(ca_bundle):
+            ca_bundle = None
+            if ca_bundle and os.path.exists(ca_bundle):
                 verify_arg = ca_bundle
         try:
             # Empty profile uses the SDK credential chain (ECS task role on Fargate).

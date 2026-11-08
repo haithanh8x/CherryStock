@@ -25,6 +25,8 @@ Canonical explanation:
 
 ## AI Governance / Agents
 
+- `../AGENTS.md` — cross-client bootstrap into canonical governance.
+- [[development/OpenCode_Setup|OpenCode V2 Setup — agent adapters and skill discovery]]
 - [[../.github/copilot-instructions|Global Governance / Router]]
 - [[../.github/agents/CherryMon.agent|CherryMon Architecture Constitution]]
 - [[../.github/agents/BusinessAnalyst.agent|Business Analyst]]

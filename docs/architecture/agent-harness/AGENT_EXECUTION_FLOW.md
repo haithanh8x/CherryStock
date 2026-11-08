@@ -35,6 +35,11 @@ Operational loading normally reads Docs before executing a Skill so the procedur
 
 ## 2. Shared bootstrap
 
+OpenCode V2 enters this same flow through root `AGENTS.md` and `opencode.jsonc`.
+They adapt discovery only; the `.github/` ownership contracts and canonical ADLC
+flow remain unchanged. Runtime IDs, skill sources and workspace limitations are
+documented in `docs/development/OpenCode_Setup.md`.
+
 ```text
 User request
   ↓

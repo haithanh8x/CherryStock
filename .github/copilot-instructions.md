@@ -32,6 +32,15 @@ Rules:
 
 ## Official responsibility hierarchy
 
+### Client bootstrap adapters
+
+`AGENTS.md` is the cross-client entry point. For OpenCode V2, `opencode.jsonc`
+loads this governance and the CherryMon constitution, registers thin named agent
+adapters, and discovers the canonical `.github/skills/` catalog. These adapters
+do not introduce new outcome owners or duplicate role/skill bodies. Keep domain
+Instructions and detailed Docs task-scoped. Setup and limitations are documented
+in `docs/development/OpenCode_Setup.md`.
+
 ```text
 L0  Governance      .github/copilot-instructions.md
 L1  Agent           .github/agents/*.agent.md

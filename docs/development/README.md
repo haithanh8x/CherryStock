@@ -5,6 +5,7 @@ This directory contains durable developer workflow and non-obvious implementatio
 ## Contents
 
 - `Development_Workflow.md` — repository-wide development and agent handoff workflow.
+- `OpenCode_Setup.md` — OpenCode V2 bootstrap, runtime agent adapters and canonical skill discovery.
 - `implementation-notes/` — optional notes for changes with non-obvious migration, operational or developer details.
 
 ## Ownership

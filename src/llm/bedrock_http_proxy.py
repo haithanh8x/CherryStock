@@ -54,7 +54,6 @@ Security notes (financial-grade):
     - Read-only toward AWS: it just invokes the model, nothing destructive.
 """
 
-import openssl_conf  # noqa: F401 — MUST be first (sets OPENSSL_CONF + CA bundle before boto3)
 
 import json
 import hmac

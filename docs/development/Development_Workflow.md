@@ -51,6 +51,11 @@ Do not duplicate the daily stage sequence directly in `run.py`; modify the
 application service and its nearest orchestration/DQ tests instead.
 
 ## Before coding
+For OpenCode V2, open the repository root and follow
+`docs/development/OpenCode_Setup.md`. `AGENTS.md` and `opencode.jsonc` connect the
+client to the canonical materials below; they do not replace them. Already-loaded
+configured instructions need not be read again unless their contents changed.
+
 Read in order:
 1. .github/copilot-instructions.md
 2. .github/agents/CherryMon.agent.md

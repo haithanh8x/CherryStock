@@ -18,6 +18,10 @@ A Skill is loaded only when the current task needs that procedure. It MUST NOT r
 
 ## Current skills
 
+OpenCode V2 registers this directory through root `opencode.jsonc`; no copied
+`.opencode/skills/` tree is needed. Use the repository-root workspace and follow
+`docs/development/OpenCode_Setup.md` for discovery checks and path semantics.
+
 | Skill | Procedure | Typical owner |
 |---|---|---|
 | `architecture-design` | Evidence-backed solution design, contracts, ADR check and architecture artifact synchronization | Solution Architect |
