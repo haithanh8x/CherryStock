@@ -13,7 +13,8 @@
     "./.github/skills/data-quality-validation",
     "./.github/skills/duckdb-migration",
     "./.github/skills/chart-authoring",
-    "./.github/skills/drawio-skill"
+    "./.github/skills/drawio-skill",
+    "./.github/skills/pet-shortcuts"
   ],
   "default_agent": "cherrystock",
   "agents": {

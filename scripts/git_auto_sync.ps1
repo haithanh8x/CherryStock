@@ -1,10 +1,51 @@
+param(
+    [string]$GitExe,
+    [switch]$PreflightOnly
+)
+
 $ErrorActionPreference = "Stop"
 
-$RepoPath = "C:\Github\CherryStock"
+$RepoPath = Split-Path -Parent $PSScriptRoot
 $Branch = "main"
 $Remote = "origin"
 
 Set-Location $RepoPath
+
+function Resolve-GitExecutable {
+    if ($GitExe) {
+        if (-not (Test-Path -LiteralPath $GitExe -PathType Leaf)) {
+            throw "Specified Git executable does not exist: $GitExe"
+        }
+        & $GitExe --version | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Specified Git executable could not run: $GitExe" }
+        return (Get-Item -LiteralPath $GitExe).FullName
+    }
+
+    $candidates = @()
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if ($root) { $candidates += Join-Path $root 'Git\cmd\git.exe' }
+    }
+    # SSH sessions can have different access to Scoop's current junction.
+    # Use physical version directories, never the shim or current link.
+    $scoopRoot = if ($env:SCOOP) { $env:SCOOP } else { Join-Path $env:USERPROFILE 'scoop' }
+    $versions = @(Get-ChildItem -LiteralPath (Join-Path $scoopRoot 'apps\git') -Directory -ErrorAction SilentlyContinue |
+        Where-Object { -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) } |
+        Sort-Object LastWriteTime -Descending)
+    foreach ($version in $versions) {
+        $candidates += Join-Path $version.FullName 'cmd\git.exe'
+    }
+    $candidates += @(Get-Command git.exe -CommandType Application -All -ErrorAction SilentlyContinue |
+        Where-Object { $_.Source -notmatch '[\\/]scoop[\\/]shims[\\/]|[\\/]current[\\/]' } |
+        Select-Object -ExpandProperty Source)
+
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            & $candidate --version | Out-Null
+            if ($LASTEXITCODE -eq 0) { return $candidate }
+        }
+    }
+    throw 'No runnable Git executable found. In this SSH session, check access to the physical Git installation or specify -GitExe. No sync was performed.'
+}
 
 Write-Host "========================================"
 Write-Host "CherryStock Git Auto Sync"
@@ -17,7 +58,7 @@ Write-Host ""
 function Test-GitPathExists {
     param([Parameter(Mandatory = $true)][string]$GitPathName)
 
-    $ResolvedGitPath = git rev-parse --git-path $GitPathName 2>$null
+    $ResolvedGitPath = & $script:GitExecutable rev-parse --git-path $GitPathName 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $ResolvedGitPath) {
         return $false
     }
@@ -35,10 +76,10 @@ function Assert-NoInProgressGitOperation {
     if ($RebaseMerge -or $RebaseApply) {
         Write-Host ""
         Write-Host "An existing rebase is already in progress." -ForegroundColor Yellow
-        git status
+        & $script:GitExecutable status
         Write-Host ""
 
-        $Unmerged = git diff --name-only --diff-filter=U
+        $Unmerged = & $script:GitExecutable diff --name-only --diff-filter=U
         if ($Unmerged) {
             Write-Host "Resolve these conflicted files first:" -ForegroundColor Yellow
             $Unmerged | ForEach-Object { Write-Host "  $_" }
@@ -71,35 +112,42 @@ function Assert-NoInProgressGitOperation {
 }
 
 try {
+    $script:GitExecutable = Resolve-GitExecutable
+    Write-Host "Git executable: $script:GitExecutable"
     Write-Host "[0/6] Preflight Git state"
-    git rev-parse --is-inside-work-tree | Out-Null
+    & $script:GitExecutable rev-parse --is-inside-work-tree | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Not inside a Git work tree" }
 
     Assert-NoInProgressGitOperation
 
-    $CurrentBranch = git branch --show-current
+    $CurrentBranch = & $script:GitExecutable branch --show-current
     if ($LASTEXITCODE -ne 0) { throw "Unable to determine current branch" }
     if ($CurrentBranch -ne $Branch) {
         throw "Current branch is '$CurrentBranch', expected '$Branch'. Switch to '$Branch' before auto-sync."
     }
 
     Write-Host "Git preflight passed."
+    if ($PreflightOnly) {
+        Write-Host 'Preflight-only: no add, commit, fetch, rebase or push performed.'
+        return
+    }
 
     Write-Host ""
     Write-Host "[1/6] Git status"
-    git status
+    & $script:GitExecutable status
     if ($LASTEXITCODE -ne 0) { throw "git status failed" }
 
     Write-Host ""
     Write-Host "[2/6] Commit local changes if any"
-    $Changes = git status --porcelain
+    $Changes = & $script:GitExecutable status --porcelain
+    if ($LASTEXITCODE -ne 0) { throw "git status --porcelain failed" }
 
     if ($Changes) {
-        git add .
+        & $script:GitExecutable add .
         if ($LASTEXITCODE -ne 0) { throw "git add failed" }
 
         $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        git commit -m "auto-sync: $Timestamp"
+        & $script:GitExecutable commit -m "auto-sync: $Timestamp"
         if ($LASTEXITCODE -ne 0) { throw "git commit failed" }
     }
     else {
@@ -108,12 +156,12 @@ try {
 
     Write-Host ""
     Write-Host "[3/6] Fetch remote"
-    git fetch $Remote
+    & $script:GitExecutable fetch $Remote
     if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
 
     Write-Host ""
     Write-Host "[4/6] Rebase local branch onto $Remote/$Branch"
-    git rebase "$Remote/$Branch"
+    & $script:GitExecutable rebase "$Remote/$Branch"
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
         Write-Host "Rebase did not complete. Inspect with: git status" -ForegroundColor Yellow
@@ -124,18 +172,18 @@ try {
 
     Write-Host ""
     Write-Host "[5/6] Push local branch"
-    git push $Remote $Branch
+    & $script:GitExecutable push $Remote $Branch
     if ($LASTEXITCODE -ne 0) { throw "git push failed" }
 
     Write-Host ""
     Write-Host "[6/6] Final status"
-    git status --short --branch
+    & $script:GitExecutable status --short --branch
     if ($LASTEXITCODE -ne 0) { throw "final git status failed" }
 
     Write-Host ""
     Write-Host "Git auto sync completed successfully."
 }
 catch {
-    Write-Error "Git auto sync failed: $($_.Exception.Message)"
+    Write-Error "Git auto sync failed: $($_.Exception.Message)" -ErrorAction Continue
     exit 1
 }

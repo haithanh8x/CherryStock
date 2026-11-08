@@ -31,6 +31,7 @@ OpenCode V2 registers this directory through root `opencode.jsonc`; no copied
 | `duckdb-migration` | Safe idempotent DuckDB schema/view/data migration and rollback/validation procedure | General Coding / Solution Architect |
 | `chart-authoring` | Analytical visualization selection and Flint authoring/validation/rendering | Chart Agent |
 | `drawio-skill` | Editable diagrams.net/Draw.io artifact authoring and validation | Solution Architect or routed owner |
+| `pet-shortcuts` | Paired PowerShell shorthand functions and pet snippets with matching Description prefixes and safe scoped checks | General Coding |
 
 ## When to create a Skill
 
