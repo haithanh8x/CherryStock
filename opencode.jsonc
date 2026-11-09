@@ -14,7 +14,8 @@
     "./.github/skills/duckdb-migration",
     "./.github/skills/chart-authoring",
     "./.github/skills/drawio-skill",
-    "./.github/skills/pet-shortcuts"
+    "./.github/skills/pet-shortcuts",
+    "./.github/skills/systematic-debugging"
   ],
   "default_agent": "cherrystock",
   "agents": {

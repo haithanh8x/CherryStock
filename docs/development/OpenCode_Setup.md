@@ -62,7 +62,7 @@ and platform restrictions still control tools.
 
 ## Skills
 
-The `skills` array registers the seven procedure directories individually. This
+The `skills` array registers the procedure directories individually. This
 avoids registering the catalog's root `README.md` as an extra flat-file skill.
 Expected IDs:
 
@@ -73,6 +73,8 @@ Expected IDs:
 - `duckdb-migration`
 - `chart-authoring`
 - `drawio-skill`
+- `pet-shortcuts`
+- `systematic-debugging`
 
 Only names/descriptions are advertised; bodies are loaded when needed. References
 such as `.github/...`, `docs/...`, `src/...` and `tests/...` in these CherryStock
@@ -100,7 +102,7 @@ During setup, omitting the selector targeted
 the home directory; `--param` forms did not select the requested location, whereas
 the explicit query string did. Do not interpret a home-location listing as a
 project registration failure.
-Check that all seven agent IDs and seven skill IDs above are present and that the
+Check that all seven agent IDs and the skill IDs above are present and that the
 effective instruction sources include the two canonical files. Do not publish
 raw config responses: inherited global settings may contain sensitive values.
 

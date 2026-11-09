@@ -58,6 +58,8 @@ Catalog: `../.github/skills/README.md`
 - `duckdb-migration` — safe DuckDB migration procedure.
 - `chart-authoring` — visualization selection + Flint authoring/validation/rendering.
 - `drawio-skill` — editable Draw.io diagram procedure.
+- `pet-shortcuts` — paired PowerShell and pet shortcut procedure.
+- `systematic-debugging` — Superpowers-inspired root-cause investigation under CherryStock governance.
 
 ## Requirement / Backlog routing
 
