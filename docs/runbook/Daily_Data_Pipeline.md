@@ -22,6 +22,28 @@ claim that all legacy optional analytics stages are currently enabled.
 
 ## Purpose
 
+### Bounded historical DAT replay
+
+From the repository root, using the project virtual environment:
+
+```powershell
+.\.venv\Scripts\python.exe run.py --replay-start 2026-11-10 --replay-end 2026-11-11
+```
+
+This optional mode processes configured AmiBroker EOD and Intraday `.dat` targets
+one day at a time, inclusively and in ascending order. Each day uses one transaction;
+DQ FAIL rolls back that day and stops, while earlier committed days remain. Upserts
+do not delete unrelated dates or drop tables. DQ sees historical rows only through
+the requested day and uses that day as `expected_date`; thresholds are unchanged.
+Audits inside a failed day's transaction are also rolled back.
+
+This is **DAT-only replay**, not a complete point-in-time reconstruction. Yahoo,
+FA, ticker metadata, APX indicator exports, aggregates lacking as-of support,
+metadata export and Cloudflare R2 publication are explicitly skipped. Existing
+values in those tables are untouched and may reflect another date. Do not publish
+this mixed state as a complete historical snapshot. Source coverage failures are
+not repaired by replay. Normal invocation without replay flags is unchanged.
+
 This document is the canonical operational description of the CherryStock daily
 data pipeline.
 

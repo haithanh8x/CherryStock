@@ -150,6 +150,8 @@ def upsert_stock_eod(
     table_name: str,
     from_last_day: Optional[int] = None,
     connection=None,
+    *,
+    replay_date=None,
 ):
     con = connection or DuckDBManager.get_connection()
     owns_connection = connection is None
@@ -170,7 +172,9 @@ def upsert_stock_eod(
 
         # Bước 2: Tính toán ngày checkpoint (from_date) từ tham số from_last_day
         from_date = None
-        if from_last_day is not None:
+        if replay_date is not None:
+            from_date = replay_date.isoformat()
+        elif from_last_day is not None:
             from_date = datetime.now() - timedelta(days=from_last_day)
 
         all_stock_data = []
@@ -185,6 +189,8 @@ def upsert_stock_eod(
             
             # Đọc dữ liệu file .dat kèm checkpoint ngày
             pd2 = read_amibroker_dat(file_path, from_date=from_date) 
+            if replay_date is not None and pd2 is not None and not pd2.empty:
+                pd2 = pd2.loc[pd.to_datetime(pd2['Date']).dt.date == replay_date].copy()
             
             if pd2 is not None and not pd2.empty:
                 pd2.insert(0, 'Ticker', ticker)
@@ -203,7 +209,7 @@ def upsert_stock_eod(
             df_combined.drop_duplicates(subset=['Ticker', 'Date'], keep='last', inplace=True)
 
         # Chỉ DROP TABLE khi nạp lại toàn bộ (from_last_day = None)
-        if from_last_day is None:
+        if from_last_day is None and replay_date is None:
             print(f"-> Phát hiện cấu hình quét ALL. Thực hiện DROP TABLE: {table_name}")
             con.execute(f"DROP TABLE IF EXISTS {table_name};")
             
@@ -501,6 +507,8 @@ def upsert_amibroker_intraday(
     table_name: str,
     from_last_day: Optional[int] = None,
     connection=None,
+    *,
+    replay_date=None,
 ):
     """
     Load one FireAnt/AmiBroker intraday source folder into one tick-level table.
@@ -517,7 +525,9 @@ def upsert_amibroker_intraday(
             raise RuntimeError(f"Không tìm thấy file .dat trong: {folder_path}")
 
         from_date = None
-        if from_last_day is not None:
+        if replay_date is not None:
+            from_date = replay_date.isoformat()
+        elif from_last_day is not None:
             from_date = datetime.now() - timedelta(days=from_last_day)
 
         _create_intraday_table(con, table_name)
@@ -531,6 +541,8 @@ def upsert_amibroker_intraday(
                 file_path,
                 from_date=from_date,
             )
+            if replay_date is not None and df_intraday_tmp is not None and not df_intraday_tmp.empty:
+                df_intraday_tmp = df_intraday_tmp.loc[df_intraday_tmp['Date'] == replay_date].copy()
             if df_intraday_tmp is None or df_intraday_tmp.empty:
                 continue
 

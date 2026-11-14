@@ -1,6 +1,8 @@
 import sys
 import io
 import os
+import argparse
+from datetime import date
 from time import perf_counter
 
 from src.Ults import DuckLib
@@ -233,8 +235,23 @@ def _run_cloudflare_r2_sync() -> None:
 
 
 @timeit
-def main() -> None:
+def main(argv=None) -> None:
     """CherryStock daily orchestration: INGEST → AGGREGATE → R2 sync."""
+    parser = argparse.ArgumentParser(description='CherryStock daily run or bounded DAT replay.')
+    parser.add_argument('--replay-start', type=date.fromisoformat)
+    parser.add_argument('--replay-end', type=date.fromisoformat)
+    args = parser.parse_args(argv)
+    if (args.replay_start is None) != (args.replay_end is None):
+        parser.error('--replay-start and --replay-end must be provided together.')
+    if args.replay_start is not None:
+        if args.replay_start > args.replay_end:
+            parser.error('--replay-start must not be after --replay-end.')
+        from src.cherrystock.application.services.replay_amibroker import replay_amibroker_days
+        replay_amibroker_days(
+            start=args.replay_start, end=args.replay_end, settings=settings,
+            factory=DuckDBConnectionFactory(db_path=settings.local_db_path),
+        )
+        return
     days_diff = _resolve_days_diff()
     connection_factory = DuckDBConnectionFactory(db_path=settings.local_db_path)
     amibroker_adapter = WindowsAmiBrokerAdapter(
