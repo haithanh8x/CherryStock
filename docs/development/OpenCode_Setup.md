@@ -172,6 +172,12 @@ Windows transfer kit: `tools/opencode_windows/README.md`. Build an allowlisted
 snapshot with `scripts/package_opencode_windows.py`; dependencies are installed
 for Windows, and credentials/service identity are intentionally not copied.
 
+OpenSync history upload for OpenCode V2 (replaces `opencode-sync sync --all`,
+which cannot read `opencode.db`): `tools/opensync_importer/README.md`.
+
+Cherry-Mac ↔ Cherry-Win session replication through a shared Google Drive folder,
+with conflict detection and resolution: `tools/opencode_replication/README.md`.
+
 - Update behavior in the owning `.github/` contract or canonical doc first.
 - Keep runtime adapters short; change them only for routing/discovery changes.
 - When adding a role, update governance and this ID map along with the adapter.
