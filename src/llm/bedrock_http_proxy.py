@@ -20,7 +20,9 @@ Options (env vars):
     DRAWIO_PROXY_TOKEN   if set, requests must send  Authorization: Bearer <token>
     DRAWIO_PROXY_TOKEN_FILE  optional mounted token file (overrides token env)
     DRAWIO_PROXY_ALLOWED_MODELS  comma-separated model allowlist (optional locally)
-    DRAWIO_PROXY_MAX_BODY_BYTES  request limit (default 33554432; images are base64)
+    DRAWIO_PROXY_MAX_BODY_BYTES  request limit (default 20971520; images are base64)
+    DRAWIO_PROXY_MAX_IMAGE_BYTES  decoded image limit (default 3750000)
+    DRAWIO_PROXY_MAX_IMAGES  images per request (default 20)
     DRAWIO_PROXY_MAX_OUTPUT_TOKENS  output token limit (default 131072)
     LLM_PROFILE          AWS profile         (default data-app-sit)
     LLM_REGION           AWS region          (default ap-southeast-1)
@@ -68,7 +70,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import time
 import uuid
 
-from llm_client import LLMClient, LLMError, DEFAULT_MAX_TOKENS, MODEL_TIERS
+from llm_client import LLMClient, LLMError, DEFAULT_MAX_TOKENS
 
 HOST = os.environ.get("DRAWIO_PROXY_HOST", "127.0.0.1")
 PORT = int(os.environ.get("DRAWIO_PROXY_PORT", "8765"))
@@ -96,11 +98,9 @@ VERIFIED_MODELS = (
     "global.anthropic.claude-haiku-5-5",
     "global.openai.gpt-6-luna",
 )
-# Keep the tier models in the set too, then dedupe while preserving order.
-EFFECTIVE_ALLOWED_MODELS = ALLOWED_MODELS or tuple(
-    dict.fromkeys(VERIFIED_MODELS + tuple(MODEL_TIERS.values()))
-)
-MAX_BODY_BYTES = int(os.environ.get("DRAWIO_PROXY_MAX_BODY_BYTES", "33554432"))
+# Tier defaults must not reintroduce unverified models (e.g. Fable).
+EFFECTIVE_ALLOWED_MODELS = ALLOWED_MODELS or VERIFIED_MODELS
+MAX_BODY_BYTES = int(os.environ.get("DRAWIO_PROXY_MAX_BODY_BYTES", "20971520"))
 MAX_OUTPUT_TOKENS = int(os.environ.get("DRAWIO_PROXY_MAX_OUTPUT_TOKENS", "131072"))
 PROFILE = os.environ.get("LLM_PROFILE", "data-app-sit")
 REGION = os.environ.get("LLM_REGION", "ap-southeast-1")
@@ -184,47 +184,52 @@ def _content_to_text(content) -> str:
     return "" if content is None else str(content)
 
 
-# Bedrock Converse image formats and per-image size limit (3.75 MB decoded).
-_IMAGE_FORMATS = {"png": "png", "jpeg": "jpeg", "jpg": "jpeg", "gif": "gif", "webp": "webp"}
+# ADR-0011: only embedded data URLs, never fetch remote URLs.
+_IMAGE_FORMATS = {"image/png": "png", "image/jpeg": "jpeg", "image/jpg": "jpeg",
+                  "image/gif": "gif", "image/webp": "webp"}
 MAX_IMAGE_BYTES = int(os.environ.get("DRAWIO_PROXY_MAX_IMAGE_BYTES", str(3_750_000)))
+MAX_IMAGES = int(os.environ.get("DRAWIO_PROXY_MAX_IMAGES", "20"))
 
 
-def _image_block(url: str, media_type: str | None = None):
-    """data:image/...;base64 URL (or bare base64 + media type) -> Converse image block.
+class ContentError(ValueError):
+    """Safe, input-independent API error, raised before any Bedrock call."""
 
-    Remote http(s) URLs are deliberately not fetched (no SSRF from a LAN proxy);
-    a short text placeholder is returned instead so the model knows why.
-    """
+    def __init__(self, code: str, status: int = 400):
+        super().__init__(code)
+        self.code = code
+        self.status = status
+
+
+def _decode_image_url(url):
     if not isinstance(url, str) or not url:
-        return None
-    data = url
-    if url.startswith("data:"):
-        header, _, data = url.partition(",")
-        media_type = header[5:].split(";", 1)[0]
-        if ";base64" not in header:
-            return {"text": "[image omitted: non-base64 data URL is not supported]"}
-    elif url.startswith(("http://", "https://")):
-        return {"text": f"[image omitted: remote URL not fetched by proxy: {url[:200]}]"}
-    fmt = _IMAGE_FORMATS.get((media_type or "").lower().rsplit("/", 1)[-1])
+        raise ContentError("invalid_image_data")
+    if url.lower().startswith(("http://", "https://")):
+        raise ContentError("remote_image_url_not_supported")
+    header, sep, data = url.partition(",")
+    if not sep or not header.startswith("data:") or not header.endswith(";base64"):
+        raise ContentError("invalid_image_data")
+    fmt = _IMAGE_FORMATS.get(header[5:-7].lower())
     if not fmt:
-        return {"text": f"[image omitted: unsupported image type {media_type!r}; use png/jpeg/gif/webp]"}
+        raise ContentError("unsupported_image_format")
     try:
-        raw = base64.b64decode(data, validate=False)
+        raw = base64.b64decode(data, validate=True)
     except (binascii.Error, ValueError):
-        return {"text": "[image omitted: invalid base64 data]"}
+        raise ContentError("invalid_image_data") from None
+    if not raw:
+        raise ContentError("invalid_image_data")
     if len(raw) > MAX_IMAGE_BYTES:
-        return {"text": f"[image omitted: {len(raw):,} bytes exceeds Bedrock limit {MAX_IMAGE_BYTES:,}]"}
+        raise ContentError("image_too_large", 413)
     return {"image": {"format": fmt, "source": {"bytes": raw}}}
 
 
-def _content_to_blocks(content) -> list:
-    """OpenAI message content (string or parts list) -> Converse text/image blocks."""
+def _oai_content_to_blocks(content, role="user") -> list:
+    """Convert supported parts; reject rather than silently losing content."""
     if content is None:
         return []
     if isinstance(content, str):
         return [{"text": content}] if content.strip() else []
     if not isinstance(content, list):
-        return [{"text": str(content)}]
+        raise ContentError("unsupported_content_part")
     blocks = []
     for p in content:
         if isinstance(p, str):
@@ -232,21 +237,33 @@ def _content_to_blocks(content) -> list:
                 blocks.append({"text": p})
             continue
         if not isinstance(p, dict):
-            continue
+            raise ContentError("unsupported_content_part")
         kind = p.get("type")
-        if kind in ("image_url", "input_image"):
+        if kind == "image_url":
+            if role != "user":
+                raise ContentError("image_not_supported_for_role")
             iu = p.get("image_url")
             url = iu.get("url") if isinstance(iu, dict) else iu
-            block = _image_block(url)
-        elif kind == "image" and isinstance(p.get("source"), dict):  # Anthropic shape
-            src = p["source"]
-            block = _image_block(src.get("data") or src.get("url"), src.get("media_type"))
+            block = _decode_image_url(url)
+        elif kind == "text" and isinstance(p.get("text"), str):
+            text = p["text"]
+            block = {"text": text} if text.strip() else None
         else:
-            text = p.get("text") or (p.get("content") if isinstance(p.get("content"), str) else "")
-            block = {"text": text} if text and text.strip() else None
+            raise ContentError("unsupported_content_part")
         if block:
             blocks.append(block)
     return blocks
+
+
+def _text_only_content(content, role):
+    blocks = _oai_content_to_blocks(content, role)
+    if any("image" in block for block in blocks):
+        raise ContentError("image_not_supported_for_role")
+    return "\n".join(block["text"] for block in blocks)
+
+
+def _count_image_blocks(messages):
+    return sum("image" in block for message in messages for block in message["content"])
 
 
 def _messages_to_prompt(messages: list) -> tuple[str, str]:
@@ -261,7 +278,7 @@ def _messages_to_prompt(messages: list) -> tuple[str, str]:
         if not isinstance(m, dict):
             continue
         role = (m.get("role") or "user").lower()
-        text = _content_to_text(m.get("content"))
+        text = _text_only_content(m.get("content"), role)
         if not text:
             continue
         if role == "system":
@@ -331,7 +348,7 @@ def _oai_messages_to_converse(messages) -> tuple[list, str]:
         if not isinstance(m, dict):
             continue
         role = (m.get("role") or "user").lower()
-        text = _content_to_text(m.get("content"))
+        text = _text_only_content(m.get("content"), role) if role != "user" else ""
         if role in ("system", "developer"):
             if text:
                 system_parts.append(text)
@@ -346,13 +363,16 @@ def _oai_messages_to_converse(messages) -> tuple[list, str]:
                 }})
             push("assistant", blocks)
         elif role == "tool":
-            result = _content_to_blocks(m.get("content")) or [{"text": "(empty)"}]
+            result = [{"text": text}] if text.strip() else [{"text": "(empty)"}]
             push("user", [{"toolResult": {
                 "toolUseId": m.get("tool_call_id") or "unknown",
                 "content": result,
             }}])
         else:
-            push("user", _content_to_blocks(m.get("content")))
+            push("user", _oai_content_to_blocks(m.get("content"), role))
+
+    if _count_image_blocks(conv) > MAX_IMAGES:
+        raise ContentError("too_many_images")
 
     if conv and conv[0]["role"] != "user":
         conv.insert(0, {"role": "user", "content": [{"text": "(continue)"}]})
@@ -440,7 +460,7 @@ class Handler(BaseHTTPRequestHandler):
         self._cors_headers()
         self.end_headers()
         self.wfile.flush()
-        print(f"[{self.address_string()}] OPTIONS {self.path} -> 204 (preflight)")
+        print(f"[{self.address_string()}] OPTIONS -> 204 (preflight)")
 
     def _unauthorized(self, reason: str):
         self._send_json(401, {"error": "unauthorized", "detail": reason})
@@ -465,7 +485,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle_openai_native(self, body: dict):
         """OpenAI chat-completions with real tool calling, via Converse."""
-        messages, sys_text = _oai_messages_to_converse(body.get("messages"))
+        try:
+            messages, sys_text = _oai_messages_to_converse(body.get("messages"))
+        except ContentError as e:
+            self._send_json(e.status, {"error": e.code})
+            return
+        images_in = _count_image_blocks(messages)
         if not messages:
             self._send_json(400, {"error": "missing_prompt",
                                   "detail": "messages[] has no usable content"})
@@ -515,6 +540,7 @@ class Handler(BaseHTTPRequestHandler):
             "choices": [{"index": 0, "message": msg, "finish_reason": finish}],
             "usage": usage,
         })
+        print(f"[{self.address_string()}] -> 200 ok (images_in={images_in})")
 
     def _write_chunk(self, data: bytes):
         """Write one HTTP/1.1 chunked-transfer frame and flush it to the client.
@@ -631,10 +657,11 @@ class Handler(BaseHTTPRequestHandler):
         self._write_chunk(b"")  # end of chunked body
         # status + counts only, never prompt/response text (PII-safe)
         print(f"[{self.address_string()}] -> 200 {'stream_error' if error else 'ok'} "
-              f"(stream, finish={finish}, tools_in={len(tools)}, tool_calls={len(tool_index)})")
+              f"(stream, finish={finish}, tools_in={len(tools)}, tool_calls={len(tool_index)}, "
+              f"images_in={_count_image_blocks(messages)})")
 
     def do_POST(self):
-        print(f"[{self.address_string()}] POST {self.path}")
+        print(f"[{self.address_string()}] POST")
         # Optional bearer-token gate.
         if TOKEN:
             auth = self.headers.get("Authorization", "")
@@ -657,8 +684,8 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             body = json.loads(raw.decode("utf-8")) if raw else {}
-        except (ValueError, UnicodeDecodeError) as e:
-            self._send_json(400, {"error": "bad_json", "detail": str(e)})
+        except (ValueError, UnicodeDecodeError):
+            self._send_json(400, {"error": "bad_json"})
             return
 
         if not isinstance(body, dict):
@@ -699,12 +726,17 @@ class Handler(BaseHTTPRequestHandler):
             system = _pick(body, "system_message", "system",
                            default=sys_from_msgs or "You are a helpful assistant.")
         else:
-            prompt = _pick(body, "user_message", "prompt")
+            try:
+                prompt = _text_only_content(_pick(body, "user_message", "prompt"), "user_message")
+                system = _text_only_content(_pick(body, "system_message", "system",
+                                           default="You are a helpful assistant."), "system")
+            except ContentError as e:
+                self._send_json(e.status, {"error": e.code})
+                return
             if not prompt:
                 self._send_json(400, {"error": "missing_prompt",
                                       "detail": "provide 'user_message', 'prompt', or 'messages'"})
                 return
-            system = _pick(body, "system_message", "system", default="You are a helpful assistant.")
 
         model = _pick(body, "model_id", "model")  # None => client's tier default
         try:
@@ -803,7 +835,8 @@ def main():
     print(f"Bedrock proxy listening on {scheme}://{HOST}:{PORT}  "
           f"(profile={PROFILE}, region={REGION}, backend={BACKEND}, tier={TIER}, "
           f"timeout={TIMEOUT}s, {auth})")
-    print(f"  health:  curl -k {scheme}://{HOST}:{PORT}/health")
+    ca_option = f'--cacert "{CERT_FILE}" ' if USE_TLS else ""
+    print(f"  health:  curl {ca_option}{scheme}://{HOST}:{PORT}/health")
     if USE_TLS:
         print("  note:    self-signed cert — draw.io must accept it (see below if it refuses)")
     print("  stop:    Ctrl-C")

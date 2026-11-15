@@ -54,6 +54,11 @@ On retry, an existing downloaded MCP binary also stops rather than overwriting i
 
 ## AWS SSO and proxy
 
+For the checkout-based ADR-0011 image/API upgrade and its offline checks, see
+[`docs/runbook/Bedrock_Proxy_Local.md`](../../docs/runbook/Bedrock_Proxy_Local.md).
+The checkout launcher can differ from the packaged snapshot (including its bind
+address); verify the actual launcher/source before applying the kit instructions.
+
 Create the profile on Windows using organization-approved SSO values:
 
 ```powershell
