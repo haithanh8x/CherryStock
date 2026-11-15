@@ -872,7 +872,7 @@ Rules:
 - Knowledge memory MUST NOT be duplicated into episodic memory unnecessarily.
 - Previous agent conclusions are evidence/history, not a replacement for current CherryMon data.
 - Runtime agents MUST revalidate time-sensitive claims against current SSOT data.
-- Developer engineering memory remains Git/repository based.
+- Developer engineering memory remains Git/repository based. The developer `cherrystock-memory` MCP holds only working/episodic recall (pointers, task state, failed attempts, candidate lessons) under ADR-019; it is not the runtime memory of CS-HARNESS-007/008.
 
 ---
 

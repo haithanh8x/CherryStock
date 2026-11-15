@@ -12,7 +12,7 @@ L1  Agent           .github/agents/*.agent.md
 L2  Instruction     .github/instructions/*.instructions.md
 L3  Skill           .github/skills/*/SKILL.md
 L4  Docs            docs/**
-L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / scripts / CLI
+L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / Memory MCP / scripts / CLI
 L6  Implementation  src/** + runtime entry points
 L7  Verification    tests/** + validation evidence
 ```
@@ -27,6 +27,7 @@ Canonical explanation:
 
 - `../AGENTS.md` — cross-client bootstrap into canonical governance.
 - [[development/OpenCode_Setup|OpenCode V2 Setup — agent adapters and skill discovery]]
+- [[adr/ADR-019-developer-memory-mcp-as-l5-working-memory|ADR-019 Developer Memory MCP]] — memory is an L5 recall tool; knowledge stays in docs.
 - [[../.github/copilot-instructions|Global Governance / Router]]
 - [[../.github/agents/CherryMon.agent|CherryMon Architecture Constitution]]
 - [[../.github/agents/BusinessAnalyst.agent|Business Analyst]]
@@ -60,6 +61,7 @@ Catalog: `../.github/skills/README.md`
 - `drawio-skill` — editable Draw.io diagram procedure.
 - `pet-shortcuts` — paired PowerShell and pet shortcut procedure.
 - `systematic-debugging` — Superpowers-inspired root-cause investigation under CherryStock governance.
+- `memory-hygiene` — recall/record/audit/promote developer memory in the `cherrystock-memory` MCP.
 
 ## Requirement / Backlog routing
 

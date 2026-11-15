@@ -25,7 +25,7 @@ L4  Docs — durable KNOWLEDGE / DESIGN
     docs/**
 
 L5  Tool — execution CAPABILITY
-    MCP · GitHub · DuckDB · Flint · Archify · Draw.io · scripts · CLI
+    MCP · GitHub · DuckDB · Flint · Archify · Draw.io · Memory MCP · scripts · CLI
 
 L6  Implementation — runtime BEHAVIOR
     src/** + run.py / runMonthly.py / runtime entry points
@@ -151,7 +151,10 @@ Current catalog:
 ├── data-quality-validation/
 ├── duckdb-migration/
 ├── chart-authoring/
-└── drawio-skill/
+├── drawio-skill/
+├── memory-hygiene/
+├── pet-shortcuts/
+└── systematic-debugging/
 ```
 
 A Skill may:
@@ -196,6 +199,7 @@ Tools provide capability. Examples:
 - Flint MCP;
 - Archify CLI/runtime;
 - Draw.io Desktop CLI and upstream scripts;
+- `cherrystock-memory` MCP — developer working/episodic recall (§10);
 - Python/pytest/PowerShell;
 - repository scripts.
 
@@ -316,11 +320,41 @@ The legacy `.github/agents/Instructions/**` mixed responsibility is retired:
 - long-form legacy indicator reference → `docs/reference/Indicator_Engine_Legacy_Reference.md`;
 - stale generated project-structure reference → removed.
 
-## 9. Related artifacts
+## 9. Memory classes and placement
+
+| Memory class | Store | Owner | Authority |
+|---|---|---|---|
+| Rules / ownership | `AGENTS.md`, `.github/**` | Governance / Agents | normative |
+| Knowledge memory | `docs/**`, ADR, Git history | owning Agent via reviewed change | Source of Truth |
+| Developer working/episodic memory | `cherrystock-memory` MCP (outside repo) | routed Agent, own items | none — recall only |
+| Runtime agent memory | future `sys_agent_*` (CS-HARNESS-007/008) | not implemented | — |
+
+## 10. Memory MCP in the hierarchy
+
+Decision: `docs/adr/ADR-019-developer-memory-mcp-as-l5-working-memory.md`.
+
+```text
+Route (L0/L1) → Instructions (L2)
+  → recall: cherrystock-memory search_nodes within routed scope   (L5)
+  → verify pointers against docs/** + git sha                       (L4)
+  → Skill / Tool / Implementation                                  (L3/L5/L6)
+  → record: task state, failed attempts, candidate lessons          (L5)
+  → handoff/gate: lesson → promoted into docs/** by owner           (L4)
+  → close: prune task/attempt items; audit scripts/memory_audit.py
+```
+
+Memory stores pointers, in-flight state, failed attempts, candidate lessons and user
+preferences only. It never stores rules, designs, schema copies, verdict evidence,
+permissions or secrets, and it never decides routing. Repository content always wins.
+Constraints: `.github/instructions/memory.instructions.md`; procedure:
+`.github/skills/memory-hygiene/SKILL.md`.
+
+## 11. Related artifacts
 
 - `docs/architecture/agent-harness/README.md`
 - `docs/architecture/agent-harness/AGENT_EXECUTION_FLOW.md`
 - `docs/adr/ADR-011-agent-harness-responsibility-hierarchy.md`
+- `docs/adr/ADR-019-developer-memory-mcp-as-l5-working-memory.md`
 - `.github/skills/README.md`
 - `docs/architecture/diagrams/agent-harness-five-components.drawio`
 - `docs/architecture/diagrams/cherrystock-adlc-agent-harness.workflow.json`

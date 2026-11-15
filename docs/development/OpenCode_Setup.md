@@ -75,6 +75,7 @@ Expected IDs:
 - `drawio-skill`
 - `pet-shortcuts`
 - `systematic-debugging`
+- `memory-hygiene`
 
 Only names/descriptions are advertised; bodies are loaded when needed. References
 such as `.github/...`, `docs/...`, `src/...` and `tests/...` in these CherryStock
@@ -110,6 +111,35 @@ Config changes apply automatically; use `/reload` if a full location reload is
 needed. Do not restart a healthy service just to apply this configuration.
 Discovery checks prove registration, not full agent execution, production data
 correctness, diagram synchronization or independent test PASS.
+
+## Memory MCP (`cherrystock-memory`)
+
+Decision: `docs/adr/ADR-019-developer-memory-mcp-as-l5-working-memory.md`.
+Constraints: `.github/instructions/memory.instructions.md`. Procedure: `memory-hygiene`.
+
+The server is `@modelcontextprotocol/server-memory` (pinned version), declared in the
+**user's global** OpenCode config, not in `opencode.jsonc`, because its graph file is
+per user/machine and must never be committed:
+
+```jsonc
+"cherrystock-memory": {
+  "type": "local",
+  "command": ["npx", "-y", "@modelcontextprotocol/server-memory@2.1.1"],
+  "environment": { "MEMORY_FILE_PATH": "~/.config/opencode/cherrystock-memory.jsonl" }
+}
+```
+
+Use an absolute or `~`-prefixed `MEMORY_FILE_PATH` outside the repository; the
+server's default location is inside its npx cache and can be deleted. VS Code
+users may add the equivalent stdio entry to `.vscode/mcp.json` with the same path.
+
+Audit (read-only, exit `1` on errors) from the repository root:
+
+```sh
+python scripts/memory_audit.py --repo-root .
+```
+
+Memory is disposable: deleting the graph file loses no canonical knowledge.
 
 ## `/github-sync`
 

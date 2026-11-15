@@ -47,7 +47,7 @@ L1  Agent           .github/agents/*.agent.md
 L2  Instruction     .github/instructions/*.instructions.md
 L3  Skill           .github/skills/*/SKILL.md
 L4  Docs            docs/**
-L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / scripts / CLI
+L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / Memory MCP / scripts / CLI
 L6  Implementation  src/** + runtime entry points
 L7  Verification    tests/** + reproducible validation evidence
 ```
@@ -118,6 +118,7 @@ Skills package repeatable procedures. Current canonical catalog is `.github/skil
 | DuckDB schema/view/data migration | `.github/skills/duckdb-migration/SKILL.md` | General Coding / Solution Architect |
 | Analytical visualization + Flint authoring | `.github/skills/chart-authoring/SKILL.md` | Chart Agent |
 | Editable diagrams.net/Draw.io artifact | `.github/skills/drawio-skill/SKILL.md` | Solution Architect or routed owner |
+| Developer memory recall/record/audit/promotion | `.github/skills/memory-hygiene/SKILL.md` | Any routed owner (own items) |
 
 Load a Skill only when its procedure materially applies. Do not copy the procedure back into Agent or Instruction files.
 
@@ -130,6 +131,7 @@ Load a Skill only when its procedure materially applies. Do not copy the procedu
 - Python execution → `.github/instructions/python.instructions.md`
 - Testing / validation → `.github/instructions/testing.instructions.md`
 - Archify synchronization → `.github/instructions/archify.instructions.md`
+- Memory MCP (`cherrystock-memory`) → `.github/instructions/memory.instructions.md`
 
 Instructions are mandatory constraints, not tutorials and not task owners.
 
@@ -258,6 +260,14 @@ ONE objective
 6. Do not opportunistically broaden scope.
 7. A terminal verdict ends the current execution path.
 8. A new hypothesis requires explicit authorization or a runbook that explicitly permits it.
+
+## Memory rule
+
+The `cherrystock-memory` MCP server is an L5 working/episodic memory Tool (ADR-019), never a
+Source of Truth and never a routing input. Route first, then recall within scope; verify recalled
+pointers against the repository, record failed attempts so unchanged failures are not rerun, and
+promote durable findings into `docs/**`. Never store knowledge copies, verdicts as evidence,
+permissions or secrets. Constraints: `.github/instructions/memory.instructions.md`.
 
 ## Implementation principles
 

@@ -111,7 +111,8 @@
       "items": [
         {"label": "Provides", "text": "MCP, CLI, script, API, GitHub, DuckDB, Archify, Flint or similar execution capability."},
         {"label": "Returns", "text": "Artifacts, evidence or effects to the invoking procedure/Agent."},
-        {"label": "Does not own", "text": "Architecture decisions, business outcomes or final readiness gates."}
+        {"label": "Does not own", "text": "Architecture decisions, business outcomes or final readiness gates."},
+        {"label": "Memory MCP", "text": "cherrystock-memory is an L5 recall tool (ADR-019): pointers, task state, failed attempts and candidate lessons only; durable findings are promoted into docs/** and the repository always wins."}
       ]
     }
   }

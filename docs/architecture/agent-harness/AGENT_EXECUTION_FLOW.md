@@ -14,7 +14,7 @@ L1 Agent           .github/agents/*.agent.md
 L2 Instruction     .github/instructions/*.instructions.md
 L3 Skill           .github/skills/*/SKILL.md
 L4 Docs            docs/**
-L5 Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / scripts / CLI
+L5 Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / Memory MCP / scripts / CLI
 L6 Implementation  src/** + runtime entry points
 L7 Verification    tests/** + reproducible evidence
 ```
@@ -51,14 +51,16 @@ intent-specific .github/agents/*.agent.md
   ↓
 matching .github/instructions/*.instructions.md
   ↓
-docs/00_HOME.md → smallest relevant docs/** set
+cherrystock-memory recall within routed scope (ADR-019, optional)
+  ↓
+docs/00_HOME.md → smallest relevant docs/** set (verifies recalled pointers)
   ↓
 matching .github/skills/*/SKILL.md when procedure applies
   ↓
 Tool / src implementation / tests according to ownership
 ```
 
-No task should blindly load every Skill or every document.
+No task should blindly load every Skill or every document. Memory narrows what to read; it never replaces reading the repository.
 
 ## 3. Agent roster
 
@@ -227,6 +229,7 @@ Failure routing:
 | Python | `.github/instructions/python.instructions.md` |
 | Testing | `.github/instructions/testing.instructions.md` |
 | Archify | `.github/instructions/archify.instructions.md` |
+| Memory MCP | `.github/instructions/memory.instructions.md` |
 
 Instructions constrain whichever Agent owns the current outcome; they do not become the task owner.
 
@@ -241,6 +244,7 @@ Instructions constrain whichever Agent owns the current outcome; they do not bec
 | `duckdb-migration` | bounded schema/view/data migration | General Coding / Solution Architect |
 | `chart-authoring` | visualization selection + Flint authoring/render | Chart Agent |
 | `drawio-skill` | editable diagrams.net artifact | Solution Architect or routed owner |
+| `memory-hygiene` | recall → record → audit → promote developer memory | any routed owner |
 
 Skill catalog: `.github/skills/README.md`.
 

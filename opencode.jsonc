@@ -15,7 +15,8 @@
     "./.github/skills/chart-authoring",
     "./.github/skills/drawio-skill",
     "./.github/skills/pet-shortcuts",
-    "./.github/skills/systematic-debugging"
+    "./.github/skills/systematic-debugging",
+    "./.github/skills/memory-hygiene"
   ],
   "default_agent": "cherrystock",
   "agents": {

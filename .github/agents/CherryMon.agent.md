@@ -16,7 +16,7 @@ L1  Agent           .github/agents/*.agent.md
 L2  Instruction     .github/instructions/*.instructions.md
 L3  Skill           .github/skills/*/SKILL.md
 L4  Docs            docs/**
-L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / scripts / CLI
+L5  Tool            MCP / GitHub / DuckDB / Flint / Archify / Draw.io / Memory MCP / scripts / CLI
 L6  Implementation  src/** + runtime entry points
 L7  Verification    tests/** + validation evidence
 ```
@@ -74,6 +74,7 @@ The router selects the smallest sufficient route. Not every request passes throu
 - Python execution → `.github/instructions/python.instructions.md`
 - testing / validation → `.github/instructions/testing.instructions.md`
 - Archify synchronization → `.github/instructions/archify.instructions.md`
+- Memory MCP → `.github/instructions/memory.instructions.md`
 
 Do not duplicate those rules here.
 
@@ -88,7 +89,8 @@ Important examples:
 - data quality → `data-quality-validation`;
 - DuckDB migration → `duckdb-migration`;
 - visualization authoring → `chart-authoring`;
-- editable diagrams → `drawio-skill`.
+- editable diagrams → `drawio-skill`;
+- developer memory hygiene → `memory-hygiene`.
 
 Skills do not own readiness gates or architecture/business Sources of Truth.
 

@@ -458,7 +458,8 @@ CherryStock/
 │   │   ├── testing.instructions.md
 │   │   ├── crawler.instructions.md
 │   │   ├── chart.instructions.md
-│   │   └── archify.instructions.md
+│   │   ├── archify.instructions.md
+│   │   └── memory.instructions.md       # Memory MCP constraints (ADR-019)
 │   └── skills/                          # reusable specialist skills
 │
 ├── docs/
@@ -496,6 +497,7 @@ Folder rules:
 - `src/**` / `scripts/**` = implementation.
 - `tests/**` = verification assets/evidence.
 - Do not copy the same rule into several folders when one authoritative document can be linked.
+- Developer memory (`cherrystock-memory` MCP) is an L5 recall tool outside the repository; durable findings are promoted into `docs/**` (ADR-019).
 - Backlog describes planned behavior; implemented behavior must be reflected in the relevant canonical architecture/domain/runbook material.
 - Architecture documents should link to `REQ-*` when a requirement artifact exists.
 - Test evidence should be traceable to the requirement/design and implementation scope.

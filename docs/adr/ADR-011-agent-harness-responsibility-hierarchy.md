@@ -110,3 +110,4 @@ Rejected because procedure/capability does not imply accountability for requirem
 - `.github/skills/README.md`
 - `docs/backlog/Harness_Backlog.md`
 - `docs/backlog/Architecture_Backlog.md`
+- `docs/adr/ADR-019-developer-memory-mcp-as-l5-working-memory.md` — places the developer Memory MCP at L5
