@@ -20,7 +20,7 @@ Options (env vars):
     DRAWIO_PROXY_TOKEN   if set, requests must send  Authorization: Bearer <token>
     DRAWIO_PROXY_TOKEN_FILE  optional mounted token file (overrides token env)
     DRAWIO_PROXY_ALLOWED_MODELS  comma-separated model allowlist (optional locally)
-    DRAWIO_PROXY_MAX_BODY_BYTES  request limit (default 4194304)
+    DRAWIO_PROXY_MAX_BODY_BYTES  request limit (default 33554432; images are base64)
     DRAWIO_PROXY_MAX_OUTPUT_TOKENS  output token limit (default 131072)
     LLM_PROFILE          AWS profile         (default data-app-sit)
     LLM_REGION           AWS region          (default ap-southeast-1)
@@ -55,6 +55,8 @@ Security notes (financial-grade):
 """
 
 
+import base64
+import binascii
 import json
 import hmac
 import os
@@ -98,7 +100,7 @@ VERIFIED_MODELS = (
 EFFECTIVE_ALLOWED_MODELS = ALLOWED_MODELS or tuple(
     dict.fromkeys(VERIFIED_MODELS + tuple(MODEL_TIERS.values()))
 )
-MAX_BODY_BYTES = int(os.environ.get("DRAWIO_PROXY_MAX_BODY_BYTES", "4194304"))
+MAX_BODY_BYTES = int(os.environ.get("DRAWIO_PROXY_MAX_BODY_BYTES", "33554432"))
 MAX_OUTPUT_TOKENS = int(os.environ.get("DRAWIO_PROXY_MAX_OUTPUT_TOKENS", "131072"))
 PROFILE = os.environ.get("LLM_PROFILE", "data-app-sit")
 REGION = os.environ.get("LLM_REGION", "ap-southeast-1")
@@ -180,6 +182,71 @@ def _content_to_text(content) -> str:
                 parts.append(p)
         return "\n".join(x for x in parts if x)
     return "" if content is None else str(content)
+
+
+# Bedrock Converse image formats and per-image size limit (3.75 MB decoded).
+_IMAGE_FORMATS = {"png": "png", "jpeg": "jpeg", "jpg": "jpeg", "gif": "gif", "webp": "webp"}
+MAX_IMAGE_BYTES = int(os.environ.get("DRAWIO_PROXY_MAX_IMAGE_BYTES", str(3_750_000)))
+
+
+def _image_block(url: str, media_type: str | None = None):
+    """data:image/...;base64 URL (or bare base64 + media type) -> Converse image block.
+
+    Remote http(s) URLs are deliberately not fetched (no SSRF from a LAN proxy);
+    a short text placeholder is returned instead so the model knows why.
+    """
+    if not isinstance(url, str) or not url:
+        return None
+    data = url
+    if url.startswith("data:"):
+        header, _, data = url.partition(",")
+        media_type = header[5:].split(";", 1)[0]
+        if ";base64" not in header:
+            return {"text": "[image omitted: non-base64 data URL is not supported]"}
+    elif url.startswith(("http://", "https://")):
+        return {"text": f"[image omitted: remote URL not fetched by proxy: {url[:200]}]"}
+    fmt = _IMAGE_FORMATS.get((media_type or "").lower().rsplit("/", 1)[-1])
+    if not fmt:
+        return {"text": f"[image omitted: unsupported image type {media_type!r}; use png/jpeg/gif/webp]"}
+    try:
+        raw = base64.b64decode(data, validate=False)
+    except (binascii.Error, ValueError):
+        return {"text": "[image omitted: invalid base64 data]"}
+    if len(raw) > MAX_IMAGE_BYTES:
+        return {"text": f"[image omitted: {len(raw):,} bytes exceeds Bedrock limit {MAX_IMAGE_BYTES:,}]"}
+    return {"image": {"format": fmt, "source": {"bytes": raw}}}
+
+
+def _content_to_blocks(content) -> list:
+    """OpenAI message content (string or parts list) -> Converse text/image blocks."""
+    if content is None:
+        return []
+    if isinstance(content, str):
+        return [{"text": content}] if content.strip() else []
+    if not isinstance(content, list):
+        return [{"text": str(content)}]
+    blocks = []
+    for p in content:
+        if isinstance(p, str):
+            if p.strip():
+                blocks.append({"text": p})
+            continue
+        if not isinstance(p, dict):
+            continue
+        kind = p.get("type")
+        if kind in ("image_url", "input_image"):
+            iu = p.get("image_url")
+            url = iu.get("url") if isinstance(iu, dict) else iu
+            block = _image_block(url)
+        elif kind == "image" and isinstance(p.get("source"), dict):  # Anthropic shape
+            src = p["source"]
+            block = _image_block(src.get("data") or src.get("url"), src.get("media_type"))
+        else:
+            text = p.get("text") or (p.get("content") if isinstance(p.get("content"), str) else "")
+            block = {"text": text} if text and text.strip() else None
+        if block:
+            blocks.append(block)
+    return blocks
 
 
 def _messages_to_prompt(messages: list) -> tuple[str, str]:
@@ -279,12 +346,13 @@ def _oai_messages_to_converse(messages) -> tuple[list, str]:
                 }})
             push("assistant", blocks)
         elif role == "tool":
+            result = _content_to_blocks(m.get("content")) or [{"text": "(empty)"}]
             push("user", [{"toolResult": {
                 "toolUseId": m.get("tool_call_id") or "unknown",
-                "content": [{"text": text or "(empty)"}],
+                "content": result,
             }}])
         else:
-            push("user", [{"text": text}] if text.strip() else [])
+            push("user", _content_to_blocks(m.get("content")))
 
     if conv and conv[0]["role"] != "user":
         conv.insert(0, {"role": "user", "content": [{"text": "(continue)"}]})
